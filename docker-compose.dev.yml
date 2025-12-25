@@ -1,0 +1,24 @@
+services:
+  watch-list:
+    image: watch-list-dev:latest
+    # user: '${UID:-1000}:${GID:-1000}'
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+      target: builder
+      network: host
+    volumes:
+      - ./src:/app/builder/src
+      - ./public:/app/builder/public
+      - ./angular.json:/app/builder/angular.json
+      - ./package.json:/app/builder/package.json
+      - ./package-lock.json:/app/builder/package-lock.json
+      - ./tsconfig.json:/app/builder/tsconfig.json
+      - ./tsconfig.app.json:/app/builder/tsconfig.app.json
+      - ./tsconfig.spec.json:/app/builder/tsconfig.spec.json
+    env_file:
+      - ./.env
+    # environment:
+      # TODO: TODO
+    network_mode: host
+    command: npm start
