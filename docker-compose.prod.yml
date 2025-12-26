@@ -1,0 +1,18 @@
+networks:
+  watch-list-network:
+    external: false
+
+services:
+  watch-list:
+    image: watch-list
+    restart: unless-stopped
+    container_name: watch-list
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+      target: prod
+      network: host
+    ports:
+      - 4200:80
+    networks:
+      - watch-list-network
