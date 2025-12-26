@@ -133,7 +133,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
     h1 {
       font-size: 2rem;
       margin: 0;
-      color: #333;
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .actions {
@@ -143,14 +143,15 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 
     .action-btn {
       padding: 0.5rem 1rem;
-      border: 1px solid #ddd;
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 4px;
-      background: white;
+      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
       cursor: pointer;
     }
 
     .action-btn:hover:not(:disabled) {
-      background: #f8f9fa;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
     }
 
     .action-btn:disabled {
@@ -159,17 +160,17 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
     }
 
     .action-btn.delete {
-      background: #dc3545;
+      background: var(--accent-danger);
       color: white;
-      border-color: #dc3545;
+      border-color: var(--accent-danger);
     }
 
     .action-btn.delete:hover {
-      background: #c82333;
+      background: var(--accent-danger-hover);
     }
 
     .item-info {
-      background: #f8f9fa;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
       padding: 1.5rem;
       border-radius: 8px;
       margin-bottom: 2rem;
@@ -189,7 +190,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
     .label {
       font-weight: 500;
       min-width: 120px;
-      color: #666;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
     }
 
     .value {
@@ -204,22 +205,22 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
     }
 
     .status-not-started {
-      background: #fff3cd;
-      color: #856404;
+      background: light-dark(#fff3cd, #856404);
+      color: light-dark(#856404, #fff3cd);
     }
 
     .status-in-progress {
-      background: #d1ecf1;
-      color: #0c5460;
+      background: light-dark(#d1ecf1, #0c5460);
+      color: light-dark(#0c5460, #d1ecf1);
     }
 
     .status-completed {
-      background: #d4edda;
-      color: #155724;
+      background: light-dark(#d4edda, #155724);
+      color: light-dark(#155724, #d4edda);
     }
 
     .edit-section {
-      border: 1px solid #ddd;
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 8px;
       padding: 1.5rem;
     }
@@ -243,9 +244,11 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
     .form-group select {
       width: 100%;
       padding: 0.5rem;
-      border: 1px solid #ddd;
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 4px;
       font-size: 1rem;
+      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .form-actions {
@@ -256,7 +259,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 
     .save-btn {
       padding: 0.75rem 1.5rem;
-      background: #007bff;
+      background: var(--accent-primary);
       color: white;
       border: none;
       border-radius: 4px;
@@ -265,12 +268,12 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
     }
 
     .save-btn:hover {
-      background: #0056b3;
+      background: var(--accent-primary-hover);
     }
 
     .cancel-btn {
       padding: 0.75rem 1.5rem;
-      background: #6c757d;
+      background: var(--accent-secondary);
       color: white;
       border: none;
       border-radius: 4px;
@@ -278,7 +281,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
     }
 
     .cancel-btn:hover {
-      background: #5a6268;
+      background: var(--accent-secondary-hover);
     }
 
     .not-found {

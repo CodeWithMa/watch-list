@@ -3,6 +3,48 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* Light mode colors */
+  --light-bg-primary: #f5f5f5;
+  --light-bg-secondary: #ffffff;
+  --light-bg-tertiary: #f8f9fa;
+  --light-font-color: #333333;
+  --light-font-secondary: #666666;
+  --light-font-muted: #999999;
+  --light-border-color: #e0e0e0;
+  --light-border-light: #eeeeee;
+  --light-shadow: rgba(0, 0, 0, 0.1);
+  
+  /* Dark mode colors */
+  --dark-bg-primary: #1a1a1a;
+  --dark-bg-secondary: #2d2d2d;
+  --dark-bg-tertiary: #252525;
+  --dark-font-color: #e0e0e0;
+  --dark-font-secondary: #b0b0b0;
+  --dark-font-muted: #808080;
+  --dark-border-color: #404040;
+  --dark-border-light: #333333;
+  --dark-shadow: rgba(0, 0, 0, 0.5);
+  
+  /* Accent colors (same for both modes) */
+  --accent-primary: #007bff;
+  --accent-primary-hover: #0056b3;
+  --accent-success: #28a745;
+  --accent-success-hover: #218838;
+  --accent-info: #17a2b8;
+  --accent-info-hover: #138496;
+  --accent-warning: #ffc107;
+  --accent-warning-hover: #e0a800;
+  --accent-danger: #dc3545;
+  --accent-danger-hover: #c82333;
+  --accent-secondary: #6c757d;
+  --accent-secondary-hover: #5a6268;
+}
+
+html {
+  color-scheme: light dark;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -12,8 +54,8 @@ html, body {
 }
 
 body {
-  background: #f5f5f5;
-  color: #333;
+  background: light-dark(var(--light-bg-primary), var(--dark-bg-primary));
+  color: light-dark(var(--light-font-color), var(--dark-font-color));
 }
 
 button {

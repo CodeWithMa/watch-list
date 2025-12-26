@@ -75,11 +75,11 @@ import { Settings } from '../../models/storage.model';
     h1 {
       font-size: 2rem;
       margin-bottom: 2rem;
-      color: #333;
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .settings-section {
-      background: #f8f9fa;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
       padding: 1.5rem;
       border-radius: 8px;
       margin-bottom: 1.5rem;
@@ -89,7 +89,7 @@ import { Settings } from '../../models/storage.model';
       font-size: 1.3rem;
       margin-top: 0;
       margin-bottom: 1rem;
-      color: #555;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
     }
 
     .setting-item {
@@ -124,43 +124,43 @@ import { Settings } from '../../models/storage.model';
     }
 
     .action-btn.export {
-      background: #28a745;
+      background: var(--accent-success);
       color: white;
     }
 
     .action-btn.export:hover {
-      background: #218838;
+      background: var(--accent-success-hover);
     }
 
     .action-btn.import {
-      background: #17a2b8;
+      background: var(--accent-info);
       color: white;
     }
 
     .action-btn.import:hover {
-      background: #138496;
+      background: var(--accent-info-hover);
     }
 
     .help-text {
       margin: 0.5rem 0 0 0;
       font-size: 0.9rem;
-      color: #666;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
     }
 
     .error-message {
-      background: #f8d7da;
-      color: #721c24;
+      background: light-dark(#f8d7da, #721c24);
+      color: light-dark(#721c24, #f8d7da);
       padding: 1rem;
       border-radius: 4px;
-      border: 1px solid #f5c6cb;
+      border: 1px solid light-dark(#f5c6cb, #721c24);
     }
 
     .success-message {
-      background: #d4edda;
-      color: #155724;
+      background: light-dark(#d4edda, #155724);
+      color: light-dark(#155724, #d4edda);
       padding: 1rem;
       border-radius: 4px;
-      border: 1px solid #c3e6cb;
+      border: 1px solid light-dark(#c3e6cb, #155724);
     }
   `]
 })

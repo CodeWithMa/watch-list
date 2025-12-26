@@ -52,12 +52,12 @@ import { WatchListService } from '../../services/watch-list.service';
   `,
   styles: [`
     .item-card {
-      border: 1px solid #ddd;
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 8px;
       padding: 1rem;
       margin-bottom: 1rem;
-      background: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
+      box-shadow: 0 2px 4px light-dark(var(--light-shadow), var(--dark-shadow));
     }
 
     .item-header {
@@ -74,15 +74,15 @@ import { WatchListService } from '../../services/watch-list.service';
 
     .item-header h3 a {
       text-decoration: none;
-      color: #333;
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .item-header h3 a:hover {
-      color: #007bff;
+      color: var(--accent-primary);
     }
 
     .item-type {
-      background: #f0f0f0;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
       padding: 0.25rem 0.5rem;
       border-radius: 4px;
       font-size: 0.8rem;
@@ -92,7 +92,7 @@ import { WatchListService } from '../../services/watch-list.service';
     .item-info {
       margin: 0.5rem 0;
       font-size: 0.9rem;
-      color: #666;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
     }
 
     .progress-percent {
@@ -114,18 +114,18 @@ import { WatchListService } from '../../services/watch-list.service';
     }
 
     .status-not-started {
-      background: #fff3cd;
-      color: #856404;
+      background: light-dark(#fff3cd, #856404);
+      color: light-dark(#856404, #fff3cd);
     }
 
     .status-in-progress {
-      background: #d1ecf1;
-      color: #0c5460;
+      background: light-dark(#d1ecf1, #0c5460);
+      color: light-dark(#0c5460, #d1ecf1);
     }
 
     .status-completed {
-      background: #d4edda;
-      color: #155724;
+      background: light-dark(#d4edda, #155724);
+      color: light-dark(#155724, #d4edda);
     }
 
     .item-actions {
@@ -136,15 +136,16 @@ import { WatchListService } from '../../services/watch-list.service';
 
     .item-actions button {
       padding: 0.5rem 1rem;
-      border: 1px solid #ddd;
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 4px;
-      background: white;
+      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
       cursor: pointer;
       font-size: 0.9rem;
     }
 
     .item-actions button:hover:not(:disabled) {
-      background: #f8f9fa;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
     }
 
     .item-actions button:disabled {

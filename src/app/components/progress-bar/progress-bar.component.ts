@@ -15,14 +15,14 @@ import { NgIf } from '@angular/common';
     .progress-container {
       width: 100%;
       height: 8px;
-      background-color: #e0e0e0;
+      background-color: light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 4px;
       overflow: hidden;
     }
 
     .progress-bar {
       height: 100%;
-      background-color: #4caf50;
+      background-color: var(--accent-success);
       transition: width 0.3s ease;
       display: flex;
       align-items: center;

@@ -59,7 +59,7 @@ import { NgIf } from '@angular/common';
     h1 {
       font-size: 2rem;
       margin-bottom: 2rem;
-      color: #333;
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .next-items {
@@ -78,7 +78,7 @@ import { NgIf } from '@angular/common';
     .next-item-section h2 {
       font-size: 1.5rem;
       margin-bottom: 1rem;
-      color: #555;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
     }
 
     .next-item-card {
@@ -88,8 +88,8 @@ import { NgIf } from '@angular/common';
     .empty-message {
       padding: 2rem;
       text-align: center;
-      color: #999;
-      background: #f5f5f5;
+      color: light-dark(var(--light-font-muted), var(--dark-font-muted));
+      background: light-dark(var(--light-bg-primary), var(--dark-bg-primary));
       border-radius: 8px;
     }
 
@@ -102,7 +102,7 @@ import { NgIf } from '@angular/common';
 
     .action-button {
       padding: 0.75rem 1.5rem;
-      background: #007bff;
+      background: var(--accent-primary);
       color: white;
       text-decoration: none;
       border-radius: 4px;
@@ -111,7 +111,7 @@ import { NgIf } from '@angular/common';
     }
 
     .action-button:hover {
-      background: #0056b3;
+      background: var(--accent-primary-hover);
     }
   `]
 })

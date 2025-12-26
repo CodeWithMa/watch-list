@@ -113,11 +113,11 @@ import { Group } from '../../models/group.model';
     h1 {
       font-size: 2rem;
       margin-bottom: 2rem;
-      color: #333;
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .add-item-form {
-      background: #f8f9fa;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
       padding: 2rem;
       border-radius: 8px;
     }
@@ -130,26 +130,28 @@ import { Group } from '../../models/group.model';
       display: block;
       margin-bottom: 0.5rem;
       font-weight: 500;
-      color: #333;
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .form-control {
       width: 100%;
       padding: 0.75rem;
-      border: 1px solid #ddd;
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 4px;
       font-size: 1rem;
       box-sizing: border-box;
+      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .form-control:focus {
       outline: none;
-      border-color: #007bff;
+      border-color: var(--accent-primary);
       box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
     }
 
     .series-fields {
-      border-top: 1px solid #ddd;
+      border-top: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       padding-top: 1.5rem;
       margin-top: 1.5rem;
     }
@@ -162,7 +164,7 @@ import { Group } from '../../models/group.model';
 
     .submit-btn {
       padding: 0.75rem 2rem;
-      background: #007bff;
+      background: var(--accent-primary);
       color: white;
       border: none;
       border-radius: 4px;
@@ -172,12 +174,12 @@ import { Group } from '../../models/group.model';
     }
 
     .submit-btn:hover {
-      background: #0056b3;
+      background: var(--accent-primary-hover);
     }
 
     .cancel-btn {
       padding: 0.75rem 2rem;
-      background: #6c757d;
+      background: var(--accent-secondary);
       color: white;
       border: none;
       border-radius: 4px;
@@ -186,7 +188,7 @@ import { Group } from '../../models/group.model';
     }
 
     .cancel-btn:hover {
-      background: #5a6268;
+      background: var(--accent-secondary-hover);
     }
   `]
 })

@@ -102,12 +102,12 @@ import { ItemCardComponent } from '../item-card/item-card.component';
     h1 {
       font-size: 2rem;
       margin: 0;
-      color: #333;
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .add-button {
       padding: 0.75rem 1.5rem;
-      background: #007bff;
+      background: var(--accent-primary);
       color: white;
       text-decoration: none;
       border-radius: 4px;
@@ -115,7 +115,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
     }
 
     .add-button:hover {
-      background: #0056b3;
+      background: var(--accent-primary-hover);
     }
 
     .filters {
@@ -123,7 +123,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
       gap: 1rem;
       margin-bottom: 2rem;
       padding: 1rem;
-      background: #f5f5f5;
+      background: light-dark(var(--light-bg-primary), var(--dark-bg-primary));
       border-radius: 4px;
     }
 
@@ -141,7 +141,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
     }
 
     .group-section {
-      border: 1px solid #ddd;
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 8px;
       overflow: hidden;
     }
@@ -151,13 +151,13 @@ import { ItemCardComponent } from '../item-card/item-card.component';
       align-items: center;
       gap: 1rem;
       padding: 1rem;
-      background: #f8f9fa;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
       cursor: pointer;
       user-select: none;
     }
 
     .group-header:hover {
-      background: #e9ecef;
+      background: light-dark(#e9ecef, #333333);
     }
 
     .group-header h2 {
@@ -168,11 +168,11 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 
     .toggle-icon {
       font-size: 0.8rem;
-      color: #666;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
     }
 
     .item-count {
-      color: #666;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
       font-size: 0.9rem;
     }
 
@@ -182,7 +182,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 
     .empty-group {
       text-align: center;
-      color: #999;
+      color: light-dark(var(--light-font-muted), var(--dark-font-muted));
       padding: 2rem;
     }
   `]

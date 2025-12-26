@@ -98,17 +98,17 @@ import { Group } from '../../models/group.model';
     h1 {
       font-size: 2rem;
       margin-bottom: 2rem;
-      color: #333;
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     h2 {
       font-size: 1.5rem;
       margin-bottom: 1rem;
-      color: #555;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
     }
 
     .create-group-section {
-      background: #f8f9fa;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
       padding: 1.5rem;
       border-radius: 8px;
       margin-bottom: 2rem;
@@ -122,14 +122,16 @@ import { Group } from '../../models/group.model';
     .group-input {
       flex: 1;
       padding: 0.75rem;
-      border: 1px solid #ddd;
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 4px;
       font-size: 1rem;
+      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
     }
 
     .create-btn {
       padding: 0.75rem 1.5rem;
-      background: #007bff;
+      background: var(--accent-primary);
       color: white;
       border: none;
       border-radius: 4px;
@@ -138,12 +140,12 @@ import { Group } from '../../models/group.model';
     }
 
     .create-btn:hover {
-      background: #0056b3;
+      background: var(--accent-primary-hover);
     }
 
     .groups-list {
-      background: white;
-      border: 1px solid #ddd;
+      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 8px;
       padding: 1.5rem;
     }
@@ -153,7 +155,7 @@ import { Group } from '../../models/group.model';
       justify-content: space-between;
       align-items: center;
       padding: 1rem;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid light-dark(var(--light-border-light), var(--dark-border-light));
     }
 
     .group-item:last-child {
@@ -173,7 +175,7 @@ import { Group } from '../../models/group.model';
 
     .group-order {
       font-size: 0.9rem;
-      color: #666;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
     }
 
     .group-actions {
@@ -183,35 +185,36 @@ import { Group } from '../../models/group.model';
 
     .action-btn {
       padding: 0.5rem 1rem;
-      border: 1px solid #ddd;
+      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
       border-radius: 4px;
-      background: white;
+      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
+      color: light-dark(var(--light-font-color), var(--dark-font-color));
       cursor: pointer;
       font-size: 0.9rem;
     }
 
     .action-btn:hover {
-      background: #f8f9fa;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
     }
 
     .action-btn.edit {
-      background: #ffc107;
-      color: #000;
-      border-color: #ffc107;
+      background: var(--accent-warning);
+      color: light-dark(#000, #fff);
+      border-color: var(--accent-warning);
     }
 
     .action-btn.edit:hover {
-      background: #e0a800;
+      background: var(--accent-warning-hover);
     }
 
     .action-btn.delete {
-      background: #dc3545;
+      background: var(--accent-danger);
       color: white;
-      border-color: #dc3545;
+      border-color: var(--accent-danger);
     }
 
     .action-btn.delete:hover {
-      background: #c82333;
+      background: var(--accent-danger-hover);
     }
 
     .edit-modal {
@@ -228,7 +231,7 @@ import { Group } from '../../models/group.model';
     }
 
     .modal-content {
-      background: white;
+      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
       padding: 2rem;
       border-radius: 8px;
       min-width: 400px;
@@ -247,7 +250,7 @@ import { Group } from '../../models/group.model';
 
     .save-btn {
       padding: 0.75rem 1.5rem;
-      background: #007bff;
+      background: var(--accent-primary);
       color: white;
       border: none;
       border-radius: 4px;
@@ -255,12 +258,12 @@ import { Group } from '../../models/group.model';
     }
 
     .save-btn:hover {
-      background: #0056b3;
+      background: var(--accent-primary-hover);
     }
 
     .cancel-btn {
       padding: 0.75rem 1.5rem;
-      background: #6c757d;
+      background: var(--accent-secondary);
       color: white;
       border: none;
       border-radius: 4px;
@@ -268,7 +271,7 @@ import { Group } from '../../models/group.model';
     }
 
     .cancel-btn:hover {
-      background: #5a6268;
+      background: var(--accent-secondary-hover);
     }
   `]
 })

@@ -8,7 +8,7 @@ import { Component, computed, input } from '@angular/core';
   `,
   styles: [`
     span {
-      color: #666;
+      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
       font-size: 0.9em;
     }
   `]
