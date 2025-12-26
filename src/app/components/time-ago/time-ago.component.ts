@@ -1,9 +1,8 @@
 import { Component, computed, input } from '@angular/core';
-import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-time-ago',
-  imports: [DatePipe],
+  imports: [],
   template: `
     <span [title]="dateString()">{{ timeAgo() }}</span>
   `,

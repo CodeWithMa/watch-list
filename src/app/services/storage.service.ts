@@ -101,8 +101,8 @@ export class StorageService {
   }
 
   private ensureUngroupedGroup(data: StorageData): void {
-    if (!data.groups.ungrouped) {
-      data.groups.ungrouped = {
+    if (!data.groups['ungrouped']) {
+      data.groups['ungrouped'] = {
         id: 'ungrouped',
         name: 'Ungrouped',
         order: 0

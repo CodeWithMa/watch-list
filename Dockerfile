@@ -9,6 +9,7 @@ COPY src ./src
 COPY public ./public
 
 COPY angular.json .
+COPY ngsw-config.json .
 COPY tsconfig.json .
 COPY tsconfig.app.json .
 COPY tsconfig.spec.json .

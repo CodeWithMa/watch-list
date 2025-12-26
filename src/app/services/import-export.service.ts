@@ -33,8 +33,8 @@ export class ImportExportService {
 
       // Ensure ungrouped group exists
       const data = parsed as StorageData;
-      if (!data.groups.ungrouped) {
-        data.groups.ungrouped = {
+      if (!data.groups['ungrouped']) {
+        data.groups['ungrouped'] = {
           id: 'ungrouped',
           name: 'Ungrouped',
           order: 0
@@ -59,26 +59,26 @@ export class ImportExportService {
 
     // Check required top-level fields
     if (
-      typeof d.schemaVersion !== 'number' ||
-      typeof d.lastModifiedAt !== 'string' ||
-      !d.settings ||
-      !d.groups ||
-      !d.items
+      typeof d['schemaVersion'] !== 'number' ||
+      typeof d['lastModifiedAt'] !== 'string' ||
+      !d['settings'] ||
+      !d['groups'] ||
+      !d['items']
     ) {
       return false;
     }
 
     // Validate settings
-    const settings = d.settings as Record<string, unknown>;
-    if (typeof settings.showCompleted !== 'boolean') {
+    const settings = d['settings'] as Record<string, unknown>;
+    if (typeof settings['showCompleted'] !== 'boolean') {
       return false;
     }
 
     // Validate groups
-    if (typeof d.groups !== 'object' || Array.isArray(d.groups)) {
+    if (typeof d['groups'] !== 'object' || Array.isArray(d['groups'])) {
       return false;
     }
-    const groups = d.groups as Record<string, unknown>;
+    const groups = d['groups'] as Record<string, unknown>;
     for (const group of Object.values(groups)) {
       if (!this.validateGroup(group)) {
         return false;
@@ -86,10 +86,10 @@ export class ImportExportService {
     }
 
     // Validate items
-    if (typeof d.items !== 'object' || Array.isArray(d.items)) {
+    if (typeof d['items'] !== 'object' || Array.isArray(d['items'])) {
       return false;
     }
-    const items = d.items as Record<string, unknown>;
+    const items = d['items'] as Record<string, unknown>;
     for (const item of Object.values(items)) {
       if (!this.validateItem(item)) {
         return false;
@@ -105,9 +105,9 @@ export class ImportExportService {
     }
     const g = group as Record<string, unknown>;
     return (
-      typeof g.id === 'string' &&
-      typeof g.name === 'string' &&
-      typeof g.order === 'number'
+      typeof g['id'] === 'string' &&
+      typeof g['name'] === 'string' &&
+      typeof g['order'] === 'number'
     );
   }
 
@@ -118,23 +118,23 @@ export class ImportExportService {
     const i = item as Record<string, unknown>;
     
     if (
-      typeof i.id !== 'string' ||
-      typeof i.title !== 'string' ||
-      typeof i.groupId !== 'string' ||
-      typeof i.status !== 'string' ||
-      typeof i.lastWatchedAt !== 'string' ||
-      typeof i.createdAt !== 'string' ||
-      (i.type !== 'series' && i.type !== 'movie')
+      typeof i['id'] !== 'string' ||
+      typeof i['title'] !== 'string' ||
+      typeof i['groupId'] !== 'string' ||
+      typeof i['status'] !== 'string' ||
+      typeof i['lastWatchedAt'] !== 'string' ||
+      typeof i['createdAt'] !== 'string' ||
+      (i['type'] !== 'series' && i['type'] !== 'movie')
     ) {
       return false;
     }
 
-    if (i.type === 'series' && i.progress) {
-      const progress = i.progress as Record<string, unknown>;
+    if (i['type'] === 'series' && i['progress']) {
+      const progress = i['progress'] as Record<string, unknown>;
       if (
-        typeof progress.season !== 'number' ||
-        typeof progress.episode !== 'number' ||
-        (progress.totalEpisodes !== undefined && typeof progress.totalEpisodes !== 'number')
+        typeof progress['season'] !== 'number' ||
+        typeof progress['episode'] !== 'number' ||
+        (progress['totalEpisodes'] !== undefined && typeof progress['totalEpisodes'] !== 'number')
       ) {
         return false;
       }
