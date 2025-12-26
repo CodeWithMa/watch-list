@@ -1,0 +1,146 @@
+import { Injectable } from '@angular/core';
+import { StorageService } from './storage.service';
+import { StorageData } from '../models/storage.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ImportExportService {
+  constructor(private storageService: StorageService) {}
+
+  exportData(): void {
+    const data = this.storageService.getData();
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `watch-list-export-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async importData(file: File): Promise<void> {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      
+      if (!this.validateData(parsed)) {
+        throw new Error('Invalid data format');
+      }
+
+      // Ensure ungrouped group exists
+      const data = parsed as StorageData;
+      if (!data.groups.ungrouped) {
+        data.groups.ungrouped = {
+          id: 'ungrouped',
+          name: 'Ungrouped',
+          order: 0
+        };
+      }
+
+      this.storageService.saveData(data);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error('Invalid JSON file');
+      }
+      throw error;
+    }
+  }
+
+  validateData(data: unknown): data is StorageData {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+
+    const d = data as Record<string, unknown>;
+
+    // Check required top-level fields
+    if (
+      typeof d.schemaVersion !== 'number' ||
+      typeof d.lastModifiedAt !== 'string' ||
+      !d.settings ||
+      !d.groups ||
+      !d.items
+    ) {
+      return false;
+    }
+
+    // Validate settings
+    const settings = d.settings as Record<string, unknown>;
+    if (typeof settings.showCompleted !== 'boolean') {
+      return false;
+    }
+
+    // Validate groups
+    if (typeof d.groups !== 'object' || Array.isArray(d.groups)) {
+      return false;
+    }
+    const groups = d.groups as Record<string, unknown>;
+    for (const group of Object.values(groups)) {
+      if (!this.validateGroup(group)) {
+        return false;
+      }
+    }
+
+    // Validate items
+    if (typeof d.items !== 'object' || Array.isArray(d.items)) {
+      return false;
+    }
+    const items = d.items as Record<string, unknown>;
+    for (const item of Object.values(items)) {
+      if (!this.validateItem(item)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private validateGroup(group: unknown): boolean {
+    if (!group || typeof group !== 'object') {
+      return false;
+    }
+    const g = group as Record<string, unknown>;
+    return (
+      typeof g.id === 'string' &&
+      typeof g.name === 'string' &&
+      typeof g.order === 'number'
+    );
+  }
+
+  private validateItem(item: unknown): boolean {
+    if (!item || typeof item !== 'object') {
+      return false;
+    }
+    const i = item as Record<string, unknown>;
+    
+    if (
+      typeof i.id !== 'string' ||
+      typeof i.title !== 'string' ||
+      typeof i.groupId !== 'string' ||
+      typeof i.status !== 'string' ||
+      typeof i.lastWatchedAt !== 'string' ||
+      typeof i.createdAt !== 'string' ||
+      (i.type !== 'series' && i.type !== 'movie')
+    ) {
+      return false;
+    }
+
+    if (i.type === 'series' && i.progress) {
+      const progress = i.progress as Record<string, unknown>;
+      if (
+        typeof progress.season !== 'number' ||
+        typeof progress.episode !== 'number' ||
+        (progress.totalEpisodes !== undefined && typeof progress.totalEpisodes !== 'number')
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+}
+
