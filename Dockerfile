@@ -1,9 +1,9 @@
-FROM node:alpine AS builder
+FROM docker.io/oven/bun:1.3.11-alpine AS builder
 
 WORKDIR /app/builder
 COPY package.json .
-COPY package-lock.json .
-RUN npm install
+COPY bun.lock .
+RUN bun install --frozen-lockfile
 
 COPY src ./src
 COPY public ./public
@@ -14,7 +14,7 @@ COPY tsconfig.json .
 COPY tsconfig.app.json .
 COPY tsconfig.spec.json .
 
-RUN npm run build
+RUN bun run build
 
 FROM nginx:alpine-slim AS prod
 
