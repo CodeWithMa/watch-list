@@ -1,5 +1,4 @@
-import { Component, OnInit, signal, ViewChild } from '@angular/core';
-import { NgForm } from '@angular/forms';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -328,8 +327,6 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
   `]
 })
 export class ItemDetailComponent implements OnInit {
-  @ViewChild('itemForm') itemForm!: NgForm;
-  
   item = signal<Item | null>(null);
   groups = signal<Group[]>([]);
   confirmDelete = signal(false);
