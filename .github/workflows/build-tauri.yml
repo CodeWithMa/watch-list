@@ -15,7 +15,7 @@ jobs:
       - name: Delete old release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release delete dev-release --yes || true
+        run: gh release delete dev-release --yes --cleanup-tag || true
 
   build:
     needs: cleanup
