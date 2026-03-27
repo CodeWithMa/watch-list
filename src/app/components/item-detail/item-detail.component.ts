@@ -24,7 +24,13 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
             <button (click)="markCompleted()" [disabled]="item()!.status === 'completed'" class="action-btn">
               Mark Completed
             </button>
-            <button (click)="deleteItem()" class="action-btn delete">Delete</button>
+            <ng-container *ngIf="!confirmDelete(); else confirmDeleteTemplate">
+              <button (click)="confirmDelete.set(true)" class="action-btn delete">Delete</button>
+            </ng-container>
+            <ng-template #confirmDeleteTemplate>
+              <button (click)="deleteItem()" class="action-btn delete confirm">Confirm?</button>
+              <button (click)="cancelDelete()" class="action-btn">Cancel</button>
+            </ng-template>
           </div>
         </div>
 
@@ -69,10 +75,13 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 
         <div class="edit-section">
           <h2>Edit Item</h2>
-          <form (ngSubmit)="saveChanges()">
+          <form (ngSubmit)="saveChanges()" #itemForm="ngForm">
             <div class="form-group">
               <label>Title:</label>
               <input type="text" [(ngModel)]="editTitle" name="title" required />
+              <div class="validation-error" *ngIf="itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched">
+                Title is required
+              </div>
             </div>
             <div class="form-group">
               <label>Type:</label>
@@ -102,7 +111,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
               <input type="number" [(ngModel)]="editTotalEpisodes" name="totalEpisodes" min="1" />
             </div>
             <div class="form-actions">
-              <button type="submit" class="save-btn">Save Changes</button>
+              <button type="submit" class="save-btn" [disabled]="itemForm.invalid">Save Changes</button>
               <button type="button" (click)="cancelEdit()" class="cancel-btn">Cancel</button>
             </div>
           </form>
@@ -167,6 +176,15 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 
     .action-btn.delete:hover {
       background: var(--accent-danger-hover);
+    }
+
+    .action-btn.delete.confirm {
+      animation: pulse 0.5s ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
     }
 
     .item-info {
@@ -249,6 +267,20 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
       font-size: 1rem;
       background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
       color: light-dark(var(--light-font-color), var(--dark-font-color));
+      box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+
+    .validation-error {
+      color: var(--accent-danger);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
     }
 
     .form-actions {
@@ -267,8 +299,13 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
       font-weight: 500;
     }
 
-    .save-btn:hover {
+    .save-btn:hover:not(:disabled) {
       background: var(--accent-primary-hover);
+    }
+
+    .save-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .cancel-btn {
@@ -297,6 +334,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 export class ItemDetailComponent implements OnInit {
   item = signal<Item | null>(null);
   groups = signal<Group[]>([]);
+  confirmDelete = signal(false);
   
   editTitle = '';
   editType: ItemType = 'series';
@@ -350,10 +388,11 @@ export class ItemDetailComponent implements OnInit {
   saveChanges(): void {
     const currentItem = this.item();
     if (!currentItem) return;
+    if (!this.editTitle.trim()) return;
 
     const updated: Item = {
       ...currentItem,
-      title: this.editTitle,
+      title: this.editTitle.trim(),
       type: this.editType,
       groupId: this.editGroupId,
       progress: this.editType === 'series' ? {
@@ -364,11 +403,15 @@ export class ItemDetailComponent implements OnInit {
     };
 
     this.watchListService.updateItem(updated);
-    this.item.set(updated);
+    this.router.navigate(['/items']);
   }
 
   cancelEdit(): void {
     this.loadEditData();
+  }
+
+  cancelDelete(): void {
+    this.confirmDelete.set(false);
   }
 
   markWatched(): void {
@@ -378,6 +421,7 @@ export class ItemDetailComponent implements OnInit {
       const updated = this.watchListService.getItemById(currentItem.id);
       if (updated) {
         this.item.set(updated);
+        this.loadEditData();
       }
     }
   }
@@ -389,17 +433,16 @@ export class ItemDetailComponent implements OnInit {
       const updated = this.watchListService.getItemById(currentItem.id);
       if (updated) {
         this.item.set(updated);
+        this.loadEditData();
       }
     }
   }
 
   deleteItem(): void {
-    if (confirm('Are you sure you want to delete this item?')) {
-      const currentItem = this.item();
-      if (currentItem) {
-        this.watchListService.deleteItem(currentItem.id);
-        this.router.navigate(['/items']);
-      }
+    const currentItem = this.item();
+    if (currentItem) {
+      this.watchListService.deleteItem(currentItem.id);
+      this.router.navigate(['/items']);
     }
   }
 
