@@ -5,6 +5,10 @@ on:
     branches:
       - dev
 
+concurrency:
+  group: tauri-build
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
