@@ -421,6 +421,7 @@ export class ItemDetailComponent implements OnInit {
       const updated = this.watchListService.getItemById(currentItem.id);
       if (updated) {
         this.item.set(updated);
+        this.loadEditData();
       }
     }
   }
@@ -432,6 +433,7 @@ export class ItemDetailComponent implements OnInit {
       const updated = this.watchListService.getItemById(currentItem.id);
       if (updated) {
         this.item.set(updated);
+        this.loadEditData();
       }
     }
   }
