@@ -6,7 +6,7 @@ on:
       - dev
 
 concurrency:
-  group: tauri-build
+  group: tauri-build-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
