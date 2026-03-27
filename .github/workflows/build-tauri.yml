@@ -70,6 +70,6 @@ jobs:
           tagName: dev-release
           releaseName: Dev Build
           releaseBody: Latest dev build
-          releaseDraft: true
-          prerelease: false
+          releaseDraft: false
+          prerelease: true
           args: --target ${{ matrix.target }}
