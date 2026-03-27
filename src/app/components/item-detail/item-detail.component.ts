@@ -299,8 +299,13 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
       font-weight: 500;
     }
 
-    .save-btn:hover {
+    .save-btn:hover:not(:disabled) {
       background: var(--accent-primary-hover);
+    }
+
+    .save-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .cancel-btn {
