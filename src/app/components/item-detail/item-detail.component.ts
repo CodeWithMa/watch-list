@@ -386,10 +386,11 @@ export class ItemDetailComponent implements OnInit {
   saveChanges(): void {
     const currentItem = this.item();
     if (!currentItem) return;
+    if (!this.editTitle.trim()) return;
 
     const updated: Item = {
       ...currentItem,
-      title: this.editTitle,
+      title: this.editTitle.trim(),
       type: this.editType,
       groupId: this.editGroupId,
       progress: this.editType === 'series' ? {
