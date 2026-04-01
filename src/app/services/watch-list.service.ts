@@ -103,7 +103,7 @@ export class WatchListService {
         watchHistory: [...(item.watchHistory || []), {
           date: now,
           season: progress.season,
-          episode: progress.episode + 1
+          episode: newProgress.episode
         }]
       });
     }
