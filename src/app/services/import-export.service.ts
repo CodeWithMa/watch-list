@@ -31,11 +31,14 @@ export class ImportExportService {
         throw new Error('Invalid data format');
       }
 
-      const migrated = this.storageService.importAndMigrateData(parsed as StorageData);
+      const migrated = this.storageService.migrateDataOnly(parsed as StorageData);
+      this.storageService.ensureUngroupedGroup(migrated);
       
       if (!this.validateMigratedData(migrated)) {
         throw new Error('Invalid migrated data');
       }
+
+      this.storageService.importAndMigrateData(parsed as StorageData);
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file');

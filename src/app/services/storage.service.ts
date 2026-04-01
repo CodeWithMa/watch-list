@@ -22,7 +22,7 @@ export class StorageService {
     if (stored) {
       try {
         const parsed = JSON.parse(stored) as StorageData;
-        const migrated = this.migrateData(parsed);
+        const migrated = this.migrateDataOnly(parsed);
         this.ensureUngroupedGroup(migrated);
         this.data.set(migrated);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
@@ -38,7 +38,7 @@ export class StorageService {
     return defaultData;
   }
 
-  private migrateData(data: StorageData): StorageData {
+  migrateDataOnly(data: StorageData): StorageData {
     if (data.schemaVersion >= CURRENT_SCHEMA_VERSION) {
       return data;
     }
@@ -93,7 +93,7 @@ export class StorageService {
   }
 
   importAndMigrateData(data: StorageData): StorageData {
-    let migrated = this.migrateData(data);
+    let migrated = this.migrateDataOnly(data);
     this.ensureUngroupedGroup(migrated);
     migrated.lastModifiedAt = new Date().toISOString();
     this.data.set(migrated);
@@ -155,7 +155,7 @@ export class StorageService {
     };
   }
 
-  private ensureUngroupedGroup(data: StorageData): void {
+  ensureUngroupedGroup(data: StorageData): void {
     if (!data.groups['ungrouped']) {
       data.groups['ungrouped'] = {
         id: 'ungrouped',
