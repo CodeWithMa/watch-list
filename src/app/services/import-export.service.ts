@@ -38,7 +38,7 @@ export class ImportExportService {
         throw new Error('Invalid migrated data');
       }
 
-      this.storageService.importAndMigrateData(parsed as StorageData);
+      this.storageService.saveData(migrated);
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file');

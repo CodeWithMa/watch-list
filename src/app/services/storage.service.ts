@@ -92,15 +92,6 @@ export class StorageService {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }
 
-  importAndMigrateData(data: StorageData): StorageData {
-    let migrated = this.migrateDataOnly(data);
-    this.ensureUngroupedGroup(migrated);
-    migrated.lastModifiedAt = new Date().toISOString();
-    this.data.set(migrated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-    return migrated;
-  }
-
   getData(): StorageData {
     const current = this.data();
     if (current) {
