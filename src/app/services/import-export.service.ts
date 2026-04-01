@@ -64,8 +64,19 @@ export class ImportExportService {
       return false;
     }
 
+    const settings = d['settings'] as Record<string, unknown>;
+    if (typeof settings['showCompleted'] !== 'boolean') {
+      return false;
+    }
+
     if (typeof d['groups'] !== 'object' || Array.isArray(d['groups'])) {
       return false;
+    }
+    const groups = d['groups'] as Record<string, unknown>;
+    for (const group of Object.values(groups)) {
+      if (!this.validateGroup(group)) {
+        return false;
+      }
     }
 
     if (typeof d['items'] !== 'object' || Array.isArray(d['items'])) {
@@ -73,6 +84,18 @@ export class ImportExportService {
     }
 
     return true;
+  }
+
+  private validateGroup(group: unknown): boolean {
+    if (!group || typeof group !== 'object') {
+      return false;
+    }
+    const g = group as Record<string, unknown>;
+    return (
+      typeof g['id'] === 'string' &&
+      typeof g['name'] === 'string' &&
+      typeof g['order'] === 'number'
+    );
   }
 
   private validateMigratedData(data: StorageData): boolean {
