@@ -73,7 +73,9 @@ export class StorageService {
             }
             watchHistory = [entry];
           }
-          return [id, { ...item, watchHistory, progress: adjustedProgress }];
+          
+          const { lastWatchedAt, ...itemWithoutLastWatched } = legacyItem;
+          return [id, { ...itemWithoutLastWatched, watchHistory, progress: adjustedProgress }];
         })
       );
       migrated.schemaVersion = 2;
