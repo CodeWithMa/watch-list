@@ -157,8 +157,9 @@ export class WatchListService {
     }
 
     if (item.type === 'series' && item.progress?.totalEpisodes) {
+      if (item.status === 'completed') return 100;
       const { episode, totalEpisodes } = item.progress;
-      return Math.round((episode / totalEpisodes) * 100);
+      return Math.round(((episode - 1) / totalEpisodes) * 100);
     }
 
     return null;
