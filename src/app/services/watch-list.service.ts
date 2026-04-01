@@ -70,7 +70,7 @@ export class WatchListService {
         watchHistory: [...(item.watchHistory || []), { date: now }]
       });
     } else if (item.type === 'series') {
-      const progress = item.progress || { season: 1, episode: 0 };
+      const progress = item.progress || { season: 1, episode: 1 };
       let newProgress: SeriesProgress;
       let newStatus: ItemStatus = item.status;
 
