@@ -77,8 +77,8 @@ import { Group } from '../../models/group.model';
               id="episode" 
               [(ngModel)]="episode" 
               name="episode" 
-              min="0" 
-              value="0"
+              min="1" 
+              value="1"
               class="form-control"
             />
           </div>
@@ -199,7 +199,7 @@ export class AddItemComponent implements OnInit {
   type: ItemType = 'series';
   groupId = 'ungrouped';
   season = 1;
-  episode = 0;
+  episode = 1;
   totalEpisodes: number | undefined;
 
   constructor(
@@ -220,7 +220,7 @@ export class AddItemComponent implements OnInit {
   onTypeChange(): void {
     if (this.type === 'movie') {
       this.season = 1;
-      this.episode = 0;
+      this.episode = 1;
       this.totalEpisodes = undefined;
     }
   }

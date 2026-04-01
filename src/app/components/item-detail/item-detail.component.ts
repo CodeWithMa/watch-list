@@ -340,7 +340,7 @@ export class ItemDetailComponent implements OnInit {
   editType: ItemType = 'series';
   editGroupId = '';
   editSeason = 1;
-  editEpisode = 0;
+  editEpisode = 1;
   editTotalEpisodes: number | undefined;
 
   constructor(
@@ -380,7 +380,7 @@ export class ItemDetailComponent implements OnInit {
   onTypeChange(): void {
     if (this.editType === 'movie') {
       this.editSeason = 1;
-      this.editEpisode = 0;
+      this.editEpisode = 1;
       this.editTotalEpisodes = undefined;
     }
   }
