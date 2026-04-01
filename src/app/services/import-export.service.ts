@@ -118,13 +118,17 @@ export class ImportExportService {
       return false;
     }
 
-    if (!Array.isArray(i['watchHistory'])) {
-      return false;
-    }
-    for (const entry of i['watchHistory']) {
-      if (!this.validateWatchHistoryEntry(entry)) {
+    if (i['watchHistory'] !== undefined) {
+      if (!Array.isArray(i['watchHistory'])) {
         return false;
       }
+      for (const entry of i['watchHistory']) {
+        if (!this.validateWatchHistoryEntry(entry)) {
+          return false;
+        }
+      }
+    } else if (typeof i['lastWatchedAt'] !== 'string') {
+      return false;
     }
 
     if (i['type'] === 'series' && i['progress']) {
