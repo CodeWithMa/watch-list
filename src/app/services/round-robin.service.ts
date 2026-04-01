@@ -67,17 +67,7 @@ export class RoundRobinService {
     // Check if at least one episode of every other series has been watched
     // A series is considered "watched at least once" if it's in-progress or has been watched
     const allOthersWatched = otherSeries.every(series => {
-      // If status is in-progress, at least one episode has been watched
-      if (series.status === 'in-progress') {
-        return true;
-      }
-      // If not-started but has a lastWatchedAt that's not the creation date, it was watched
-      // For simplicity, we check if progress exists and episode > 0
-      if (series.progress && series.progress.episode > 0) {
-        return true;
-      }
-      // Check if lastWatchedAt is different from createdAt (meaning it was watched)
-      return series.lastWatchedAt !== series.createdAt;
+      return (series.watchHistory && series.watchHistory.length > 0);
     });
 
     return allOthersWatched;
