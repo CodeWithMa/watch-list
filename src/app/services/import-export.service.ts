@@ -31,17 +31,7 @@ export class ImportExportService {
         throw new Error('Invalid data format');
       }
 
-      // Ensure ungrouped group exists
-      const data = parsed as StorageData;
-      if (!data.groups['ungrouped']) {
-        data.groups['ungrouped'] = {
-          id: 'ungrouped',
-          name: 'Ungrouped',
-          order: 0
-        };
-      }
-
-      this.storageService.saveData(data);
+      this.storageService.importAndMigrateData(parsed as StorageData);
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file');
@@ -128,14 +118,12 @@ export class ImportExportService {
       return false;
     }
 
-    if (i['watchHistory'] !== undefined) {
-      if (!Array.isArray(i['watchHistory'])) {
+    if (!Array.isArray(i['watchHistory'])) {
+      return false;
+    }
+    for (const entry of i['watchHistory']) {
+      if (!this.validateWatchHistoryEntry(entry)) {
         return false;
-      }
-      for (const entry of i['watchHistory']) {
-        if (!this.validateWatchHistoryEntry(entry)) {
-          return false;
-        }
       }
     }
 
