@@ -67,9 +67,9 @@ export class StorageService {
           if (watchHistory.length === 0 && 
               (legacyItem.status === 'in-progress' || legacyItem.lastWatchedAt !== legacyItem.createdAt)) {
             const entry: any = { date: legacyItem.lastWatchedAt };
-            if (legacyItem.type === 'series' && adjustedProgress) {
-              entry.season = adjustedProgress.season;
-              entry.episode = adjustedProgress.episode;
+            if (legacyItem.type === 'series' && legacyItem.progress) {
+              entry.season = legacyItem.progress.season;
+              entry.episode = legacyItem.progress.episode;
             }
             watchHistory = [entry];
           }
