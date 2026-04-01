@@ -25,6 +25,7 @@ export class StorageService {
         const migrated = this.migrateData(parsed);
         this.ensureUngroupedGroup(migrated);
         this.data.set(migrated);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
         return migrated;
       } catch (error) {
         console.error('Failed to parse stored data:', error);
