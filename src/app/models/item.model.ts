@@ -7,6 +7,12 @@ export interface SeriesProgress {
   totalEpisodes?: number;
 }
 
+export interface WatchHistoryEntry {
+  date: string;
+  season?: number;
+  episode?: number;
+}
+
 export interface Item {
   id: string;
   type: ItemType;
@@ -14,7 +20,8 @@ export interface Item {
   groupId: string;
   status: ItemStatus;
   progress?: SeriesProgress;
-  lastWatchedAt: string; // ISO 8601 date string
-  createdAt: string; // ISO 8601 date string
+  watchHistory: WatchHistoryEntry[];
+  lastWatchedAt: string;
+  createdAt: string;
 }
 

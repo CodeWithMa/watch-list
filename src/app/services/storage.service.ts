@@ -1,10 +1,10 @@
 import { Injectable, signal } from '@angular/core';
-import { StorageData, Settings } from '../models/storage.model';
+import { StorageData, Settings, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 
 const STORAGE_KEY = 'watchListData';
-const DEFAULT_SCHEMA_VERSION = 1;
+const DEFAULT_SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
 
 @Injectable({
   providedIn: 'root'
@@ -22,9 +22,10 @@ export class StorageService {
     if (stored) {
       try {
         const parsed = JSON.parse(stored) as StorageData;
-        this.ensureUngroupedGroup(parsed);
-        this.data.set(parsed);
-        return parsed;
+        const migrated = this.migrateData(parsed);
+        this.ensureUngroupedGroup(migrated);
+        this.data.set(migrated);
+        return migrated;
       } catch (error) {
         console.error('Failed to parse stored data:', error);
         return this.createDefaultData();
@@ -34,6 +35,26 @@ export class StorageService {
     const defaultData = this.createDefaultData();
     this.saveData(defaultData);
     return defaultData;
+  }
+
+  private migrateData(data: StorageData): StorageData {
+    if (data.schemaVersion >= CURRENT_SCHEMA_VERSION) {
+      return data;
+    }
+
+    let migrated = { ...data };
+
+    if (migrated.schemaVersion < 2) {
+      migrated.items = Object.fromEntries(
+        Object.entries(migrated.items).map(([id, item]) => [
+          id,
+          { ...item, watchHistory: item.watchHistory || [] }
+        ])
+      );
+      migrated.schemaVersion = 2;
+    }
+
+    return migrated;
   }
 
   saveData(data: StorageData): void {

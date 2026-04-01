@@ -129,6 +129,17 @@ export class ImportExportService {
       return false;
     }
 
+    if (i['watchHistory'] !== undefined) {
+      if (!Array.isArray(i['watchHistory'])) {
+        return false;
+      }
+      for (const entry of i['watchHistory']) {
+        if (!this.validateWatchHistoryEntry(entry)) {
+          return false;
+        }
+      }
+    }
+
     if (i['type'] === 'series' && i['progress']) {
       const progress = i['progress'] as Record<string, unknown>;
       if (
@@ -141,6 +152,14 @@ export class ImportExportService {
     }
 
     return true;
+  }
+
+  private validateWatchHistoryEntry(entry: unknown): boolean {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+    const e = entry as Record<string, unknown>;
+    return typeof e['date'] === 'string';
   }
 }
 
