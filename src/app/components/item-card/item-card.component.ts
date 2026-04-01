@@ -44,7 +44,7 @@ import { WatchListService } from '../../services/watch-list.service';
         <button (click)="onMarkWatched.emit()" [disabled]="item().status === 'completed'">
           Mark Watched
         </button>
-        <button (click)="onMarkCompleted.emit()" [disabled]="item().status === 'completed'">
+        <button *ngIf="item().type === 'series'" (click)="onMarkCompleted.emit()" [disabled]="item().status === 'completed'">
           Mark Completed
         </button>
       </div>

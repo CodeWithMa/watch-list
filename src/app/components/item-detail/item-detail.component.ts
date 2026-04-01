@@ -21,7 +21,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
             <button (click)="markWatched()" [disabled]="item()!.status === 'completed'" class="action-btn">
               Mark Watched
             </button>
-            <button (click)="markCompleted()" [disabled]="item()!.status === 'completed'" class="action-btn">
+            <button *ngIf="item()!.type === 'series'" (click)="markCompleted()" [disabled]="item()!.status === 'completed'" class="action-btn">
               Mark Completed
             </button>
             <ng-container *ngIf="!confirmDelete(); else confirmDeleteTemplate">
