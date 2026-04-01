@@ -104,7 +104,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
             </div>
             <div class="form-group" *ngIf="editType === 'series'">
               <label>Episode:</label>
-              <input type="number" [(ngModel)]="editEpisode" name="episode" min="0" />
+              <input type="number" [(ngModel)]="editEpisode" name="episode" min="1" />
             </div>
             <div class="form-group" *ngIf="editType === 'series'">
               <label>Total Episodes (optional):</label>
