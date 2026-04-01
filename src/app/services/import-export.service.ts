@@ -90,7 +90,8 @@ export class ImportExportService {
       return false;
     }
     
-    const migrated = this.storageService.importAndMigrateData(data as StorageData);
+    const migrated = this.storageService.migrateDataOnly(data as StorageData);
+    this.storageService.ensureUngroupedGroup(migrated);
     return this.validateMigratedData(migrated);
   }
 
