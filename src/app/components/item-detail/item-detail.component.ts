@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -64,7 +64,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
           <div class="info-row">
             <span class="label">Last Watched:</span>
             <span class="value">
-              <app-time-ago [date]="getLastWatchedDate()" />
+              <app-time-ago [date]="lastWatchedDate()" />
             </span>
           </div>
           <div class="info-row">
@@ -446,10 +446,10 @@ export class ItemDetailComponent implements OnInit {
     }
   }
 
-  progressPercent(): number | null {
+  progressPercent = computed(() => {
     const currentItem = this.item();
     return currentItem ? this.watchListService.calculateProgress(currentItem) : null;
-  }
+  });
 
   getGroupName(groupId: string): string {
     const group = this.groupService.getGroupById(groupId);
@@ -460,7 +460,7 @@ export class ItemDetailComponent implements OnInit {
     return new Date(dateString).toLocaleString();
   }
 
-  getLastWatchedDate(): string {
+  lastWatchedDate = computed(() => {
     const currentItem = this.item();
     if (!currentItem) return '';
     if (currentItem.watchHistory && currentItem.watchHistory.length > 0) {
@@ -470,6 +470,6 @@ export class ItemDetailComponent implements OnInit {
       return sorted[0].date;
     }
     return currentItem.createdAt;
-  }
+  });
 }
 

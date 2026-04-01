@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgIf } from '@angular/common';
 import { Item } from '../../models/item.model';
@@ -37,7 +37,7 @@ import { WatchListService } from '../../services/watch-list.service';
         <span class="status" [class]="'status-' + item().status">
           {{ item().status }}
         </span>
-        <app-time-ago [date]="getLastWatchedDate()" />
+        <app-time-ago [date]="lastWatchedDate()" />
       </div>
 
       <div class="item-actions">
@@ -161,11 +161,11 @@ export class ItemCardComponent {
 
   constructor(private watchListService: WatchListService) {}
 
-  progressPercent(): number | null {
+  progressPercent = computed(() => {
     return this.watchListService.calculateProgress(this.item());
-  }
+  });
 
-  getLastWatchedDate(): string {
+  lastWatchedDate = computed(() => {
     const i = this.item();
     if (i.watchHistory && i.watchHistory.length > 0) {
       const sorted = [...i.watchHistory].sort(
@@ -174,6 +174,6 @@ export class ItemCardComponent {
       return sorted[0].date;
     }
     return i.createdAt;
-  }
+  });
 }
 
