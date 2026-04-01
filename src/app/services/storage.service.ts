@@ -55,9 +55,9 @@ export class StorageService {
           };
           let watchHistory = legacyItem.watchHistory as any[] || [];
           
-          // Adjust episode numbers from 0-based to 1-based
+          // Adjust episode numbers from 0-based to 1-based for non-completed items
           let adjustedProgress = legacyItem.progress;
-          if (adjustedProgress) {
+          if (adjustedProgress && legacyItem.status !== 'completed') {
             adjustedProgress = {
               ...adjustedProgress,
               episode: adjustedProgress.episode + 1
