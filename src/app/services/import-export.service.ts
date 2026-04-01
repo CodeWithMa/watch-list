@@ -27,11 +27,15 @@ export class ImportExportService {
       const text = await file.text();
       const parsed = JSON.parse(text);
       
-      if (!this.validateData(parsed)) {
+      if (!this.validateStorageDataStructure(parsed)) {
         throw new Error('Invalid data format');
       }
 
-      this.storageService.importAndMigrateData(parsed as StorageData);
+      const migrated = this.storageService.importAndMigrateData(parsed as StorageData);
+      
+      if (!this.validateMigratedData(migrated)) {
+        throw new Error('Invalid migrated data');
+      }
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file');
@@ -40,14 +44,13 @@ export class ImportExportService {
     }
   }
 
-  validateData(data: unknown): data is StorageData {
+  private validateStorageDataStructure(data: unknown): boolean {
     if (!data || typeof data !== 'object') {
       return false;
     }
 
     const d = data as Record<string, unknown>;
 
-    // Check required top-level fields
     if (
       typeof d['schemaVersion'] !== 'number' ||
       typeof d['lastModifiedAt'] !== 'string' ||
@@ -58,47 +61,34 @@ export class ImportExportService {
       return false;
     }
 
-    // Validate settings
-    const settings = d['settings'] as Record<string, unknown>;
-    if (typeof settings['showCompleted'] !== 'boolean') {
-      return false;
-    }
-
-    // Validate groups
     if (typeof d['groups'] !== 'object' || Array.isArray(d['groups'])) {
       return false;
     }
-    const groups = d['groups'] as Record<string, unknown>;
-    for (const group of Object.values(groups)) {
-      if (!this.validateGroup(group)) {
-        return false;
-      }
-    }
 
-    // Validate items
     if (typeof d['items'] !== 'object' || Array.isArray(d['items'])) {
       return false;
-    }
-    const items = d['items'] as Record<string, unknown>;
-    for (const item of Object.values(items)) {
-      if (!this.validateItem(item)) {
-        return false;
-      }
     }
 
     return true;
   }
 
-  private validateGroup(group: unknown): boolean {
-    if (!group || typeof group !== 'object') {
+  private validateMigratedData(data: StorageData): boolean {
+    const items = data.items;
+    for (const item of Object.values(items)) {
+      if (!this.validateItem(item)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  validateData(data: unknown): data is StorageData {
+    if (!this.validateStorageDataStructure(data)) {
       return false;
     }
-    const g = group as Record<string, unknown>;
-    return (
-      typeof g['id'] === 'string' &&
-      typeof g['name'] === 'string' &&
-      typeof g['order'] === 'number'
-    );
+    
+    const migrated = this.storageService.importAndMigrateData(data as StorageData);
+    return this.validateMigratedData(migrated);
   }
 
   private validateItem(item: unknown): boolean {
@@ -118,17 +108,13 @@ export class ImportExportService {
       return false;
     }
 
-    if (i['watchHistory'] !== undefined) {
-      if (!Array.isArray(i['watchHistory'])) {
+    if (!Array.isArray(i['watchHistory'])) {
+      return false;
+    }
+    for (const entry of i['watchHistory']) {
+      if (!this.validateWatchHistoryEntry(entry)) {
         return false;
       }
-      for (const entry of i['watchHistory']) {
-        if (!this.validateWatchHistoryEntry(entry)) {
-          return false;
-        }
-      }
-    } else if (typeof i['lastWatchedAt'] !== 'string') {
-      return false;
     }
 
     if (i['type'] === 'series' && i['progress']) {
