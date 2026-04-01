@@ -16,19 +16,18 @@ export class RoundRobinService {
       return null;
     }
 
-    // Sort by lastWatchedAt ascending
     const sorted = [...nonCompletedSeries].sort((a, b) => {
-      return new Date(a.lastWatchedAt).getTime() - new Date(b.lastWatchedAt).getTime();
+      const aDate = this.getMostRecentWatchDate(a);
+      const bDate = this.getMostRecentWatchDate(b);
+      return new Date(aDate).getTime() - new Date(bDate).getTime();
     });
 
-    // Find the first series that can be suggested (round-robin rule)
     for (const series of sorted) {
       if (this.canSuggestSeries(series.id)) {
         return series;
       }
     }
 
-    // If no series can be suggested yet, return the one with oldest lastWatchedAt
     return sorted[0];
   }
 
@@ -40,9 +39,10 @@ export class RoundRobinService {
       return null;
     }
 
-    // Sort by lastWatchedAt ascending
     const sorted = [...nonCompletedMovies].sort((a, b) => {
-      return new Date(a.lastWatchedAt).getTime() - new Date(b.lastWatchedAt).getTime();
+      const aDate = this.getMostRecentWatchDate(a);
+      const bDate = this.getMostRecentWatchDate(b);
+      return new Date(aDate).getTime() - new Date(bDate).getTime();
     });
 
     return sorted[0];
@@ -61,11 +61,8 @@ export class RoundRobinService {
       return false;
     }
 
-    // Get all other non-completed series
     const otherSeries = nonCompletedSeries.filter(s => s.id !== seriesId);
 
-    // Check if at least one episode of every other series has been watched
-    // A series is considered "watched at least once" if it's in-progress or has been watched
     const allOthersWatched = otherSeries.every(series => {
       return (series.watchHistory && series.watchHistory.length > 0);
     });
@@ -73,14 +70,14 @@ export class RoundRobinService {
     return allOthersWatched;
   }
 
-  updateLastWatched(itemId: string): void {
-    const item = this.watchListService.getItemById(itemId);
-    if (!item) return;
-
-    this.watchListService.updateItem({
-      ...item,
-      lastWatchedAt: new Date().toISOString()
-    });
+  private getMostRecentWatchDate(item: Item): string {
+    if (item.watchHistory && item.watchHistory.length > 0) {
+      const sorted = [...item.watchHistory].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      return sorted[0].date;
+    }
+    return item.createdAt;
   }
 }
 

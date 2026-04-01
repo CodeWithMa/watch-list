@@ -21,7 +21,6 @@ export interface Item {
   status: ItemStatus;
   progress?: SeriesProgress;
   watchHistory: WatchHistoryEntry[];
-  lastWatchedAt: string;
   createdAt: string;
 }
 

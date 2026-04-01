@@ -64,7 +64,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
           <div class="info-row">
             <span class="label">Last Watched:</span>
             <span class="value">
-              <app-time-ago [date]="item()!.lastWatchedAt" />
+              <app-time-ago [date]="getLastWatchedDate()" />
             </span>
           </div>
           <div class="info-row">
@@ -458,6 +458,18 @@ export class ItemDetailComponent implements OnInit {
 
   formatDate(dateString: string): string {
     return new Date(dateString).toLocaleString();
+  }
+
+  getLastWatchedDate(): string {
+    const currentItem = this.item();
+    if (!currentItem) return '';
+    if (currentItem.watchHistory && currentItem.watchHistory.length > 0) {
+      const sorted = [...currentItem.watchHistory].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      return sorted[0].date;
+    }
+    return currentItem.createdAt;
   }
 }
 

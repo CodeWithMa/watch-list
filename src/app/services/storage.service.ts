@@ -46,10 +46,20 @@ export class StorageService {
 
     if (migrated.schemaVersion < 2) {
       migrated.items = Object.fromEntries(
-        Object.entries(migrated.items).map(([id, item]) => [
-          id,
-          { ...item, watchHistory: item.watchHistory || [] }
-        ])
+        Object.entries(migrated.items).map(([id, item]) => {
+          const legacyItem = item as Item & { lastWatchedAt?: string; watchHistory?: unknown[] };
+          let watchHistory = legacyItem.watchHistory as any[] || [];
+          if (watchHistory.length === 0 && 
+              (legacyItem.status === 'in-progress' || legacyItem.lastWatchedAt !== legacyItem.createdAt)) {
+            const entry: any = { date: legacyItem.lastWatchedAt };
+            if (legacyItem.type === 'series' && legacyItem.progress) {
+              entry.season = legacyItem.progress.season;
+              entry.episode = legacyItem.progress.episode;
+            }
+            watchHistory = [entry];
+          }
+          return [id, { ...item, watchHistory }];
+        })
       );
       migrated.schemaVersion = 2;
     }

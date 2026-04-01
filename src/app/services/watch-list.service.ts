@@ -15,7 +15,7 @@ export interface HistoryEntry extends WatchHistoryEntry {
 export class WatchListService {
   constructor(private storageService: StorageService) {}
 
-  addItem(item: Omit<Item, 'id' | 'createdAt' | 'lastWatchedAt' | 'watchHistory'>): void {
+  addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): void {
     const data = this.storageService.getData();
     const id = this.generateId();
     const now = new Date().toISOString();
@@ -24,7 +24,6 @@ export class WatchListService {
       ...item,
       id,
       createdAt: now,
-      lastWatchedAt: now,
       status: item.status || 'not-started',
       watchHistory: []
     };
@@ -68,7 +67,6 @@ export class WatchListService {
       this.updateItem({
         ...item,
         status: 'completed',
-        lastWatchedAt: now,
         watchHistory: [...(item.watchHistory || []), { date: now }]
       });
     } else if (item.type === 'series') {
@@ -99,7 +97,6 @@ export class WatchListService {
         ...item,
         status: newStatus,
         progress: newProgress,
-        lastWatchedAt: now,
         watchHistory: [...(item.watchHistory || []), {
           date: now,
           season: progress.season,

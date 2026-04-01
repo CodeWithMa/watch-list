@@ -122,7 +122,6 @@ export class ImportExportService {
       typeof i['title'] !== 'string' ||
       typeof i['groupId'] !== 'string' ||
       typeof i['status'] !== 'string' ||
-      typeof i['lastWatchedAt'] !== 'string' ||
       typeof i['createdAt'] !== 'string' ||
       (i['type'] !== 'series' && i['type'] !== 'movie')
     ) {

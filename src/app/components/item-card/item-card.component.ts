@@ -37,7 +37,7 @@ import { WatchListService } from '../../services/watch-list.service';
         <span class="status" [class]="'status-' + item().status">
           {{ item().status }}
         </span>
-        <app-time-ago [date]="item().lastWatchedAt" />
+        <app-time-ago [date]="getLastWatchedDate()" />
       </div>
 
       <div class="item-actions">
@@ -163,6 +163,17 @@ export class ItemCardComponent {
 
   progressPercent(): number | null {
     return this.watchListService.calculateProgress(this.item());
+  }
+
+  getLastWatchedDate(): string {
+    const i = this.item();
+    if (i.watchHistory && i.watchHistory.length > 0) {
+      const sorted = [...i.watchHistory].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      return sorted[0].date;
+    }
+    return i.createdAt;
   }
 }
 
