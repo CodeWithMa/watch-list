@@ -2,10 +2,12 @@ import { Component, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { WatchListService, HistoryEntry } from '../../services/watch-list.service';
+import { DateFormatPipe } from '../../pipes/date-format.pipe';
+import { TimeFormatPipe } from '../../pipes/time-format.pipe';
 
 @Component({
   selector: 'app-watch-history',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DateFormatPipe, TimeFormatPipe],
   template: `
     <div class="history-container">
       <h1>Watch History</h1>
@@ -20,8 +22,8 @@ import { WatchListService, HistoryEntry } from '../../services/watch-list.servic
         <div class="timeline">
           <div *ngFor="let entry of history(); let i = index" class="timeline-entry">
             <div class="timeline-date">
-              <span class="date">{{ formatDate(entry.date) }}</span>
-              <span class="time">{{ formatTime(entry.date) }}</span>
+              <span class="date">{{ entry.date | dateFormat }}</span>
+              <span class="time">{{ entry.date | timeFormat }}</span>
             </div>
             <div class="timeline-dot"></div>
             <div class="timeline-content">
@@ -189,22 +191,5 @@ export class WatchHistoryComponent implements OnInit {
 
   loadHistory(): void {
     this.history.set(this.watchListService.getAllWatchHistory());
-  }
-
-  formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  }
-
-  formatTime(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   }
 }
