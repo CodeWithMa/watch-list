@@ -165,6 +165,16 @@ export class WatchListService {
     return null;
   }
 
+  getMostRecentWatchDate(item: Item): string {
+    if (item.watchHistory && item.watchHistory.length > 0) {
+      const sorted = [...item.watchHistory].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      return sorted[0].date;
+    }
+    return item.createdAt;
+  }
+
   private generateId(): string {
     return `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }

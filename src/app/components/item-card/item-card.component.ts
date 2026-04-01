@@ -166,14 +166,7 @@ export class ItemCardComponent {
   });
 
   lastWatchedDate = computed(() => {
-    const i = this.item();
-    if (i.watchHistory && i.watchHistory.length > 0) {
-      const sorted = [...i.watchHistory].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      return sorted[0].date;
-    }
-    return i.createdAt;
+    return this.watchListService.getMostRecentWatchDate(this.item());
   });
 }
 

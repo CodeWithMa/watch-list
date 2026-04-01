@@ -17,8 +17,8 @@ export class RoundRobinService {
     }
 
     const sorted = [...nonCompletedSeries].sort((a, b) => {
-      const aDate = this.getMostRecentWatchDate(a);
-      const bDate = this.getMostRecentWatchDate(b);
+      const aDate = this.watchListService.getMostRecentWatchDate(a);
+      const bDate = this.watchListService.getMostRecentWatchDate(b);
       return new Date(aDate).getTime() - new Date(bDate).getTime();
     });
 
@@ -40,8 +40,8 @@ export class RoundRobinService {
     }
 
     const sorted = [...nonCompletedMovies].sort((a, b) => {
-      const aDate = this.getMostRecentWatchDate(a);
-      const bDate = this.getMostRecentWatchDate(b);
+      const aDate = this.watchListService.getMostRecentWatchDate(a);
+      const bDate = this.watchListService.getMostRecentWatchDate(b);
       return new Date(aDate).getTime() - new Date(bDate).getTime();
     });
 
@@ -68,16 +68,6 @@ export class RoundRobinService {
     });
 
     return allOthersWatched;
-  }
-
-  private getMostRecentWatchDate(item: Item): string {
-    if (item.watchHistory && item.watchHistory.length > 0) {
-      const sorted = [...item.watchHistory].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      return sorted[0].date;
-    }
-    return item.createdAt;
   }
 }
 

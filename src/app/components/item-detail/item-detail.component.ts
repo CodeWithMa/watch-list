@@ -462,14 +462,7 @@ export class ItemDetailComponent implements OnInit {
 
   lastWatchedDate = computed(() => {
     const currentItem = this.item();
-    if (!currentItem) return '';
-    if (currentItem.watchHistory && currentItem.watchHistory.length > 0) {
-      const sorted = [...currentItem.watchHistory].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      return sorted[0].date;
-    }
-    return currentItem.createdAt;
+    return currentItem ? this.watchListService.getMostRecentWatchDate(currentItem) : '';
   });
 }
 
