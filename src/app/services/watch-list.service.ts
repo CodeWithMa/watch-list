@@ -67,7 +67,7 @@ export class WatchListService {
       this.updateItem({
         ...item,
         status: 'completed',
-        watchHistory: [...(item.watchHistory || []), { date: now }]
+        watchHistory: [...item.watchHistory, { date: now }]
       });
     } else if (item.type === 'series') {
       const progress = item.progress || { season: 1, episode: 1 };
@@ -97,7 +97,7 @@ export class WatchListService {
         ...item,
         status: newStatus,
         progress: newProgress,
-        watchHistory: [...(item.watchHistory || []), {
+        watchHistory: [...item.watchHistory, {
           date: now,
           season: progress.season,
           episode: progress.episode
@@ -138,7 +138,7 @@ export class WatchListService {
     const history: HistoryEntry[] = [];
 
     for (const item of items) {
-      for (const entry of item.watchHistory || []) {
+      for (const entry of item.watchHistory) {
         history.push({
           ...entry,
           itemId: item.id,
