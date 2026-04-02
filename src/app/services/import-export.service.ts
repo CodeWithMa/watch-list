@@ -108,16 +108,6 @@ export class ImportExportService {
     return true;
   }
 
-  validateData(data: unknown): data is StorageData {
-    if (!this.validateStorageDataStructure(data)) {
-      return false;
-    }
-    
-    const migrated = this.storageService.migrateDataOnly(data as StorageData);
-    this.storageService.ensureUngroupedGroup(migrated);
-    return this.validateMigratedData(migrated);
-  }
-
   private validateItem(item: unknown): boolean {
     if (!item || typeof item !== 'object') {
       return false;
