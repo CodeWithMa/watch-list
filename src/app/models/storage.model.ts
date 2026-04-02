@@ -7,9 +7,11 @@ export interface Settings {
 
 export interface StorageData {
   schemaVersion: number;
-  lastModifiedAt: string; // ISO 8601 date string
+  lastModifiedAt: string;
   settings: Settings;
   groups: Record<string, Group>;
   items: Record<string, Item>;
 }
+
+export const CURRENT_SCHEMA_VERSION = 2;
 

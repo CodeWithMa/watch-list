@@ -27,21 +27,18 @@ export class ImportExportService {
       const text = await file.text();
       const parsed = JSON.parse(text);
       
-      if (!this.validateData(parsed)) {
+      if (!this.validateStorageDataStructure(parsed)) {
         throw new Error('Invalid data format');
       }
 
-      // Ensure ungrouped group exists
-      const data = parsed as StorageData;
-      if (!data.groups['ungrouped']) {
-        data.groups['ungrouped'] = {
-          id: 'ungrouped',
-          name: 'Ungrouped',
-          order: 0
-        };
+      const migrated = this.storageService.migrateDataOnly(parsed as StorageData);
+      this.storageService.ensureUngroupedGroup(migrated);
+      
+      if (!this.validateMigratedData(migrated)) {
+        throw new Error('Invalid migrated data');
       }
 
-      this.storageService.saveData(data);
+      this.storageService.saveData(migrated);
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file');
@@ -50,14 +47,13 @@ export class ImportExportService {
     }
   }
 
-  validateData(data: unknown): data is StorageData {
+  private validateStorageDataStructure(data: unknown): boolean {
     if (!data || typeof data !== 'object') {
       return false;
     }
 
     const d = data as Record<string, unknown>;
 
-    // Check required top-level fields
     if (
       typeof d['schemaVersion'] !== 'number' ||
       typeof d['lastModifiedAt'] !== 'string' ||
@@ -68,13 +64,11 @@ export class ImportExportService {
       return false;
     }
 
-    // Validate settings
     const settings = d['settings'] as Record<string, unknown>;
     if (typeof settings['showCompleted'] !== 'boolean') {
       return false;
     }
 
-    // Validate groups
     if (typeof d['groups'] !== 'object' || Array.isArray(d['groups'])) {
       return false;
     }
@@ -85,15 +79,8 @@ export class ImportExportService {
       }
     }
 
-    // Validate items
     if (typeof d['items'] !== 'object' || Array.isArray(d['items'])) {
       return false;
-    }
-    const items = d['items'] as Record<string, unknown>;
-    for (const item of Object.values(items)) {
-      if (!this.validateItem(item)) {
-        return false;
-      }
     }
 
     return true;
@@ -111,6 +98,16 @@ export class ImportExportService {
     );
   }
 
+  private validateMigratedData(data: StorageData): boolean {
+    const items = data.items;
+    for (const item of Object.values(items)) {
+      if (!this.validateItem(item)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private validateItem(item: unknown): boolean {
     if (!item || typeof item !== 'object') {
       return false;
@@ -122,11 +119,19 @@ export class ImportExportService {
       typeof i['title'] !== 'string' ||
       typeof i['groupId'] !== 'string' ||
       typeof i['status'] !== 'string' ||
-      typeof i['lastWatchedAt'] !== 'string' ||
       typeof i['createdAt'] !== 'string' ||
       (i['type'] !== 'series' && i['type'] !== 'movie')
     ) {
       return false;
+    }
+
+    if (!Array.isArray(i['watchHistory'])) {
+      return false;
+    }
+    for (const entry of i['watchHistory']) {
+      if (!this.validateWatchHistoryEntry(entry)) {
+        return false;
+      }
     }
 
     if (i['type'] === 'series' && i['progress']) {
@@ -141,6 +146,14 @@ export class ImportExportService {
     }
 
     return true;
+  }
+
+  private validateWatchHistoryEntry(entry: unknown): boolean {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+    const e = entry as Record<string, unknown>;
+    return typeof e['date'] === 'string';
   }
 }
 

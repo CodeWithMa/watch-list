@@ -46,6 +46,7 @@ import { NgIf } from '@angular/common';
       <div class="quick-actions">
         <a [routerLink]="['/items']" class="action-button">View All Items</a>
         <a [routerLink]="['/items/add']" class="action-button">Add New Item</a>
+        <a [routerLink]="['/history']" class="action-button">Watch History</a>
       </div>
     </div>
   `,

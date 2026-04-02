@@ -1,7 +1,13 @@
 import { Injectable } from '@angular/core';
 import { StorageService } from './storage.service';
-import { Item, ItemType, ItemStatus, SeriesProgress } from '../models/item.model';
+import { Item, ItemType, ItemStatus, SeriesProgress, WatchHistoryEntry } from '../models/item.model';
 import { StorageData } from '../models/storage.model';
+
+export interface HistoryEntry extends WatchHistoryEntry {
+  itemId: string;
+  itemTitle: string;
+  itemType: ItemType;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +15,7 @@ import { StorageData } from '../models/storage.model';
 export class WatchListService {
   constructor(private storageService: StorageService) {}
 
-  addItem(item: Omit<Item, 'id' | 'createdAt' | 'lastWatchedAt'>): void {
+  addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): void {
     const data = this.storageService.getData();
     const id = this.generateId();
     const now = new Date().toISOString();
@@ -18,8 +24,8 @@ export class WatchListService {
       ...item,
       id,
       createdAt: now,
-      lastWatchedAt: now, // New items have lastWatchedAt set to current date
-      status: item.status || 'not-started'
+      status: item.status || 'not-started',
+      watchHistory: []
     };
 
     this.storageService.saveData({
@@ -58,26 +64,21 @@ export class WatchListService {
     const now = new Date().toISOString();
 
     if (item.type === 'movie') {
-      // Movies are completed after a single watched action
       this.updateItem({
         ...item,
         status: 'completed',
-        lastWatchedAt: now
+        watchHistory: [...item.watchHistory, { date: now }]
       });
     } else if (item.type === 'series') {
-      // Series progression logic
-      const progress = item.progress || { season: 1, episode: 0 };
+      const progress = item.progress || { season: 1, episode: 1 };
       let newProgress: SeriesProgress;
       let newStatus: ItemStatus = item.status;
 
       if (progress.totalEpisodes !== undefined) {
-        // Has episode totals
         if (progress.episode >= progress.totalEpisodes) {
-          // On last episode, mark as completed
           newStatus = 'completed';
           newProgress = progress;
         } else {
-          // Advance to next episode
           newProgress = {
             ...progress,
             episode: progress.episode + 1
@@ -85,7 +86,6 @@ export class WatchListService {
           newStatus = 'in-progress';
         }
       } else {
-        // No episode totals, auto-increment episode
         newProgress = {
           ...progress,
           episode: progress.episode + 1
@@ -97,7 +97,11 @@ export class WatchListService {
         ...item,
         status: newStatus,
         progress: newProgress,
-        lastWatchedAt: now
+        watchHistory: [...item.watchHistory, {
+          date: now,
+          season: progress.season,
+          episode: progress.episode
+        }]
       });
     }
   }
@@ -129,17 +133,46 @@ export class WatchListService {
     return this.storageService.getItems().filter(item => item.groupId === groupId);
   }
 
+  getAllWatchHistory(): HistoryEntry[] {
+    const items = this.storageService.getItems();
+    const history: HistoryEntry[] = [];
+
+    for (const item of items) {
+      for (const entry of item.watchHistory) {
+        history.push({
+          ...entry,
+          itemId: item.id,
+          itemTitle: item.title,
+          itemType: item.type
+        });
+      }
+    }
+
+    return history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
   calculateProgress(item: Item): number | null {
     if (item.type === 'movie') {
       return item.status === 'completed' ? 100 : 0;
     }
 
     if (item.type === 'series' && item.progress?.totalEpisodes) {
+      if (item.status === 'completed') return 100;
       const { episode, totalEpisodes } = item.progress;
-      return Math.round((episode / totalEpisodes) * 100);
+      return Math.max(0, Math.round(((episode - 1) / totalEpisodes) * 100));
     }
 
     return null;
+  }
+
+  getMostRecentWatchDate(item: Item): string {
+    if (item.watchHistory && item.watchHistory.length > 0) {
+      const sorted = [...item.watchHistory].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      return sorted[0].date;
+    }
+    return item.createdAt;
   }
 
   private generateId(): string {

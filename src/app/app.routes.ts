@@ -22,6 +22,10 @@ export const routes: Routes = [
     loadComponent: () => import('./components/group-manager/group-manager.component').then(m => m.GroupManagerComponent)
   },
   {
+    path: 'history',
+    loadComponent: () => import('./components/watch-history/watch-history.component').then(m => m.WatchHistoryComponent)
+  },
+  {
     path: 'settings',
     loadComponent: () => import('./components/settings/settings.component').then(m => m.SettingsComponent)
   }

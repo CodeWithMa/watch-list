@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -21,7 +21,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
             <button (click)="markWatched()" [disabled]="item()!.status === 'completed'" class="action-btn">
               Mark Watched
             </button>
-            <button (click)="markCompleted()" [disabled]="item()!.status === 'completed'" class="action-btn">
+            <button *ngIf="item()!.type === 'series'" (click)="markCompleted()" [disabled]="item()!.status === 'completed'" class="action-btn">
               Mark Completed
             </button>
             <ng-container *ngIf="!confirmDelete(); else confirmDeleteTemplate">
@@ -64,7 +64,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
           <div class="info-row">
             <span class="label">Last Watched:</span>
             <span class="value">
-              <app-time-ago [date]="item()!.lastWatchedAt" />
+              <app-time-ago [date]="lastWatchedDate()" />
             </span>
           </div>
           <div class="info-row">
@@ -104,7 +104,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
             </div>
             <div class="form-group" *ngIf="editType === 'series'">
               <label>Episode:</label>
-              <input type="number" [(ngModel)]="editEpisode" name="episode" min="0" />
+              <input type="number" [(ngModel)]="editEpisode" name="episode" min="1" />
             </div>
             <div class="form-group" *ngIf="editType === 'series'">
               <label>Total Episodes (optional):</label>
@@ -340,7 +340,7 @@ export class ItemDetailComponent implements OnInit {
   editType: ItemType = 'series';
   editGroupId = '';
   editSeason = 1;
-  editEpisode = 0;
+  editEpisode = 1;
   editTotalEpisodes: number | undefined;
 
   constructor(
@@ -380,7 +380,7 @@ export class ItemDetailComponent implements OnInit {
   onTypeChange(): void {
     if (this.editType === 'movie') {
       this.editSeason = 1;
-      this.editEpisode = 0;
+      this.editEpisode = 1;
       this.editTotalEpisodes = undefined;
     }
   }
@@ -446,10 +446,10 @@ export class ItemDetailComponent implements OnInit {
     }
   }
 
-  progressPercent(): number | null {
+  progressPercent = computed(() => {
     const currentItem = this.item();
     return currentItem ? this.watchListService.calculateProgress(currentItem) : null;
-  }
+  });
 
   getGroupName(groupId: string): string {
     const group = this.groupService.getGroupById(groupId);
@@ -459,5 +459,10 @@ export class ItemDetailComponent implements OnInit {
   formatDate(dateString: string): string {
     return new Date(dateString).toLocaleString();
   }
+
+  lastWatchedDate = computed(() => {
+    const currentItem = this.item();
+    return currentItem ? this.watchListService.getMostRecentWatchDate(currentItem) : '';
+  });
 }
 
