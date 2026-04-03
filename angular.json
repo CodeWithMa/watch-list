@@ -72,7 +72,7 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "watch-list:build:web"
+              "buildTarget": "watch-list:build:production,web"
             },
             "development": {
               "buildTarget": "watch-list:build:development"
