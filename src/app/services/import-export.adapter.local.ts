@@ -43,7 +43,7 @@ export class LocalImportExportAdapter implements IImportExportAdapter {
           resolve({ file, data: parsed as StorageData });
         } catch (error) {
           console.error('Import error:', error);
-          resolve(null);
+          throw error;
         }
       };
       

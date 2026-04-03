@@ -54,7 +54,7 @@ export class TauriImportExportAdapter implements IImportExportAdapter {
       return { file, data: parsed as StorageData };
     } catch (error) {
       console.error('Import error:', error);
-      return null;
+      throw error;
     }
   }
 
