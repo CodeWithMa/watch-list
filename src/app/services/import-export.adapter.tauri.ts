@@ -27,10 +27,6 @@ export class TauriImportExportAdapter implements IImportExportAdapter {
   }
 
   async importData(): Promise<{ file: File; data: StorageData } | null> {
-    if (!confirm('Importing will replace all existing data. Are you sure?')) {
-      return null;
-    }
-
     const selected = await open({
       multiple: false,
       filters: [{

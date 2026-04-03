@@ -20,10 +20,6 @@ export class LocalImportExportAdapter implements IImportExportAdapter {
   }
 
   async importData(): Promise<{ file: File; data: StorageData } | null> {
-    if (!confirm('Importing will replace all existing data. Are you sure?')) {
-      return null;
-    }
-
     return new Promise((resolve) => {
       const input = document.createElement('input');
       input.type = 'file';

@@ -29,6 +29,10 @@ export class ImportExportService {
       throw new Error('Invalid data format');
     }
 
+    if (!confirm('Importing will replace all existing data. Are you sure?')) {
+      return;
+    }
+
     const migrated = this.migrateDataOnly(data);
     this.ensureUngroupedGroup(migrated);
     
