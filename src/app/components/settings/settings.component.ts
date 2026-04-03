@@ -36,18 +36,9 @@ import { Settings } from '../../models/storage.model';
           <p class="help-text">Download all your watch list data as a JSON file</p>
         </div>
         <div class="setting-item">
-          <label>
-            <input 
-              type="file" 
-              #fileInput 
-              (change)="onFileSelected($event)" 
-              accept=".json"
-              style="display: none"
-            />
-            <button (click)="fileInput.click()" class="action-btn import">
-              Import Data
-            </button>
-          </label>
+          <button (click)="importData()" class="action-btn import">
+            Import Data
+          </button>
           <p class="help-text">Replace all data with imported JSON file</p>
         </div>
       </div>
@@ -196,11 +187,8 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  async onFileSelected(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    
+  async importData(): Promise<void> {
     if (!confirm('Importing will replace all existing data. Are you sure?')) {
-      input.value = '';
       return;
     }
 
@@ -211,12 +199,10 @@ export class SettingsComponent implements OnInit {
       await this.importExportService.importData();
       this.successMessage.set('Data imported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
-      input.value = '';
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
       this.errorMessage.set(`Import failed: ${message}`);
       setTimeout(() => this.errorMessage.set(null), 5000);
-      input.value = '';
     }
   }
 }
