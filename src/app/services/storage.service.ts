@@ -18,8 +18,12 @@ export class StorageService {
   }
 
   async saveData(data: StorageData): Promise<void> {
-    await this.adapter.save(data);
-    this.data.set(data);
+    const updated: StorageData = {
+      ...data,
+      lastModifiedAt: new Date().toISOString()
+    };
+    await this.adapter.save(updated);
+    this.data.set(updated);
   }
 
   getData(): StorageData {
