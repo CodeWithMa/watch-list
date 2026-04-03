@@ -25,6 +25,8 @@ export class LocalImportExportAdapter implements IImportExportAdapter {
       input.type = 'file';
       input.accept = '.json';
       
+      input.addEventListener('cancel', () => resolve(null));
+      
       input.onchange = async () => {
         const file = input.files?.[0];
         if (!file) {
