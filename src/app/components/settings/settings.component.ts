@@ -192,9 +192,11 @@ export class SettingsComponent implements OnInit {
     this.successMessage.set(null);
 
     try {
-      await this.importExportService.importData();
-      this.successMessage.set('Data imported successfully');
-      setTimeout(() => this.successMessage.set(null), 3000);
+      const imported = await this.importExportService.importData();
+      if (imported) {
+        this.successMessage.set('Data imported successfully');
+        setTimeout(() => this.successMessage.set(null), 3000);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
       this.errorMessage.set(`Import failed: ${message}`);

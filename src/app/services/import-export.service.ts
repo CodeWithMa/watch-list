@@ -16,11 +16,11 @@ export class ImportExportService {
     await this.adapter.exportData(data);
   }
 
-  async importData(): Promise<void> {
+  async importData(): Promise<boolean> {
     const result = await this.adapter.importData();
     
     if (!result) {
-      return;
+      return false;
     }
 
     const { data } = result;
@@ -30,7 +30,7 @@ export class ImportExportService {
     }
 
     if (!confirm('Importing will replace all existing data. Are you sure?')) {
-      return;
+      return false;
     }
 
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -43,6 +43,7 @@ export class ImportExportService {
     }
 
     await this.storageService.saveData(migrated);
+    return true;
   }
 
   private migrateDataOnly(data: StorageData): StorageData {
