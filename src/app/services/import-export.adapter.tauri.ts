@@ -7,7 +7,7 @@ import { save, open } from '@tauri-apps/plugin-dialog';
   providedIn: 'root'
 })
 export class TauriImportExportAdapter implements IImportExportAdapter {
-  async exportData(data: StorageData): Promise<void> {
+  async exportData(data: StorageData): Promise<boolean> {
     const json = JSON.stringify(data, null, 2);
     
     const filePath = await save({
@@ -19,11 +19,12 @@ export class TauriImportExportAdapter implements IImportExportAdapter {
     });
 
     if (!filePath) {
-      return;
+      return false;
     }
 
     const { writeTextFile } = await import('@tauri-apps/plugin-fs');
     await writeTextFile(filePath, json);
+    return true;
   }
 
   async importData(): Promise<{ file: File; data: StorageData } | null> {

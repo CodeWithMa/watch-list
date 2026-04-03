@@ -11,9 +11,9 @@ export class ImportExportService {
   private readonly adapter = inject(IMPORT_EXPORT_ADAPTER);
   private readonly storageService = inject(StorageService);
 
-  async exportData(): Promise<void> {
+  async exportData(): Promise<boolean> {
     const data = this.storageService.getData();
-    await this.adapter.exportData(data);
+    return await this.adapter.exportData(data);
   }
 
   async importData(): Promise<boolean> {

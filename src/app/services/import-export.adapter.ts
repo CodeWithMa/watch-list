@@ -2,7 +2,7 @@ import { InjectionToken } from '@angular/core';
 import { StorageData } from '../models/storage.model';
 
 export interface IImportExportAdapter {
-  exportData(data: StorageData): void | Promise<void>;
+  exportData(data: StorageData): boolean | Promise<boolean>;
   importData(): Promise<{ file: File; data: StorageData } | null>;
 }
 

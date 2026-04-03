@@ -6,7 +6,7 @@ import { StorageData } from '../models/storage.model';
   providedIn: 'root'
 })
 export class LocalImportExportAdapter implements IImportExportAdapter {
-  exportData(data: StorageData): void {
+  exportData(data: StorageData): boolean {
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -17,6 +17,7 @@ export class LocalImportExportAdapter implements IImportExportAdapter {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    return true;
   }
 
   async importData(): Promise<{ file: File; data: StorageData } | null> {
