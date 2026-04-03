@@ -18,13 +18,13 @@ export class ImportExportService {
 
   async importData(): Promise<boolean> {
     const result = await this.adapter.importData();
-    
+
     if (!result) {
       return false;
     }
 
     const { data } = result;
-    
+
     if (!this.validateStorageDataStructure(data)) {
       throw new Error('Invalid data format');
     }
@@ -33,11 +33,9 @@ export class ImportExportService {
       return false;
     }
 
-    await new Promise(resolve => setTimeout(resolve, 0));
-
     const migrated = this.migrateDataOnly(data);
     this.ensureUngroupedGroup(migrated);
-    
+
     if (!this.validateMigratedData(migrated)) {
       throw new Error('Invalid migrated data');
     }
@@ -56,13 +54,13 @@ export class ImportExportService {
     if (migrated.schemaVersion < 2) {
       migrated.items = Object.fromEntries(
         Object.entries(migrated.items).map(([id, item]) => {
-          const legacyItem = item as Item & { 
-            lastWatchedAt?: string; 
+          const legacyItem = item as Item & {
+            lastWatchedAt?: string;
             watchHistory?: unknown[];
             progress?: { season: number; episode: number; totalEpisodes?: number };
           };
           let watchHistory = legacyItem.watchHistory as any[] || [];
-          
+
           let adjustedProgress = legacyItem.progress;
           if (adjustedProgress && legacyItem.status !== 'completed') {
             adjustedProgress = {
@@ -70,8 +68,8 @@ export class ImportExportService {
               episode: adjustedProgress.episode + 1
             };
           }
-          
-          if (watchHistory.length === 0 && 
+
+          if (watchHistory.length === 0 &&
               (legacyItem.status === 'in-progress' || legacyItem.lastWatchedAt !== legacyItem.createdAt)) {
             const entry: any = { date: legacyItem.lastWatchedAt };
             if (legacyItem.type === 'series' && legacyItem.progress) {
@@ -80,7 +78,7 @@ export class ImportExportService {
             }
             watchHistory = [entry];
           }
-          
+
           const { lastWatchedAt, ...itemWithoutLastWatched } = legacyItem;
           return [id, { ...itemWithoutLastWatched, watchHistory, progress: adjustedProgress }];
         })
@@ -167,7 +165,7 @@ export class ImportExportService {
       return false;
     }
     const i = item as Record<string, unknown>;
-    
+
     if (
       typeof i['id'] !== 'string' ||
       typeof i['title'] !== 'string' ||
