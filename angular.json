@@ -43,7 +43,9 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all",
+              "outputHashing": "all"
+            },
+            "tauri": {
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -72,6 +74,9 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
+              "buildTarget": "watch-list:build:production,tauri"
+            },
+            "web": {
               "buildTarget": "watch-list:build:production,web"
             },
             "development": {
