@@ -170,8 +170,8 @@ export class SettingsComponent implements OnInit {
     this.showCompleted = settings.showCompleted;
   }
 
-  updateShowCompleted(): void {
-    this.storageService.updateSettings({ showCompleted: this.showCompleted });
+  async updateShowCompleted(): Promise<void> {
+    await this.storageService.updateSettings({ showCompleted: this.showCompleted });
     this.successMessage.set('Settings saved');
     setTimeout(() => this.successMessage.set(null), 3000);
   }

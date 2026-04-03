@@ -33,6 +33,8 @@ export class ImportExportService {
       return;
     }
 
+    await new Promise(resolve => setTimeout(resolve, 0));
+
     const migrated = this.migrateDataOnly(data);
     this.ensureUngroupedGroup(migrated);
     
