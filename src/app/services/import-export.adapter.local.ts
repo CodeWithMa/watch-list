@@ -20,7 +20,7 @@ export class LocalImportExportAdapter implements IImportExportAdapter {
   }
 
   async importData(): Promise<{ file: File; data: StorageData } | null> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.json';
@@ -43,7 +43,7 @@ export class LocalImportExportAdapter implements IImportExportAdapter {
           resolve({ file, data: parsed as StorageData });
         } catch (error) {
           console.error('Import error:', error);
-          throw error;
+          reject(error);
         }
       };
       
