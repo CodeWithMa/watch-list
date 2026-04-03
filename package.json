@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:tauri": "ng serve --configuration tauri",
     "build": "ng build --configuration=production,web",
     "build:tauri": "ng build --configuration=production,tauri",
     "watch": "ng build --watch --configuration development",

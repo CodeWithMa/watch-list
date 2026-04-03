@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../dist/watch-list/browser",
     "devUrl": "http://localhost:4200",
-    "beforeDevCommand": "bun start",
+    "beforeDevCommand": "bun start:tauri",
     "beforeBuildCommand": "bun run build:tauri"
   },
   "app": {
