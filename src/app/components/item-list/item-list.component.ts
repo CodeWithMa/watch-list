@@ -247,12 +247,12 @@ export class ItemListComponent {
     return this.filteredItems().filter(item => item.groupId === groupId);
   }
 
-  markWatched(itemId: string): void {
-    this.watchListService.markWatched(itemId);
+  async markWatched(itemId: string): Promise<void> {
+    await this.watchListService.markWatched(itemId);
   }
 
-  markCompleted(itemId: string): void {
-    this.watchListService.markCompleted(itemId);
+  async markCompleted(itemId: string): Promise<void> {
+    await this.watchListService.markCompleted(itemId);
   }
 }
 

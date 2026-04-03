@@ -295,11 +295,11 @@ export class GroupManagerComponent implements OnInit {
     return [...this.groups()].sort((a, b) => a.order - b.order);
   }
 
-  createGroup(): void {
+  async createGroup(): Promise<void> {
     if (!this.newGroupName.trim()) {
       return;
     }
-    this.groupService.createGroup(this.newGroupName.trim());
+    await this.groupService.createGroup(this.newGroupName.trim());
     this.newGroupName = '';
     this.loadGroups();
   }
@@ -309,10 +309,10 @@ export class GroupManagerComponent implements OnInit {
     this.editGroupName = group.name;
   }
 
-  saveEdit(): void {
+  async saveEdit(): Promise<void> {
     const group = this.editingGroup();
     if (group && this.editGroupName.trim()) {
-      this.groupService.updateGroup({
+      await this.groupService.updateGroup({
         ...group,
         name: this.editGroupName.trim()
       });
@@ -326,10 +326,10 @@ export class GroupManagerComponent implements OnInit {
     this.editGroupName = '';
   }
 
-  deleteGroup(groupId: string): void {
+  async deleteGroup(groupId: string): Promise<void> {
     if (confirm('Are you sure you want to delete this group? Items will be moved to "Ungrouped".')) {
       try {
-        this.groupService.deleteGroup(groupId);
+        await this.groupService.deleteGroup(groupId);
         this.loadGroups();
       } catch (error) {
         alert('Cannot delete the ungrouped group');
@@ -337,24 +337,24 @@ export class GroupManagerComponent implements OnInit {
     }
   }
 
-  moveUp(groupId: string): void {
+  async moveUp(groupId: string): Promise<void> {
     const sorted = this.sortedGroups();
     const index = sorted.findIndex(g => g.id === groupId);
     if (index > 0) {
       const groupIds = sorted.map(g => g.id);
       [groupIds[index], groupIds[index - 1]] = [groupIds[index - 1], groupIds[index]];
-      this.groupService.reorderGroups(groupIds);
+      await this.groupService.reorderGroups(groupIds);
       this.loadGroups();
     }
   }
 
-  moveDown(groupId: string): void {
+  async moveDown(groupId: string): Promise<void> {
     const sorted = this.sortedGroups();
     const index = sorted.findIndex(g => g.id === groupId);
     if (index < sorted.length - 1) {
       const groupIds = sorted.map(g => g.id);
       [groupIds[index], groupIds[index + 1]] = [groupIds[index + 1], groupIds[index]];
-      this.groupService.reorderGroups(groupIds);
+      await this.groupService.reorderGroups(groupIds);
       this.loadGroups();
     }
   }

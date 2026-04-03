@@ -385,7 +385,7 @@ export class ItemDetailComponent implements OnInit {
     }
   }
 
-  saveChanges(): void {
+  async saveChanges(): Promise<void> {
     const currentItem = this.item();
     if (!currentItem) return;
     if (!this.editTitle.trim()) return;
@@ -402,7 +402,7 @@ export class ItemDetailComponent implements OnInit {
       } : undefined
     };
 
-    this.watchListService.updateItem(updated);
+    await this.watchListService.updateItem(updated);
     this.router.navigate(['/items']);
   }
 
@@ -414,10 +414,10 @@ export class ItemDetailComponent implements OnInit {
     this.confirmDelete.set(false);
   }
 
-  markWatched(): void {
+  async markWatched(): Promise<void> {
     const currentItem = this.item();
     if (currentItem) {
-      this.watchListService.markWatched(currentItem.id);
+      await this.watchListService.markWatched(currentItem.id);
       const updated = this.watchListService.getItemById(currentItem.id);
       if (updated) {
         this.item.set(updated);
@@ -426,10 +426,10 @@ export class ItemDetailComponent implements OnInit {
     }
   }
 
-  markCompleted(): void {
+  async markCompleted(): Promise<void> {
     const currentItem = this.item();
     if (currentItem) {
-      this.watchListService.markCompleted(currentItem.id);
+      await this.watchListService.markCompleted(currentItem.id);
       const updated = this.watchListService.getItemById(currentItem.id);
       if (updated) {
         this.item.set(updated);
@@ -438,10 +438,10 @@ export class ItemDetailComponent implements OnInit {
     }
   }
 
-  deleteItem(): void {
+  async deleteItem(): Promise<void> {
     const currentItem = this.item();
     if (currentItem) {
-      this.watchListService.deleteItem(currentItem.id);
+      await this.watchListService.deleteItem(currentItem.id);
       this.router.navigate(['/items']);
     }
   }

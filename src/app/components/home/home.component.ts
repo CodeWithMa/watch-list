@@ -104,34 +104,34 @@ export class HomeComponent {
     this.nextMovie.set(this.roundRobinService.getNextMovieToWatch());
   }
 
-  markSeriesWatched(): void {
+  async markSeriesWatched(): Promise<void> {
     const series = this.nextSeries();
     if (series) {
-      this.watchListService.markWatched(series.id);
+      await this.watchListService.markWatched(series.id);
       this.updateNextItems();
     }
   }
 
-  markSeriesCompleted(): void {
+  async markSeriesCompleted(): Promise<void> {
     const series = this.nextSeries();
     if (series) {
-      this.watchListService.markCompleted(series.id);
+      await this.watchListService.markCompleted(series.id);
       this.updateNextItems();
     }
   }
 
-  markMovieWatched(): void {
+  async markMovieWatched(): Promise<void> {
     const movie = this.nextMovie();
     if (movie) {
-      this.watchListService.markWatched(movie.id);
+      await this.watchListService.markWatched(movie.id);
       this.updateNextItems();
     }
   }
 
-  markMovieCompleted(): void {
+  async markMovieCompleted(): Promise<void> {
     const movie = this.nextMovie();
     if (movie) {
-      this.watchListService.markCompleted(movie.id);
+      await this.watchListService.markCompleted(movie.id);
       this.updateNextItems();
     }
   }

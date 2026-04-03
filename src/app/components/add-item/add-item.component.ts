@@ -225,12 +225,12 @@ export class AddItemComponent implements OnInit {
     }
   }
 
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     if (!this.title.trim()) {
       return;
     }
 
-    this.watchListService.addItem({
+    await this.watchListService.addItem({
       title: this.title.trim(),
       type: this.type,
       groupId: this.groupId,

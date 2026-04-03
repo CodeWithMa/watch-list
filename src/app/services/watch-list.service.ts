@@ -15,7 +15,7 @@ export interface HistoryEntry extends WatchHistoryEntry {
 export class WatchListService {
   constructor(private storageService: StorageService) {}
 
-  addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): void {
+  async addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): Promise<void> {
     const data = this.storageService.getData();
     const id = this.generateId();
     const now = new Date().toISOString();
@@ -28,7 +28,7 @@ export class WatchListService {
       watchHistory: []
     };
 
-    this.storageService.saveData({
+    await this.storageService.saveData({
       ...data,
       items: {
         ...data.items,
@@ -37,9 +37,9 @@ export class WatchListService {
     });
   }
 
-  updateItem(item: Item): void {
+  async updateItem(item: Item): Promise<void> {
     const data = this.storageService.getData();
-    this.storageService.saveData({
+    await this.storageService.saveData({
       ...data,
       items: {
         ...data.items,
@@ -48,23 +48,23 @@ export class WatchListService {
     });
   }
 
-  deleteItem(itemId: string): void {
+  async deleteItem(itemId: string): Promise<void> {
     const data = this.storageService.getData();
     const { [itemId]: removed, ...items } = data.items;
-    this.storageService.saveData({
+    await this.storageService.saveData({
       ...data,
       items
     });
   }
 
-  markWatched(itemId: string): void {
+  async markWatched(itemId: string): Promise<void> {
     const item = this.getItemById(itemId);
     if (!item) return;
 
     const now = new Date().toISOString();
 
     if (item.type === 'movie') {
-      this.updateItem({
+      await this.updateItem({
         ...item,
         status: 'completed',
         watchHistory: [...item.watchHistory, { date: now }]
@@ -93,7 +93,7 @@ export class WatchListService {
         newStatus = 'in-progress';
       }
 
-      this.updateItem({
+      await this.updateItem({
         ...item,
         status: newStatus,
         progress: newProgress,
@@ -106,11 +106,11 @@ export class WatchListService {
     }
   }
 
-  markCompleted(itemId: string): void {
+  async markCompleted(itemId: string): Promise<void> {
     const item = this.getItemById(itemId);
     if (!item) return;
 
-    this.updateItem({
+    await this.updateItem({
       ...item,
       status: 'completed'
     });

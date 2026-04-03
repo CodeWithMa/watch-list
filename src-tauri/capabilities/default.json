@@ -6,6 +6,10 @@
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "dialog:default",
+    "fs:default",
+    "fs:allow-app-read-recursive",
+    "fs:allow-app-write-recursive"
   ]
 }

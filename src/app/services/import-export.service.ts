@@ -1,49 +1,96 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
-import { StorageData } from '../models/storage.model';
+import { StorageData, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
+import { IMPORT_EXPORT_ADAPTER, IImportExportAdapter } from './import-export.adapter';
+import { Item } from '../models/item.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ImportExportService {
-  constructor(private storageService: StorageService) {}
+  private readonly adapter = inject(IMPORT_EXPORT_ADAPTER);
+  private readonly storageService = inject(StorageService);
 
-  exportData(): void {
+  async exportData(): Promise<void> {
     const data = this.storageService.getData();
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `watch-list-export-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    await this.adapter.exportData(data);
   }
 
-  async importData(file: File): Promise<void> {
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      
-      if (!this.validateStorageDataStructure(parsed)) {
-        throw new Error('Invalid data format');
-      }
+  async importData(): Promise<void> {
+    const result = await this.adapter.importData();
+    
+    if (!result) {
+      return;
+    }
 
-      const migrated = this.storageService.migrateDataOnly(parsed as StorageData);
-      this.storageService.ensureUngroupedGroup(migrated);
-      
-      if (!this.validateMigratedData(migrated)) {
-        throw new Error('Invalid migrated data');
-      }
+    const { data } = result;
+    
+    if (!this.validateStorageDataStructure(data)) {
+      throw new Error('Invalid data format');
+    }
 
-      this.storageService.saveData(migrated);
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error('Invalid JSON file');
-      }
-      throw error;
+    const migrated = this.migrateDataOnly(data);
+    this.ensureUngroupedGroup(migrated);
+    
+    if (!this.validateMigratedData(migrated)) {
+      throw new Error('Invalid migrated data');
+    }
+
+    await this.storageService.saveData(migrated);
+  }
+
+  private migrateDataOnly(data: StorageData): StorageData {
+    if (data.schemaVersion >= CURRENT_SCHEMA_VERSION) {
+      return data;
+    }
+
+    let migrated = { ...data };
+
+    if (migrated.schemaVersion < 2) {
+      migrated.items = Object.fromEntries(
+        Object.entries(migrated.items).map(([id, item]) => {
+          const legacyItem = item as Item & { 
+            lastWatchedAt?: string; 
+            watchHistory?: unknown[];
+            progress?: { season: number; episode: number; totalEpisodes?: number };
+          };
+          let watchHistory = legacyItem.watchHistory as any[] || [];
+          
+          let adjustedProgress = legacyItem.progress;
+          if (adjustedProgress && legacyItem.status !== 'completed') {
+            adjustedProgress = {
+              ...adjustedProgress,
+              episode: adjustedProgress.episode + 1
+            };
+          }
+          
+          if (watchHistory.length === 0 && 
+              (legacyItem.status === 'in-progress' || legacyItem.lastWatchedAt !== legacyItem.createdAt)) {
+            const entry: any = { date: legacyItem.lastWatchedAt };
+            if (legacyItem.type === 'series' && legacyItem.progress) {
+              entry.season = legacyItem.progress.season;
+              entry.episode = legacyItem.progress.episode;
+            }
+            watchHistory = [entry];
+          }
+          
+          const { lastWatchedAt, ...itemWithoutLastWatched } = legacyItem;
+          return [id, { ...itemWithoutLastWatched, watchHistory, progress: adjustedProgress }];
+        })
+      );
+      migrated.schemaVersion = 2;
+    }
+
+    return migrated;
+  }
+
+  private ensureUngroupedGroup(data: StorageData): void {
+    if (!data.groups['ungrouped']) {
+      data.groups['ungrouped'] = {
+        id: 'ungrouped',
+        name: 'Ungrouped',
+        order: 0
+      };
     }
   }
 
@@ -156,4 +203,3 @@ export class ImportExportService {
     return typeof e['date'] === 'string';
   }
 }
-

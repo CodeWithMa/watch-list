@@ -36,6 +36,8 @@
     "@angular/router": "^21.2.6",
     "@angular/service-worker": "^21.2.6",
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

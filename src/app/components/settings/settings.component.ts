@@ -185,9 +185,9 @@ export class SettingsComponent implements OnInit {
     setTimeout(() => this.successMessage.set(null), 3000);
   }
 
-  exportData(): void {
+  async exportData(): Promise<void> {
     try {
-      this.importExportService.exportData();
+      await this.importExportService.exportData();
       this.successMessage.set('Data exported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch (error) {
@@ -198,12 +198,7 @@ export class SettingsComponent implements OnInit {
 
   async onFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
     
-    if (!file) {
-      return;
-    }
-
     if (!confirm('Importing will replace all existing data. Are you sure?')) {
       input.value = '';
       return;
@@ -213,7 +208,7 @@ export class SettingsComponent implements OnInit {
     this.successMessage.set(null);
 
     try {
-      await this.importExportService.importData(file);
+      await this.importExportService.importData();
       this.successMessage.set('Data imported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
       input.value = '';
