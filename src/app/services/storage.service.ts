@@ -11,10 +11,6 @@ export class StorageService {
   private readonly adapter = inject(STORAGE_ADAPTER);
   private readonly data = signal<StorageData | null>(null);
 
-  constructor() {
-    this.loadData();
-  }
-
   async loadData(): Promise<StorageData> {
     const loaded = await this.adapter.load();
     this.data.set(loaded);

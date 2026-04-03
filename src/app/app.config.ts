@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners, APP_INITIALIZER } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
 
@@ -10,6 +10,7 @@ import { TauriFileStorageAdapter } from './services/storage.adapter.tauri';
 import { IMPORT_EXPORT_ADAPTER, IImportExportAdapter } from './services/import-export.adapter';
 import { LocalImportExportAdapter } from './services/import-export.adapter.local';
 import { TauriImportExportAdapter } from './services/import-export.adapter.tauri';
+import { StorageService } from './services/storage.service';
 
 const storageAdapter: IStorageAdapter = environment.isTauri
   ? new TauriFileStorageAdapter()
@@ -23,6 +24,12 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (storageService: StorageService) => () => storageService.loadData(),
+      deps: [StorageService],
+      multi: true
+    },
     { provide: STORAGE_ADAPTER, useValue: storageAdapter },
     { provide: IMPORT_EXPORT_ADAPTER, useValue: importExportAdapter },
     ...(environment.enableServiceWorker
