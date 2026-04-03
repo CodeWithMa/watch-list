@@ -48,6 +48,10 @@
             "tauri": {
               "fileReplacements": [
                 {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.tauri.ts"
+                },
+                {
                   "replace": "src/app/app.config.ts",
                   "with": "src/app/app.config.tauri.ts"
                 }
@@ -56,6 +60,10 @@
             "web": {
               "serviceWorker": "ngsw-config.json",
               "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.web.ts"
+                },
                 {
                   "replace": "src/app/app.config.ts",
                   "with": "src/app/app.config.web.ts"
@@ -72,6 +80,10 @@
               "extractLicenses": false,
               "sourceMap": true,
               "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.tauri.ts"
+                },
                 {
                   "replace": "src/app/app.config.ts",
                   "with": "src/app/app.config.tauri.ts"
