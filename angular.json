@@ -79,7 +79,7 @@
               ]
             }
           },
-          "defaultConfiguration": "web"
+          "defaultConfiguration": "production,web"
         },
         "serve": {
           "builder": "@angular/build:dev-server",
