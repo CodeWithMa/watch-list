@@ -53,16 +53,10 @@ export class TauriFileStorageAdapter implements IStorageAdapter {
     try {
       await this.ensureDir();
       
-      const updated: StorageData = {
-        ...data,
-        lastModifiedAt: new Date().toISOString()
-      };
-      this.ensureUngroupedGroup(updated);
-      
       const path = `${STORAGE_DIR}/${STORAGE_FILE}`;
-      await writeTextFile(path, JSON.stringify(updated, null, 2), { baseDir: BaseDirectory.AppData });
+      await writeTextFile(path, JSON.stringify(data, null, 2), { baseDir: BaseDirectory.AppData });
       
-      this.cache = updated;
+      this.cache = data;
     } catch (error) {
       console.error('Failed to save file data:', error);
       throw error;

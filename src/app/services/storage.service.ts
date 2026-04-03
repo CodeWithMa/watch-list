@@ -22,8 +22,19 @@ export class StorageService {
       ...data,
       lastModifiedAt: new Date().toISOString()
     };
+    this.ensureUngroupedGroup(updated);
     await this.adapter.save(updated);
     this.data.set(updated);
+  }
+
+  private ensureUngroupedGroup(data: StorageData): void {
+    if (!data.groups['ungrouped']) {
+      data.groups['ungrouped'] = {
+        id: 'ungrouped',
+        name: 'Ungrouped',
+        order: 0
+      };
+    }
   }
 
   getData(): StorageData {

@@ -32,12 +32,7 @@ export class LocalStorageAdapter implements IStorageAdapter {
   }
 
   save(data: StorageData): void {
-    const updated: StorageData = {
-      ...data,
-      lastModifiedAt: new Date().toISOString()
-    };
-    this.ensureUngroupedGroup(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }
 
   private migrateDataOnly(data: StorageData): StorageData {
