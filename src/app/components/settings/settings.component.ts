@@ -188,10 +188,6 @@ export class SettingsComponent implements OnInit {
   }
 
   async importData(): Promise<void> {
-    if (!confirm('Importing will replace all existing data. Are you sure?')) {
-      return;
-    }
-
     this.errorMessage.set(null);
     this.successMessage.set(null);
 
