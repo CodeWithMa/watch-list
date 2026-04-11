@@ -8,8 +8,8 @@ import { StorageService } from './services/storage.service';
 import { STORAGE_ADAPTER, IStorageAdapter } from './services/storage.adapter';
 import { IMPORT_EXPORT_ADAPTER, IImportExportAdapter } from './services/import-export.adapter';
 
-const storageAdapter: IStorageAdapter = new (environment.storageAdapter!)();
-const importExportAdapter: IImportExportAdapter = new (environment.importExportAdapter!)();
+const storageAdapter: IStorageAdapter = new environment.storageAdapter();
+const importExportAdapter: IImportExportAdapter = new environment.importExportAdapter();
 
 export const appConfig: ApplicationConfig = {
   providers: [
