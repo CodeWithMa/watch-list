@@ -331,85 +331,85 @@ export class GroupManagerComponent implements OnInit {
     return [...this.groups()].sort((a, b) => a.order - b.order);
   }
 
-  async createGroup(): Promise<void> {
-    if (!this.newGroupName.trim()) {
-      return;
-    }
-    await withAsyncAction(
-      async () => {
-        await this.groupService.createGroup(this.newGroupName.trim());
-        this.newGroupName = '';
-      },
-      this.state
-    )();
-  }
+   async createGroup(): Promise<void> {
+     if (!this.newGroupName.trim()) {
+       return;
+     }
+     await withAsyncAction(
+       async () => {
+         await this.groupService.createGroup(this.newGroupName.trim());
+         this.newGroupName = '';
+       },
+       this.state
+     );
+   }
 
   editGroup(group: Group): void {
     this.editingGroup.set(group);
     this.editGroupName = group.name;
   }
 
-  async saveEdit(): Promise<void> {
-    const group = this.editingGroup();
-    if (group && this.editGroupName.trim()) {
-      await withAsyncAction(
-        async () => {
-          await this.groupService.updateGroup({
-            ...group,
-            name: this.editGroupName.trim()
-          });
-          this.cancelEdit();
-        },
-        this.state
-      )();
-    }
-  }
+   async saveEdit(): Promise<void> {
+     const group = this.editingGroup();
+     if (group && this.editGroupName.trim()) {
+       await withAsyncAction(
+         async () => {
+           await this.groupService.updateGroup({
+             ...group,
+             name: this.editGroupName.trim()
+           });
+           this.cancelEdit();
+         },
+         this.state
+       );
+     }
+   }
 
   cancelEdit(): void {
     this.editingGroup.set(null);
     this.editGroupName = '';
   }
 
-  async deleteGroup(groupId: string): Promise<void> {
-    if (!confirm('Are you sure you want to delete this group? Items will be moved to "Ungrouped".')) {
-      return;
-    }
-    await withAsyncAction(
-      async () => {
-        await this.groupService.deleteGroup(groupId);
-      },
-      this.state
-    )();
-  }
+   async deleteGroup(groupId: string): Promise<void> {
+     if (!confirm('Are you sure you want to delete this group? Items will be moved to "Ungrouped".')) {
+       return;
+     }
+     await withAsyncAction(
+       async () => {
+         await this.groupService.deleteGroup(groupId);
+       },
+       this.state
+     );
+   }
 
-  async moveUp(groupId: string): Promise<void> {
-    const sorted = this.sortedGroups();
-    const index = sorted.findIndex(g => g.id === groupId);
-    if (index > 0) {
-      const groupIds = sorted.map(g => g.id);
-      [groupIds[index], groupIds[index - 1]] = [groupIds[index - 1], groupIds[index]];
-      await withAsyncAction(
-        async () => {
-          await this.groupService.reorderGroups(groupIds);
-        },
-        this.state
-      )();
-    }
-  }
+   async moveUp(groupId: string): Promise<void> {
+     const sorted = this.sortedGroups();
+     const index = sorted.findIndex(g => g.id === groupId);
+     if (index > 0) {
+       const groupIds = sorted.map(g => g.id);
+       [groupIds[index], groupIds[index - 1]] = [groupIds[index - 1], groupIds[index]];
+       await withAsyncAction(
+         async () => {
+           await this.groupService.reorderGroups(groupIds);
+         },
+         this.state
+       );
+     }
+   }
 
-  async moveDown(groupId: string): Promise<void> {
-    const sorted = this.sortedGroups();
-    const index = sorted.findIndex(g => g.id === groupId);
-    if (index < sorted.length - 1) {
-      const groupIds = sorted.map(g => g.id);
-      [groupIds[index], groupIds[index + 1]] = [groupIds[index + 1], groupIds[index]];
-      await withAsyncAction(
-        async () => {
-          await this.groupService.reorderGroups(groupIds);
-        },
-        this.state
-      )();
-    }
-  }
+   async moveDown(groupId: string): Promise<void> {
+     const sorted = this.sortedGroups();
+     const index = sorted.findIndex(g => g.id === groupId);
+     if (index < sorted.length - 1) {
+       const groupIds = sorted.map(g => g.id);
+       [groupIds[index], groupIds[index + 1]] = [groupIds[index + 1], groupIds[index]];
+       await withAsyncAction(
+         async () => {
+           await this.groupService.reorderGroups(groupIds);
+         },
+         this.state
+       );
+     }
+   }
 }
 
