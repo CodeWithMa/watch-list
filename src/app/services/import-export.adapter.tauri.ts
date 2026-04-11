@@ -1,9 +1,7 @@
-import { Injectable } from '@angular/core';
 import { IImportExportAdapter } from './import-export.adapter';
 import { StorageData } from '../models/storage.model';
 import { save, open } from '@tauri-apps/plugin-dialog';
 
-@Injectable()
 export class TauriImportExportAdapter implements IImportExportAdapter {
   async exportData(data: StorageData): Promise<boolean> {
     const json = JSON.stringify(data, null, 2);

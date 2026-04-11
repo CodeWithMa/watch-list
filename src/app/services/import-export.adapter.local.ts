@@ -1,8 +1,6 @@
-import { Injectable } from '@angular/core';
 import { IImportExportAdapter } from './import-export.adapter';
 import { StorageData } from '../models/storage.model';
 
-@Injectable()
 export class LocalImportExportAdapter implements IImportExportAdapter {
   exportData(data: StorageData): boolean {
     const json = JSON.stringify(data, null, 2);

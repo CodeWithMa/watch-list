@@ -1,4 +1,3 @@
-import { Injectable } from '@angular/core';
 import { IStorageAdapter } from './storage.adapter';
 import { StorageData, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { Item } from '../models/item.model';
@@ -8,7 +7,6 @@ import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from '@taur
 const STORAGE_DIR = 'watch-list';
 const STORAGE_FILE = 'data.json';
 
-@Injectable()
 export class TauriFileStorageAdapter implements IStorageAdapter {
   private cache: StorageData | null = null;
 

@@ -1,4 +1,3 @@
-import { Injectable } from '@angular/core';
 import { IStorageAdapter } from './storage.adapter';
 import { StorageData, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { Item } from '../models/item.model';
@@ -6,7 +5,6 @@ import { Group } from '../models/group.model';
 
 const STORAGE_KEY = 'watchListData';
 
-@Injectable()
 export class LocalStorageAdapter implements IStorageAdapter {
   load(): StorageData {
     const stored = localStorage.getItem(STORAGE_KEY);
