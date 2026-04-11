@@ -16,8 +16,8 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
     <div class="add-item-container">
       <h1>Add New Item</h1>
       
-      <div *ngIf="state.error()" class="message" [class.error-message]="!state.error()?.includes('success')" [class.success-message]="state.error()?.includes('success')">
-        {{ state.error() }}
+      <div *ngIf="state.message()" class="message" [class.error-message]="state.message()?.type === 'error'" [class.success-message]="state.message()?.type === 'success'">
+        {{ state.message()?.text }}
       </div>
       
       <form (ngSubmit)="onSubmit()" class="add-item-form">

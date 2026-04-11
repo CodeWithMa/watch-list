@@ -19,7 +19,7 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
         <a [routerLink]="['/items/add']" class="add-button">Add Item</a>
       </div>
 
-      <div *ngIf="state.error()" class="error-message">{{ state.error() }}</div>
+      <div *ngIf="state.message()" class="error-message">{{ state.message()?.text }}</div>
 
       <div class="filters">
         <label>

@@ -14,7 +14,7 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
     <div class="home-container">
       <h1>What should I watch now?</h1>
 
-      <div *ngIf="state.error()" class="error-message">{{ state.error() }}</div>
+      <div *ngIf="state.message()" class="error-message">{{ state.message()?.text }}</div>
 
       <div class="next-items">
         <div class="next-item-section">

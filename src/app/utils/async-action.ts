@@ -1,19 +1,24 @@
 import { WritableSignal, signal } from '@angular/core';
 
+export interface ActionMessage {
+  text: string;
+  type: 'success' | 'error';
+}
+
 export interface AsyncActionState {
   busy: WritableSignal<boolean>;
-  error: WritableSignal<string | null>;
+  message: WritableSignal<ActionMessage | null>;
 }
 
 export interface AsyncActionOptions {
-  showError?: boolean;
+  showMessage?: boolean;
   onError?: (error: unknown) => void;
 }
 
 export function createAsyncAction(): AsyncActionState {
   return {
     busy: signal(false),
-    error: signal(null)
+    message: signal(null)
   };
 }
 
@@ -22,18 +27,21 @@ export function withAsyncAction<F extends (...args: Parameters<F>) => ReturnType
   state: AsyncActionState,
   options: AsyncActionOptions = {}
 ): F {
-  const { busy, error } = state;
-  const { showError = true, onError } = options;
+  const { busy, message } = state;
+  const { showMessage = true, onError } = options;
 
   return (async (...args: Parameters<F>) => {
     if (busy()) return;
     busy.set(true);
-    if (showError) error.set(null);
+    if (showMessage) message.set(null);
     try {
       await action(...args);
     } catch (err) {
-      if (showError) {
-        error.set(err instanceof Error ? err.message : 'Operation failed');
+      if (showMessage) {
+        message.set({
+          text: err instanceof Error ? err.message : 'Operation failed',
+          type: 'error'
+        });
       }
       onError?.(err);
     } finally {
@@ -42,6 +50,6 @@ export function withAsyncAction<F extends (...args: Parameters<F>) => ReturnType
   }) as F;
 }
 
-export function clearError(error: WritableSignal<string | null>) {
-  error.set(null);
+export function clearMessage(message: WritableSignal<ActionMessage | null>) {
+  message.set(null);
 }

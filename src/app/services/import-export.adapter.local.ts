@@ -1,6 +1,5 @@
 import { IImportExportAdapter } from './import-export.adapter';
 import { StorageData } from '../models/storage.model';
-import { validateStorageDataStructure } from '../shared/data-validation';
 
 export class LocalImportExportAdapter implements IImportExportAdapter {
   exportData(data: StorageData): boolean {
@@ -18,7 +17,7 @@ export class LocalImportExportAdapter implements IImportExportAdapter {
   }
 
   async importData(): Promise<{ file: File; data: StorageData } | null> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.json';
@@ -32,19 +31,10 @@ export class LocalImportExportAdapter implements IImportExportAdapter {
           return;
         }
 
-        try {
-          const text = await file.text();
-          const parsed = JSON.parse(text);
+        const text = await file.text();
+        const parsed = JSON.parse(text);
 
-          if (!validateStorageDataStructure(parsed)) {
-            throw new Error('Invalid data format');
-          }
-
-          resolve({ file, data: parsed as StorageData });
-        } catch (error) {
-          console.error('Import error:', error);
-          reject(error);
-        }
+        resolve({ file, data: parsed as StorageData });
       };
 
       input.click();

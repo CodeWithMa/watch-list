@@ -13,8 +13,8 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
     <div class="group-manager-container">
       <h1>Group Management</h1>
 
-      <div *ngIf="state.error()" class="message" [class.error-message]="!state.error()?.includes('success')" [class.success-message]="state.error()?.includes('success')">
-        {{ state.error() }}
+      <div *ngIf="state.message()" class="message" [class.error-message]="state.message()?.type === 'error'" [class.success-message]="state.message()?.type === 'success'">
+        {{ state.message()?.text }}
       </div>
 
       <div class="create-group-section">

@@ -1,7 +1,6 @@
 import { IImportExportAdapter } from './import-export.adapter';
 import { StorageData } from '../models/storage.model';
 import { save, open } from '@tauri-apps/plugin-dialog';
-import { validateStorageDataStructure } from '../shared/data-validation';
 
 export class TauriImportExportAdapter implements IImportExportAdapter {
   async exportData(data: StorageData): Promise<boolean> {
@@ -37,22 +36,13 @@ export class TauriImportExportAdapter implements IImportExportAdapter {
       return null;
     }
 
-    try {
-      const { readTextFile } = await import('@tauri-apps/plugin-fs');
-      const content = await readTextFile(selected);
-      const parsed = JSON.parse(content);
+    const { readTextFile } = await import('@tauri-apps/plugin-fs');
+    const content = await readTextFile(selected);
+    const parsed = JSON.parse(content);
 
-      if (!validateStorageDataStructure(parsed)) {
-        throw new Error('Invalid data format');
-      }
+    const fileName = selected.split(/[/\\]/).pop() || 'import.json';
+    const file = new File([content], fileName, { type: 'application/json' });
 
-      const fileName = selected.split(/[/\\]/).pop() || 'import.json';
-      const file = new File([content], fileName, { type: 'application/json' });
-
-      return { file, data: parsed as StorageData };
-    } catch (error) {
-      console.error('Import error:', error);
-      throw error;
-    }
+    return { file, data: parsed as StorageData };
   }
 }

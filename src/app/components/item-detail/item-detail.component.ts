@@ -16,8 +16,8 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
   imports: [CommonModule, FormsModule, RouterLink, ProgressBarComponent, TimeAgoComponent],
   template: `
     <div class="item-detail-container">
-      <div *ngIf="state.error()" class="message" [class.error-message]="!state.error()?.includes('success')" [class.success-message]="state.error()?.includes('success')">
-        {{ state.error() }}
+      <div *ngIf="state.message()" class="message" [class.error-message]="state.message()?.type === 'error'" [class.success-message]="state.message()?.type === 'success'">
+        {{ state.message()?.text }}
       </div>
       <div *ngIf="item(); else notFound">
         <div class="header">

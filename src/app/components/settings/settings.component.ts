@@ -44,9 +44,9 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
         </div>
       </div>
 
-      <div class="settings-section" *ngIf="state.error()">
-        <div class="message" [class.error-message]="!state.error()?.includes('success')" [class.success-message]="state.error()?.includes('success')">
-          {{ state.error() }}
+      <div class="settings-section" *ngIf="state.message()">
+        <div class="message" [class.error-message]="state.message()?.type === 'error'" [class.success-message]="state.message()?.type === 'success'">
+          {{ state.message()?.text }}
         </div>
       </div>
     </div>
@@ -166,50 +166,42 @@ export class SettingsComponent {
     });
   }
 
-  async updateShowCompleted(): Promise<void> {
-    const previousValue = !this.showCompleted;
-    await withAsyncAction(
-      async () => {
+  updateShowCompleted = withAsyncAction(
+    async () => {
+      const previousValue = !this.showCompleted;
+      try {
         await this.storageService.updateSettings({ showCompleted: this.showCompleted });
-        this.state.error.set('Settings saved successfully');
-        setTimeout(() => this.state.error.set(null), 3000);
-      },
-      this.state,
-      {
-        onError: () => {
-          this.showCompleted = previousValue;
-        }
+        this.state.message.set({ text: 'Settings saved successfully', type: 'success' });
+        setTimeout(() => this.state.message.set(null), 3000);
+      } catch {
+        this.showCompleted = previousValue;
+        throw new Error('Failed to update settings');
       }
-    )();
-  }
+    },
+    this.state
+  );
 
-  async exportData(): Promise<void> {
-    try {
+  exportData = withAsyncAction(
+    async () => {
       const exported = await this.importExportService.exportData();
       if (exported) {
-        this.state.error.set('Data exported successfully');
-        setTimeout(() => this.state.error.set(null), 3000);
+        this.state.message.set({ text: 'Data exported successfully', type: 'success' });
+        setTimeout(() => this.state.message.set(null), 3000);
       }
-    } catch (error) {
-      this.state.error.set('Failed to export data');
-      setTimeout(() => this.state.error.set(null), 5000);
-    }
-  }
+    },
+    this.state
+  );
 
-  async importData(): Promise<void> {
-    this.state.error.set(null);
-
-    try {
+  importData = withAsyncAction(
+    async () => {
+      this.state.message.set(null);
       const imported = await this.importExportService.importData();
       if (imported) {
-        this.state.error.set('Data imported successfully');
-        setTimeout(() => this.state.error.set(null), 3000);
+        this.state.message.set({ text: 'Data imported successfully', type: 'success' });
+        setTimeout(() => this.state.message.set(null), 3000);
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to import data';
-      this.state.error.set(`Import failed: ${message}`);
-      setTimeout(() => this.state.error.set(null), 5000);
-    }
-  }
+    },
+    this.state
+  );
 }
 
