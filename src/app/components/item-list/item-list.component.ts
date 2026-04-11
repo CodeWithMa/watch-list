@@ -91,8 +91,8 @@ export class ItemListComponent {
   expandedGroups = signal<Set<string>>(new Set());
 
   groups = computed(() => {
-    this.storageService.data();
-    return this.groupService.getAllGroups();
+    const data = this.storageService.data();
+    return data ? this.groupService.getAllGroups() : [];
   });
 
   allItems = computed(() => {

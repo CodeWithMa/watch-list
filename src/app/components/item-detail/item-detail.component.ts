@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, effect, inject } from '@angular/core';
+import { Component, signal, computed, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -354,7 +354,7 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
     }
   `]
 })
-export class ItemDetailComponent implements OnInit {
+export class ItemDetailComponent {
   private readonly storageService = inject(StorageService);
   private readonly watchListService = inject(WatchListService);
   private readonly groupService = inject(GroupService);
@@ -381,9 +381,7 @@ export class ItemDetailComponent implements OnInit {
         this.groups.set(this.groupService.getAllGroups());
       }
     });
-  }
 
-  ngOnInit(): void {
     effect(() => {
       const data = this.storageService.data();
       if (!data) return;
