@@ -8,9 +8,7 @@ import { BaseDirectory, exists, mkdir, readTextFile, writeTextFile } from '@taur
 const STORAGE_DIR = 'watch-list';
 const STORAGE_FILE = 'data.json';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable()
 export class TauriFileStorageAdapter implements IStorageAdapter {
   private cache: StorageData | null = null;
 

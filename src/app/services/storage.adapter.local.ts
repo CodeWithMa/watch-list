@@ -6,9 +6,7 @@ import { Group } from '../models/group.model';
 
 const STORAGE_KEY = 'watchListData';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable()
 export class LocalStorageAdapter implements IStorageAdapter {
   load(): StorageData {
     const stored = localStorage.getItem(STORAGE_KEY);
