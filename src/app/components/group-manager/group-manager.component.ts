@@ -13,6 +13,10 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
     <div class="group-manager-container">
       <h1>Group Management</h1>
 
+      <div *ngIf="state.error()" class="message" [class.error-message]="!state.error()?.includes('success')" [class.success-message]="state.error()?.includes('success')">
+        {{ state.error() }}
+      </div>
+
       <div class="create-group-section">
         <h2>Create New Group</h2>
         <form (ngSubmit)="createGroup()" class="create-form">
@@ -23,8 +27,9 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
             placeholder="Group name"
             required
             class="group-input"
+            [disabled]="state.busy()"
           />
-          <button type="submit" class="create-btn">Create Group</button>
+          <button type="submit" class="create-btn" [disabled]="state.busy()">Create Group</button>
         </form>
       </div>
 
@@ -40,6 +45,7 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
               *ngIf="i > 0" 
               (click)="moveUp(group.id)" 
               class="action-btn"
+              [disabled]="state.busy()"
               title="Move up"
             >
               ↑
@@ -82,7 +88,7 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
               class="group-input"
             />
             <div class="modal-actions">
-              <button type="submit" class="save-btn">Save</button>
+              <button type="submit" class="save-btn" [disabled]="state.busy()">Save</button>
               <button type="button" (click)="cancelEdit()" class="cancel-btn">Cancel</button>
             </div>
           </form>
@@ -309,9 +315,13 @@ export class GroupManagerComponent implements OnInit {
     if (!this.newGroupName.trim()) {
       return;
     }
-    await this.groupService.createGroup(this.newGroupName.trim());
-    this.newGroupName = '';
-    this.loadGroups();
+    await withAsyncAction(
+      async () => {
+        await this.groupService.createGroup(this.newGroupName.trim());
+        this.newGroupName = '';
+      },
+      this.state
+    )();
   }
 
   editGroup(group: Group): void {
@@ -322,12 +332,16 @@ export class GroupManagerComponent implements OnInit {
   async saveEdit(): Promise<void> {
     const group = this.editingGroup();
     if (group && this.editGroupName.trim()) {
-      await this.groupService.updateGroup({
-        ...group,
-        name: this.editGroupName.trim()
-      });
-      this.cancelEdit();
-      this.loadGroups();
+      await withAsyncAction(
+        async () => {
+          await this.groupService.updateGroup({
+            ...group,
+            name: this.editGroupName.trim()
+          });
+          this.cancelEdit();
+        },
+        this.state
+      )();
     }
   }
 
@@ -337,14 +351,15 @@ export class GroupManagerComponent implements OnInit {
   }
 
   async deleteGroup(groupId: string): Promise<void> {
-    if (confirm('Are you sure you want to delete this group? Items will be moved to "Ungrouped".')) {
-      try {
-        await this.groupService.deleteGroup(groupId);
-        this.loadGroups();
-      } catch (error) {
-        alert('Cannot delete the ungrouped group');
-      }
+    if (!confirm('Are you sure you want to delete this group? Items will be moved to "Ungrouped".')) {
+      return;
     }
+    await withAsyncAction(
+      async () => {
+        await this.groupService.deleteGroup(groupId);
+      },
+      this.state
+    )();
   }
 
   async moveUp(groupId: string): Promise<void> {
@@ -353,8 +368,12 @@ export class GroupManagerComponent implements OnInit {
     if (index > 0) {
       const groupIds = sorted.map(g => g.id);
       [groupIds[index], groupIds[index - 1]] = [groupIds[index - 1], groupIds[index]];
-      await this.groupService.reorderGroups(groupIds);
-      this.loadGroups();
+      await withAsyncAction(
+        async () => {
+          await this.groupService.reorderGroups(groupIds);
+        },
+        this.state
+      )();
     }
   }
 
@@ -364,8 +383,12 @@ export class GroupManagerComponent implements OnInit {
     if (index < sorted.length - 1) {
       const groupIds = sorted.map(g => g.id);
       [groupIds[index], groupIds[index + 1]] = [groupIds[index + 1], groupIds[index]];
-      await this.groupService.reorderGroups(groupIds);
-      this.loadGroups();
+      await withAsyncAction(
+        async () => {
+          await this.groupService.reorderGroups(groupIds);
+        },
+        this.state
+      )();
     }
   }
 }
