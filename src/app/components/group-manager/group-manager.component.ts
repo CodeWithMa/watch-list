@@ -295,8 +295,10 @@ export class GroupManagerComponent implements OnInit {
 
   constructor() {
     effect(() => {
-      this.storageService.data();
-      this.loadGroups();
+      const data = this.storageService.data();
+      if (data) {
+        this.loadGroups();
+      }
     });
   }
 

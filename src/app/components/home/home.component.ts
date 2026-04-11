@@ -113,8 +113,10 @@ export class HomeComponent {
 
   constructor() {
     effect(() => {
-      this.storageService.data();
-      this.updateNextItems();
+      const data = this.storageService.data();
+      if (data) {
+        this.updateNextItems();
+      }
     });
   }
 
