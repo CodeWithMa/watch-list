@@ -173,8 +173,7 @@ export class SettingsComponent {
         this.state.error.set('Settings saved successfully');
         setTimeout(() => this.state.error.set(null), 3000);
       },
-      this.state,
-      { showError: false }
+      this.state
     )();
   }
 
