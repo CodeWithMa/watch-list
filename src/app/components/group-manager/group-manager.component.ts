@@ -281,6 +281,24 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
     .cancel-btn:hover {
       background: var(--accent-secondary-hover);
     }
+
+    .message {
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .error-message {
+      background: light-dark(#f8d7da, #721c24);
+      color: light-dark(#721c24, #f8d7da);
+      border: 1px solid light-dark(#f5c6cb, #721c24);
+    }
+
+    .success-message {
+      background: light-dark(#d4edda, #155724);
+      color: light-dark(#155724, #d4edda);
+      border: 1px solid light-dark(#c3e6cb, #155724);
+    }
   `]
 })
 export class GroupManagerComponent implements OnInit {
