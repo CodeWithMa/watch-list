@@ -3,6 +3,7 @@ import { StorageData, Settings } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 import { STORAGE_ADAPTER } from './storage.adapter';
+import { ensureUngroupedGroup } from '../shared/data-migration';
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +14,7 @@ export class StorageService {
   readonly dataResource = resource({
     loader: async () => {
       const loaded = await this.adapter.load();
-      this.ensureUngroupedGroup(loaded);
+      ensureUngroupedGroup(loaded);
       return loaded;
     }
   });
@@ -30,19 +31,9 @@ export class StorageService {
       ...newData,
       lastModifiedAt: new Date().toISOString()
     };
-    this.ensureUngroupedGroup(updated);
+    ensureUngroupedGroup(updated);
     await this.adapter.save(updated);
     this.dataResource.set(updated);
-  }
-
-  private ensureUngroupedGroup(data: StorageData): void {
-    if (!data.groups['ungrouped']) {
-      data.groups['ungrouped'] = {
-        id: 'ungrouped',
-        name: 'Ungrouped',
-        order: 0
-      };
-    }
   }
 
   getData(): StorageData {
