@@ -167,13 +167,19 @@ export class SettingsComponent {
   }
 
   async updateShowCompleted(): Promise<void> {
+    const previousValue = !this.showCompleted;
     await withAsyncAction(
       async () => {
         await this.storageService.updateSettings({ showCompleted: this.showCompleted });
         this.state.error.set('Settings saved successfully');
         setTimeout(() => this.state.error.set(null), 3000);
       },
-      this.state
+      this.state,
+      {
+        onError: () => {
+          this.showCompleted = previousValue;
+        }
+      }
     )();
   }
 

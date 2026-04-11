@@ -1,11 +1,13 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
+import { StorageService } from '../../services/storage.service';
 import { ItemType } from '../../models/item.model';
 import { Group } from '../../models/group.model';
+import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
 
 @Component({
   selector: 'app-add-item',
@@ -13,6 +15,10 @@ import { Group } from '../../models/group.model';
   template: `
     <div class="add-item-container">
       <h1>Add New Item</h1>
+      
+      <div *ngIf="state.error()" class="message" [class.error-message]="!state.error()?.includes('success')" [class.success-message]="state.error()?.includes('success')">
+        {{ state.error() }}
+      </div>
       
       <form (ngSubmit)="onSubmit()" class="add-item-form">
         <div class="form-group">
@@ -97,7 +103,7 @@ import { Group } from '../../models/group.model';
         </div>
 
         <div class="form-actions">
-          <button type="submit" class="submit-btn">Add Item</button>
+          <button type="submit" class="submit-btn" [disabled]="state.busy()">Add Item</button>
           <button type="button" (click)="cancel()" class="cancel-btn">Cancel</button>
         </div>
       </form>
@@ -190,9 +196,33 @@ import { Group } from '../../models/group.model';
     .cancel-btn:hover {
       background: var(--accent-secondary-hover);
     }
+
+    .message {
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .error-message {
+      background: light-dark(#f8d7da, #721c24);
+      color: light-dark(#721c24, #f8d7da);
+      border: 1px solid light-dark(#f5c6cb, #721c24);
+    }
+
+    .success-message {
+      background: light-dark(#d4edda, #155724);
+      color: light-dark(#155724, #d4edda);
+      border: 1px solid light-dark(#c3e6cb, #155724);
+    }
   `]
 })
 export class AddItemComponent implements OnInit {
+  private readonly storageService = inject(StorageService);
+  private readonly watchListService = inject(WatchListService);
+  private readonly groupService = inject(GroupService);
+  private readonly router = inject(Router);
+
+  state = createAsyncAction();
   groups = signal<Group[]>([]);
   
   title = '';
@@ -202,20 +232,20 @@ export class AddItemComponent implements OnInit {
   episode = 1;
   totalEpisodes: number | undefined;
 
-  constructor(
-    private watchListService: WatchListService,
-    private groupService: GroupService,
-    private router: Router
-  ) {}
-
-  ngOnInit(): void {
-    this.groups.set(this.groupService.getAllGroups());
-    // Ensure ungrouped is selected by default
-    if (this.groups().length > 0 && !this.groupId) {
-      const ungrouped = this.groups().find(g => g.id === 'ungrouped');
-      this.groupId = ungrouped ? ungrouped.id : this.groups()[0].id;
-    }
+  constructor() {
+    effect(() => {
+      const data = this.storageService.data();
+      if (data) {
+        this.groups.set(this.groupService.getAllGroups());
+        if (this.groups().length > 0 && !this.groupId) {
+          const ungrouped = this.groups().find(g => g.id === 'ungrouped');
+          this.groupId = ungrouped ? ungrouped.id : this.groups()[0].id;
+        }
+      }
+    });
   }
+
+  ngOnInit(): void {}
 
   onTypeChange(): void {
     if (this.type === 'movie') {
@@ -225,25 +255,28 @@ export class AddItemComponent implements OnInit {
     }
   }
 
-  async onSubmit(): Promise<void> {
-    if (!this.title.trim()) {
-      return;
-    }
+  onSubmit = withAsyncAction(
+    async () => {
+      if (!this.title.trim()) {
+        return;
+      }
 
-    await this.watchListService.addItem({
-      title: this.title.trim(),
-      type: this.type,
-      groupId: this.groupId,
-      status: 'not-started',
-      progress: this.type === 'series' ? {
-        season: this.season,
-        episode: this.episode,
-        totalEpisodes: this.totalEpisodes
-      } : undefined
-    });
+      await this.watchListService.addItem({
+        title: this.title.trim(),
+        type: this.type,
+        groupId: this.groupId,
+        status: 'not-started',
+        progress: this.type === 'series' ? {
+          season: this.season,
+          episode: this.episode,
+          totalEpisodes: this.totalEpisodes
+        } : undefined
+      });
 
-    this.router.navigate(['/items']);
-  }
+      this.router.navigate(['/items']);
+    },
+    this.state
+  );
 
   cancel(): void {
     this.router.navigate(['/items']);

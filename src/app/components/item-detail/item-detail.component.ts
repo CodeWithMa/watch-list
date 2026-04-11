@@ -1,19 +1,24 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
+import { StorageService } from '../../services/storage.service';
 import { Item, ItemType } from '../../models/item.model';
 import { Group } from '../../models/group.model';
 import { ProgressBarComponent } from '../progress-bar/progress-bar.component';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
+import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
 
 @Component({
   selector: 'app-item-detail',
   imports: [CommonModule, FormsModule, RouterLink, ProgressBarComponent, TimeAgoComponent],
   template: `
     <div class="item-detail-container">
+      <div *ngIf="state.error()" class="message" [class.error-message]="!state.error()?.includes('success')" [class.success-message]="state.error()?.includes('success')">
+        {{ state.error() }}
+      </div>
       <div *ngIf="item(); else notFound">
         <div class="header">
           <h1>{{ item()!.title }}</h1>
@@ -329,12 +334,35 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
     .not-found h2 {
       margin-bottom: 1rem;
     }
+
+    .message {
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .error-message {
+      background: light-dark(#f8d7da, #721c24);
+      color: light-dark(#721c24, #f8d7da);
+      border: 1px solid light-dark(#f5c6cb, #721c24);
+    }
+
+    .success-message {
+      background: light-dark(#d4edda, #155724);
+      color: light-dark(#155724, #d4edda);
+      border: 1px solid light-dark(#c3e6cb, #155724);
+    }
   `]
 })
 export class ItemDetailComponent implements OnInit {
+  private readonly storageService = inject(StorageService);
+  private readonly watchListService = inject(WatchListService);
+  private readonly groupService = inject(GroupService);
+
   item = signal<Item | null>(null);
   groups = signal<Group[]>([]);
   confirmDelete = signal(false);
+  state = createAsyncAction();
   
   editTitle = '';
   editType: ItemType = 'series';
@@ -345,21 +373,30 @@ export class ItemDetailComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
-    private router: Router,
-    private watchListService: WatchListService,
-    private groupService: GroupService
-  ) {}
+    private router: Router
+  ) {
+    effect(() => {
+      const data = this.storageService.data();
+      if (data) {
+        this.groups.set(this.groupService.getAllGroups());
+      }
+    });
+  }
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      const item = this.watchListService.getItemById(id);
-      if (item) {
-        this.item.set(item);
-        this.loadEditData();
+    effect(() => {
+      const data = this.storageService.data();
+      if (!data) return;
+
+      const id = this.route.snapshot.paramMap.get('id');
+      if (id) {
+        const item = this.watchListService.getItemById(id);
+        if (item) {
+          this.item.set(item);
+          this.loadEditData();
+        }
       }
-    }
-    this.groups.set(this.groupService.getAllGroups());
+    });
   }
 
   loadEditData(): void {
@@ -385,26 +422,29 @@ export class ItemDetailComponent implements OnInit {
     }
   }
 
-  async saveChanges(): Promise<void> {
-    const currentItem = this.item();
-    if (!currentItem) return;
-    if (!this.editTitle.trim()) return;
+  saveChanges = withAsyncAction(
+    async () => {
+      const currentItem = this.item();
+      if (!currentItem) return;
+      if (!this.editTitle.trim()) return;
 
-    const updated: Item = {
-      ...currentItem,
-      title: this.editTitle.trim(),
-      type: this.editType,
-      groupId: this.editGroupId,
-      progress: this.editType === 'series' ? {
-        season: this.editSeason,
-        episode: this.editEpisode,
-        totalEpisodes: this.editTotalEpisodes
-      } : undefined
-    };
+      const updated: Item = {
+        ...currentItem,
+        title: this.editTitle.trim(),
+        type: this.editType,
+        groupId: this.editGroupId,
+        progress: this.editType === 'series' ? {
+          season: this.editSeason,
+          episode: this.editEpisode,
+          totalEpisodes: this.editTotalEpisodes
+        } : undefined
+      };
 
-    await this.watchListService.updateItem(updated);
-    this.router.navigate(['/items']);
-  }
+      await this.watchListService.updateItem(updated);
+      this.router.navigate(['/items']);
+    },
+    this.state
+  );
 
   cancelEdit(): void {
     this.loadEditData();
@@ -414,37 +454,43 @@ export class ItemDetailComponent implements OnInit {
     this.confirmDelete.set(false);
   }
 
-  async markWatched(): Promise<void> {
-    const currentItem = this.item();
-    if (currentItem) {
+  markWatched = withAsyncAction(
+    async () => {
+      const currentItem = this.item();
+      if (!currentItem) return;
       await this.watchListService.markWatched(currentItem.id);
       const updated = this.watchListService.getItemById(currentItem.id);
       if (updated) {
         this.item.set(updated);
         this.loadEditData();
       }
-    }
-  }
+    },
+    this.state
+  );
 
-  async markCompleted(): Promise<void> {
-    const currentItem = this.item();
-    if (currentItem) {
+  markCompleted = withAsyncAction(
+    async () => {
+      const currentItem = this.item();
+      if (!currentItem) return;
       await this.watchListService.markCompleted(currentItem.id);
       const updated = this.watchListService.getItemById(currentItem.id);
       if (updated) {
         this.item.set(updated);
         this.loadEditData();
       }
-    }
-  }
+    },
+    this.state
+  );
 
-  async deleteItem(): Promise<void> {
-    const currentItem = this.item();
-    if (currentItem) {
+  deleteItem = withAsyncAction(
+    async () => {
+      const currentItem = this.item();
+      if (!currentItem) return;
       await this.watchListService.deleteItem(currentItem.id);
       this.router.navigate(['/items']);
-    }
-  }
+    },
+    this.state
+  );
 
   progressPercent = computed(() => {
     const currentItem = this.item();

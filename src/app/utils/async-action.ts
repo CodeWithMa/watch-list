@@ -7,6 +7,7 @@ export interface AsyncActionState {
 
 export interface AsyncActionOptions {
   showError?: boolean;
+  onError?: (error: unknown) => void;
 }
 
 export function createAsyncAction(): AsyncActionState {
@@ -22,7 +23,7 @@ export function withAsyncAction<F extends (...args: Parameters<F>) => ReturnType
   options: AsyncActionOptions = {}
 ): F {
   const { busy, error } = state;
-  const { showError = true } = options;
+  const { showError = true, onError } = options;
 
   return (async (...args: Parameters<F>) => {
     if (busy()) return;
@@ -34,6 +35,7 @@ export function withAsyncAction<F extends (...args: Parameters<F>) => ReturnType
       if (showError) {
         error.set(err instanceof Error ? err.message : 'Operation failed');
       }
+      onError?.(err);
     } finally {
       busy.set(false);
     }
