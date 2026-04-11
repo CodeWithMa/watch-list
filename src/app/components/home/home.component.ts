@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, effect } from '@angular/core';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { StorageService } from '../../services/storage.service';
@@ -120,7 +120,10 @@ export class HomeComponent {
   nextMovie = signal<Item | null>(null);
 
   constructor() {
-    this.updateNextItems();
+    effect(() => {
+      this.storageService.data();
+      this.updateNextItems();
+    });
   }
 
   updateNextItems(): void {

@@ -1,8 +1,10 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { StorageService } from '../../services/storage.service';
 import { GroupService } from '../../services/group.service';
 import { Group } from '../../models/group.model';
+import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
 
 @Component({
   selector: 'app-group-manager',
@@ -276,15 +278,23 @@ import { Group } from '../../models/group.model';
   `]
 })
 export class GroupManagerComponent implements OnInit {
+  private readonly storageService = inject(StorageService);
+  private readonly groupService = inject(GroupService);
+
+  state = createAsyncAction();
   groups = signal<Group[]>([]);
   editingGroup = signal<Group | null>(null);
   editGroupName = '';
   newGroupName = '';
 
-  constructor(private groupService: GroupService) {}
+  constructor() {
+    effect(() => {
+      this.storageService.data();
+      this.loadGroups();
+    });
+  }
 
   ngOnInit(): void {
-    this.loadGroups();
   }
 
   loadGroups(): void {

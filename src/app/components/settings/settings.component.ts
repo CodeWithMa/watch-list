@@ -1,9 +1,10 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StorageService } from '../../services/storage.service';
 import { ImportExportService } from '../../services/import-export.service';
 import { Settings } from '../../models/storage.model';
+import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
 
 @Component({
   selector: 'app-settings',
@@ -43,15 +44,9 @@ import { Settings } from '../../models/storage.model';
         </div>
       </div>
 
-      <div class="settings-section" *ngIf="errorMessage()">
-        <div class="error-message">
-          {{ errorMessage() }}
-        </div>
-      </div>
-
-      <div class="settings-section" *ngIf="successMessage()">
-        <div class="success-message">
-          {{ successMessage() }}
+      <div class="settings-section" *ngIf="state.error()">
+        <div class="message" [class.error-message]="!state.error()?.includes('success')" [class.success-message]="state.error()?.includes('success')">
+          {{ state.error() }}
         </div>
       </div>
     </div>
@@ -155,54 +150,60 @@ import { Settings } from '../../models/storage.model';
     }
   `]
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent {
+  private readonly storageService = inject(StorageService);
+  private readonly importExportService = inject(ImportExportService);
+
+  state = createAsyncAction();
   showCompleted = false;
-  errorMessage = signal<string | null>(null);
-  successMessage = signal<string | null>(null);
 
-  constructor(
-    private storageService: StorageService,
-    private importExportService: ImportExportService
-  ) {}
-
-  ngOnInit(): void {
-    const settings = this.storageService.getSettings();
-    this.showCompleted = settings.showCompleted;
+  constructor() {
+    effect(() => {
+      const data = this.storageService.data();
+      if (data) {
+        this.showCompleted = data.settings.showCompleted;
+      }
+    });
   }
 
   async updateShowCompleted(): Promise<void> {
-    await this.storageService.updateSettings({ showCompleted: this.showCompleted });
-    this.successMessage.set('Settings saved');
-    setTimeout(() => this.successMessage.set(null), 3000);
+    await withAsyncAction(
+      async () => {
+        await this.storageService.updateSettings({ showCompleted: this.showCompleted });
+        this.state.error.set('Settings saved');
+        setTimeout(() => this.state.error.set(null), 3000);
+      },
+      this.state,
+      { showError: false }
+    )();
   }
 
   async exportData(): Promise<void> {
     try {
       const exported = await this.importExportService.exportData();
       if (exported) {
-        this.successMessage.set('Data exported successfully');
-        setTimeout(() => this.successMessage.set(null), 3000);
+        this.state.error.set('Data exported successfully');
+        setTimeout(() => this.state.error.set(null), 3000);
       }
     } catch (error) {
-      this.errorMessage.set('Failed to export data');
-      setTimeout(() => this.errorMessage.set(null), 5000);
+      this.state.error.set('Failed to export data');
+      setTimeout(() => this.state.error.set(null), 5000);
     }
   }
 
   async importData(): Promise<void> {
-    this.errorMessage.set(null);
-    this.successMessage.set(null);
+    this.state.error.set(null);
 
     try {
       const imported = await this.importExportService.importData();
       if (imported) {
-        this.successMessage.set('Data imported successfully');
-        setTimeout(() => this.successMessage.set(null), 3000);
+        this.state.error.set('Data imported successfully');
+        setTimeout(() => this.state.error.set(null), 3000);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
-      this.errorMessage.set(`Import failed: ${message}`);
-      setTimeout(() => this.errorMessage.set(null), 5000);
+      this.state.error.set(`Import failed: ${message}`);
+      setTimeout(() => this.state.error.set(null), 5000);
     }
   }
 }
