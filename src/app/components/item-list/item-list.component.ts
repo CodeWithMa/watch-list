@@ -1,4 +1,4 @@
-import { Component, inject, computed, signal } from '@angular/core';
+import { Component, inject, computed, signal, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -107,8 +107,13 @@ export class ItemListComponent {
   });
 
   constructor() {
-    this.groupService.getAllGroups().forEach(group => {
-      this.expandedGroups.update(set => new Set(set).add(group.id));
+    effect(() => {
+      const currentGroups = this.groups();
+      this.expandedGroups.update(set => {
+        const newSet = new Set(set);
+        currentGroups.forEach(g => newSet.add(g.id));
+        return newSet;
+      });
     });
   }
 
