@@ -14,7 +14,6 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
     <div class="home-container">
       <h1>What should I watch now?</h1>
 
-      <div *ngIf="state.busy()" class="loading">Loading...</div>
       <div *ngIf="state.error()" class="error-message">{{ state.error() }}</div>
 
       <div class="next-items">
@@ -92,13 +91,6 @@ import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
       color: light-dark(var(--light-font-muted), var(--dark-font-muted));
       background: light-dark(var(--light-bg-primary), var(--dark-bg-primary));
       border-radius: 8px;
-    }
-
-    .loading {
-      padding: 1rem;
-      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
-      border-radius: 4px;
-      margin-bottom: 1rem;
     }
 
     .error-message {
