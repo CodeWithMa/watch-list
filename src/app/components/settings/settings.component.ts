@@ -170,7 +170,7 @@ export class SettingsComponent {
     await withAsyncAction(
       async () => {
         await this.storageService.updateSettings({ showCompleted: this.showCompleted });
-        this.state.error.set('Settings saved');
+        this.state.error.set('Settings saved successfully');
         setTimeout(() => this.state.error.set(null), 3000);
       },
       this.state,
