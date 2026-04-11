@@ -1,30 +1,35 @@
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, resource, signal, inject, computed } from '@angular/core';
 import { StorageData, Settings } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
-import { STORAGE_ADAPTER, IStorageAdapter } from './storage.adapter';
+import { STORAGE_ADAPTER } from './storage.adapter';
 
 @Injectable({
   providedIn: 'root'
 })
 export class StorageService {
   private readonly adapter = inject(STORAGE_ADAPTER);
-  private readonly data = signal<StorageData | null>(null);
 
-  async loadData(): Promise<StorageData> {
-    const loaded = await this.adapter.load();
-    this.data.set(loaded);
-    return loaded;
-  }
+  readonly dataResource = resource({
+    loader: async () => {
+      const loaded = await this.adapter.load();
+      this.ensureUngroupedGroup(loaded);
+      return loaded;
+    }
+  });
 
-  async saveData(data: StorageData): Promise<void> {
+  readonly data = computed(() => this.dataResource.value());
+  readonly loading = computed(() => this.dataResource.status() === 'loading');
+  readonly error = computed(() => this.dataResource.status() === 'error' ? this.dataResource.error()?.message : null);
+
+  async saveData(newData: StorageData): Promise<void> {
     const updated: StorageData = {
-      ...data,
+      ...newData,
       lastModifiedAt: new Date().toISOString()
     };
     this.ensureUngroupedGroup(updated);
     await this.adapter.save(updated);
-    this.data.set(updated);
+    this.dataResource.reload();
   }
 
   private ensureUngroupedGroup(data: StorageData): void {
@@ -42,11 +47,14 @@ export class StorageService {
     if (current) {
       return current;
     }
-    throw new Error('Data not loaded. Call loadData() first.');
+    if (this.loading()) {
+      return this.getDefaultData();
+    }
+    throw new Error('Data not loaded');
   }
 
   getDataSignal() {
-    return this.data.asReadonly();
+    return this.data;
   }
 
   getItems(): Item[] {
@@ -70,5 +78,17 @@ export class StorageService {
       ...data,
       settings: { ...data.settings, ...settings }
     });
+  }
+
+  private getDefaultData(): StorageData {
+    return {
+      schemaVersion: 2,
+      lastModifiedAt: new Date().toISOString(),
+      settings: { showCompleted: false },
+      groups: {
+        ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 }
+      },
+      items: {}
+    };
   }
 }

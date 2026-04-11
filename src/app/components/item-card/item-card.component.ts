@@ -41,10 +41,10 @@ import { WatchListService } from '../../services/watch-list.service';
       </div>
 
       <div class="item-actions">
-        <button (click)="onMarkWatched.emit()" [disabled]="item().status === 'completed'">
+        <button (click)="onMarkWatched.emit()" [disabled]="item().status === 'completed' || disabled()">
           Mark Watched
         </button>
-        <button *ngIf="item().type === 'series'" (click)="onMarkCompleted.emit()" [disabled]="item().status === 'completed'">
+        <button *ngIf="item().type === 'series'" (click)="onMarkCompleted.emit()" [disabled]="item().status === 'completed' || disabled()">
           Mark Completed
         </button>
       </div>
@@ -156,6 +156,7 @@ import { WatchListService } from '../../services/watch-list.service';
 })
 export class ItemCardComponent {
   item = input.required<Item>();
+  disabled = input<boolean>(false);
   onMarkWatched = output<void>();
   onMarkCompleted = output<void>();
 

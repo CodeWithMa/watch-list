@@ -1,9 +1,11 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
+import { StorageService } from '../../services/storage.service';
 import { Item } from '../../models/item.model';
 import { ItemCardComponent } from '../item-card/item-card.component';
 import { NgIf } from '@angular/common';
+import { createAsyncAction, withAsyncAction } from '../../utils/async-action';
 
 @Component({
   selector: 'app-home',
@@ -11,6 +13,9 @@ import { NgIf } from '@angular/common';
   template: `
     <div class="home-container">
       <h1>What should I watch now?</h1>
+
+      <div *ngIf="state.busy()" class="loading">Loading...</div>
+      <div *ngIf="state.error()" class="error-message">{{ state.error() }}</div>
 
       <div class="next-items">
         <div class="next-item-section">
@@ -20,6 +25,7 @@ import { NgIf } from '@angular/common';
               [item]="nextSeries()!" 
               (onMarkWatched)="markSeriesWatched()"
               (onMarkCompleted)="markSeriesCompleted()"
+              [disabled]="state.busy()"
             />
           </div>
           <ng-template #noSeries>
@@ -34,6 +40,7 @@ import { NgIf } from '@angular/common';
               [item]="nextMovie()!" 
               (onMarkWatched)="markMovieWatched()"
               (onMarkCompleted)="markMovieCompleted()"
+              [disabled]="state.busy()"
             />
           </div>
           <ng-template #noMovie>
@@ -86,16 +93,33 @@ import { NgIf } from '@angular/common';
       background: light-dark(var(--light-bg-primary), var(--dark-bg-primary));
       border-radius: 8px;
     }
+
+    .loading {
+      padding: 1rem;
+      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .error-message {
+      padding: 1rem;
+      background: light-dark(#f8d7da, #721c24);
+      color: light-dark(#721c24, #f8d7da);
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
   `]
 })
 export class HomeComponent {
+  private readonly roundRobinService = inject(RoundRobinService);
+  private readonly watchListService = inject(WatchListService);
+  private readonly storageService = inject(StorageService);
+
+  state = createAsyncAction();
   nextSeries = signal<Item | null>(null);
   nextMovie = signal<Item | null>(null);
 
-  constructor(
-    private roundRobinService: RoundRobinService,
-    private watchListService: WatchListService
-  ) {
+  constructor() {
     this.updateNextItems();
   }
 
@@ -104,35 +128,51 @@ export class HomeComponent {
     this.nextMovie.set(this.roundRobinService.getNextMovieToWatch());
   }
 
-  async markSeriesWatched(): Promise<void> {
-    const series = this.nextSeries();
-    if (series) {
-      await this.watchListService.markWatched(series.id);
-      this.updateNextItems();
-    }
-  }
+  markSeriesWatched = withAsyncAction(
+    async () => {
+      const series = this.nextSeries();
+      if (series) {
+        await this.watchListService.markWatched(series.id);
+        this.storageService.dataResource.reload();
+        this.updateNextItems();
+      }
+    },
+    this.state
+  );
 
-  async markSeriesCompleted(): Promise<void> {
-    const series = this.nextSeries();
-    if (series) {
-      await this.watchListService.markCompleted(series.id);
-      this.updateNextItems();
-    }
-  }
+  markSeriesCompleted = withAsyncAction(
+    async () => {
+      const series = this.nextSeries();
+      if (series) {
+        await this.watchListService.markCompleted(series.id);
+        this.storageService.dataResource.reload();
+        this.updateNextItems();
+      }
+    },
+    this.state
+  );
 
-  async markMovieWatched(): Promise<void> {
-    const movie = this.nextMovie();
-    if (movie) {
-      await this.watchListService.markWatched(movie.id);
-      this.updateNextItems();
-    }
-  }
+  markMovieWatched = withAsyncAction(
+    async () => {
+      const movie = this.nextMovie();
+      if (movie) {
+        await this.watchListService.markWatched(movie.id);
+        this.storageService.dataResource.reload();
+        this.updateNextItems();
+      }
+    },
+    this.state
+  );
 
-  async markMovieCompleted(): Promise<void> {
-    const movie = this.nextMovie();
-    if (movie) {
-      await this.watchListService.markCompleted(movie.id);
-      this.updateNextItems();
-    }
-  }
+  markMovieCompleted = withAsyncAction(
+    async () => {
+      const movie = this.nextMovie();
+      if (movie) {
+        await this.watchListService.markCompleted(movie.id);
+        this.storageService.dataResource.reload();
+        this.updateNextItems();
+      }
+    },
+    this.state
+  );
 }

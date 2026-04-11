@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, APP_INITIALIZER } from '@angular/core';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
 
@@ -15,12 +15,6 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    {
-      provide: APP_INITIALIZER,
-      useFactory: (storageService: StorageService) => () => storageService.loadData(),
-      deps: [StorageService],
-      multi: true
-    },
     { provide: STORAGE_ADAPTER, useValue: storageAdapter },
     { provide: IMPORT_EXPORT_ADAPTER, useValue: importExportAdapter },
     ...(environment.enableServiceWorker
