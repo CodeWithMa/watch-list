@@ -29,7 +29,7 @@ export class StorageService {
     };
     this.ensureUngroupedGroup(updated);
     await this.adapter.save(updated);
-    this.dataResource.reload();
+    this.dataResource.set(updated);
   }
 
   private ensureUngroupedGroup(data: StorageData): void {

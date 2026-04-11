@@ -131,7 +131,6 @@ export class ItemListComponent {
   markWatched = withAsyncAction(
     async (itemId: string) => {
       await this.watchListService.markWatched(itemId);
-      await this.storageService.dataResource.reload();
     },
     this.state
   );
@@ -139,7 +138,6 @@ export class ItemListComponent {
   markCompleted = withAsyncAction(
     async (itemId: string) => {
       await this.watchListService.markCompleted(itemId);
-      await this.storageService.dataResource.reload();
     },
     this.state
   );

@@ -136,8 +136,6 @@ export class HomeComponent {
       const series = this.nextSeries();
       if (series) {
         await this.watchListService.markWatched(series.id);
-        this.storageService.dataResource.reload();
-        this.updateNextItems();
       }
     },
     this.state
@@ -148,8 +146,6 @@ export class HomeComponent {
       const series = this.nextSeries();
       if (series) {
         await this.watchListService.markCompleted(series.id);
-        this.storageService.dataResource.reload();
-        this.updateNextItems();
       }
     },
     this.state
@@ -160,8 +156,6 @@ export class HomeComponent {
       const movie = this.nextMovie();
       if (movie) {
         await this.watchListService.markWatched(movie.id);
-        this.storageService.dataResource.reload();
-        this.updateNextItems();
       }
     },
     this.state
@@ -172,8 +166,6 @@ export class HomeComponent {
       const movie = this.nextMovie();
       if (movie) {
         await this.watchListService.markCompleted(movie.id);
-        this.storageService.dataResource.reload();
-        this.updateNextItems();
       }
     },
     this.state
