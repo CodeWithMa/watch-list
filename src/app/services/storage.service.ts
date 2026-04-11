@@ -23,6 +23,9 @@ export class StorageService {
   readonly error = computed(() => this.dataResource.status() === 'error' ? this.dataResource.error()?.message : null);
 
   async saveData(newData: StorageData): Promise<void> {
+    if (this.loading()) {
+      throw new Error('Cannot save while data is loading');
+    }
     const updated: StorageData = {
       ...newData,
       lastModifiedAt: new Date().toISOString()
@@ -46,9 +49,6 @@ export class StorageService {
     const current = this.data();
     if (current) {
       return current;
-    }
-    if (this.loading()) {
-      return this.getDefaultData();
     }
     throw new Error('Data not loaded');
   }
@@ -78,17 +78,5 @@ export class StorageService {
       ...data,
       settings: { ...data.settings, ...settings }
     });
-  }
-
-  private getDefaultData(): StorageData {
-    return {
-      schemaVersion: 2,
-      lastModifiedAt: new Date().toISOString(),
-      settings: { showCompleted: false },
-      groups: {
-        ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 }
-      },
-      items: {}
-    };
   }
 }
