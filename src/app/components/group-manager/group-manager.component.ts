@@ -53,7 +53,7 @@ import { Group } from '../../models/group.model';
             <button 
               *ngIf="group.id !== 'ungrouped'"
               (click)="editGroup(group)" 
-              class="px-4 py-2 border border-accent-warning rounded bg-accent-warning text-light dark:text-white hover:bg-accent-warning-hover cursor-pointer text-sm"
+              class="px-4 py-2 border border-accent-warning rounded bg-accent-warning text-black dark:text-white hover:bg-accent-warning-hover cursor-pointer text-sm"
             >
               Edit
             </button>
