@@ -112,6 +112,8 @@ export class WatchHistoryComponent implements OnInit {
       groups.push({ relativeLabel, dateLabel, entries });
     });
 
+    groups.sort((a, b) => new Date(b.entries[0].date).getTime() - new Date(a.entries[0].date).getTime());
+
     return groups;
   });
 
