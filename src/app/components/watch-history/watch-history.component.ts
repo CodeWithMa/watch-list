@@ -91,7 +91,7 @@ export class WatchHistoryComponent implements OnInit {
       const entryDay = new Date(dayKey);
       let relativeLabel: string;
 
-      const daysDiff = Math.floor((today.getTime() - entryDay.getTime()) / 86400000);
+      const daysDiff = Math.round((today.getTime() - entryDay.getTime()) / 86400000);
 
       if (daysDiff === 0) {
         relativeLabel = 'Today';
