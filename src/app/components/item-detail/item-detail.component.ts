@@ -11,69 +11,43 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 
 @Component({
   selector: 'app-item-detail',
-  imports: [CommonModule, FormsModule, RouterLink, ProgressBarComponent, TimeAgoComponent],
+  imports: [CommonModule, FormsModule, RouterLink, TimeAgoComponent],
   template: `
     <div class="max-w-[800px] mx-auto p-8">
-      <div *ngIf="item(); else notFound">
-        <div class="flex justify-between items-center mb-8">
-          <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">{{ item()!.title }}</h1>
-          <div class="flex gap-2">
-            <button (click)="markWatched()" [disabled]="item()!.status === 'completed'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
-              Mark Watched
-            </button>
-            <button *ngIf="item()!.type === 'series'" (click)="markCompleted()" [disabled]="item()!.status === 'completed'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
-              Mark Completed
-            </button>
-            <ng-container *ngIf="!confirmDelete(); else confirmDeleteTemplate">
-              <button (click)="confirmDelete.set(true)" class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover">Delete</button>
-            </ng-container>
-            <ng-template #confirmDeleteTemplate>
-              <button (click)="deleteItem()" class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse">Confirm?</button>
-              <button (click)="cancelDelete()" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer">Cancel</button>
-            </ng-template>
-          </div>
-        </div>
-
-        <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-8">
-          <div class="flex items-center gap-4 mb-4 last:mb-0">
-            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Type:</span>
-            <span class="flex-1">{{ item()!.type }}</span>
-          </div>
-          <div class="flex items-center gap-4 mb-4 last:mb-0">
-            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Status:</span>
-            <span class="flex-1 px-2 py-1 rounded font-medium capitalize" [ngClass]="{
-              'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark': item()!.status === 'not-started',
-              'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark': item()!.status === 'in-progress',
-              'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark': item()!.status === 'completed'
-            }">
-              {{ item()!.status }}
-            </span>
-          </div>
-          <div class="flex items-center gap-4 mb-4 last:mb-0">
-            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Group:</span>
-            <span class="flex-1">{{ getGroupName(item()!.groupId) }}</span>
-          </div>
-          <div class="flex items-center gap-4 mb-4 last:mb-0" *ngIf="item()!.type === 'series' && item()!.progress">
-            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Progress:</span>
-            <span class="flex-1">
-              Episode {{ item()!.progress!.episode }}
-              <span *ngIf="item()!.progress!.totalEpisodes"> of {{ item()!.progress!.totalEpisodes }}</span>
-            </span>
-          </div>
-          <div class="flex items-center gap-4 mb-4 last:mb-0" *ngIf="progressPercent() !== null">
-            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Completion:</span>
-            <span class="flex-1">{{ progressPercent() }}%</span>
-            <app-progress-bar [percentage]="progressPercent()!" />
-          </div>
-          <div class="flex items-center gap-4 mb-4 last:mb-0">
-            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Last Watched:</span>
-            <span class="flex-1">
-              <app-time-ago [date]="lastWatchedDate()" />
-            </span>
-          </div>
-          <div class="flex items-center gap-4 last:mb-0">
-            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Created:</span>
-            <span class="flex-1">{{ formatDate(item()!.createdAt) }}</span>
+      @if (item()) {
+        <div class="mb-6">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">{{ item()!.title }}
+                <span class="text-sm px-2 py-1 rounded font-medium capitalize ml-2" [ngClass]="{
+                  'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark': item()!.status === 'not-started',
+                  'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark': item()!.status === 'in-progress',
+                  'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark': item()!.status === 'completed'
+                }">
+                  {{ item()!.status }}
+                </span>
+              </h1>
+              <div class="text-sm text-light-font-secondary dark:text-dark-font-secondary mt-1">
+                <span *ngIf="item()!.progress">Episode {{ item()!.progress!.episode }}<span *ngIf="item()!.progress!.totalEpisodes"> / {{ item()!.progress!.totalEpisodes }}</span> · </span>
+                <span *ngIf="lastWatchedDate()">Last watched: <app-time-ago [date]="lastWatchedDate()" /> · </span>
+                Created {{ formatDate(item()!.createdAt) }}
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button (click)="markWatched()" [disabled]="item()!.status === 'completed'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
+                Mark Watched
+              </button>
+              <button *ngIf="item()!.type === 'series'" (click)="markCompleted()" [disabled]="item()!.status === 'completed'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
+                Mark Completed
+              </button>
+              <ng-container *ngIf="!confirmDelete(); else confirmDeleteTemplate">
+                <button (click)="confirmDelete.set(true)" class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover">Delete</button>
+              </ng-container>
+              <ng-template #confirmDeleteTemplate>
+                <button (click)="deleteItem()" class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse">Confirm?</button>
+                <button (click)="cancelDelete()" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer">Cancel</button>
+              </ng-template>
+            </div>
           </div>
         </div>
 
@@ -120,13 +94,12 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
             </div>
           </form>
         </div>
-      </div>
-      <ng-template #notFound>
+      } @else {
         <div class="text-center px-8 py-16">
           <h2 class="mb-4">Item not found</h2>
           <a [routerLink]="['/items']">Back to Items</a>
         </div>
-      </ng-template>
+      }
     </div>
   `
 })
