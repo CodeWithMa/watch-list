@@ -13,323 +13,122 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
   selector: 'app-item-detail',
   imports: [CommonModule, FormsModule, RouterLink, ProgressBarComponent, TimeAgoComponent],
   template: `
-    <div class="item-detail-container">
+    <div class="max-w-[800px] mx-auto p-8">
       <div *ngIf="item(); else notFound">
-        <div class="header">
-          <h1>{{ item()!.title }}</h1>
-          <div class="actions">
-            <button (click)="markWatched()" [disabled]="item()!.status === 'completed'" class="action-btn">
+        <div class="flex justify-between items-center mb-8">
+          <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">{{ item()!.title }}</h1>
+          <div class="flex gap-2">
+            <button (click)="markWatched()" [disabled]="item()!.status === 'completed'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
               Mark Watched
             </button>
-            <button *ngIf="item()!.type === 'series'" (click)="markCompleted()" [disabled]="item()!.status === 'completed'" class="action-btn">
+            <button *ngIf="item()!.type === 'series'" (click)="markCompleted()" [disabled]="item()!.status === 'completed'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
               Mark Completed
             </button>
             <ng-container *ngIf="!confirmDelete(); else confirmDeleteTemplate">
-              <button (click)="confirmDelete.set(true)" class="action-btn delete">Delete</button>
+              <button (click)="confirmDelete.set(true)" class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover">Delete</button>
             </ng-container>
             <ng-template #confirmDeleteTemplate>
-              <button (click)="deleteItem()" class="action-btn delete confirm">Confirm?</button>
-              <button (click)="cancelDelete()" class="action-btn">Cancel</button>
+              <button (click)="deleteItem()" class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse">Confirm?</button>
+              <button (click)="cancelDelete()" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer">Cancel</button>
             </ng-template>
           </div>
         </div>
 
-        <div class="item-info">
-          <div class="info-row">
-            <span class="label">Type:</span>
-            <span class="value">{{ item()!.type }}</span>
+        <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-8">
+          <div class="flex items-center gap-4 mb-4 last:mb-0">
+            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Type:</span>
+            <span class="flex-1">{{ item()!.type }}</span>
           </div>
-          <div class="info-row">
-            <span class="label">Status:</span>
-            <span class="value status" [class]="'status-' + item()!.status">
+          <div class="flex items-center gap-4 mb-4 last:mb-0">
+            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Status:</span>
+            <span class="flex-1 px-2 py-1 rounded font-medium capitalize" [ngClass]="{
+              'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark': item()!.status === 'not-started',
+              'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark': item()!.status === 'in-progress',
+              'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark': item()!.status === 'completed'
+            }">
               {{ item()!.status }}
             </span>
           </div>
-          <div class="info-row">
-            <span class="label">Group:</span>
-            <span class="value">{{ getGroupName(item()!.groupId) }}</span>
+          <div class="flex items-center gap-4 mb-4 last:mb-0">
+            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Group:</span>
+            <span class="flex-1">{{ getGroupName(item()!.groupId) }}</span>
           </div>
-          <div class="info-row" *ngIf="item()!.type === 'series' && item()!.progress">
-            <span class="label">Progress:</span>
-            <span class="value">
+          <div class="flex items-center gap-4 mb-4 last:mb-0" *ngIf="item()!.type === 'series' && item()!.progress">
+            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Progress:</span>
+            <span class="flex-1">
               Episode {{ item()!.progress!.episode }}
               <span *ngIf="item()!.progress!.totalEpisodes"> of {{ item()!.progress!.totalEpisodes }}</span>
             </span>
           </div>
-          <div class="info-row" *ngIf="progressPercent() !== null">
-            <span class="label">Completion:</span>
-            <span class="value">{{ progressPercent() }}%</span>
+          <div class="flex items-center gap-4 mb-4 last:mb-0" *ngIf="progressPercent() !== null">
+            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Completion:</span>
+            <span class="flex-1">{{ progressPercent() }}%</span>
             <app-progress-bar [percentage]="progressPercent()!" />
           </div>
-          <div class="info-row">
-            <span class="label">Last Watched:</span>
-            <span class="value">
+          <div class="flex items-center gap-4 mb-4 last:mb-0">
+            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Last Watched:</span>
+            <span class="flex-1">
               <app-time-ago [date]="lastWatchedDate()" />
             </span>
           </div>
-          <div class="info-row">
-            <span class="label">Created:</span>
-            <span class="value">{{ formatDate(item()!.createdAt) }}</span>
+          <div class="flex items-center gap-4 last:mb-0">
+            <span class="font-medium min-w-[120px] text-light-font-secondary dark:text-dark-font-secondary">Created:</span>
+            <span class="flex-1">{{ formatDate(item()!.createdAt) }}</span>
           </div>
         </div>
 
-        <div class="edit-section">
-          <h2>Edit Item</h2>
+        <div class="border border-light-border dark:border-dark-border rounded-lg p-6">
+          <h2 class="mt-0 mb-6">Edit Item</h2>
           <form (ngSubmit)="saveChanges()" #itemForm="ngForm">
-            <div class="form-group">
-              <label>Title:</label>
-              <input type="text" [(ngModel)]="editTitle" name="title" required />
-              <div class="validation-error" *ngIf="itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched">
+            <div class="mb-4">
+              <label class="block mb-2 font-medium">Title:</label>
+              <input type="text" [(ngModel)]="editTitle" name="title" required class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
+              <div class="text-accent-danger text-sm mt-1" *ngIf="itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched">
                 Title is required
               </div>
             </div>
-            <div class="form-group">
-              <label>Type:</label>
-              <select [(ngModel)]="editType" name="type" (change)="onTypeChange()">
+            <div class="mb-4">
+              <label class="block mb-2 font-medium">Type:</label>
+              <select [(ngModel)]="editType" name="type" (change)="onTypeChange()" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]">
                 <option value="series">Series</option>
                 <option value="movie">Movie</option>
               </select>
             </div>
-            <div class="form-group">
-              <label>Group:</label>
-              <select [(ngModel)]="editGroupId" name="groupId">
+            <div class="mb-4">
+              <label class="block mb-2 font-medium">Group:</label>
+              <select [(ngModel)]="editGroupId" name="groupId" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]">
                 <option *ngFor="let group of groups()" [value]="group.id">
                   {{ group.name }}
                 </option>
               </select>
             </div>
-            <div class="form-group" *ngIf="editType === 'series'">
-              <label>Season:</label>
-              <input type="number" [(ngModel)]="editSeason" name="season" min="1" />
+            <div class="mb-4" *ngIf="editType === 'series'">
+              <label class="block mb-2 font-medium">Season:</label>
+              <input type="number" [(ngModel)]="editSeason" name="season" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
             </div>
-            <div class="form-group" *ngIf="editType === 'series'">
-              <label>Episode:</label>
-              <input type="number" [(ngModel)]="editEpisode" name="episode" min="1" />
+            <div class="mb-4" *ngIf="editType === 'series'">
+              <label class="block mb-2 font-medium">Episode:</label>
+              <input type="number" [(ngModel)]="editEpisode" name="episode" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
             </div>
-            <div class="form-group" *ngIf="editType === 'series'">
-              <label>Total Episodes (optional):</label>
-              <input type="number" [(ngModel)]="editTotalEpisodes" name="totalEpisodes" min="1" />
+            <div class="mb-4" *ngIf="editType === 'series'">
+              <label class="block mb-2 font-medium">Total Episodes (optional):</label>
+              <input type="number" [(ngModel)]="editTotalEpisodes" name="totalEpisodes" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
             </div>
-            <div class="form-actions">
-              <button type="submit" class="save-btn" [disabled]="itemForm.invalid">Save Changes</button>
-              <button type="button" (click)="cancelEdit()" class="cancel-btn">Cancel</button>
+            <div class="flex gap-2 mt-6">
+              <button type="submit" class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer font-medium hover:not-disabled:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="itemForm.invalid">Save Changes</button>
+              <button type="button" (click)="cancelEdit()" class="px-6 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer hover:bg-accent-secondary-hover">Cancel</button>
             </div>
           </form>
         </div>
       </div>
       <ng-template #notFound>
-        <div class="not-found">
-          <h2>Item not found</h2>
+        <div class="text-center px-8 py-16">
+          <h2 class="mb-4">Item not found</h2>
           <a [routerLink]="['/items']">Back to Items</a>
         </div>
       </ng-template>
     </div>
-  `,
-  styles: [`
-    .item-detail-container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin: 0;
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-    }
-
-    .actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .action-btn {
-      padding: 0.5rem 1rem;
-      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-      border-radius: 4px;
-      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-      cursor: pointer;
-    }
-
-    .action-btn:hover:not(:disabled) {
-      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
-    }
-
-    .action-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .action-btn.delete {
-      background: var(--accent-danger);
-      color: white;
-      border-color: var(--accent-danger);
-    }
-
-    .action-btn.delete:hover {
-      background: var(--accent-danger-hover);
-    }
-
-    .action-btn.delete.confirm {
-      animation: pulse 0.5s ease-in-out;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-    }
-
-    .item-info {
-      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
-      padding: 1.5rem;
-      border-radius: 8px;
-      margin-bottom: 2rem;
-    }
-
-    .info-row {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .info-row:last-child {
-      margin-bottom: 0;
-    }
-
-    .label {
-      font-weight: 500;
-      min-width: 120px;
-      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
-    }
-
-    .value {
-      flex: 1;
-    }
-
-    .status {
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      font-weight: 500;
-      text-transform: capitalize;
-    }
-
-    .status-not-started {
-      background: light-dark(#fff3cd, #856404);
-      color: light-dark(#856404, #fff3cd);
-    }
-
-    .status-in-progress {
-      background: light-dark(#d1ecf1, #0c5460);
-      color: light-dark(#0c5460, #d1ecf1);
-    }
-
-    .status-completed {
-      background: light-dark(#d4edda, #155724);
-      color: light-dark(#155724, #d4edda);
-    }
-
-    .edit-section {
-      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-      border-radius: 8px;
-      padding: 1.5rem;
-    }
-
-    .edit-section h2 {
-      margin-top: 0;
-      margin-bottom: 1.5rem;
-    }
-
-    .form-group {
-      margin-bottom: 1rem;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-    }
-
-    .form-group input,
-    .form-group select {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-      border-radius: 4px;
-      font-size: 1rem;
-      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-      box-sizing: border-box;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-    }
-
-    .validation-error {
-      color: var(--accent-danger);
-      font-size: 0.875rem;
-      margin-top: 0.25rem;
-    }
-
-    .form-actions {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 1.5rem;
-    }
-
-    .save-btn {
-      padding: 0.75rem 1.5rem;
-      background: var(--accent-primary);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
-    .save-btn:hover:not(:disabled) {
-      background: var(--accent-primary-hover);
-    }
-
-    .save-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .cancel-btn {
-      padding: 0.75rem 1.5rem;
-      background: var(--accent-secondary);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .cancel-btn:hover {
-      background: var(--accent-secondary-hover);
-    }
-
-    .not-found {
-      text-align: center;
-      padding: 4rem 2rem;
-    }
-
-    .not-found h2 {
-      margin-bottom: 1rem;
-    }
-  `]
+  `
 })
 export class ItemDetailComponent implements OnInit {
   item = signal<Item | null>(null);

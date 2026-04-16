@@ -13,179 +13,54 @@ import { ItemCardComponent } from '../item-card/item-card.component';
   selector: 'app-item-list',
   imports: [CommonModule, FormsModule, RouterLink, ItemCardComponent],
   template: `
-    <div class="item-list-container">
-      <div class="header">
-        <h1>All Items</h1>
-        <a [routerLink]="['/items/add']" class="add-button">Add Item</a>
+    <div class="max-w-[1200px] mx-auto p-8">
+      <div class="flex justify-between items-center mb-8">
+        <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">All Items</h1>
+        <a [routerLink]="['/items/add']" class="px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover">Add Item</a>
       </div>
 
-      <div class="filters">
-        <label>
-          <input 
-            type="radio" 
-            name="statusFilter" 
-            value="all" 
-            [(ngModel)]="statusFilter"
-            (change)="updateFilter()"
-          />
+      <div class="flex gap-4 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="statusFilter" value="all" [(ngModel)]="statusFilter" (change)="updateFilter()" />
           All
         </label>
-        <label>
-          <input 
-            type="radio" 
-            name="statusFilter" 
-            value="not-started" 
-            [(ngModel)]="statusFilter"
-            (change)="updateFilter()"
-          />
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="statusFilter" value="not-started" [(ngModel)]="statusFilter" (change)="updateFilter()" />
           Not Started
         </label>
-        <label>
-          <input 
-            type="radio" 
-            name="statusFilter" 
-            value="in-progress" 
-            [(ngModel)]="statusFilter"
-            (change)="updateFilter()"
-          />
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="statusFilter" value="in-progress" [(ngModel)]="statusFilter" (change)="updateFilter()" />
           In Progress
         </label>
-        <label>
-          <input 
-            type="radio" 
-            name="statusFilter" 
-            value="completed" 
-            [(ngModel)]="statusFilter"
-            (change)="updateFilter()"
-          />
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="statusFilter" value="completed" [(ngModel)]="statusFilter" (change)="updateFilter()" />
           Completed
         </label>
       </div>
 
-      <div class="groups-container">
-        <div *ngFor="let group of groups()" class="group-section">
-          <div class="group-header" (click)="toggleGroup(group.id)">
-            <h2>{{ group.name }}</h2>
-            <span class="toggle-icon">{{ isGroupExpanded(group.id) ? '▼' : '▶' }}</span>
-            <span class="item-count">({{ getGroupItems(group.id).length }})</span>
+      <div class="flex flex-col gap-6">
+        <div *ngFor="let group of groups()" class="border border-light-border dark:border-dark-border rounded overflow-hidden">
+          <div class="flex items-center gap-4 p-4 bg-light-bg-tertiary dark:bg-dark-bg-tertiary cursor-pointer select-none hover:bg-light-hover dark:hover:bg-dark-hover" (click)="toggleGroup(group.id)">
+            <h2 class="m-0 text-xl flex-1">{{ group.name }}</h2>
+            <span class="text-sm text-light-font-secondary dark:text-dark-font-secondary">{{ isGroupExpanded(group.id) ? '▼' : '▶' }}</span>
+            <span class="text-light-font-secondary dark:text-dark-font-secondary text-sm">({{ getGroupItems(group.id).length }})</span>
           </div>
           
-          <div *ngIf="isGroupExpanded(group.id)" class="group-items">
+          <div *ngIf="isGroupExpanded(group.id)" class="p-4">
             <app-item-card
               *ngFor="let item of getGroupItems(group.id)"
               [item]="item"
               (onMarkWatched)="markWatched(item.id)"
               (onMarkCompleted)="markCompleted(item.id)"
             />
-            <p *ngIf="getGroupItems(group.id).length === 0" class="empty-group">
+            <p *ngIf="getGroupItems(group.id).length === 0" class="text-center text-light-font-muted dark:text-dark-font-muted p-8">
               No items in this group
             </p>
           </div>
         </div>
       </div>
     </div>
-  `,
-  styles: [`
-    .item-list-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin: 0;
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-    }
-
-    .add-button {
-      padding: 0.75rem 1.5rem;
-      background: var(--accent-primary);
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-      font-weight: 500;
-    }
-
-    .add-button:hover {
-      background: var(--accent-primary-hover);
-    }
-
-    .filters {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 2rem;
-      padding: 1rem;
-      background: light-dark(var(--light-bg-primary), var(--dark-bg-primary));
-      border-radius: 4px;
-    }
-
-    .filters label {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      cursor: pointer;
-    }
-
-    .groups-container {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-
-    .group-section {
-      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .group-header {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .group-header:hover {
-      background: light-dark(#e9ecef, #333333);
-    }
-
-    .group-header h2 {
-      margin: 0;
-      font-size: 1.3rem;
-      flex: 1;
-    }
-
-    .toggle-icon {
-      font-size: 0.8rem;
-      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
-    }
-
-    .item-count {
-      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
-      font-size: 0.9rem;
-    }
-
-    .group-items {
-      padding: 1rem;
-    }
-
-    .empty-group {
-      text-align: center;
-      color: light-dark(var(--light-font-muted), var(--dark-font-muted));
-      padding: 2rem;
-    }
-  `]
+  `
 })
 export class ItemListComponent {
   statusFilter = signal<string>('all');
