@@ -1,4 +1,5 @@
-import { Injectable, signal, effect } from '@angular/core';
+import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 
 export type Theme = 'system' | 'light' | 'dark';
 
@@ -7,27 +8,31 @@ export type Theme = 'system' | 'light' | 'dark';
 })
 export class ThemeService {
   private readonly STORAGE_KEY = 'theme';
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly document = inject(DOCUMENT);
   
   theme = signal<Theme>('system');
   
-  private mediaQuery: MediaQueryList;
-  private mediaQueryListener: (e: MediaQueryListEvent) => void;
+  private mediaQuery: MediaQueryList | null = null;
+  private mediaQueryListener!: (e: MediaQueryListEvent) => void;
 
   constructor() {
-    const stored = localStorage.getItem(this.STORAGE_KEY) as Theme | null;
-    if (stored && ['system', 'light', 'dark'].includes(stored)) {
-      this.theme.set(stored);
-    }
-    
-    this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    this.mediaQueryListener = (e: MediaQueryListEvent) => {
-      if (this.theme() === 'system') {
-        this.applyTheme();
+    if (isPlatformBrowser(this.platformId)) {
+      const stored = localStorage.getItem(this.STORAGE_KEY) as Theme | null;
+      if (stored && ['system', 'light', 'dark'].includes(stored)) {
+        this.theme.set(stored);
       }
-    };
-    
-    this.mediaQuery.addEventListener('change', this.mediaQueryListener);
+      
+      this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      this.mediaQueryListener = (e: MediaQueryListEvent) => {
+        if (this.theme() === 'system') {
+          this.applyTheme();
+        }
+      };
+      
+      this.mediaQuery.addEventListener('change', this.mediaQueryListener);
+    }
     
     effect(() => {
       this.applyTheme();
@@ -36,7 +41,9 @@ export class ThemeService {
 
   setTheme(newTheme: Theme): void {
     this.theme.set(newTheme);
-    localStorage.setItem(this.STORAGE_KEY, newTheme);
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.setItem(this.STORAGE_KEY, newTheme);
+    }
   }
 
   cycleTheme(): void {
@@ -48,14 +55,20 @@ export class ThemeService {
   }
 
   private applyTheme(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    
     const currentTheme = this.theme();
     const isDark = currentTheme === 'dark' || 
-      (currentTheme === 'system' && this.mediaQuery.matches);
+      (currentTheme === 'system' && this.mediaQuery?.matches);
     
-    document.documentElement.classList.toggle('dark', isDark);
+    this.document.documentElement.classList.toggle('dark', isDark);
   }
 
   ngOnDestroy(): void {
-    this.mediaQuery.removeEventListener('change', this.mediaQueryListener);
+    if (this.mediaQuery) {
+      this.mediaQuery.removeEventListener('change', this.mediaQueryListener);
+    }
   }
 }
