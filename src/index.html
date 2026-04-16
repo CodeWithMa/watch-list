@@ -7,14 +7,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="manifest" href="manifest.webmanifest">
-  <script>
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      document.documentElement.classList.add('dark');
-    }
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      document.documentElement.classList.toggle('dark', e.matches);
-    });
-  </script>
 </head>
 <body>
   <app-root></app-root>
