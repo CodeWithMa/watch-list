@@ -66,7 +66,6 @@ export class WatchHistoryComponent implements OnInit {
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today.getTime() - 86400000);
 
     for (const entry of entries) {
       const entryDate = new Date(entry.date);
