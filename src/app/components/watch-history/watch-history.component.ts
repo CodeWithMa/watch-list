@@ -9,7 +9,7 @@ interface CalendarGroup {
 }
 
 @Component({
-  selector: 'app-watch-history-calendar',
+  selector: 'app-watch-history',
   imports: [CommonModule, RouterLink],
   template: `
     <div class="max-w-[800px] mx-auto p-8">
