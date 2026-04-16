@@ -21,19 +21,19 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 
       <div class="flex gap-4 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded">
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="statusFilter" value="all" [(ngModel)]="statusFilter" (change)="updateFilter()" />
+          <input type="radio" name="statusFilter" value="all" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" />
           All
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="statusFilter" value="not-started" [(ngModel)]="statusFilter" (change)="updateFilter()" />
+          <input type="radio" name="statusFilter" value="not-started" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" />
           Not Started
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="statusFilter" value="in-progress" [(ngModel)]="statusFilter" (change)="updateFilter()" />
+          <input type="radio" name="statusFilter" value="in-progress" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" />
           In Progress
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="statusFilter" value="completed" [(ngModel)]="statusFilter" (change)="updateFilter()" />
+          <input type="radio" name="statusFilter" value="completed" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" />
           Completed
         </label>
       </div>
@@ -96,10 +96,6 @@ export class ItemListComponent {
     this.groups().forEach(group => {
       this.expandedGroups.update(set => new Set(set).add(group.id));
     });
-  }
-
-  updateFilter(): void {
-    // Filter update is handled by computed signal
   }
 
   toggleGroup(groupId: string): void {
