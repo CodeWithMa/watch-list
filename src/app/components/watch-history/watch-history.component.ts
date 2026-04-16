@@ -92,12 +92,16 @@ export class WatchHistoryComponent implements OnInit {
       const entryDay = new Date(dayKey);
       let relativeLabel: string;
 
-      if (entryDay.getTime() === today.getTime()) {
+      const daysDiff = Math.floor((today.getTime() - entryDay.getTime()) / 86400000);
+
+      if (daysDiff === 0) {
         relativeLabel = 'Today';
-      } else if (entryDay.getTime() === yesterday.getTime()) {
+      } else if (daysDiff === 1) {
         relativeLabel = 'Yesterday';
+      } else if (daysDiff <= 6) {
+        relativeLabel = 'Last ' + entryDay.toLocaleDateString('en-US', { weekday: 'long' });
       } else {
-        relativeLabel = entryDay.toLocaleDateString('en-US', { weekday: 'long' });
+        relativeLabel = entryDay.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
       }
 
       const dateLabel = entryDay.toLocaleDateString('en-US', {
