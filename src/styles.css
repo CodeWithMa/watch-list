@@ -80,7 +80,11 @@
   }
 
   html {
-    color-scheme: light dark;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
@@ -90,6 +94,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     @apply bg-light-bg-primary text-light-font dark:bg-dark-bg-primary dark:text-dark-font;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   button,
