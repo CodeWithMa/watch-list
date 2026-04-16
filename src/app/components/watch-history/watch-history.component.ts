@@ -1,37 +1,52 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { WatchListService, HistoryEntry } from '../../services/watch-list.service';
-import { DateFormatPipe } from '../../pipes/date-format.pipe';
-import { TimeFormatPipe } from '../../pipes/time-format.pipe';
+interface CalendarGroup {
+  relativeLabel: string;
+  dateLabel: string;
+  entries: (HistoryEntry & { relativeTime: string })[];
+}
 
 @Component({
-  selector: 'app-watch-history',
-  imports: [CommonModule, RouterLink, DateFormatPipe, TimeFormatPipe],
+  selector: 'app-watch-history-calendar',
+  imports: [CommonModule, RouterLink],
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Watch History</h1>
 
-      <div *ngIf="history().length === 0; else hasHistory" class="text-center p-16 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg">
+      <div *ngIf="history().length === 0; else hasHistory" class="text-center p-16 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border">
+        <div class="text-5xl mb-4 opacity-30">🗓️</div>
         <p class="text-light-font-secondary dark:text-dark-font-secondary mb-2">No watch history yet.</p>
-        <p class="text-light-font-secondary dark:text-dark-font-secondary mb-2">Start watching to see your history here!</p>
-        <a [routerLink]="['/items']" class="inline-block mt-4 px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover">Browse Items</a>
+        <p class="text-sm text-light-font-muted dark:text-dark-font-muted mb-4">Start watching to see your history here!</p>
+        <a [routerLink]="['/items']" class="inline-block px-6 py-3 bg-accent-primary text-white no-underline rounded-lg font-medium hover:bg-accent-primary-hover transition-colors">Browse Items</a>
       </div>
 
       <ng-template #hasHistory>
-        <div class="relative">
-          <div *ngFor="let entry of history(); let i = index" class="flex items-start mb-6 relative [&:not(:last-child)]:after:content-[''] [&:not(:last-child)]:after:absolute [&:not(:last-child)]:after:left-[100px] [&:not(:last-child)]:after:top-6 [&:not(:last-child)]:after:bottom-[-1.5rem] [&:not(:last-child)]:after:w-0.5 [&:not(:last-child)]:after:bg-light-border dark:[&:not(:last-child)]:after:bg-dark-border max-sm:[&:not(:last-child)]:after:left-[75px]">
-            <div class="min-w-[100px] text-right pr-4 max-sm:min-w-[70px] max-sm:text-sm">
-              <span class="block font-medium text-light-font dark:text-dark-font">{{ entry.date | dateFormat }}</span>
-              <span class="block text-sm text-light-font-muted dark:text-dark-font-muted">{{ entry.date | timeFormat }}</span>
+        <div class="space-y-2">
+          <div *ngFor="let group of calendarGroups()" class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border overflow-hidden">
+            <div class="flex items-center gap-3 px-5 py-3 bg-light-bg-tertiary dark:bg-dark-bg-tertiary border-b border-light-border dark:border-dark-border">
+              <span class="text-sm font-semibold text-light-font dark:text-dark-font">{{ group.relativeLabel }}</span>
+              <span class="text-xs text-light-font-muted dark:text-dark-font-muted">{{ group.dateLabel }}</span>
+              <span class="ml-auto text-xs bg-accent-primary/10 text-accent-primary px-2 py-0.5 rounded-full font-medium">{{ group.entries.length }}</span>
             </div>
-            <div class="w-3 h-3 rounded-full bg-accent-primary my-1 mx-4 shrink-0 relative z-1 max-sm:mx-2"></div>
-            <div class="flex-1 bg-light-bg-secondary dark:bg-dark-bg-secondary p-4 rounded-lg border border-light-border dark:border-dark-border">
-              <a [routerLink]="['/items', entry.itemId]" class="font-medium text-light-font dark:text-dark-font no-underline mr-2 hover:text-accent-primary">
+
+            <div *ngFor="let entry of group.entries; let last = last" class="flex items-center gap-4 px-5 py-3 hover:bg-light-hover dark:hover:bg-dark-hover transition-colors" [ngClass]="{ 'border-b border-light-border-light dark:border-dark-border-light': !last }">
+              <span class="text-sm font-mono text-light-font-muted dark:text-dark-font-muted min-w-[60px]">{{ entry.relativeTime }}</span>
+
+              <div class="w-1.5 h-1.5 rounded-full shrink-0"
+                   [ngClass]="{
+                     'bg-accent-primary': entry.itemType === 'series',
+                     'bg-accent-success': entry.itemType === 'movie'
+                   }"></div>
+
+              <a [routerLink]="['/items', entry.itemId]" class="text-sm font-medium text-light-font dark:text-dark-font no-underline hover:text-accent-primary transition-colors truncate flex-1">
                 {{ entry.itemTitle }}
               </a>
-              <span class="text-sm text-light-font-muted dark:text-dark-font-muted capitalize mr-2">{{ entry.itemType }}</span>
-              <span *ngIf="entry.itemType === 'series'" class="text-sm bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-0.5 rounded font-medium">
+
+              <span class="text-xs px-2 py-0.5 rounded capitalize bg-light-bg-tertiary dark:bg-dark-bg-tertiary text-light-font-secondary dark:text-dark-font-secondary shrink-0">{{ entry.itemType }}</span>
+
+              <span *ngIf="entry.itemType === 'series'" class="text-xs bg-accent-primary/10 text-accent-primary px-2 py-0.5 rounded font-medium shrink-0">
                 S{{ entry.season }}E{{ entry.episode }}
               </span>
             </div>
@@ -44,13 +59,62 @@ import { TimeFormatPipe } from '../../pipes/time-format.pipe';
 export class WatchHistoryComponent implements OnInit {
   history = signal<HistoryEntry[]>([]);
 
+  calendarGroups = computed(() => {
+    const entries = this.history();
+    const groups: CalendarGroup[] = [];
+    const groupMap = new Map<string, (HistoryEntry & { relativeTime: string })[]>();
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 86400000);
+
+    for (const entry of entries) {
+      const entryDate = new Date(entry.date);
+      const entryDay = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate());
+      const dayKey = entryDay.toISOString();
+
+      if (!groupMap.has(dayKey)) {
+        groupMap.set(dayKey, []);
+      }
+
+      const hours = entryDate.getHours();
+      const minutes = entryDate.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      const displayMinutes = minutes < 10 ? '0' + minutes : minutes;
+      const relativeTime = `${displayHours}:${displayMinutes} ${ampm}`;
+
+      const augmentedEntry = { ...entry, relativeTime };
+      groupMap.get(dayKey)!.push(augmentedEntry);
+    }
+
+    groupMap.forEach((entries, dayKey) => {
+      const entryDay = new Date(dayKey);
+      let relativeLabel: string;
+
+      if (entryDay.getTime() === today.getTime()) {
+        relativeLabel = 'Today';
+      } else if (entryDay.getTime() === yesterday.getTime()) {
+        relativeLabel = 'Yesterday';
+      } else {
+        relativeLabel = entryDay.toLocaleDateString('en-US', { weekday: 'long' });
+      }
+
+      const dateLabel = entryDay.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+
+      groups.push({ relativeLabel, dateLabel, entries });
+    });
+
+    return groups;
+  });
+
   constructor(private watchListService: WatchListService) {}
 
   ngOnInit(): void {
-    this.loadHistory();
-  }
-
-  loadHistory(): void {
     this.history.set(this.watchListService.getAllWatchHistory());
   }
 }

@@ -26,18 +26,6 @@ export const routes: Routes = [
     loadComponent: () => import('./components/watch-history/watch-history.component').then(m => m.WatchHistoryComponent)
   },
   {
-    path: 'history-grid',
-    loadComponent: () => import('./components/watch-history-grid/watch-history-grid.component').then(m => m.WatchHistoryGridComponent)
-  },
-  {
-    path: 'history-list',
-    loadComponent: () => import('./components/watch-history-list/watch-history-list.component').then(m => m.WatchHistoryListComponent)
-  },
-  {
-    path: 'history-calendar',
-    loadComponent: () => import('./components/watch-history-calendar/watch-history-calendar.component').then(m => m.WatchHistoryCalendarComponent)
-  },
-  {
     path: 'settings',
     loadComponent: () => import('./components/settings/settings.component').then(m => m.SettingsComponent)
   }
