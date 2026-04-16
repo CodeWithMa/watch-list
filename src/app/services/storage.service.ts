@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { StorageData, Settings, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
+import { StorageData, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 
@@ -116,27 +116,11 @@ export class StorageService {
     return Object.values(data.groups).sort((a, b) => a.order - b.order);
   }
 
-  getSettings(): Settings {
-    const data = this.getData();
-    return data.settings;
-  }
-
-  updateSettings(settings: Partial<Settings>): void {
-    const data = this.getData();
-    this.saveData({
-      ...data,
-      settings: { ...data.settings, ...settings }
-    });
-  }
-
   private createDefaultData(): StorageData {
     const now = new Date().toISOString();
     return {
       schemaVersion: DEFAULT_SCHEMA_VERSION,
       lastModifiedAt: now,
-      settings: {
-        showCompleted: false
-      },
       groups: {
         ungrouped: {
           id: 'ungrouped',

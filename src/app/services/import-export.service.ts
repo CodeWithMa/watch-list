@@ -57,15 +57,9 @@ export class ImportExportService {
     if (
       typeof d['schemaVersion'] !== 'number' ||
       typeof d['lastModifiedAt'] !== 'string' ||
-      !d['settings'] ||
       !d['groups'] ||
       !d['items']
     ) {
-      return false;
-    }
-
-    const settings = d['settings'] as Record<string, unknown>;
-    if (typeof settings['showCompleted'] !== 'boolean') {
       return false;
     }
 
