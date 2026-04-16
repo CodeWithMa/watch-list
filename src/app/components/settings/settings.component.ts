@@ -1,32 +1,13 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { StorageService } from '../../services/storage.service';
 import { ImportExportService } from '../../services/import-export.service';
-import { Settings } from '../../models/storage.model';
 
 @Component({
   selector: 'app-settings',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule],
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
-
-      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
-        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">Display Options</h2>
-        <div class="mb-4 last:mb-0">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              [(ngModel)]="showCompleted" 
-              name="showCompleted"
-              (change)="updateShowCompleted()"
-              class="w-[18px] h-[18px] cursor-pointer"
-            />
-            Show completed items
-          </label>
-        </div>
-      </div>
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">Data Management</h2>
@@ -67,26 +48,13 @@ import { Settings } from '../../models/storage.model';
     </div>
   `
 })
-export class SettingsComponent implements OnInit {
-  showCompleted = false;
+export class SettingsComponent {
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
   constructor(
-    private storageService: StorageService,
     private importExportService: ImportExportService
   ) {}
-
-  ngOnInit(): void {
-    const settings = this.storageService.getSettings();
-    this.showCompleted = settings.showCompleted;
-  }
-
-  updateShowCompleted(): void {
-    this.storageService.updateSettings({ showCompleted: this.showCompleted });
-    this.successMessage.set('Settings saved');
-    setTimeout(() => this.successMessage.set(null), 3000);
-  }
 
   exportData(): void {
     try {

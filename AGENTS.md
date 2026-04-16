@@ -1,0 +1,1 @@
+- **No Amending:** Never use `git commit --amend`. Always create new, discrete commits for every set of changes.
