@@ -41,7 +41,7 @@ import { ThemeService, Theme } from '../../services/theme.service';
   `
 })
 export class ThemeSwitcherComponent {
-  themeService = inject(ThemeService);
+  protected themeService = inject(ThemeService);
 
   getAriaLabel(): string {
     const current = this.themeService.theme();
