@@ -79,6 +79,14 @@ import { Group } from '../../models/group.model';
               <button type="submit" class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer font-medium hover:not-disabled:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="itemForm.invalid">Save Changes</button>
               <button type="button" (click)="cancelEdit()" class="px-6 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer hover:bg-accent-secondary-hover">Cancel</button>
             </div>
+            <div class="flex gap-2 mt-4">
+              @if (!confirmDelete()) {
+                <button type="button" (click)="confirmDelete.set(true)" class="px-6 py-3 border border-accent-danger rounded bg-transparent text-accent-danger cursor-pointer hover:bg-accent-danger hover:text-white">Delete</button>
+              } @else {
+                <button type="button" (click)="deleteItem()" class="px-6 py-3 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse">Confirm Delete?</button>
+                <button type="button" (click)="cancelDelete()" class="px-6 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border border-light-border dark:border-dark-border rounded cursor-pointer">Cancel</button>
+              }
+            </div>
           </form>
         </div>
       } @else {
@@ -93,6 +101,7 @@ import { Group } from '../../models/group.model';
 export class ItemDetailComponent implements OnInit {
   item = signal<Item | null>(null);
   groups = signal<Group[]>([]);
+  confirmDelete = signal(false);
   
   editTitle = '';
   editStatus: ItemStatus = 'not-started';
@@ -169,6 +178,18 @@ export class ItemDetailComponent implements OnInit {
 
   cancelEdit(): void {
     this.loadEditData();
+  }
+
+  cancelDelete(): void {
+    this.confirmDelete.set(false);
+  }
+
+  deleteItem(): void {
+    const currentItem = this.item();
+    if (currentItem) {
+      this.watchListService.deleteItem(currentItem.id);
+      this.router.navigate(['/items']);
+    }
   }
 }
 
