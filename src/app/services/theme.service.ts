@@ -14,6 +14,11 @@ export class ThemeService {
   private mediaQueryListener: (e: MediaQueryListEvent) => void;
 
   constructor() {
+    const stored = localStorage.getItem(this.STORAGE_KEY) as Theme | null;
+    if (stored && ['system', 'light', 'dark'].includes(stored)) {
+      this.theme.set(stored);
+    }
+    
     this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     
     this.mediaQueryListener = (e: MediaQueryListEvent) => {
@@ -27,15 +32,6 @@ export class ThemeService {
     effect(() => {
       this.applyTheme();
     });
-  }
-
-  init(): void {
-    const stored = localStorage.getItem(this.STORAGE_KEY) as Theme | null;
-    if (stored && ['system', 'light', 'dark'].includes(stored)) {
-      this.theme.set(stored);
-    } else {
-      this.theme.set('system');
-    }
   }
 
   setTheme(newTheme: Theme): void {

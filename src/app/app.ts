@@ -1,6 +1,5 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { ThemeService } from './services/theme.service';
 import { ThemeSwitcherComponent } from './components/theme-switcher/theme-switcher.component';
 
 @Component({
@@ -9,11 +8,6 @@ import { ThemeSwitcherComponent } from './components/theme-switcher/theme-switch
   templateUrl: './app.html',
   styles: [':host { display: block; min-height: 100vh; }']
 })
-export class App implements OnInit {
+export class App {
   protected readonly title = signal('watch-list');
-  private themeService = inject(ThemeService);
-
-  ngOnInit(): void {
-    this.themeService.init();
-  }
 }
