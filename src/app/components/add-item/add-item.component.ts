@@ -11,44 +11,44 @@ import { Group } from '../../models/group.model';
   selector: 'app-add-item',
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="add-item-container">
-      <h1>Add New Item</h1>
+    <div class="max-w-[600px] mx-auto p-8">
+      <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Add New Item</h1>
       
-      <form (ngSubmit)="onSubmit()" class="add-item-form">
-        <div class="form-group">
-          <label for="title">Title *</label>
+      <form (ngSubmit)="onSubmit()" class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-8 rounded-lg">
+        <div class="mb-6">
+          <label for="title" class="block mb-2 font-medium text-light-font dark:text-dark-font">Title *</label>
           <input 
             type="text" 
             id="title" 
             [(ngModel)]="title" 
             name="title" 
             required 
-            class="form-control"
+            class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
           />
         </div>
 
-        <div class="form-group">
-          <label for="type">Type *</label>
+        <div class="mb-6">
+          <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font">Type *</label>
           <select 
             id="type" 
             [(ngModel)]="type" 
             name="type" 
             (change)="onTypeChange()"
-            class="form-control"
+            class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
           >
             <option value="series">Series</option>
             <option value="movie">Movie</option>
           </select>
         </div>
 
-        <div class="form-group">
-          <label for="groupId">Group *</label>
+        <div class="mb-6">
+          <label for="groupId" class="block mb-2 font-medium text-light-font dark:text-dark-font">Group *</label>
           <select 
             id="groupId" 
             [(ngModel)]="groupId" 
             name="groupId" 
             required
-            class="form-control"
+            class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
           >
             <option *ngFor="let group of groups()" [value]="group.id">
               {{ group.name }}
@@ -56,9 +56,9 @@ import { Group } from '../../models/group.model';
           </select>
         </div>
 
-        <div *ngIf="type === 'series'" class="series-fields">
-          <div class="form-group">
-            <label for="season">Season</label>
+        <div *ngIf="type === 'series'" class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
+          <div class="mb-6">
+            <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font">Season</label>
             <input 
               type="number" 
               id="season" 
@@ -66,12 +66,12 @@ import { Group } from '../../models/group.model';
               name="season" 
               min="1" 
               value="1"
-              class="form-control"
+              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
             />
           </div>
 
-          <div class="form-group">
-            <label for="episode">Starting Episode</label>
+          <div class="mb-6">
+            <label for="episode" class="block mb-2 font-medium text-light-font dark:text-dark-font">Starting Episode</label>
             <input 
               type="number" 
               id="episode" 
@@ -79,118 +79,30 @@ import { Group } from '../../models/group.model';
               name="episode" 
               min="1" 
               value="1"
-              class="form-control"
+              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
             />
           </div>
 
-          <div class="form-group">
-            <label for="totalEpisodes">Total Episodes (optional)</label>
+          <div class="mb-6">
+            <label for="totalEpisodes" class="block mb-2 font-medium text-light-font dark:text-dark-font">Total Episodes (optional)</label>
             <input 
               type="number" 
               id="totalEpisodes" 
               [(ngModel)]="totalEpisodes" 
               name="totalEpisodes" 
               min="1"
-              class="form-control"
+              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
             />
           </div>
         </div>
 
-        <div class="form-actions">
-          <button type="submit" class="submit-btn">Add Item</button>
-          <button type="button" (click)="cancel()" class="cancel-btn">Cancel</button>
+        <div class="flex gap-4 mt-8">
+          <button type="submit" class="px-8 py-3 bg-accent-primary text-white border-none rounded cursor-pointer text-base font-medium hover:bg-accent-primary-hover">Add Item</button>
+          <button type="button" (click)="cancel()" class="px-8 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer text-base hover:bg-accent-secondary-hover">Cancel</button>
         </div>
       </form>
     </div>
-  `,
-  styles: [`
-    .add-item-container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 2rem;
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-    }
-
-    .add-item-form {
-      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
-      padding: 2rem;
-      border-radius: 8px;
-    }
-
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-    }
-
-    .form-control {
-      width: 100%;
-      padding: 0.75rem;
-      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-      border-radius: 4px;
-      font-size: 1rem;
-      box-sizing: border-box;
-      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-    }
-
-    .form-control:focus {
-      outline: none;
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-    }
-
-    .series-fields {
-      border-top: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-      padding-top: 1.5rem;
-      margin-top: 1.5rem;
-    }
-
-    .form-actions {
-      display: flex;
-      gap: 1rem;
-      margin-top: 2rem;
-    }
-
-    .submit-btn {
-      padding: 0.75rem 2rem;
-      background: var(--accent-primary);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 500;
-    }
-
-    .submit-btn:hover {
-      background: var(--accent-primary-hover);
-    }
-
-    .cancel-btn {
-      padding: 0.75rem 2rem;
-      background: var(--accent-secondary);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-
-    .cancel-btn:hover {
-      background: var(--accent-secondary-hover);
-    }
-  `]
+  `
 })
 export class AddItemComponent implements OnInit {
   groups = signal<Group[]>([]);

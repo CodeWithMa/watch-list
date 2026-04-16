@@ -9,29 +9,29 @@ import { TimeFormatPipe } from '../../pipes/time-format.pipe';
   selector: 'app-watch-history',
   imports: [CommonModule, RouterLink, DateFormatPipe, TimeFormatPipe],
   template: `
-    <div class="history-container">
-      <h1>Watch History</h1>
+    <div class="max-w-[800px] mx-auto p-8">
+      <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Watch History</h1>
 
-      <div *ngIf="history().length === 0; else hasHistory" class="empty-state">
-        <p>No watch history yet.</p>
-        <p>Start watching to see your history here!</p>
-        <a [routerLink]="['/items']" class="action-button">Browse Items</a>
+      <div *ngIf="history().length === 0; else hasHistory" class="text-center p-16 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg">
+        <p class="text-light-font-secondary dark:text-dark-font-secondary mb-2">No watch history yet.</p>
+        <p class="text-light-font-secondary dark:text-dark-font-secondary mb-2">Start watching to see your history here!</p>
+        <a [routerLink]="['/items']" class="inline-block mt-4 px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover">Browse Items</a>
       </div>
 
       <ng-template #hasHistory>
-        <div class="timeline">
-          <div *ngFor="let entry of history(); let i = index" class="timeline-entry">
-            <div class="timeline-date">
-              <span class="date">{{ entry.date | dateFormat }}</span>
-              <span class="time">{{ entry.date | timeFormat }}</span>
+        <div class="relative">
+          <div *ngFor="let entry of history(); let i = index" class="flex items-start mb-6 relative [&:not(:last-child)]:after:content-[''] [&:not(:last-child)]:after:absolute [&:not(:last-child)]:after:left-[100px] [&:not(:last-child)]:after:top-6 [&:not(:last-child)]:after:bottom-[-1.5rem] [&:not(:last-child)]:after:w-0.5 [&:not(:last-child)]:after:bg-light-border dark:[&:not(:last-child)]:after:bg-dark-border max-sm:[&:not(:last-child)]:after:left-[75px]">
+            <div class="min-w-[100px] text-right pr-4 max-sm:min-w-[70px] max-sm:text-sm">
+              <span class="block font-medium text-light-font dark:text-dark-font">{{ entry.date | dateFormat }}</span>
+              <span class="block text-sm text-light-font-muted dark:text-dark-font-muted">{{ entry.date | timeFormat }}</span>
             </div>
-            <div class="timeline-dot"></div>
-            <div class="timeline-content">
-              <a [routerLink]="['/items', entry.itemId]" class="item-title">
+            <div class="w-3 h-3 rounded-full bg-accent-primary my-1 mx-4 shrink-0 relative z-1 max-sm:mx-2"></div>
+            <div class="flex-1 bg-light-bg-secondary dark:bg-dark-bg-secondary p-4 rounded-lg border border-light-border dark:border-dark-border">
+              <a [routerLink]="['/items', entry.itemId]" class="font-medium text-light-font dark:text-dark-font no-underline mr-2 hover:text-accent-primary">
                 {{ entry.itemTitle }}
               </a>
-              <span class="item-type">{{ entry.itemType }}</span>
-              <span *ngIf="entry.itemType === 'series'" class="episode-info">
+              <span class="text-sm text-light-font-muted dark:text-dark-font-muted capitalize mr-2">{{ entry.itemType }}</span>
+              <span *ngIf="entry.itemType === 'series'" class="text-sm bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-0.5 rounded font-medium">
                 S{{ entry.season }}E{{ entry.episode }}
               </span>
             </div>
@@ -39,146 +39,7 @@ import { TimeFormatPipe } from '../../pipes/time-format.pipe';
         </div>
       </ng-template>
     </div>
-  `,
-  styles: [`
-    .history-container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 2rem;
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 4rem 2rem;
-      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
-      border-radius: 8px;
-    }
-
-    .empty-state p {
-      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
-      margin-bottom: 0.5rem;
-    }
-
-    .empty-state .action-button {
-      display: inline-block;
-      margin-top: 1rem;
-      padding: 0.75rem 1.5rem;
-      background: var(--accent-primary);
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-      font-weight: 500;
-    }
-
-    .empty-state .action-button:hover {
-      background: var(--accent-primary-hover);
-    }
-
-    .timeline {
-      position: relative;
-    }
-
-    .timeline-entry {
-      display: flex;
-      align-items: flex-start;
-      margin-bottom: 1.5rem;
-      position: relative;
-    }
-
-    .timeline-entry:not(:last-child)::before {
-      content: '';
-      position: absolute;
-      left: 100px;
-      top: 24px;
-      bottom: -1.5rem;
-      width: 2px;
-      background: light-dark(var(--light-border-color), var(--dark-border-color));
-    }
-
-    .timeline-date {
-      min-width: 100px;
-      text-align: right;
-      padding-right: 1rem;
-    }
-
-    .date {
-      display: block;
-      font-weight: 500;
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-    }
-
-    .time {
-      display: block;
-      font-size: 0.85rem;
-      color: light-dark(var(--light-font-muted), var(--dark-font-muted));
-    }
-
-    .timeline-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--accent-primary);
-      margin: 4px 1rem 0;
-      flex-shrink: 0;
-      position: relative;
-      z-index: 1;
-    }
-
-    .timeline-content {
-      flex: 1;
-      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
-      padding: 1rem;
-      border-radius: 8px;
-      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-    }
-
-    .item-title {
-      font-weight: 500;
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-      text-decoration: none;
-      margin-right: 0.5rem;
-    }
-
-    .item-title:hover {
-      color: var(--accent-primary);
-    }
-
-    .item-type {
-      font-size: 0.85rem;
-      color: light-dark(var(--light-font-muted), var(--dark-font-muted));
-      text-transform: capitalize;
-      margin-right: 0.5rem;
-    }
-
-    .episode-info {
-      font-size: 0.85rem;
-      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      font-weight: 500;
-    }
-
-    @media (max-width: 600px) {
-      .timeline-date {
-        min-width: 70px;
-        font-size: 0.85rem;
-      }
-
-      .timeline-dot {
-        margin: 4px 0.5rem 0;
-      }
-
-      .timeline-entry:not(:last-child)::before {
-        left: 75px;
-      }
-    }
-  `]
+  `
 })
 export class WatchHistoryComponent implements OnInit {
   history = signal<HistoryEntry[]>([]);

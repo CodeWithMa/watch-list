@@ -8,36 +8,36 @@ import { Group } from '../../models/group.model';
   selector: 'app-group-manager',
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="group-manager-container">
-      <h1>Group Management</h1>
+    <div class="max-w-[800px] mx-auto p-8">
+      <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Group Management</h1>
 
-      <div class="create-group-section">
-        <h2>Create New Group</h2>
-        <form (ngSubmit)="createGroup()" class="create-form">
+      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-8">
+        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Create New Group</h2>
+        <form (ngSubmit)="createGroup()" class="flex gap-4">
           <input 
             type="text" 
             [(ngModel)]="newGroupName" 
             name="newGroupName"
             placeholder="Group name"
             required
-            class="group-input"
+            class="flex-1 p-3 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
           />
-          <button type="submit" class="create-btn">Create Group</button>
+          <button type="submit" class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer font-medium hover:bg-accent-primary-hover">Create Group</button>
         </form>
       </div>
 
-      <div class="groups-list">
-        <h2>Groups</h2>
-        <div *ngFor="let group of sortedGroups(); let i = index" class="group-item">
-          <div class="group-info">
-            <span class="group-name">{{ group.name }}</span>
-            <span class="group-order">Order: {{ group.order }}</span>
+      <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-lg p-6">
+        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Groups</h2>
+        <div *ngFor="let group of sortedGroups(); let i = index" class="flex justify-between items-center p-4 border-b border-light-border-light dark:border-dark-border-light last:border-b-0">
+          <div class="flex flex-col gap-1">
+            <span class="font-medium text-lg">{{ group.name }}</span>
+            <span class="text-sm text-light-font-secondary dark:text-dark-font-secondary">Order: {{ group.order }}</span>
           </div>
-          <div class="group-actions">
+          <div class="flex gap-2">
             <button 
               *ngIf="i > 0" 
               (click)="moveUp(group.id)" 
-              class="action-btn"
+              class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
               title="Move up"
             >
               ↑
@@ -45,7 +45,7 @@ import { Group } from '../../models/group.model';
             <button 
               *ngIf="i < sortedGroups().length - 1" 
               (click)="moveDown(group.id)" 
-              class="action-btn"
+              class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
               title="Move down"
             >
               ↓
@@ -53,14 +53,14 @@ import { Group } from '../../models/group.model';
             <button 
               *ngIf="group.id !== 'ungrouped'"
               (click)="editGroup(group)" 
-              class="action-btn edit"
+              class="px-4 py-2 border border-accent-warning rounded bg-accent-warning text-black dark:text-white hover:bg-accent-warning-hover cursor-pointer text-sm"
             >
               Edit
             </button>
             <button 
               *ngIf="group.id !== 'ungrouped'"
               (click)="deleteGroup(group.id)" 
-              class="action-btn delete"
+              class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white hover:bg-accent-danger-hover cursor-pointer text-sm"
             >
               Delete
             </button>
@@ -68,212 +68,26 @@ import { Group } from '../../models/group.model';
         </div>
       </div>
 
-      <div *ngIf="editingGroup()" class="edit-modal">
-        <div class="modal-content">
-          <h3>Edit Group</h3>
+      <div *ngIf="editingGroup()" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]">
+        <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary p-8 rounded-lg min-w-[400px]">
+          <h3 class="mt-0 mb-6">Edit Group</h3>
           <form (ngSubmit)="saveEdit()">
             <input 
               type="text" 
               [(ngModel)]="editGroupName" 
               name="editGroupName"
               required
-              class="group-input"
+              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
             />
-            <div class="modal-actions">
-              <button type="submit" class="save-btn">Save</button>
-              <button type="button" (click)="cancelEdit()" class="cancel-btn">Cancel</button>
+            <div class="flex gap-4 mt-6">
+              <button type="submit" class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer hover:bg-accent-primary-hover">Save</button>
+              <button type="button" (click)="cancelEdit()" class="px-6 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer hover:bg-accent-secondary-hover">Cancel</button>
             </div>
           </form>
         </div>
       </div>
     </div>
-  `,
-  styles: [`
-    .group-manager-container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 2rem;
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-    }
-
-    h2 {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
-    }
-
-    .create-group-section {
-      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
-      padding: 1.5rem;
-      border-radius: 8px;
-      margin-bottom: 2rem;
-    }
-
-    .create-form {
-      display: flex;
-      gap: 1rem;
-    }
-
-    .group-input {
-      flex: 1;
-      padding: 0.75rem;
-      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-      border-radius: 4px;
-      font-size: 1rem;
-      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-    }
-
-    .create-btn {
-      padding: 0.75rem 1.5rem;
-      background: var(--accent-primary);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
-    .create-btn:hover {
-      background: var(--accent-primary-hover);
-    }
-
-    .groups-list {
-      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
-      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-      border-radius: 8px;
-      padding: 1.5rem;
-    }
-
-    .group-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem;
-      border-bottom: 1px solid light-dark(var(--light-border-light), var(--dark-border-light));
-    }
-
-    .group-item:last-child {
-      border-bottom: none;
-    }
-
-    .group-info {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .group-name {
-      font-weight: 500;
-      font-size: 1.1rem;
-    }
-
-    .group-order {
-      font-size: 0.9rem;
-      color: light-dark(var(--light-font-secondary), var(--dark-font-secondary));
-    }
-
-    .group-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .action-btn {
-      padding: 0.5rem 1rem;
-      border: 1px solid light-dark(var(--light-border-color), var(--dark-border-color));
-      border-radius: 4px;
-      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
-      color: light-dark(var(--light-font-color), var(--dark-font-color));
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
-
-    .action-btn:hover {
-      background: light-dark(var(--light-bg-tertiary), var(--dark-bg-tertiary));
-    }
-
-    .action-btn.edit {
-      background: var(--accent-warning);
-      color: light-dark(#000, #fff);
-      border-color: var(--accent-warning);
-    }
-
-    .action-btn.edit:hover {
-      background: var(--accent-warning-hover);
-    }
-
-    .action-btn.delete {
-      background: var(--accent-danger);
-      color: white;
-      border-color: var(--accent-danger);
-    }
-
-    .action-btn.delete:hover {
-      background: var(--accent-danger-hover);
-    }
-
-    .edit-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal-content {
-      background: light-dark(var(--light-bg-secondary), var(--dark-bg-secondary));
-      padding: 2rem;
-      border-radius: 8px;
-      min-width: 400px;
-    }
-
-    .modal-content h3 {
-      margin-top: 0;
-      margin-bottom: 1.5rem;
-    }
-
-    .modal-actions {
-      display: flex;
-      gap: 1rem;
-      margin-top: 1.5rem;
-    }
-
-    .save-btn {
-      padding: 0.75rem 1.5rem;
-      background: var(--accent-primary);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .save-btn:hover {
-      background: var(--accent-primary-hover);
-    }
-
-    .cancel-btn {
-      padding: 0.75rem 1.5rem;
-      background: var(--accent-secondary);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .cancel-btn:hover {
-      background: var(--accent-secondary-hover);
-    }
-  `]
+  `
 })
 export class GroupManagerComponent implements OnInit {
   groups = signal<Group[]>([]);

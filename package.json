@@ -43,8 +43,11 @@
     "@angular/build": "^21.2.4",
     "@angular/cli": "^21.2.4",
     "@angular/compiler-cli": "^21.2.6",
+    "@tailwindcss/postcss": "^4.2.2",
     "@tauri-apps/cli": "^2.10.1",
     "jsdom": "^27.1.0",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^4.2.2",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
   }

@@ -1,16 +1,16 @@
-<nav class="navbar">
-  <div class="nav-container">
-    <a routerLink="/" class="nav-logo">Watch List</a>
-    <div class="nav-links">
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
-      <a routerLink="/items" routerLinkActive="active">Items</a>
-      <a routerLink="/history" routerLinkActive="active">History</a>
-      <a routerLink="/groups" routerLinkActive="active">Groups</a>
-      <a routerLink="/settings" routerLinkActive="active">Settings</a>
+<nav class="bg-light-bg-secondary dark:bg-dark-bg-secondary border-b border-light-border dark:border-dark-border shadow-light dark:shadow-dark sticky top-0 z-100">
+  <div class="max-w-[1200px] mx-auto px-8 py-4 flex justify-between items-center max-md:flex-col max-md:gap-4">
+    <a routerLink="/" class="text-2xl font-bold text-accent-primary hover:text-accent-primary-hover no-underline">Watch List</a>
+    <div class="flex gap-6 max-md:flex-wrap max-md:justify-center">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary">Home</a>
+      <a routerLink="/items" routerLinkActive="active" class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary">Items</a>
+      <a routerLink="/history" routerLinkActive="active" class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary">History</a>
+      <a routerLink="/groups" routerLinkActive="active" class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary">Groups</a>
+      <a routerLink="/settings" routerLinkActive="active" class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary">Settings</a>
     </div>
   </div>
 </nav>
 
-<main class="main-content">
+<main class="min-h-[calc(100vh-80px)] bg-light-bg-primary dark:bg-dark-bg-primary">
   <router-outlet />
 </main>

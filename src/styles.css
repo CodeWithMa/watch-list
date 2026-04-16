@@ -1,67 +1,101 @@
-/* Global Styles */
-* {
-  box-sizing: border-box;
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-light-bg-primary: #f5f5f5;
+  --color-light-bg-secondary: #ffffff;
+  --color-light-bg-tertiary: #f8f9fa;
+  --color-light-font: #333333;
+  --color-light-font-secondary: #666666;
+  --color-light-font-muted: #999999;
+  --color-light-border: #e0e0e0;
+  --color-light-border-light: #eeeeee;
+
+  --color-dark-bg-primary: #1a1a1a;
+  --color-dark-bg-secondary: #2d2d2d;
+  --color-dark-bg-tertiary: #252525;
+  --color-dark-font: #e0e0e0;
+  --color-dark-font-secondary: #b0b0b0;
+  --color-dark-font-muted: #808080;
+  --color-dark-border: #404040;
+  --color-dark-border-light: #333333;
+
+  --color-accent-primary: #007bff;
+  --color-accent-primary-hover: #0056b3;
+  --color-accent-success: #28a745;
+  --color-accent-success-hover: #218838;
+  --color-accent-info: #17a2b8;
+  --color-accent-info-hover: #138496;
+  --color-accent-warning: #ffc107;
+  --color-accent-warning-hover: #e0a800;
+  --color-accent-danger: #dc3545;
+  --color-accent-danger-hover: #c82333;
+  --color-accent-secondary: #6c757d;
+  --color-accent-secondary-hover: #5a6268;
+
+  --color-light-hover: #e9ecef;
+  --color-dark-hover: #333333;
+
+  --color-status-not-started-bg-light: #fff3cd;
+  --color-status-not-started-text-light: #856404;
+  --color-status-not-started-bg-dark: #856404;
+  --color-status-not-started-text-dark: #fff3cd;
+
+  --color-status-in-progress-bg-light: #d1ecf1;
+  --color-status-in-progress-text-light: #0c5460;
+  --color-status-in-progress-bg-dark: #0c5460;
+  --color-status-in-progress-text-dark: #d1ecf1;
+
+  --color-status-completed-bg-light: #d4edda;
+  --color-status-completed-text-light: #155724;
+  --color-status-completed-bg-dark: #155724;
+  --color-status-completed-text-dark: #d4edda;
+
+  --color-error-bg-light: #f8d7da;
+  --color-error-text-light: #721c24;
+  --color-error-border-light: #f5c6cb;
+  --color-error-bg-dark: #721c24;
+  --color-error-text-dark: #f8d7da;
+  --color-error-border-dark: #721c24;
+
+  --color-success-bg-light: #d4edda;
+  --color-success-text-light: #155724;
+  --color-success-border-light: #c3e6cb;
+  --color-success-bg-dark: #155724;
+  --color-success-text-dark: #d4edda;
+  --color-success-border-dark: #155724;
+
+  --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.5);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-:root {
-  /* Light mode colors */
-  --light-bg-primary: #f5f5f5;
-  --light-bg-secondary: #ffffff;
-  --light-bg-tertiary: #f8f9fa;
-  --light-font-color: #333333;
-  --light-font-secondary: #666666;
-  --light-font-muted: #999999;
-  --light-border-color: #e0e0e0;
-  --light-border-light: #eeeeee;
-  --light-shadow: rgba(0, 0, 0, 0.1);
-  
-  /* Dark mode colors */
-  --dark-bg-primary: #1a1a1a;
-  --dark-bg-secondary: #2d2d2d;
-  --dark-bg-tertiary: #252525;
-  --dark-font-color: #e0e0e0;
-  --dark-font-secondary: #b0b0b0;
-  --dark-font-muted: #808080;
-  --dark-border-color: #404040;
-  --dark-border-light: #333333;
-  --dark-shadow: rgba(0, 0, 0, 0.5);
-  
-  /* Accent colors (same for both modes) */
-  --accent-primary: #007bff;
-  --accent-primary-hover: #0056b3;
-  --accent-success: #28a745;
-  --accent-success-hover: #218838;
-  --accent-info: #17a2b8;
-  --accent-info-hover: #138496;
-  --accent-warning: #ffc107;
-  --accent-warning-hover: #e0a800;
-  --accent-danger: #dc3545;
-  --accent-danger-hover: #c82333;
-  --accent-secondary: #6c757d;
-  --accent-secondary-hover: #5a6268;
-}
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 
-html {
-  color-scheme: light dark;
-}
+  html {
+    color-scheme: light dark;
+  }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    @apply bg-light-bg-primary text-light-font dark:bg-dark-bg-primary dark:text-dark-font;
+  }
 
-body {
-  background: light-dark(var(--light-bg-primary), var(--dark-bg-primary));
-  color: light-dark(var(--light-font-color), var(--dark-font-color));
-}
-
-button {
-  font-family: inherit;
-}
-
-input, select, textarea {
-  font-family: inherit;
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
 }

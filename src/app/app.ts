@@ -5,7 +5,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styles: [':host { display: block; min-height: 100vh; }']
 })
 export class App {
   protected readonly title = signal('watch-list');
