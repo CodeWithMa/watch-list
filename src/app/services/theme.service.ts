@@ -1,4 +1,4 @@
-import { Injectable, signal, effect, inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, signal, effect, inject, PLATFORM_ID, OnDestroy } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 
 export type Theme = 'system' | 'light' | 'dark';
@@ -6,7 +6,7 @@ export type Theme = 'system' | 'light' | 'dark';
 @Injectable({
   providedIn: 'root'
 })
-export class ThemeService {
+export class ThemeService implements OnDestroy {
   private readonly STORAGE_KEY = 'theme';
   private readonly platformId = inject(PLATFORM_ID);
   private readonly document = inject(DOCUMENT);
