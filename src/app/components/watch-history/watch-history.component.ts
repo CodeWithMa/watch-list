@@ -98,7 +98,7 @@ export class WatchHistoryComponent implements OnInit {
       } else if (daysDiff === 1) {
         relativeLabel = 'Yesterday';
       } else if (daysDiff <= 6) {
-        relativeLabel = 'Last ' + entryDay.toLocaleDateString('en-US', { weekday: 'long' });
+        relativeLabel = entryDay.toLocaleDateString('en-US', { weekday: 'long' });
       } else {
         relativeLabel = entryDay.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
       }
