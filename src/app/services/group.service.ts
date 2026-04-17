@@ -1,14 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Group } from '../models/group.model';
-import { WatchListService } from './watch-list.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class GroupService {
   private storageService = inject(StorageService);
-  private watchListService = inject(WatchListService);
 
 
   createGroup(name: string): Group {
@@ -51,7 +49,7 @@ export class GroupService {
     }
 
     const data = this.storageService.getData();
-    const { [groupId]: removed, ...groups } = data.groups;
+    const { [groupId]: _removed, ...groups } = data.groups;
 
     // Move all items from this group to ungrouped
     const items = { ...data.items };
