@@ -35,7 +35,7 @@ import { statusBadgeClass } from '../../utils/status.utils';
                   (keydown.enter)="editStatus.set('not-started')"
                   (keydown.space)="editStatus.set('not-started')"
                   class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                  [ngClass]="statusBadgeClass(editStatus() === 'not-started', 'not-started')">
+                  [ngClass]="statusBadgeClass(editStatus() === 'not-started', 'not-started', true)">
                   Not Started
                 </button>
                 <button type="button" role="button" tabindex="0"
@@ -43,7 +43,7 @@ import { statusBadgeClass } from '../../utils/status.utils';
                   (keydown.enter)="editStatus.set('in-progress')"
                   (keydown.space)="editStatus.set('in-progress')"
                   class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                  [ngClass]="statusBadgeClass(editStatus() === 'in-progress', 'in-progress')">
+                  [ngClass]="statusBadgeClass(editStatus() === 'in-progress', 'in-progress', true)">
                   In Progress
                 </button>
                 <button type="button" role="button" tabindex="0"
@@ -51,7 +51,7 @@ import { statusBadgeClass } from '../../utils/status.utils';
                   (keydown.enter)="editStatus.set('completed')"
                   (keydown.space)="editStatus.set('completed')"
                   class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                  [ngClass]="statusBadgeClass(editStatus() === 'completed', 'completed')">
+                  [ngClass]="statusBadgeClass(editStatus() === 'completed', 'completed', true)">
                   Completed
                 </button>
               </div>

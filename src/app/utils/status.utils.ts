@@ -1,10 +1,24 @@
 import { ItemStatus } from '../models/item.model';
 
-export function statusBadgeClass(isSelected: boolean, status: ItemStatus): Record<string, boolean> {
+export function statusBadgeClass(isSelected: boolean, status: ItemStatus, interactive = false): Record<string, boolean> {
+  const unselected = !isSelected;
+  const notStarted = status === 'not-started';
+  const inProgress = status === 'in-progress';
+  const completed = status === 'completed';
+
+  const base = interactive
+    ? 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'
+    : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font';
+
+  const shadow = 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]';
+
   return {
-    'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary': !isSelected,
-    'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent': isSelected && status === 'not-started',
-    'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent': isSelected && status === 'in-progress',
-    'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent': isSelected && status === 'completed',
+    [base]: unselected || (isSelected && !interactive),
+    [`${shadow} border-transparent bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark`]: isSelected && notStarted && interactive,
+    [`${shadow} border-transparent bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark`]: isSelected && inProgress && interactive,
+    [`${shadow} border-transparent bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark`]: isSelected && completed && interactive,
+    'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark': isSelected && notStarted && !interactive,
+    'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark': isSelected && inProgress && !interactive,
+    'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark': isSelected && completed && !interactive,
   };
 }
