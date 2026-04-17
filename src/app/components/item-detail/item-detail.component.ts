@@ -33,7 +33,7 @@ import { Group } from '../../models/group.model';
                   (click)="editStatus.set('not-started')"
                   (keydown.enter)="editStatus.set('not-started')"
                   (keydown.space)="editStatus.set('not-started')"
-                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
                   [ngClass]="statusButtonClass('not-started')">
                   Not Started
                 </button>
@@ -41,7 +41,7 @@ import { Group } from '../../models/group.model';
                   (click)="editStatus.set('in-progress')"
                   (keydown.enter)="editStatus.set('in-progress')"
                   (keydown.space)="editStatus.set('in-progress')"
-                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
                   [ngClass]="statusButtonClass('in-progress')">
                   In Progress
                 </button>
@@ -49,7 +49,7 @@ import { Group } from '../../models/group.model';
                   (click)="editStatus.set('completed')"
                   (keydown.enter)="editStatus.set('completed')"
                   (keydown.space)="editStatus.set('completed')"
-                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
                   [ngClass]="statusButtonClass('completed')">
                   Completed
                 </button>
