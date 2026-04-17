@@ -77,6 +77,18 @@ export class ImportExportService {
       return false;
     }
 
+    if (d['deletedItems']) {
+      if (typeof d['deletedItems'] !== 'object' || Array.isArray(d['deletedItems'])) {
+        return false;
+      }
+      const deletedItems = d['deletedItems'] as Record<string, unknown>;
+      for (const entry of Object.values(deletedItems)) {
+        if (!this.validateDeletedItem(entry)) {
+          return false;
+        }
+      }
+    }
+
     return true;
   }
 
@@ -99,7 +111,31 @@ export class ImportExportService {
         return false;
       }
     }
+
+    const deletedItems = data.deletedItems;
+    if (deletedItems) {
+      for (const entry of Object.values(deletedItems)) {
+        if (!this.validateDeletedItem(entry)) {
+          return false;
+        }
+      }
+    }
+
     return true;
+  }
+
+  private validateDeletedItem(entry: unknown): boolean {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+    const e = entry as Record<string, unknown>;
+    return (
+      typeof e['itemId'] === 'string' &&
+      typeof e['itemTitle'] === 'string' &&
+      (e['itemType'] === 'series' || e['itemType'] === 'movie') &&
+      typeof e['deletedAt'] === 'string' &&
+      Array.isArray(e['watchHistory'])
+    );
   }
 
   private validateItem(item: unknown): boolean {
