@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -17,7 +17,7 @@ import { Group } from '../../models/group.model';
           <h2 class="mt-0 mb-6">Edit Item</h2>
           <form (ngSubmit)="saveChanges()" #itemForm="ngForm">
             <div class="mb-4">
-              <label class="block mb-2 font-medium">Title:</label>
+              <span class="block mb-2 font-medium">Title:</span>
               <input type="text" [ngModel]="editTitle()" (ngModelChange)="editTitle.set($event)" name="title" required class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
               @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
                 <div class="text-accent-danger text-sm mt-1">
@@ -25,60 +25,71 @@ import { Group } from '../../models/group.model';
                 </div>
               }
             </div>
-
+     
             <div class="mb-4">
-              <label class="block mb-2 font-medium">Status:</label>
+              <span class="block mb-2 font-medium">Status:</span>
               <div class="flex gap-4">
-                <div (click)="editStatus.set('not-started')"
-                     class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                     [ngClass]="editStatus() === 'not-started'
-                       ? 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
-                       : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
+                <button type="button" role="button" tabindex="0"
+                  (click)="editStatus.set('not-started')"
+                  (keydown.enter)="editStatus.set('not-started')"
+                  (keydown.space)="editStatus.set('not-started')"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                  [ngClass]="editStatus() === 'not-started'
+                    ? 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                    : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
                   Not Started
-                </div>
-                <div (click)="editStatus.set('in-progress')"
-                     class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                     [ngClass]="editStatus() === 'in-progress'
-                       ? 'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
-                       : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
+                </button>
+                <button type="button" role="button" tabindex="0"
+                  (click)="editStatus.set('in-progress')"
+                  (keydown.enter)="editStatus.set('in-progress')"
+                  (keydown.space)="editStatus.set('in-progress')"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                  [ngClass]="editStatus() === 'in-progress'
+                    ? 'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                    : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
                   In Progress
-                </div>
-                <div (click)="editStatus.set('completed')"
-                     class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                     [ngClass]="editStatus() === 'completed'
-                       ? 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
-                       : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
+                </button>
+                <button type="button" role="button" tabindex="0"
+                  (click)="editStatus.set('completed')"
+                  (keydown.enter)="editStatus.set('completed')"
+                  (keydown.space)="editStatus.set('completed')"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                  [ngClass]="editStatus() === 'completed'
+                    ? 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                    : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
                   Completed
-                </div>
+                </button>
               </div>
             </div>
-
+     
             <div class="mb-4">
-              <label class="block mb-2 font-medium">Type:</label>
+              <span class="block mb-2 font-medium">Type:</span>
               <select [ngModel]="editType()" (ngModelChange)="editType.set($event); onTypeChange()" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]">
                 <option value="series">Series</option>
                 <option value="movie">Movie</option>
               </select>
             </div>
             <div class="mb-4">
-              <label class="block mb-2 font-medium">Group:</label>
-              <select [ngModel]="editGroupId()" (ngModelChange)="editGroupId.set($event)" name="groupId" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]">
-                <option *ngFor="let group of groups()" [value]="group.id">
-                  {{ group.name }}
-                </option>
+              <label for="group-select" class="block mb-2 font-medium">Group:</label>
+              <select id="group-select" [ngModel]="editGroupId()" (ngModelChange)="editGroupId.set($event)" name="groupId" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]">
+                @for (group of groups(); track group.id) {
+                  <option [value]="group.id">
+                    {{ group.name }}
+                  </option>
+                }
               </select>
             </div>
             @if (editType() === 'series') {
               <div class="mb-4">
-                <label class="block mb-2 font-medium">Season:</label>
+                <span class="block mb-2 font-medium">Season:</span>
                 <input type="number" [ngModel]="editSeason()" (ngModelChange)="editSeason.set($event ?? 1)" name="season" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
               </div>
               <div class="mb-4">
-                <label class="block mb-2 font-medium">Episode:</label>
+                <span class="block mb-2 font-medium">Episode:</span>
                 <input type="number" [ngModel]="editEpisode()" (ngModelChange)="editEpisode.set($event ?? 1)" name="episode" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
               </div>
               <div class="mb-4">
-                <label class="block mb-2 font-medium">Total Episodes (optional):</label>
+                <span class="block mb-2 font-medium">Total Episodes (optional):</span>
                 <input type="number" [ngModel]="editTotalEpisodes()" (ngModelChange)="editTotalEpisodes.set($event ?? undefined)" name="totalEpisodes" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
               </div>
             }
@@ -108,9 +119,14 @@ import { Group } from '../../models/group.model';
         </div>
       }
     </div>
-  `
+    `
 })
 export class ItemDetailComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private watchListService = inject(WatchListService);
+  private groupService = inject(GroupService);
+
   item = signal<Item | null>(null);
   groups = signal<Group[]>([]);
   confirmDelete = signal(false);
@@ -146,13 +162,6 @@ export class ItemDetailComponent implements OnInit {
       this.isProgressDirty()
     );
   });
-
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private watchListService: WatchListService,
-    private groupService: GroupService
-  ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');

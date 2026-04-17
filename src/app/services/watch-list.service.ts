@@ -1,7 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Item, ItemType, ItemStatus, SeriesProgress, WatchHistoryEntry } from '../models/item.model';
-import { StorageData } from '../models/storage.model';
 
 export interface HistoryEntry extends WatchHistoryEntry {
   itemId: string;
@@ -14,7 +13,8 @@ export interface HistoryEntry extends WatchHistoryEntry {
   providedIn: 'root'
 })
 export class WatchListService {
-  constructor(private storageService: StorageService) {}
+  private storageService = inject(StorageService);
+
 
   addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): void {
     const data = this.storageService.getData();
@@ -87,7 +87,7 @@ export class WatchListService {
     } else if (item.type === 'series') {
       const progress = item.progress || { season: 1, episode: 1 };
       let newProgress: SeriesProgress;
-      let newStatus: ItemStatus = item.status;
+      let newStatus: ItemStatus;
 
       if (progress.totalEpisodes !== undefined) {
         if (progress.episode >= progress.totalEpisodes) {
