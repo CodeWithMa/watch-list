@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -25,26 +25,26 @@ import { Group } from '../../models/group.model';
                 </div>
               }
             </div>
-
+    
             <div class="mb-4">
               <label class="block mb-2 font-medium">Status:</label>
               <div class="flex gap-4">
                 <div (click)="editStatus.set('not-started')"
-                     class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
                      [ngClass]="editStatus() === 'not-started'
                        ? 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
                        : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
                   Not Started
                 </div>
                 <div (click)="editStatus.set('in-progress')"
-                     class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
                      [ngClass]="editStatus() === 'in-progress'
                        ? 'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
                        : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
                   In Progress
                 </div>
                 <div (click)="editStatus.set('completed')"
-                     class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
                      [ngClass]="editStatus() === 'completed'
                        ? 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
                        : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
@@ -52,7 +52,7 @@ import { Group } from '../../models/group.model';
                 </div>
               </div>
             </div>
-
+    
             <div class="mb-4">
               <label class="block mb-2 font-medium">Type:</label>
               <select [ngModel]="editType()" (ngModelChange)="editType.set($event); onTypeChange()" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]">
@@ -63,9 +63,11 @@ import { Group } from '../../models/group.model';
             <div class="mb-4">
               <label class="block mb-2 font-medium">Group:</label>
               <select [ngModel]="editGroupId()" (ngModelChange)="editGroupId.set($event)" name="groupId" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]">
-                <option *ngFor="let group of groups()" [value]="group.id">
-                  {{ group.name }}
-                </option>
+                @for (group of groups(); track group) {
+                  <option [value]="group.id">
+                    {{ group.name }}
+                  </option>
+                }
               </select>
             </div>
             @if (editType() === 'series') {
@@ -108,9 +110,14 @@ import { Group } from '../../models/group.model';
         </div>
       }
     </div>
-  `
+    `
 })
 export class ItemDetailComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private watchListService = inject(WatchListService);
+  private groupService = inject(GroupService);
+
   item = signal<Item | null>(null);
   groups = signal<Group[]>([]);
   confirmDelete = signal(false);
@@ -146,13 +153,6 @@ export class ItemDetailComponent implements OnInit {
       this.isProgressDirty()
     );
   });
-
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private watchListService: WatchListService,
-    private groupService: GroupService
-  ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { WatchListService, HistoryEntry } from '../../services/watch-list.service';
@@ -69,6 +69,8 @@ interface CalendarGroup {
   `
 })
 export class WatchHistoryComponent implements OnInit {
+  private watchListService = inject(WatchListService);
+
   history = signal<HistoryEntry[]>([]);
 
   calendarGroups = computed(() => {
@@ -128,8 +130,6 @@ export class WatchHistoryComponent implements OnInit {
 
     return groups;
   });
-
-  constructor(private watchListService: WatchListService) {}
 
   ngOnInit(): void {
     this.history.set(this.watchListService.getAllWatchHistory());

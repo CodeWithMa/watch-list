@@ -1,6 +1,6 @@
-import { Component, input, output, computed } from '@angular/core';
+import { Component, input, output, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { NgIf, NgClass } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { Item } from '../../models/item.model';
 import { ProgressBarComponent } from '../progress-bar/progress-bar.component';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
@@ -8,7 +8,7 @@ import { WatchListService } from '../../services/watch-list.service';
 
 @Component({
   selector: 'app-item-card',
-  imports: [RouterLink, NgIf, NgClass, ProgressBarComponent, TimeAgoComponent],
+  imports: [RouterLink, NgClass, ProgressBarComponent, TimeAgoComponent],
   template: `
     <div class="border border-light-border dark:border-dark-border rounded-lg p-4 mb-4 bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark">
       <div class="flex justify-between items-center mb-2">
@@ -17,22 +17,29 @@ import { WatchListService } from '../../services/watch-list.service';
         </h3>
         <span class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-1 rounded text-xs capitalize">{{ item().type }}</span>
       </div>
-      
-      <div class="my-2 text-sm text-light-font-secondary dark:text-dark-font-secondary" *ngIf="item().type === 'series' && item().progress">
-        <span class="episode-info">
-          Episode {{ item().progress!.episode }}
-          <span *ngIf="item().progress!.totalEpisodes"> of {{ item().progress!.totalEpisodes }}</span>
-        </span>
-        <span class="ml-2" *ngIf="progressPercent() !== null">
-          ({{ progressPercent() }}% complete)
-        </span>
-      </div>
-
-      <app-progress-bar 
-        *ngIf="progressPercent() !== null" 
-        [percentage]="progressPercent()!" 
-      />
-
+    
+      @if (item().type === 'series' && item().progress) {
+        <div class="my-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+          <span class="episode-info">
+            Episode {{ item().progress!.episode }}
+            @if (item().progress!.totalEpisodes) {
+              <span> of {{ item().progress!.totalEpisodes }}</span>
+            }
+          </span>
+          @if (progressPercent() !== null) {
+            <span class="ml-2">
+              ({{ progressPercent() }}% complete)
+            </span>
+          }
+        </div>
+      }
+    
+      @if (progressPercent() !== null) {
+        <app-progress-bar
+          [percentage]="progressPercent()!"
+          />
+      }
+    
       <div class="flex gap-4 my-2 text-sm">
         <span class="px-2 py-1 rounded font-medium capitalize" [ngClass]="{
           'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark': item().status === 'not-started',
@@ -43,24 +50,26 @@ import { WatchListService } from '../../services/watch-list.service';
         </span>
         <app-time-ago [date]="lastWatchedDate()" />
       </div>
-
+    
       <div class="flex gap-2 mt-2">
         <button (click)="onMarkWatched.emit()" [disabled]="item().status === 'completed'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
           Mark Watched
         </button>
-        <button *ngIf="item().type === 'series'" (click)="onMarkCompleted.emit()" [disabled]="item().status === 'completed'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
-          Mark Completed
-        </button>
+        @if (item().type === 'series') {
+          <button (click)="onMarkCompleted.emit()" [disabled]="item().status === 'completed'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
+            Mark Completed
+          </button>
+        }
       </div>
     </div>
-  `
+    `
 })
 export class ItemCardComponent {
+  private watchListService = inject(WatchListService);
+
   item = input.required<Item>();
   onMarkWatched = output<void>();
   onMarkCompleted = output<void>();
-
-  constructor(private watchListService: WatchListService) {}
 
   progressPercent = computed(() => {
     return this.watchListService.calculateProgress(this.item());
