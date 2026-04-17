@@ -6,6 +6,8 @@ import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { Item, ItemType, ItemStatus } from '../../models/item.model';
 import { Group } from '../../models/group.model';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { statusBadgeClass } from '../../utils/status.utils';
 
 @Component({
   selector: 'app-item-detail',
@@ -34,7 +36,7 @@ import { Group } from '../../models/group.model';
                   (keydown.enter)="editStatus.set('not-started')"
                   (keydown.space)="editStatus.set('not-started')"
                   class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                  [ngClass]="statusButtonClass('not-started')">
+                  [ngClass]="statusBadgeClass(editStatus() === 'not-started', 'not-started')">
                   Not Started
                 </button>
                 <button type="button" role="button" tabindex="0"
@@ -42,7 +44,7 @@ import { Group } from '../../models/group.model';
                   (keydown.enter)="editStatus.set('in-progress')"
                   (keydown.space)="editStatus.set('in-progress')"
                   class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                  [ngClass]="statusButtonClass('in-progress')">
+                  [ngClass]="statusBadgeClass(editStatus() === 'in-progress', 'in-progress')">
                   In Progress
                 </button>
                 <button type="button" role="button" tabindex="0"
@@ -50,7 +52,7 @@ import { Group } from '../../models/group.model';
                   (keydown.enter)="editStatus.set('completed')"
                   (keydown.space)="editStatus.set('completed')"
                   class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                  [ngClass]="statusButtonClass('completed')">
+                  [ngClass]="statusBadgeClass(editStatus() === 'completed', 'completed')">
                   Completed
                 </button>
               </div>
@@ -156,20 +158,6 @@ export class ItemDetailComponent implements OnInit {
       this.isProgressDirty()
     );
   });
-
-  statusButtonClass(status: ItemStatus): Record<string, boolean> {
-    const isSelected = this.editStatus() === status;
-    const isNotStarted = status === 'not-started';
-    const isInProgress = status === 'in-progress';
-    const isCompleted = status === 'completed';
-    
-    return {
-      'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent': isSelected && isNotStarted,
-      'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent': isSelected && isInProgress,
-      'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent': isSelected && isCompleted,
-      'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary': !isSelected
-    };
-  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');

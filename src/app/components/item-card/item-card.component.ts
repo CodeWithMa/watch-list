@@ -1,13 +1,16 @@
 import { Component, input, output, computed, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Item } from '../../models/item.model';
 import { ProgressBarComponent } from '../progress-bar/progress-bar.component';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { WatchListService } from '../../services/watch-list.service';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { statusBadgeClass } from '../../utils/status.utils';
 
 @Component({
   selector: 'app-item-card',
-  imports: [RouterLink, ProgressBarComponent, TimeAgoComponent],
+  imports: [CommonModule, RouterLink, ProgressBarComponent, TimeAgoComponent],
   template: `
     <div class="border border-light-border dark:border-dark-border rounded-lg p-4 mb-4 bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark">
       <div class="flex justify-between items-center mb-2">
@@ -41,18 +44,7 @@ import { WatchListService } from '../../services/watch-list.service';
     
       <div class="flex gap-4 my-2 text-sm">
         <span class="px-2 py-1 rounded font-medium capitalize"
-          [class.bg-status-not-started-bg-light]="item().status === 'not-started'"
-          [class.dark:bg-status-not-started-bg-dark]="item().status === 'not-started'"
-          [class.text-status-not-started-text-light]="item().status === 'not-started'"
-          [class.dark:text-status-not-started-text-dark]="item().status === 'not-started'"
-          [class.bg-status-in-progress-bg-light]="item().status === 'in-progress'"
-          [class.dark:bg-status-in-progress-bg-dark]="item().status === 'in-progress'"
-          [class.text-status-in-progress-text-light]="item().status === 'in-progress'"
-          [class.dark:text-status-in-progress-text-dark]="item().status === 'in-progress'"
-          [class.bg-status-completed-bg-light]="item().status === 'completed'"
-          [class.dark:bg-status-completed-bg-dark]="item().status === 'completed'"
-          [class.text-status-completed-text-light]="item().status === 'completed'"
-          [class.dark:text-status-completed-text-dark]="item().status === 'completed'">
+          [ngClass]="statusBadgeClass(true, item().status)">
           {{ item().status }}
         </span>
         <app-time-ago [date]="lastWatchedDate()" />
