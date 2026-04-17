@@ -5,7 +5,6 @@ import { Item } from '../../models/item.model';
 import { ProgressBarComponent } from '../progress-bar/progress-bar.component';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { WatchListService } from '../../services/watch-list.service';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { statusBadgeClass } from '../../utils/status.utils';
 
 @Component({
@@ -69,6 +68,7 @@ export class ItemCardComponent {
   item = input.required<Item>();
   markWatched = output<void>();
   markCompleted = output<void>();
+  protected statusBadgeClass = statusBadgeClass;
 
   progressPercent = computed(() => {
     return this.watchListService.calculateProgress(this.item());

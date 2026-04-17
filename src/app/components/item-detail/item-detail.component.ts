@@ -6,7 +6,6 @@ import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { Item, ItemType, ItemStatus } from '../../models/item.model';
 import { Group } from '../../models/group.model';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { statusBadgeClass } from '../../utils/status.utils';
 
 @Component({
@@ -122,6 +121,7 @@ export class ItemDetailComponent implements OnInit {
   private router = inject(Router);
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
+  protected statusBadgeClass = statusBadgeClass;
 
   item = signal<Item | null>(null);
   groups = signal<Group[]>([]);
