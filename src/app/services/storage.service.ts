@@ -70,7 +70,8 @@ export class StorageService {
             watchHistory = [entry];
           }
           
-          const { ...itemWithoutLastWatched } = legacyItem;
+          const itemWithoutLastWatched = { ...legacyItem };
+          delete (itemWithoutLastWatched as Record<string, unknown>).lastWatchedAt;
           return [id, { ...itemWithoutLastWatched, watchHistory, progress: adjustedProgress }];
         })
       );
