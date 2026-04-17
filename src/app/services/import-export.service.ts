@@ -129,13 +129,25 @@ export class ImportExportService {
       return false;
     }
     const e = entry as Record<string, unknown>;
-    return (
-      typeof e['itemId'] === 'string' &&
-      typeof e['itemTitle'] === 'string' &&
-      (e['itemType'] === 'series' || e['itemType'] === 'movie') &&
-      typeof e['deletedAt'] === 'string' &&
-      Array.isArray(e['watchHistory'])
-    );
+    if (
+      typeof e['itemId'] !== 'string' ||
+      typeof e['itemTitle'] !== 'string' ||
+      (e['itemType'] !== 'series' && e['itemType'] !== 'movie') ||
+      typeof e['deletedAt'] !== 'string'
+    ) {
+      return false;
+    }
+
+    if (!Array.isArray(e['watchHistory'])) {
+      return false;
+    }
+    for (const histEntry of e['watchHistory']) {
+      if (!this.validateWatchHistoryEntry(histEntry)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private validateItem(item: unknown): boolean {
