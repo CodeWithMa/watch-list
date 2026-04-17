@@ -6,7 +6,6 @@ import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { Item, ItemType, ItemStatus } from '../../models/item.model';
 import { Group } from '../../models/group.model';
-import { statusBadgeClass } from '../../utils/status.utils';
 
 @Component({
   selector: 'app-item-detail',
@@ -35,7 +34,9 @@ import { statusBadgeClass } from '../../utils/status.utils';
                   (keydown.enter)="editStatus.set('not-started')"
                   (keydown.space)="editStatus.set('not-started')"
                   class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                  [ngClass]="statusBadgeClass(editStatus() === 'not-started', 'not-started', true)">
+                  [ngClass]="editStatus() === 'not-started'
+                    ? 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                    : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
                   Not Started
                 </button>
                 <button type="button" role="button" tabindex="0"
@@ -43,7 +44,9 @@ import { statusBadgeClass } from '../../utils/status.utils';
                   (keydown.enter)="editStatus.set('in-progress')"
                   (keydown.space)="editStatus.set('in-progress')"
                   class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                  [ngClass]="statusBadgeClass(editStatus() === 'in-progress', 'in-progress', true)">
+                  [ngClass]="editStatus() === 'in-progress'
+                    ? 'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                    : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
                   In Progress
                 </button>
                 <button type="button" role="button" tabindex="0"
@@ -51,7 +54,9 @@ import { statusBadgeClass } from '../../utils/status.utils';
                   (keydown.enter)="editStatus.set('completed')"
                   (keydown.space)="editStatus.set('completed')"
                   class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
-                  [ngClass]="statusBadgeClass(editStatus() === 'completed', 'completed', true)">
+                  [ngClass]="editStatus() === 'completed'
+                    ? 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                    : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
                   Completed
                 </button>
               </div>
@@ -121,7 +126,6 @@ export class ItemDetailComponent implements OnInit {
   private router = inject(Router);
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
-  protected statusBadgeClass = statusBadgeClass;
 
   item = signal<Item | null>(null);
   groups = signal<Group[]>([]);
