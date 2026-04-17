@@ -10,9 +10,9 @@ export class ThemeService implements OnDestroy {
   private readonly STORAGE_KEY = 'theme';
   private readonly platformId = inject(PLATFORM_ID);
   private readonly document = inject(DOCUMENT);
-  
+
   theme = signal<Theme>('system');
-  
+
   private mediaQuery: MediaQueryList | null = null;
   private mediaQueryListener!: (e: MediaQueryListEvent) => void;
 
@@ -22,20 +22,18 @@ export class ThemeService implements OnDestroy {
       if (stored && ['system', 'light', 'dark'].includes(stored)) {
         this.theme.set(stored);
       }
-      
+
       this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      
+
       this.mediaQueryListener = () => {
         if (this.theme() === 'system') {
           this.applyTheme();
         }
       };
-      
+
       this.mediaQuery.addEventListener('change', this.mediaQueryListener);
-      
-      this.applyTheme();
     }
-    
+
     effect(() => {
       this.applyTheme();
     });
@@ -60,11 +58,11 @@ export class ThemeService implements OnDestroy {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
-    
+
     const currentTheme = this.theme();
-    const isDark = currentTheme === 'dark' || 
+    const isDark = currentTheme === 'dark' ||
       (currentTheme === 'system' && this.mediaQuery?.matches);
-    
+
     this.document.documentElement.classList.toggle('dark', isDark);
   }
 
