@@ -13,7 +13,7 @@ export function statusBadgeClass(isSelected: boolean, status: ItemStatus, intera
   const shadow = 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)]';
 
   return {
-    [base]: unselected || (isSelected && !interactive),
+    [base]: unselected,
     [`${shadow} border-transparent bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark`]: isSelected && notStarted && interactive,
     [`${shadow} border-transparent bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark`]: isSelected && inProgress && interactive,
     [`${shadow} border-transparent bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark`]: isSelected && completed && interactive,
