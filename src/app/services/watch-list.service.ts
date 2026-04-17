@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Item, ItemType, ItemStatus, SeriesProgress, WatchHistoryEntry } from '../models/item.model';
-import { StorageData, DeletedItemHistory } from '../models/storage.model';
+import { StorageData } from '../models/storage.model';
 
 export interface HistoryEntry extends WatchHistoryEntry {
   itemId: string;

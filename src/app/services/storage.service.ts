@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { StorageData, CURRENT_SCHEMA_VERSION, DeletedItemHistory } from '../models/storage.model';
+import { StorageData, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 
