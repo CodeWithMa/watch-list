@@ -149,8 +149,8 @@ export class WatchListService {
   }
 
   getAllWatchHistory(): HistoryEntry[] {
-    const items = this.storageService.getItems();
     const data = this.storageService.getData();
+    const items = Object.values(data.items);
     const deletedItems = data.deletedItems || {};
     const history: HistoryEntry[] = [];
 
