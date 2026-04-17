@@ -32,7 +32,7 @@ export class ImportExportService {
       }
 
       const migrated = this.storageService.migrateDataOnly(parsed as StorageData);
-      this.storageService.ensureUngroupedGroup(migrated);
+      this.storageService.ensureDefaults(migrated);
       
       if (!this.validateMigratedData(migrated)) {
         throw new Error('Invalid migrated data');
