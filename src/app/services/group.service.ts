@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Group } from '../models/group.model';
 import { WatchListService } from './watch-list.service';
@@ -7,10 +7,9 @@ import { WatchListService } from './watch-list.service';
   providedIn: 'root'
 })
 export class GroupService {
-  constructor(
-    private storageService: StorageService,
-    private watchListService: WatchListService
-  ) {}
+  private storageService = inject(StorageService);
+  private watchListService = inject(WatchListService);
+
 
   createGroup(name: string): Group {
     const data = this.storageService.getData();

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { StorageData } from '../models/storage.model';
 
@@ -6,7 +6,8 @@ import { StorageData } from '../models/storage.model';
   providedIn: 'root'
 })
 export class ImportExportService {
-  constructor(private storageService: StorageService) {}
+  private storageService = inject(StorageService);
+
 
   exportData(): void {
     const data = this.storageService.getData();

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Item, ItemType, ItemStatus, SeriesProgress, WatchHistoryEntry } from '../models/item.model';
 import { StorageData } from '../models/storage.model';
@@ -14,7 +14,8 @@ export interface HistoryEntry extends WatchHistoryEntry {
   providedIn: 'root'
 })
 export class WatchListService {
-  constructor(private storageService: StorageService) {}
+  private storageService = inject(StorageService);
+
 
   addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): void {
     const data = this.storageService.getData();

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { WatchListService } from './watch-list.service';
 import { Item } from '../models/item.model';
 
@@ -6,7 +6,8 @@ import { Item } from '../models/item.model';
   providedIn: 'root'
 })
 export class RoundRobinService {
-  constructor(private watchListService: WatchListService) {}
+  private watchListService = inject(WatchListService);
+
 
   getNextSeriesToWatch(): Item | null {
     const allSeries = this.watchListService.getItemsByType('series');

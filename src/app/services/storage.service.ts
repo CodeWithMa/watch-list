@@ -43,7 +43,7 @@ export class StorageService {
       return data;
     }
 
-    let migrated = { ...data };
+    const migrated = { ...data };
 
     if (migrated.schemaVersion < 2) {
       migrated.items = Object.fromEntries(
