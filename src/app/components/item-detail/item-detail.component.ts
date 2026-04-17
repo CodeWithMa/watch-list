@@ -19,9 +19,11 @@ import { Group } from '../../models/group.model';
             <div class="mb-4">
               <label class="block mb-2 font-medium">Title:</label>
               <input type="text" [(ngModel)]="editTitle" name="title" required class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
-              <div class="text-accent-danger text-sm mt-1" *ngIf="itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched">
-                Title is required
-              </div>
+              @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
+                <div class="text-accent-danger text-sm mt-1">
+                  Title is required
+                </div>
+              }
             </div>
 
             <div class="mb-4">
@@ -63,18 +65,20 @@ import { Group } from '../../models/group.model';
                 </option>
               </select>
             </div>
-            <div class="mb-4" *ngIf="editType === 'series'">
-              <label class="block mb-2 font-medium">Season:</label>
-              <input type="number" [(ngModel)]="editSeason" name="season" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
-            </div>
-            <div class="mb-4" *ngIf="editType === 'series'">
-              <label class="block mb-2 font-medium">Episode:</label>
-              <input type="number" [(ngModel)]="editEpisode" name="episode" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
-            </div>
-            <div class="mb-4" *ngIf="editType === 'series'">
-              <label class="block mb-2 font-medium">Total Episodes (optional):</label>
-              <input type="number" [(ngModel)]="editTotalEpisodes" name="totalEpisodes" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
-            </div>
+            @if (editType === 'series') {
+              <div class="mb-4">
+                <label class="block mb-2 font-medium">Season:</label>
+                <input type="number" [(ngModel)]="editSeason" name="season" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
+              </div>
+              <div class="mb-4">
+                <label class="block mb-2 font-medium">Episode:</label>
+                <input type="number" [(ngModel)]="editEpisode" name="episode" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
+              </div>
+              <div class="mb-4">
+                <label class="block mb-2 font-medium">Total Episodes (optional):</label>
+                <input type="number" [(ngModel)]="editTotalEpisodes" name="totalEpisodes" min="1" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]" />
+              </div>
+            }
             <div class="flex gap-2 mt-6">
               <button type="submit" class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer font-medium hover:not-disabled:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="itemForm.invalid">Save Changes</button>
               <button type="button" (click)="cancelEdit()" class="px-6 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer hover:bg-accent-secondary-hover">Cancel</button>
