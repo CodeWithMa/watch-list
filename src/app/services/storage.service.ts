@@ -71,7 +71,7 @@ export class StorageService {
           }
           
           const itemWithoutLastWatched = { ...legacyItem };
-          delete (itemWithoutLastWatched as Record<string, unknown>).lastWatchedAt;
+          delete itemWithoutLastWatched['lastWatchedAt'];
           return [id, { ...itemWithoutLastWatched, watchHistory, progress: adjustedProgress }];
         })
       );
