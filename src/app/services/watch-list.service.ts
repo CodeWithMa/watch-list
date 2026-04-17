@@ -53,16 +53,13 @@ export class WatchListService {
     const data = this.storageService.getData();
     const { [itemId]: removed, ...items } = data.items;
     
-    const deletedItems = data.deletedItems || {};
-    if (removed) {
-      deletedItems[itemId] = {
-        itemId,
-        itemTitle: removed.title,
-        itemType: removed.type,
-        watchHistory: removed.watchHistory || [],
-        deletedAt: new Date().toISOString()
-      };
-    }
+    const deletedItems = { ...(data.deletedItems || {}), [itemId]: {
+      itemId,
+      itemTitle: removed.title,
+      itemType: removed.type,
+      watchHistory: removed.watchHistory || [],
+      deletedAt: new Date().toISOString()
+    }};
     
     this.storageService.saveData({
       ...data,
