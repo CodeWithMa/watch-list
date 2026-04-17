@@ -89,7 +89,7 @@ export class StorageService {
       ...data,
       lastModifiedAt: new Date().toISOString()
     };
-    this.ensureUngroupedGroup(updated);
+    this.ensureDefaults(updated);
     this.data.set(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }
