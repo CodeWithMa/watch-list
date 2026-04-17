@@ -147,6 +147,10 @@ export class ItemDetailComponent implements OnInit {
       this.editSeason = currentItem.progress.season;
       this.editEpisode = currentItem.progress.episode;
       this.editTotalEpisodes = currentItem.progress.totalEpisodes;
+    } else {
+      this.editSeason = 1;
+      this.editEpisode = 1;
+      this.editTotalEpisodes = undefined;
     }
   }
 
