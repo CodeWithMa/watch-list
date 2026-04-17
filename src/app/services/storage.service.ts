@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { StorageData, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
+import { StorageData, CURRENT_SCHEMA_VERSION, DeletedItemHistory } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 
@@ -81,6 +81,11 @@ export class StorageService {
       migrated.schemaVersion = 2;
     }
 
+    if (migrated.schemaVersion < 3) {
+      migrated.deletedItems = {};
+      migrated.schemaVersion = 3;
+    }
+
     return migrated;
   }
 
@@ -128,7 +133,8 @@ export class StorageService {
           order: 0
         }
       },
-      items: {}
+      items: {},
+      deletedItems: {}
     };
   }
 
@@ -139,6 +145,9 @@ export class StorageService {
         name: 'Ungrouped',
         order: 0
       };
+    }
+    if (!data.deletedItems) {
+      data.deletedItems = {};
     }
   }
 }

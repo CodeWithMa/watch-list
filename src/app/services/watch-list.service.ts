@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Item, ItemType, ItemStatus, SeriesProgress, WatchHistoryEntry } from '../models/item.model';
-import { StorageData } from '../models/storage.model';
+import { StorageData, DeletedItemHistory } from '../models/storage.model';
 
 export interface HistoryEntry extends WatchHistoryEntry {
   itemId: string;
   itemTitle: string;
   itemType: ItemType;
+  isDeleted?: boolean;
 }
 
 @Injectable({
@@ -51,9 +52,21 @@ export class WatchListService {
   deleteItem(itemId: string): void {
     const data = this.storageService.getData();
     const { [itemId]: removed, ...items } = data.items;
+    
+    const deletedItems = data.deletedItems || {};
+    if (removed) {
+      deletedItems[itemId] = {
+        itemId,
+        itemTitle: removed.title,
+        itemType: removed.type,
+        deletedAt: new Date().toISOString()
+      };
+    }
+    
     this.storageService.saveData({
       ...data,
-      items
+      items,
+      deletedItems
     });
   }
 
@@ -135,6 +148,8 @@ export class WatchListService {
 
   getAllWatchHistory(): HistoryEntry[] {
     const items = this.storageService.getItems();
+    const data = this.storageService.getData();
+    const deletedItems = data.deletedItems || {};
     const history: HistoryEntry[] = [];
 
     for (const item of items) {
@@ -146,6 +161,16 @@ export class WatchListService {
           itemType: item.type
         });
       }
+    }
+
+    for (const deleted of Object.values(deletedItems)) {
+      history.push({
+        itemId: deleted.itemId,
+        itemTitle: deleted.itemTitle,
+        itemType: deleted.itemType,
+        date: deleted.deletedAt,
+        isDeleted: true
+      });
     }
 
     return history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

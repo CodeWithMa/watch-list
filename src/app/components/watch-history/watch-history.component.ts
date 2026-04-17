@@ -40,9 +40,15 @@ interface CalendarGroup {
                      'bg-accent-success': entry.itemType === 'movie'
                    }"></div>
 
-              <a [routerLink]="['/items', entry.itemId]" class="text-sm font-medium text-light-font dark:text-dark-font no-underline hover:text-accent-primary transition-colors truncate flex-1">
-                {{ entry.itemTitle }}
-              </a>
+              @if (entry.isDeleted) {
+                <span class="text-sm font-medium text-light-font dark:text-dark-font no-underline truncate flex-1">
+                  {{ entry.itemTitle }} <span class="text-light-font-muted dark:text-dark-font-muted">(deleted)</span>
+                </span>
+              } @else {
+                <a [routerLink]="['/items', entry.itemId]" class="text-sm font-medium text-light-font dark:text-dark-font no-underline hover:text-accent-primary transition-colors truncate flex-1">
+                  {{ entry.itemTitle }}
+                </a>
+              }
 
               <span class="text-xs px-2 py-0.5 rounded capitalize bg-light-bg-tertiary dark:bg-dark-bg-tertiary text-light-font-secondary dark:text-dark-font-secondary shrink-0">{{ entry.itemType }}</span>
 
