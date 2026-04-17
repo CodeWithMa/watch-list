@@ -1,11 +1,11 @@
-import { Item } from './item.model';
+import { Item, ItemType, WatchHistoryEntry } from './item.model';
 import { Group } from './group.model';
-import { ItemType } from './item.model';
 
 export interface DeletedItemHistory {
   itemId: string;
   itemTitle: string;
   itemType: ItemType;
+  watchHistory: WatchHistoryEntry[];
   deletedAt: string;
 }
 

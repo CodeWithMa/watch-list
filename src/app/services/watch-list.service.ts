@@ -59,6 +59,7 @@ export class WatchListService {
         itemId,
         itemTitle: removed.title,
         itemType: removed.type,
+        watchHistory: removed.watchHistory || [],
         deletedAt: new Date().toISOString()
       };
     }
@@ -164,13 +165,15 @@ export class WatchListService {
     }
 
     for (const deleted of Object.values(deletedItems)) {
-      history.push({
-        itemId: deleted.itemId,
-        itemTitle: deleted.itemTitle,
-        itemType: deleted.itemType,
-        date: deleted.deletedAt,
-        isDeleted: true
-      });
+      for (const entry of deleted.watchHistory) {
+        history.push({
+          ...entry,
+          itemId: deleted.itemId,
+          itemTitle: deleted.itemTitle,
+          itemType: deleted.itemType,
+          isDeleted: true
+        });
+      }
     }
 
     return history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
