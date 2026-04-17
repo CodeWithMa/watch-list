@@ -32,7 +32,7 @@ export class ImportExportService {
       }
 
       const migrated = this.storageService.migrateDataOnly(parsed as StorageData);
-      this.storageService.ensureUngroupedGroup(migrated);
+      this.storageService.ensureDefaults(migrated);
       
       if (!this.validateMigratedData(migrated)) {
         throw new Error('Invalid migrated data');
@@ -77,6 +77,18 @@ export class ImportExportService {
       return false;
     }
 
+    if (d['deletedItems']) {
+      if (typeof d['deletedItems'] !== 'object' || Array.isArray(d['deletedItems'])) {
+        return false;
+      }
+      const deletedItems = d['deletedItems'] as Record<string, unknown>;
+      for (const entry of Object.values(deletedItems)) {
+        if (!this.validateDeletedItem(entry)) {
+          return false;
+        }
+      }
+    }
+
     return true;
   }
 
@@ -99,6 +111,42 @@ export class ImportExportService {
         return false;
       }
     }
+
+    const deletedItems = data.deletedItems;
+    if (deletedItems) {
+      for (const entry of Object.values(deletedItems)) {
+        if (!this.validateDeletedItem(entry)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  private validateDeletedItem(entry: unknown): boolean {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+    const e = entry as Record<string, unknown>;
+    if (
+      typeof e['itemId'] !== 'string' ||
+      typeof e['itemTitle'] !== 'string' ||
+      (e['itemType'] !== 'series' && e['itemType'] !== 'movie') ||
+      typeof e['deletedAt'] !== 'string'
+    ) {
+      return false;
+    }
+
+    if (!Array.isArray(e['watchHistory'])) {
+      return false;
+    }
+    for (const histEntry of e['watchHistory']) {
+      if (!this.validateWatchHistoryEntry(histEntry)) {
+        return false;
+      }
+    }
+
     return true;
   }
 

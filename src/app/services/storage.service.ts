@@ -23,7 +23,7 @@ export class StorageService {
       try {
         const parsed = JSON.parse(stored) as StorageData;
         const migrated = this.migrateDataOnly(parsed);
-        this.ensureUngroupedGroup(migrated);
+        this.ensureDefaults(migrated);
         this.data.set(migrated);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
         return migrated;
@@ -89,7 +89,7 @@ export class StorageService {
       ...data,
       lastModifiedAt: new Date().toISOString()
     };
-    this.ensureUngroupedGroup(updated);
+    this.ensureDefaults(updated);
     this.data.set(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }
@@ -128,7 +128,8 @@ export class StorageService {
           order: 0
         }
       },
-      items: {}
+      items: {},
+      deletedItems: {}
     };
   }
 
@@ -139,6 +140,13 @@ export class StorageService {
         name: 'Ungrouped',
         order: 0
       };
+    }
+  }
+
+  ensureDefaults(data: StorageData): void {
+    this.ensureUngroupedGroup(data);
+    if (!data.deletedItems) {
+      data.deletedItems = {};
     }
   }
 }
