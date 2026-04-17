@@ -19,8 +19,8 @@ import { ItemCardComponent } from '../item-card/item-card.component';
             <div class="mb-4">
               <app-item-card
                 [item]="nextSeries()!"
-                (onMarkWatched)="markSeriesWatched()"
-                (onMarkCompleted)="markSeriesCompleted()"
+                (markWatched)="markSeriesWatched()"
+                (markCompleted)="markSeriesCompleted()"
                 />
             </div>
           } @else {
@@ -34,8 +34,8 @@ import { ItemCardComponent } from '../item-card/item-card.component';
             <div class="mb-4">
               <app-item-card
                 [item]="nextMovie()!"
-                (onMarkWatched)="markMovieWatched()"
-                (onMarkCompleted)="markMovieCompleted()"
+                (markWatched)="markMovieWatched()"
+                (markCompleted)="markMovieCompleted()"
                 />
             </div>
           } @else {
