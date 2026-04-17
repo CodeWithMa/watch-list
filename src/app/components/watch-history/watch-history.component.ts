@@ -1,6 +1,5 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
 import { WatchListService, HistoryEntry } from '../../services/watch-list.service';
 interface CalendarGroup {
   relativeLabel: string;
@@ -10,7 +9,7 @@ interface CalendarGroup {
 
 @Component({
   selector: 'app-watch-history',
-  imports: [CommonModule, RouterLink],
+  imports: [RouterLink],
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Watch History</h1>
@@ -37,10 +36,8 @@ interface CalendarGroup {
                   <span class="text-sm font-mono text-light-font-muted dark:text-dark-font-muted min-w-[60px]">{{ entry.relativeTime }}</span>
 
                   <div class="w-1.5 h-1.5 rounded-full shrink-0"
-                       [ngClass]="{
-                         'bg-accent-primary': entry.itemType === 'series',
-                         'bg-accent-success': entry.itemType === 'movie'
-                       }"></div>
+                       [class.bg-accent-primary]="entry.itemType === 'series'"
+                       [class.bg-accent-success]="entry.itemType === 'movie'"></div>
 
                   @if (entry.isDeleted) {
                     <span class="text-sm font-medium text-light-font dark:text-dark-font no-underline truncate flex-1">

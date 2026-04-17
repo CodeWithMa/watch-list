@@ -63,7 +63,7 @@ export class SettingsComponent {
       this.importExportService.exportData();
       this.successMessage.set('Data exported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
-    } catch (error) {
+    } catch {
       this.errorMessage.set('Failed to export data');
       setTimeout(() => this.errorMessage.set(null), 5000);
     }
