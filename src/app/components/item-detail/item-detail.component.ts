@@ -29,24 +29,27 @@ import { Group } from '../../models/group.model';
             <div class="mb-4">
               <label class="block mb-2 font-medium">Status:</label>
               <div class="flex gap-4">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" [(ngModel)]="editStatus" name="status" value="not-started" class="w-4 h-4 accent-accent-primary" />
-                  <span class="px-2 py-1 rounded font-medium capitalize" [ngClass]="{
-                    'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark': true
-                  }">Not Started</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" [(ngModel)]="editStatus" name="status" value="in-progress" class="w-4 h-4 accent-accent-primary" />
-                  <span class="px-2 py-1 rounded font-medium capitalize" [ngClass]="{
-                    'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark': true
-                  }">In Progress</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" [(ngModel)]="editStatus" name="status" value="completed" class="w-4 h-4 accent-accent-primary" />
-                  <span class="px-2 py-1 rounded font-medium capitalize" [ngClass]="{
-                    'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark': true
-                  }">Completed</span>
-                </label>
+                <div (click)="editStatus.set('not-started')"
+                     class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                     [ngClass]="editStatus() === 'not-started'
+                       ? 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                       : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
+                  Not Started
+                </div>
+                <div (click)="editStatus.set('in-progress')"
+                     class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                     [ngClass]="editStatus() === 'in-progress'
+                       ? 'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                       : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
+                  In Progress
+                </div>
+                <div (click)="editStatus.set('completed')"
+                     class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                     [ngClass]="editStatus() === 'completed'
+                       ? 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                       : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
+                  Completed
+                </div>
               </div>
             </div>
 
@@ -108,7 +111,7 @@ export class ItemDetailComponent implements OnInit {
   confirmDelete = signal(false);
   
   editTitle = '';
-  editStatus: ItemStatus = 'not-started';
+  editStatus = signal<ItemStatus>('not-started');
   editType: ItemType = 'series';
   editGroupId = '';
   editSeason = 1;
@@ -139,7 +142,7 @@ export class ItemDetailComponent implements OnInit {
     if (!currentItem) return;
 
     this.editTitle = currentItem.title;
-    this.editStatus = currentItem.status;
+    this.editStatus.set(currentItem.status);
     this.editType = currentItem.type;
     this.editGroupId = currentItem.groupId;
     
@@ -170,7 +173,7 @@ export class ItemDetailComponent implements OnInit {
     const updated: Item = {
       ...currentItem,
       title: this.editTitle.trim(),
-      status: this.editStatus,
+      status: this.editStatus(),
       type: this.editType,
       groupId: this.editGroupId,
       progress: this.editType === 'series' ? {
