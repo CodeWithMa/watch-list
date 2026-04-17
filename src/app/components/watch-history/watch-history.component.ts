@@ -32,7 +32,7 @@ interface CalendarGroup {
                 <span class="ml-auto text-xs bg-accent-primary/10 text-accent-primary px-2 py-0.5 rounded-full font-medium">{{ group.entries.length }}</span>
               </div>
 
-              @for (entry of group.entries; track entry.date) {
+              @for (entry of group.entries; track entry.itemId + '-' + entry.date) {
                 <div class="flex items-center gap-4 px-5 py-3 hover:bg-light-hover dark:hover:bg-dark-hover transition-colors border-b border-light-border-light dark:border-dark-border-light last:border-b-0">
                   <span class="text-sm font-mono text-light-font-muted dark:text-dark-font-muted min-w-[60px]">{{ entry.relativeTime }}</span>
 
