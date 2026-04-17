@@ -32,6 +32,8 @@ export class ThemeService implements OnDestroy {
       };
       
       this.mediaQuery.addEventListener('change', this.mediaQueryListener);
+      
+      this.applyTheme();
     }
     
     effect(() => {
