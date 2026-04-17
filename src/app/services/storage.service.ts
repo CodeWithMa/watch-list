@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { StorageData, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
-import { Item } from '../models/item.model';
+import { Item, WatchHistoryEntry } from '../models/item.model';
 import { Group } from '../models/group.model';
 
 const STORAGE_KEY = 'watchListData';
@@ -53,7 +53,7 @@ export class StorageService {
             watchHistory?: unknown[];
             progress?: { season: number; episode: number; totalEpisodes?: number };
           };
-          let watchHistory = legacyItem.watchHistory as any[] || [];
+          let watchHistory = (legacyItem.watchHistory ?? []) as WatchHistoryEntry[];
           
           // Adjust episode numbers from 0-based to 1-based for non-completed items
           let adjustedProgress = legacyItem.progress;
@@ -66,15 +66,11 @@ export class StorageService {
           
           if (watchHistory.length === 0 && 
               (legacyItem.status === 'in-progress' || legacyItem.lastWatchedAt !== legacyItem.createdAt)) {
-            const entry: any = { date: legacyItem.lastWatchedAt };
-            if (legacyItem.type === 'series' && legacyItem.progress) {
-              entry.season = legacyItem.progress.season;
-              entry.episode = legacyItem.progress.episode;
-            }
+            const entry: WatchHistoryEntry = { date: legacyItem.lastWatchedAt ?? '', season: legacyItem.progress?.season, episode: legacyItem.progress?.episode };
             watchHistory = [entry];
           }
           
-          const { lastWatchedAt, ...itemWithoutLastWatched } = legacyItem;
+          const { ...itemWithoutLastWatched } = legacyItem;
           return [id, { ...itemWithoutLastWatched, watchHistory, progress: adjustedProgress }];
         })
       );

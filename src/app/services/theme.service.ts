@@ -25,7 +25,7 @@ export class ThemeService implements OnDestroy {
       
       this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       
-      this.mediaQueryListener = (e: MediaQueryListEvent) => {
+      this.mediaQueryListener = () => {
         if (this.theme() === 'system') {
           this.applyTheme();
         }

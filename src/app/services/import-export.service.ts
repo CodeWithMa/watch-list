@@ -42,7 +42,7 @@ export class ImportExportService {
       this.storageService.saveData(migrated);
     } catch (error) {
       if (error instanceof SyntaxError) {
-        throw new Error('Invalid JSON file');
+        throw new Error('Invalid JSON file', { cause: error });
       }
       throw error;
     }

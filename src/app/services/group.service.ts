@@ -49,7 +49,9 @@ export class GroupService {
     }
 
     const data = this.storageService.getData();
-    const { [groupId]: _removed, ...groups } = data.groups;
+    const groups = Object.fromEntries(
+      Object.entries(data.groups).filter(([id]) => id !== groupId)
+    );
 
     // Move all items from this group to ungrouped
     const items = { ...data.items };
