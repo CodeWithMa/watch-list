@@ -81,11 +81,6 @@ export class StorageService {
       migrated.schemaVersion = 2;
     }
 
-    if (migrated.schemaVersion < 3) {
-      migrated.deletedItems = {};
-      migrated.schemaVersion = 3;
-    }
-
     return migrated;
   }
 
