@@ -86,14 +86,6 @@ export class StorageService {
       migrated.schemaVersion = 3;
     }
 
-    if (migrated.deletedItems) {
-      for (const [id, deleted] of Object.entries(migrated.deletedItems)) {
-        if (!deleted.watchHistory) {
-          (deleted as any).watchHistory = [];
-        }
-      }
-    }
-
     return migrated;
   }
 
