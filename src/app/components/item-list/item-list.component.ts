@@ -5,8 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { StorageService } from '../../services/storage.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
-import { Item, ItemStatus } from '../../models/item.model';
-import { Group } from '../../models/group.model';
+import { Item } from '../../models/item.model';
 import { ItemCardComponent } from '../item-card/item-card.component';
 
 @Component({
@@ -39,20 +38,23 @@ import { ItemCardComponent } from '../item-card/item-card.component';
       </div>
     
       <div class="flex flex-col gap-6">
-        @for (group of groups(); track group) {
+        @for (group of groups(); track group.id) {
           <div class="border border-light-border dark:border-dark-border rounded overflow-hidden">
-            <div class="flex items-center gap-4 p-4 bg-light-bg-tertiary dark:bg-dark-bg-tertiary cursor-pointer select-none hover:bg-light-hover dark:hover:bg-dark-hover" (click)="toggleGroup(group.id)">
+            <div role="button" tabindex="0" class="flex items-center gap-4 p-4 bg-light-bg-tertiary dark:bg-dark-bg-tertiary cursor-pointer select-none hover:bg-light-hover dark:hover:bg-dark-hover"
+              (click)="toggleGroup(group.id)"
+              (keydown.enter)="toggleGroup(group.id)"
+              (keydown.space)="toggleGroup(group.id)">
               <h2 class="m-0 text-xl flex-1">{{ group.name }}</h2>
               <span class="text-sm text-light-font-secondary dark:text-dark-font-secondary">{{ isGroupExpanded(group.id) ? '▼' : '▶' }}</span>
               <span class="text-light-font-secondary dark:text-dark-font-secondary text-sm">({{ getGroupItems(group.id).length }})</span>
             </div>
             @if (isGroupExpanded(group.id)) {
               <div class="p-4">
-                @for (item of getGroupItems(group.id); track item) {
+                @for (item of getGroupItems(group.id); track item.id) {
                   <app-item-card
                     [item]="item"
-                    (onMarkWatched)="markWatched(item.id)"
-                    (onMarkCompleted)="markCompleted(item.id)"
+                    (markWatched)="markWatched(item.id)"
+                    (markCompleted)="markCompleted(item.id)"
                     />
                 }
                 @if (getGroupItems(group.id).length === 0) {

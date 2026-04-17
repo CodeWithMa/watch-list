@@ -28,7 +28,7 @@ import { Group } from '../../models/group.model';
     
       <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-lg p-6">
         <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Groups</h2>
-        @for (group of sortedGroups(); track group; let i = $index) {
+        @for (group of sortedGroups(); track group.id; let i = $index) {
           <div class="flex justify-between items-center p-4 border-b border-light-border-light dark:border-dark-border-light last:border-b-0">
             <div class="flex flex-col gap-1">
               <span class="font-medium text-lg">{{ group.name }}</span>
@@ -153,7 +153,7 @@ export class GroupManagerComponent implements OnInit {
       try {
         this.groupService.deleteGroup(groupId);
         this.loadGroups();
-      } catch (error) {
+      } catch {
         alert('Cannot delete the ungrouped group');
       }
     }

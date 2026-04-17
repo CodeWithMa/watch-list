@@ -50,7 +50,7 @@ import { Group } from '../../models/group.model';
             required
             class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
             >
-            @for (group of groups(); track group) {
+            @for (group of groups(); track group.id) {
               <option [value]="group.id">
                 {{ group.name }}
               </option>
