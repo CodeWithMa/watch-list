@@ -10,7 +10,7 @@ export class GroupService {
 
   groups = computed(() => {
     const data = this.storageService.getDataSignal()();
-    return data ? Object.values(data.groups).sort((a, b) => a.order - b.order) : [];
+    return data ? [...Object.values(data.groups)].sort((a, b) => a.order - b.order) : [];
   });
 
   createGroup(name: string): Group {
