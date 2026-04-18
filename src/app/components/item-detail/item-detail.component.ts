@@ -5,7 +5,6 @@ import { FormsModule } from '@angular/forms';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { Item, ItemType, ItemStatus } from '../../models/item.model';
-import { Group } from '../../models/group.model';
 
 @Component({
   selector: 'app-item-detail',
@@ -72,7 +71,7 @@ import { Group } from '../../models/group.model';
             <div class="mb-4">
               <label for="group-select" class="block mb-2 font-medium">Group:</label>
               <select id="group-select" [ngModel]="editGroupId()" (ngModelChange)="editGroupId.set($event)" name="groupId" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]">
-                @for (group of groups(); track group.id) {
+                @for (group of groupService.groups(); track group.id) {
                   <option [value]="group.id">
                     {{ group.name }}
                   </option>
@@ -125,10 +124,9 @@ export class ItemDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private watchListService = inject(WatchListService);
-  private groupService = inject(GroupService);
+  groupService = inject(GroupService);
 
   item = signal<Item | null>(null);
-  groups = signal<Group[]>([]);
   confirmDelete = signal(false);
   
   editTitle = signal('');
@@ -172,7 +170,6 @@ export class ItemDetailComponent implements OnInit {
         this.loadEditData();
       }
     }
-    this.groups.set(this.groupService.getAllGroups());
   }
 
   loadEditData(): void {
