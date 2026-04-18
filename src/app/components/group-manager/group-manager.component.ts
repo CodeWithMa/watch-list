@@ -28,7 +28,8 @@ import { Group } from '../../models/group.model';
     
       <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-lg p-6">
         <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Groups</h2>
-        @for (group of groupService.groups(); track group.id; let i = $index) {
+        @let groups = groupService.groups();
+        @for (group of groups; track group.id; let i = $index) {
           <div class="flex justify-between items-center p-4 border-b border-light-border-light dark:border-dark-border-light last:border-b-0">
             <div class="flex flex-col gap-1">
               <span class="font-medium text-lg">{{ group.name }}</span>
@@ -44,7 +45,7 @@ import { Group } from '../../models/group.model';
                   ↑
                 </button>
               }
-              @if (i < groupService.groups().length - 1) {
+              @if (i < groups.length - 1) {
                 <button
                   (click)="moveDown(group.id)"
                   class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
