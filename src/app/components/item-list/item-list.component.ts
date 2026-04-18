@@ -15,6 +15,8 @@ import { ItemCardComponent } from '../item-card/item-card.component';
     <div class="max-w-[1200px] mx-auto p-8">
       <div class="flex justify-between items-center mb-8">
         <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">All Items</h1>
+        <input type="text" placeholder="Search by name..." [ngModel]="searchFilter()" (ngModelChange)="searchFilter.set($event)" 
+          class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font w-64" />
         <a [routerLink]="['/items/add']" class="px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover">Add Item</a>
       </div>
     
@@ -46,18 +48,18 @@ import { ItemCardComponent } from '../item-card/item-card.component';
               (keydown.space)="toggleGroup(group.id)">
               <h2 class="m-0 text-xl flex-1">{{ group.name }}</h2>
               <span class="text-sm text-light-font-secondary dark:text-dark-font-secondary">{{ isGroupExpanded(group.id) ? '▼' : '▶' }}</span>
-              <span class="text-light-font-secondary dark:text-dark-font-secondary text-sm">({{ getGroupItems(group.id).length }})</span>
+              <span class="text-light-font-secondary dark:text-dark-font-secondary text-sm">({{ (groupedItems()[group.id] || []).length }})</span>
             </div>
             @if (isGroupExpanded(group.id)) {
               <div class="p-4">
-                @for (item of getGroupItems(group.id); track item.id) {
+                @for (item of groupedItems()[group.id] || []; track item.id) {
                   <app-item-card
                     [item]="item"
                     (markWatched)="markWatched(item.id)"
                     (markCompleted)="markCompleted(item.id)"
                     />
                 }
-                @if (getGroupItems(group.id).length === 0) {
+                @if ((groupedItems()[group.id] || []).length === 0) {
                   <p class="text-center text-light-font-muted dark:text-dark-font-muted p-8">
                     No items in this group
                   </p>
@@ -76,9 +78,9 @@ export class ItemListComponent {
   private groupService = inject(GroupService);
 
   statusFilter = signal<string>('all');
+  searchFilter = signal<string>('');
   expandedGroups = signal<Set<string>>(new Set());
   groups = computed(() => {
-    // Trigger reactivity by accessing the storage signal
     this.storageService.getDataSignal()();
     return this.groupService.getAllGroups();
   });
@@ -91,16 +93,33 @@ export class ItemListComponent {
   filteredItems = computed(() => {
     const items = this.allItems();
     const filter = this.statusFilter();
+    const search = this.searchFilter().toLowerCase();
     
-    if (filter === 'all') {
-      return items;
+    let result = items;
+    
+    if (search) {
+      result = result.filter(item => item.title.toLowerCase().includes(search));
     }
     
-    return items.filter(item => item.status === filter);
+    if (filter !== 'all') {
+      result = result.filter(item => item.status === filter);
+    }
+    
+    return result;
+  });
+
+  groupedItems = computed(() => {
+    const map: Record<string, Item[]> = {};
+    for (const item of this.filteredItems()) {
+      if (!map[item.groupId]) {
+        map[item.groupId] = [];
+      }
+      map[item.groupId].push(item);
+    }
+    return map;
   });
 
   constructor() {
-    // Expand all groups by default
     this.groups().forEach(group => {
       this.expandedGroups.update(set => new Set(set).add(group.id));
     });
@@ -122,10 +141,6 @@ export class ItemListComponent {
     return this.expandedGroups().has(groupId);
   }
 
-  getGroupItems(groupId: string): Item[] {
-    return this.filteredItems().filter(item => item.groupId === groupId);
-  }
-
   markWatched(itemId: string): void {
     this.watchListService.markWatched(itemId);
   }
@@ -134,4 +149,3 @@ export class ItemListComponent {
     this.watchListService.markCompleted(itemId);
   }
 }
-
