@@ -19,6 +19,11 @@ import { ItemCardComponent } from '../item-card/item-card.component';
       </div>
     
       <div class="flex gap-4 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded">
+        <input type="text" placeholder="Search by name..." [ngModel]="searchFilter()" (ngModelChange)="searchFilter.set($event)" 
+          class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font" />
+      </div>
+    
+      <div class="flex gap-4 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded">
         <label class="flex items-center gap-2 cursor-pointer">
           <input type="radio" name="statusFilter" value="all" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" />
           All
@@ -76,6 +81,7 @@ export class ItemListComponent {
   private groupService = inject(GroupService);
 
   statusFilter = signal<string>('all');
+  searchFilter = signal<string>('');
   expandedGroups = signal<Set<string>>(new Set());
   groups = computed(() => {
     // Trigger reactivity by accessing the storage signal
@@ -91,12 +97,19 @@ export class ItemListComponent {
   filteredItems = computed(() => {
     const items = this.allItems();
     const filter = this.statusFilter();
+    const search = this.searchFilter().toLowerCase();
     
-    if (filter === 'all') {
-      return items;
+    let result = items;
+    
+    if (search) {
+      result = result.filter(item => item.title.toLowerCase().includes(search));
     }
     
-    return items.filter(item => item.status === filter);
+    if (filter !== 'all') {
+      result = result.filter(item => item.status === filter);
+    }
+    
+    return result;
   });
 
   constructor() {
