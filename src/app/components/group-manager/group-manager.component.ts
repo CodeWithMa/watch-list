@@ -44,7 +44,7 @@ import { Group } from '../../models/group.model';
                   ↑
                 </button>
               }
-              @if (i < groups.length - 1) {
+              @if (i < groups().length - 1) {
                 <button
                   (click)="moveDown(group.id)"
                   class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
