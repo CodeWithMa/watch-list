@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { StorageService } from '../../services/storage.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
-import { Item } from '../../models/item.model';
+
 import { ItemCardComponent } from '../item-card/item-card.component';
 
 @Component({
@@ -15,9 +15,18 @@ import { ItemCardComponent } from '../item-card/item-card.component';
     <div class="max-w-[1200px] mx-auto p-8">
       <div class="flex justify-between items-center mb-8">
         <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">All Items</h1>
-        <input type="text" placeholder="Search by name..." [ngModel]="searchFilter()" (ngModelChange)="searchFilter.set($event)" 
-          class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font w-64" />
-        <a [routerLink]="['/items/add']" class="px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover">Add Item</a>
+        <div class="flex gap-4">
+          <select [ngModel]="groupFilter()" (ngModelChange)="groupFilter.set($event)"
+            class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font">
+            <option value="">All Groups</option>
+            @for (group of groups(); track group.id) {
+              <option [value]="group.id">{{ group.name }}</option>
+            }
+          </select>
+          <input type="text" placeholder="Search by name..." [ngModel]="searchFilter()" (ngModelChange)="searchFilter.set($event)" 
+            class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font w-64" />
+          <a [routerLink]="['/items/add']" class="px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover">Add Item</a>
+        </div>
       </div>
     
       <div class="flex gap-4 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded">
@@ -39,51 +48,32 @@ import { ItemCardComponent } from '../item-card/item-card.component';
         </label>
       </div>
     
-      <div class="flex flex-col gap-6">
-        @for (group of groups(); track group.id) {
-          <div class="border border-light-border dark:border-dark-border rounded overflow-hidden">
-            <div role="button" tabindex="0" class="flex items-center gap-4 p-4 bg-light-bg-tertiary dark:bg-dark-bg-tertiary cursor-pointer select-none hover:bg-light-hover dark:hover:bg-dark-hover"
-              (click)="toggleGroup(group.id)"
-              (keydown.enter)="toggleGroup(group.id)"
-              (keydown.space)="toggleGroup(group.id)">
-              <h2 class="m-0 text-xl flex-1">{{ group.name }}</h2>
-              <span class="text-sm text-light-font-secondary dark:text-dark-font-secondary">{{ isGroupExpanded(group.id) ? '▼' : '▶' }}</span>
-              <span class="text-light-font-secondary dark:text-dark-font-secondary text-sm">({{ (groupedItems()[group.id] || []).length }})</span>
-            </div>
-            @if (isGroupExpanded(group.id)) {
-              <div class="p-4">
-                @for (item of groupedItems()[group.id] || []; track item.id) {
-                  <app-item-card
-                    [item]="item"
-                    (markWatched)="markWatched(item.id)"
-                    (markCompleted)="markCompleted(item.id)"
-                    />
-                }
-                @if ((groupedItems()[group.id] || []).length === 0) {
-                  <p class="text-center text-light-font-muted dark:text-dark-font-muted p-8">
-                    No items in this group
-                  </p>
-                }
-              </div>
-            }
-          </div>
+      <div class="flex flex-col gap-4">
+        @for (item of filteredItems(); track item.id) {
+          <app-item-card
+            [item]="item"
+            (markWatched)="markWatched(item.id)"
+            (markCompleted)="markCompleted(item.id)"
+            />
+        } @empty {
+          <p class="text-center text-light-font-muted dark:text-dark-font-muted p-8">
+            No items found
+          </p>
         }
       </div>
     </div>
-    `
+  `
 })
 export class ItemListComponent {
   private storageService = inject(StorageService);
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
 
+  readonly groups = this.groupService.groups;
+
   statusFilter = signal<string>('all');
   searchFilter = signal<string>('');
-  expandedGroups = signal<Set<string>>(new Set());
-  groups = computed(() => {
-    this.storageService.getDataSignal()();
-    return this.groupService.getAllGroups();
-  });
+  groupFilter = signal<string>('');
   
   allItems = computed(() => {
     const data = this.storageService.getDataSignal()();
@@ -91,55 +81,25 @@ export class ItemListComponent {
   });
 
   filteredItems = computed(() => {
-    const items = this.allItems();
-    const filter = this.statusFilter();
+    let items = this.allItems();
+    const statusFilter = this.statusFilter();
     const search = this.searchFilter().toLowerCase();
-    
-    let result = items;
+    const groupFilter = this.groupFilter();
     
     if (search) {
-      result = result.filter(item => item.title.toLowerCase().includes(search));
+      items = items.filter(item => item.title.toLowerCase().includes(search));
     }
     
-    if (filter !== 'all') {
-      result = result.filter(item => item.status === filter);
+    if (statusFilter !== 'all') {
+      items = items.filter(item => item.status === statusFilter);
     }
     
-    return result;
-  });
-
-  groupedItems = computed(() => {
-    const map: Record<string, Item[]> = {};
-    for (const item of this.filteredItems()) {
-      if (!map[item.groupId]) {
-        map[item.groupId] = [];
-      }
-      map[item.groupId].push(item);
+    if (groupFilter) {
+      items = items.filter(item => item.groupId === groupFilter);
     }
-    return map;
+    
+    return [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   });
-
-  constructor() {
-    this.groups().forEach(group => {
-      this.expandedGroups.update(set => new Set(set).add(group.id));
-    });
-  }
-
-  toggleGroup(groupId: string): void {
-    this.expandedGroups.update(set => {
-      const newSet = new Set(set);
-      if (newSet.has(groupId)) {
-        newSet.delete(groupId);
-      } else {
-        newSet.add(groupId);
-      }
-      return newSet;
-    });
-  }
-
-  isGroupExpanded(groupId: string): boolean {
-    return this.expandedGroups().has(groupId);
-  }
 
   markWatched(itemId: string): void {
     this.watchListService.markWatched(itemId);

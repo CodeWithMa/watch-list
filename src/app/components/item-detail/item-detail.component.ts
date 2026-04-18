@@ -5,7 +5,6 @@ import { FormsModule } from '@angular/forms';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { Item, ItemType, ItemStatus } from '../../models/item.model';
-import { Group } from '../../models/group.model';
 
 @Component({
   selector: 'app-item-detail',
@@ -127,8 +126,9 @@ export class ItemDetailComponent implements OnInit {
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
 
+  readonly groups = this.groupService.groups;
+
   item = signal<Item | null>(null);
-  groups = signal<Group[]>([]);
   confirmDelete = signal(false);
   
   editTitle = signal('');
@@ -172,7 +172,6 @@ export class ItemDetailComponent implements OnInit {
         this.loadEditData();
       }
     }
-    this.groups.set(this.groupService.getAllGroups());
   }
 
   loadEditData(): void {

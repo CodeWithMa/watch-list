@@ -1,11 +1,10 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { ItemType } from '../../models/item.model';
-import { Group } from '../../models/group.model';
 
 @Component({
   selector: 'app-add-item',
@@ -106,28 +105,19 @@ import { Group } from '../../models/group.model';
     </div>
     `
 })
-export class AddItemComponent implements OnInit {
+export class AddItemComponent {
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
   private router = inject(Router);
 
-  groups = signal<Group[]>([]);
-  
+  readonly groups = this.groupService.groups;
+
   title = '';
   type: ItemType = 'series';
   groupId = 'ungrouped';
   season = 1;
   episode = 1;
   totalEpisodes: number | undefined;
-
-  ngOnInit(): void {
-    this.groups.set(this.groupService.getAllGroups());
-    // Ensure ungrouped is selected by default
-    if (this.groups().length > 0 && !this.groupId) {
-      const ungrouped = this.groups().find(g => g.id === 'ungrouped');
-      this.groupId = ungrouped ? ungrouped.id : this.groups()[0].id;
-    }
-  }
 
   onTypeChange(): void {
     if (this.type === 'movie') {
