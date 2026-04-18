@@ -106,9 +106,5 @@ export class GroupService {
     const data = this.storageService.getData();
     return data.groups[groupId];
   }
-
-  getAllGroups(): Group[] {
-    return this.storageService.getGroups();
-  }
 }
 
