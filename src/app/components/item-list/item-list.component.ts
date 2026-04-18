@@ -51,18 +51,18 @@ import { ItemCardComponent } from '../item-card/item-card.component';
               (keydown.space)="toggleGroup(group.id)">
               <h2 class="m-0 text-xl flex-1">{{ group.name }}</h2>
               <span class="text-sm text-light-font-secondary dark:text-dark-font-secondary">{{ isGroupExpanded(group.id) ? '▼' : '▶' }}</span>
-              <span class="text-light-font-secondary dark:text-dark-font-secondary text-sm">({{ getGroupItems(group.id).length }})</span>
+              <span class="text-light-font-secondary dark:text-dark-font-secondary text-sm">({{ (groupedItems()[group.id] || []).length }})</span>
             </div>
             @if (isGroupExpanded(group.id)) {
               <div class="p-4">
-                @for (item of getGroupItems(group.id); track item.id) {
+                @for (item of groupedItems()[group.id] || []; track item.id) {
                   <app-item-card
                     [item]="item"
                     (markWatched)="markWatched(item.id)"
                     (markCompleted)="markCompleted(item.id)"
                     />
                 }
-                @if (getGroupItems(group.id).length === 0) {
+                @if ((groupedItems()[group.id] || []).length === 0) {
                   <p class="text-center text-light-font-muted dark:text-dark-font-muted p-8">
                     No items in this group
                   </p>
@@ -112,6 +112,17 @@ export class ItemListComponent {
     return result;
   });
 
+  groupedItems = computed(() => {
+    const map: Record<string, Item[]> = {};
+    for (const item of this.filteredItems()) {
+      if (!map[item.groupId]) {
+        map[item.groupId] = [];
+      }
+      map[item.groupId].push(item);
+    }
+    return map;
+  });
+
   constructor() {
     // Expand all groups by default
     this.groups().forEach(group => {
@@ -133,10 +144,6 @@ export class ItemListComponent {
 
   isGroupExpanded(groupId: string): boolean {
     return this.expandedGroups().has(groupId);
-  }
-
-  getGroupItems(groupId: string): Item[] {
-    return this.filteredItems().filter(item => item.groupId === groupId);
   }
 
   markWatched(itemId: string): void {
