@@ -55,8 +55,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
             (markWatched)="markWatched(item.id)"
             (markCompleted)="markCompleted(item.id)"
             />
-        }
-        @if (filteredItems().length === 0) {
+        } @empty {
           <p class="text-center text-light-font-muted dark:text-dark-font-muted p-8">
             No items found
           </p>
