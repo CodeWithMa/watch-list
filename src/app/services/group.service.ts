@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Group } from '../models/group.model';
 
@@ -8,6 +8,10 @@ import { Group } from '../models/group.model';
 export class GroupService {
   private storageService = inject(StorageService);
 
+  groups = computed(() => {
+    const data = this.storageService.getDataSignal()();
+    return data ? Object.values(data.groups).sort((a, b) => a.order - b.order) : [];
+  });
 
   createGroup(name: string): Group {
     const data = this.storageService.getData();

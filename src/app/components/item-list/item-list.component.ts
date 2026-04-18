@@ -19,7 +19,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
           <select [ngModel]="groupFilter()" (ngModelChange)="groupFilter.set($event)"
             class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font">
             <option value="">All Groups</option>
-            @for (group of groups(); track group.id) {
+            @for (group of groupService.groups(); track group.id) {
               <option [value]="group.id">{{ group.name }}</option>
             }
           </select>
@@ -67,15 +67,11 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 export class ItemListComponent {
   private storageService = inject(StorageService);
   private watchListService = inject(WatchListService);
-  private groupService = inject(GroupService);
+  groupService = inject(GroupService);
 
   statusFilter = signal<string>('all');
   searchFilter = signal<string>('');
   groupFilter = signal<string>('');
-  groups = computed(() => {
-    this.storageService.getDataSignal()();
-    return this.groupService.getAllGroups();
-  });
   
   allItems = computed(() => {
     const data = this.storageService.getDataSignal()();
