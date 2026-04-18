@@ -28,8 +28,7 @@ import { Group } from '../../models/group.model';
     
       <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-lg p-6">
         <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Groups</h2>
-        @let groups = groupService.groups();
-        @for (group of groups; track group.id; let i = $index) {
+        @for (group of groups(); track group.id; let i = $index) {
           <div class="flex justify-between items-center p-4 border-b border-light-border-light dark:border-dark-border-light last:border-b-0">
             <div class="flex flex-col gap-1">
               <span class="font-medium text-lg">{{ group.name }}</span>
@@ -99,7 +98,9 @@ import { Group } from '../../models/group.model';
     `
 })
 export class GroupManagerComponent {
-  groupService = inject(GroupService);
+  private groupService = inject(GroupService);
+
+  readonly groups = this.groupService.groups;
 
   editingGroup = signal<Group | null>(null);
   editGroupName = '';
@@ -145,7 +146,7 @@ export class GroupManagerComponent {
   }
 
   moveUp(groupId: string): void {
-    const sorted = this.groupService.groups();
+    const sorted = this.groups();
     const index = sorted.findIndex(g => g.id === groupId);
     if (index > 0) {
       const groupIds = sorted.map(g => g.id);
@@ -155,7 +156,7 @@ export class GroupManagerComponent {
   }
 
   moveDown(groupId: string): void {
-    const sorted = this.groupService.groups();
+    const sorted = this.groups();
     const index = sorted.findIndex(g => g.id === groupId);
     if (index < sorted.length - 1) {
       const groupIds = sorted.map(g => g.id);

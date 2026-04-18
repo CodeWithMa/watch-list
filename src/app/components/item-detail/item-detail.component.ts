@@ -71,7 +71,7 @@ import { Item, ItemType, ItemStatus } from '../../models/item.model';
             <div class="mb-4">
               <label for="group-select" class="block mb-2 font-medium">Group:</label>
               <select id="group-select" [ngModel]="editGroupId()" (ngModelChange)="editGroupId.set($event)" name="groupId" class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font box-border focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]">
-                @for (group of groupService.groups(); track group.id) {
+                @for (group of groups(); track group.id) {
                   <option [value]="group.id">
                     {{ group.name }}
                   </option>
@@ -124,7 +124,9 @@ export class ItemDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private watchListService = inject(WatchListService);
-  groupService = inject(GroupService);
+  private groupService = inject(GroupService);
+
+  readonly groups = this.groupService.groups;
 
   item = signal<Item | null>(null);
   confirmDelete = signal(false);
