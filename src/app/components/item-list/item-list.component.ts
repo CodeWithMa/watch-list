@@ -15,12 +15,9 @@ import { ItemCardComponent } from '../item-card/item-card.component';
     <div class="max-w-[1200px] mx-auto p-8">
       <div class="flex justify-between items-center mb-8">
         <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">All Items</h1>
-        <a [routerLink]="['/items/add']" class="px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover">Add Item</a>
-      </div>
-    
-      <div class="flex gap-4 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded">
         <input type="text" placeholder="Search by name..." [ngModel]="searchFilter()" (ngModelChange)="searchFilter.set($event)" 
-          class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font" />
+          class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font w-64" />
+        <a [routerLink]="['/items/add']" class="px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover">Add Item</a>
       </div>
     
       <div class="flex gap-4 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded">
@@ -84,7 +81,6 @@ export class ItemListComponent {
   searchFilter = signal<string>('');
   expandedGroups = signal<Set<string>>(new Set());
   groups = computed(() => {
-    // Trigger reactivity by accessing the storage signal
     this.storageService.getDataSignal()();
     return this.groupService.getAllGroups();
   });
@@ -124,7 +120,6 @@ export class ItemListComponent {
   });
 
   constructor() {
-    // Expand all groups by default
     this.groups().forEach(group => {
       this.expandedGroups.update(set => new Set(set).add(group.id));
     });
@@ -154,4 +149,3 @@ export class ItemListComponent {
     this.watchListService.markCompleted(itemId);
   }
 }
-
