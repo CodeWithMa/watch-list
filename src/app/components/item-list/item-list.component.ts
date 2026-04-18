@@ -101,7 +101,7 @@ export class ItemListComponent {
       items = items.filter(item => item.groupId === groupFilter);
     }
     
-    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   });
 
   markWatched(itemId: string): void {
