@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { StorageData } from '../models/storage.model';
+import { ItemStatus } from '../models/item.model';
 
 @Injectable({
   providedIn: 'root'
@@ -157,11 +158,13 @@ export class ImportExportService {
     }
     const i = item as Record<string, unknown>;
     
+    const validStatuses: ItemStatus[] = ['not-started', 'in-progress', 'completed', 'dropped'];
     if (
       typeof i['id'] !== 'string' ||
       typeof i['title'] !== 'string' ||
       typeof i['groupId'] !== 'string' ||
       typeof i['status'] !== 'string' ||
+      !validStatuses.includes(i['status'] as ItemStatus) ||
       typeof i['createdAt'] !== 'string' ||
       (i['type'] !== 'series' && i['type'] !== 'movie')
     ) {
