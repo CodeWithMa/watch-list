@@ -24,7 +24,13 @@ import { ItemCardComponent } from '../item-card/item-card.component';
                 />
             </div>
           } @else {
-            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">No series to watch. All series are completed!</p>
+            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">
+              @if (hasSeries()) {
+                No series available to watch ({{ getCompletedCount('series') }} completed, {{ getDroppedCount('series') }} dropped)
+              } @else {
+                No series in your watch list
+              }
+            </p>
           }
         </div>
     
@@ -39,7 +45,13 @@ import { ItemCardComponent } from '../item-card/item-card.component';
                 />
             </div>
           } @else {
-            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">No movies to watch. All movies are completed!</p>
+            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">
+              @if (hasMovies()) {
+                No movies available to watch ({{ getCompletedCount('movie') }} completed, {{ getDroppedCount('movie') }} dropped)
+              } @else {
+                No movies in your watch list
+              }
+            </p>
           }
         </div>
       </div>
@@ -52,6 +64,22 @@ export class HomeComponent {
 
   nextSeries = signal<Item | null>(null);
   nextMovie = signal<Item | null>(null);
+
+  protected getCompletedCount(type: 'series' | 'movie'): number {
+    return this.watchListService.getItemsByType(type).filter(i => i.status === 'completed').length;
+  }
+
+  protected getDroppedCount(type: 'series' | 'movie'): number {
+    return this.watchListService.getItemsByType(type).filter(i => i.status === 'dropped').length;
+  }
+
+  protected hasSeries(): boolean {
+    return this.watchListService.getItemsByType('series').length > 0;
+  }
+
+  protected hasMovies(): boolean {
+    return this.watchListService.getItemsByType('movie').length > 0;
+  }
 
   constructor() {
     this.updateNextItems();
