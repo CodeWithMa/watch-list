@@ -1,6 +1,7 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
+import { StorageService } from '../../services/storage.service';
 import { Item } from '../../models/item.model';
 import { ItemCardComponent } from '../item-card/item-card.component';
 
@@ -24,7 +25,13 @@ import { ItemCardComponent } from '../item-card/item-card.component';
                 />
             </div>
           } @else {
-            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">No series to watch. All series are completed!</p>
+            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">
+              @if (hasSeries()) {
+                No series available to watch ({{ seriesCompletedCount() }} completed, {{ seriesDroppedCount() }} dropped)
+              } @else {
+                No series in your watch list
+              }
+            </p>
           }
         </div>
     
@@ -39,7 +46,13 @@ import { ItemCardComponent } from '../item-card/item-card.component';
                 />
             </div>
           } @else {
-            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">No movies to watch. All movies are completed!</p>
+            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">
+              @if (hasMovies()) {
+                No movies available to watch ({{ movieCompletedCount() }} completed, {{ movieDroppedCount() }} dropped)
+              } @else {
+                No movies in your watch list
+              }
+            </p>
           }
         </div>
       </div>
@@ -49,9 +62,26 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 export class HomeComponent {
   private roundRobinService = inject(RoundRobinService);
   private watchListService = inject(WatchListService);
+  private storageService = inject(StorageService);
 
   nextSeries = signal<Item | null>(null);
   nextMovie = signal<Item | null>(null);
+
+  private allItems = computed(() => {
+    const data = this.storageService.getDataSignal()();
+    return data ? Object.values(data.items) : [];
+  });
+
+  private seriesItems = computed(() => this.allItems().filter(i => i.type === 'series'));
+  private movieItems = computed(() => this.allItems().filter(i => i.type === 'movie'));
+
+  protected seriesCompletedCount = computed(() => this.seriesItems().filter(i => i.status === 'completed').length);
+  protected seriesDroppedCount = computed(() => this.seriesItems().filter(i => i.status === 'dropped').length);
+  protected hasSeries = computed(() => this.seriesItems().length > 0);
+
+  protected movieCompletedCount = computed(() => this.movieItems().filter(i => i.status === 'completed').length);
+  protected movieDroppedCount = computed(() => this.movieItems().filter(i => i.status === 'dropped').length);
+  protected hasMovies = computed(() => this.movieItems().length > 0);
 
   constructor() {
     this.updateNextItems();

@@ -46,6 +46,10 @@ import { ItemCardComponent } from '../item-card/item-card.component';
           <input type="radio" name="statusFilter" value="completed" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" />
           Completed
         </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="statusFilter" value="dropped" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" />
+          Dropped
+        </label>
       </div>
     
       <div class="flex flex-col gap-4">

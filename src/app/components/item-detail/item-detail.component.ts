@@ -58,6 +58,16 @@ import { Item, ItemType, ItemStatus } from '../../models/item.model';
                     : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
                   Completed
                 </button>
+                <button type="button" role="button" tabindex="0"
+                  (click)="editStatus.set('dropped')"
+                  (keydown.enter)="editStatus.set('dropped')"
+                  (keydown.space)="editStatus.set('dropped')"
+                  class="px-4 py-2 rounded font-medium capitalize cursor-pointer border transition-all"
+                  [ngClass]="editStatus() === 'dropped'
+                    ? 'bg-status-dropped-bg-light dark:bg-status-dropped-bg-dark text-status-dropped-text-light dark:text-status-dropped-text-dark shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent'
+                    : 'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary'">
+                  Dropped
+                </button>
               </div>
             </div>
      
