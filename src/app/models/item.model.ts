@@ -1,5 +1,5 @@
 export type ItemType = 'series' | 'movie';
-export type ItemStatus = 'not-started' | 'in-progress' | 'completed';
+export type ItemStatus = 'not-started' | 'in-progress' | 'completed' | 'dropped';
 
 export interface SeriesProgress {
   season: number;

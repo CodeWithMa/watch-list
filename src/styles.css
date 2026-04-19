@@ -52,6 +52,11 @@
   --color-status-completed-bg-dark: #155724;
   --color-status-completed-text-dark: #d4edda;
 
+  --color-status-dropped-bg-light: #f8d7da;
+  --color-status-dropped-text-light: #721c24;
+  --color-status-dropped-bg-dark: #721c24;
+  --color-status-dropped-text-dark: #f8d7da;
+
   --color-error-bg-light: #f8d7da;
   --color-error-text-light: #721c24;
   --color-error-border-light: #f5c6cb;

@@ -11,7 +11,7 @@ export class RoundRobinService {
 
   getNextSeriesToWatch(): Item | null {
     const allSeries = this.watchListService.getItemsByType('series');
-    const nonCompletedSeries = allSeries.filter(item => item.status !== 'completed');
+    const nonCompletedSeries = allSeries.filter(item => item.status !== 'completed' && item.status !== 'dropped');
 
     if (nonCompletedSeries.length === 0) {
       return null;
@@ -34,7 +34,7 @@ export class RoundRobinService {
 
   getNextMovieToWatch(): Item | null {
     const allMovies = this.watchListService.getItemsByType('movie');
-    const nonCompletedMovies = allMovies.filter(item => item.status !== 'completed');
+    const nonCompletedMovies = allMovies.filter(item => item.status !== 'completed' && item.status !== 'dropped');
 
     if (nonCompletedMovies.length === 0) {
       return null;
@@ -51,14 +51,14 @@ export class RoundRobinService {
 
   canSuggestSeries(seriesId: string): boolean {
     const allSeries = this.watchListService.getItemsByType('series');
-    const nonCompletedSeries = allSeries.filter(item => item.status !== 'completed');
+    const nonCompletedSeries = allSeries.filter(item => item.status !== 'completed' && item.status !== 'dropped');
 
     if (nonCompletedSeries.length <= 1) {
       return true;
     }
 
     const targetSeries = allSeries.find(s => s.id === seriesId);
-    if (!targetSeries || targetSeries.status === 'completed') {
+    if (!targetSeries || targetSeries.status === 'completed' || targetSeries.status === 'dropped') {
       return false;
     }
 
