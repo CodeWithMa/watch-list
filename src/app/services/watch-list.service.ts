@@ -25,7 +25,6 @@ export class WatchListService {
       ...item,
       id,
       createdAt: now,
-      status: item.status || 'not-started',
       watchHistory: []
     };
 
