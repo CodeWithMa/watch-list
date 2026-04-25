@@ -1,5 +1,6 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { WatchListService } from './watch-list.service';
+import { Item } from '../models/item.model';
 
 @Injectable({
   providedIn: 'root'
@@ -22,7 +23,7 @@ export class RoundRobinService {
     });
 
     for (const s of sorted) {
-      if (this.canSuggestSeries(s.id)) {
+      if (this.canSuggestSeries(s.id, series)) {
         return s;
       }
     }
@@ -44,9 +45,7 @@ export class RoundRobinService {
     })[0];
   });
 
-  private canSuggestSeries(seriesId: string): boolean {
-    const series = this.watchListService.inProgressSeries();
-
+  private canSuggestSeries(seriesId: string, series: Item[]): boolean {
     if (series.length <= 1) {
       return true;
     }
