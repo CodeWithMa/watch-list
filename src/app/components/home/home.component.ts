@@ -30,7 +30,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
           } @else {
             <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">
               @if (hasSeries()) {
-                No series available to watch ({{ seriesCompletedCount() }} completed, {{ seriesDroppedCount() }} dropped)
+                No series currently being watched
               } @else {
                 No series in your watch list
               }
@@ -52,7 +52,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
           } @else {
             <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">
               @if (hasMovies()) {
-                No movies available to watch ({{ movieCompletedCount() }} completed, {{ movieDroppedCount() }} dropped)
+                No movies currently being watched
               } @else {
                 No movies in your watch list
               }
