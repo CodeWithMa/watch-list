@@ -96,7 +96,14 @@ import { ItemType } from '../../models/item.model';
             </div>
           </div>
         }
-    
+
+        <div class="mb-6">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" [(ngModel)]="startImmediately" name="startImmediately" class="w-5 h-5" />
+            <span class="text-light-font dark:text-dark-font">Start watching immediately</span>
+          </label>
+        </div>
+
         <div class="flex gap-4 mt-8">
           <button type="submit" class="px-8 py-3 bg-accent-primary text-white border-none rounded cursor-pointer text-base font-medium hover:bg-accent-primary-hover">Add Item</button>
           <button type="button" (click)="cancel()" class="px-8 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer text-base hover:bg-accent-secondary-hover">Cancel</button>
@@ -118,6 +125,7 @@ export class AddItemComponent {
   season = 1;
   episode = 1;
   totalEpisodes: number | undefined;
+  startImmediately = false;
 
   onTypeChange(): void {
     if (this.type === 'movie') {
@@ -132,11 +140,13 @@ export class AddItemComponent {
       return;
     }
 
+    const status = this.startImmediately ? 'in-progress' : 'not-started';
+
     this.watchListService.addItem({
       title: this.title.trim(),
       type: this.type,
       groupId: this.groupId,
-      status: 'not-started',
+      status,
       progress: this.type === 'series' ? {
         season: this.season,
         episode: this.episode,
