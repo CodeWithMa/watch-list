@@ -155,18 +155,6 @@ export class WatchListService {
     return data.items[itemId];
   }
 
-  getItemsByStatus(status: ItemStatus): Item[] {
-    return this.storageService.getItems().filter(item => item.status === status);
-  }
-
-  getItemsByType(type: ItemType): Item[] {
-    return this.storageService.getItems().filter(item => item.type === type);
-  }
-
-  getItemsByGroup(groupId: string): Item[] {
-    return this.storageService.getItems().filter(item => item.groupId === groupId);
-  }
-
   getAllWatchHistory(): HistoryEntry[] {
     const data = this.storageService.getData();
     const items = Object.values(data.items);
