@@ -98,7 +98,11 @@ export class HomeComponent {
 
   nextSeries = signal<Item | null>(null);
   nextMovie = signal<Item | null>(null);
-  backlogItems = signal<Item[]>([]);
+  backlogItems = computed(() => 
+    this.allItems()
+      .filter(item => item.status === 'not-started')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  );
 
   private allItems = computed(() => {
     const data = this.storageService.getDataSignal()();
@@ -118,20 +122,11 @@ export class HomeComponent {
 
   constructor() {
     this.updateNextItems();
-    this.updateBacklog();
   }
 
   updateNextItems(): void {
     this.nextSeries.set(this.roundRobinService.getNextSeriesToWatch());
     this.nextMovie.set(this.roundRobinService.getNextMovieToWatch());
-  }
-
-  updateBacklog(): void {
-    const allItems = this.storageService.getItems();
-    const backlog = allItems
-      .filter(item => item.status === 'not-started')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    this.backlogItems.set(backlog);
   }
 
   markSeriesWatched(): void {
@@ -184,12 +179,10 @@ export class HomeComponent {
 
   startBacklogItem(itemId: string): void {
     this.watchListService.markStarted(itemId);
-    this.updateBacklog();
     this.updateNextItems();
   }
 
   dropBacklogItem(itemId: string): void {
     this.watchListService.markDropped(itemId);
-    this.updateBacklog();
   }
 }
