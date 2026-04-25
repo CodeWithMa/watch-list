@@ -141,6 +141,16 @@ export class WatchListService {
     });
   }
 
+  markStarted(itemId: string): void {
+    const item = this.getItemById(itemId);
+    if (!item) return;
+
+    this.updateItem({
+      ...item,
+      status: 'in-progress'
+    });
+  }
+
   getItemById(itemId: string): Item | undefined {
     const data = this.storageService.getData();
     return data.items[itemId];
