@@ -1,10 +1,9 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { StorageService } from '../../services/storage.service';
-import { Item } from '../../models/item.model';
 import { ItemCardComponent } from '../item-card/item-card.component';
 
 
@@ -96,10 +95,10 @@ export class HomeComponent {
   private watchListService = inject(WatchListService);
   private storageService = inject(StorageService);
 
-  nextSeries = signal<Item | null>(null);
-  nextMovie = signal<Item | null>(null);
+  nextSeries = this.roundRobinService.nextSeries;
+  nextMovie = this.roundRobinService.nextMovie;
   backlogItems = computed(() => 
-    this.allItems()
+    this.watchListService.items()
       .filter(item => item.status === 'not-started')
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   );
@@ -112,28 +111,13 @@ export class HomeComponent {
   private seriesItems = computed(() => this.allItems().filter(i => i.type === 'series'));
   private movieItems = computed(() => this.allItems().filter(i => i.type === 'movie'));
 
-  protected seriesCompletedCount = computed(() => this.seriesItems().filter(i => i.status === 'completed').length);
-  protected seriesDroppedCount = computed(() => this.seriesItems().filter(i => i.status === 'dropped').length);
   protected hasSeries = computed(() => this.seriesItems().length > 0);
-
-  protected movieCompletedCount = computed(() => this.movieItems().filter(i => i.status === 'completed').length);
-  protected movieDroppedCount = computed(() => this.movieItems().filter(i => i.status === 'dropped').length);
   protected hasMovies = computed(() => this.movieItems().length > 0);
-
-  constructor() {
-    this.updateNextItems();
-  }
-
-  updateNextItems(): void {
-    this.nextSeries.set(this.roundRobinService.getNextSeriesToWatch());
-    this.nextMovie.set(this.roundRobinService.getNextMovieToWatch());
-  }
 
   markSeriesWatched(): void {
     const series = this.nextSeries();
     if (series) {
       this.watchListService.markWatched(series.id);
-      this.updateNextItems();
     }
   }
 
@@ -141,7 +125,6 @@ export class HomeComponent {
     const series = this.nextSeries();
     if (series) {
       this.watchListService.markCompleted(series.id);
-      this.updateNextItems();
     }
   }
 
@@ -149,7 +132,6 @@ export class HomeComponent {
     const movie = this.nextMovie();
     if (movie) {
       this.watchListService.markWatched(movie.id);
-      this.updateNextItems();
     }
   }
 
@@ -157,7 +139,6 @@ export class HomeComponent {
     const movie = this.nextMovie();
     if (movie) {
       this.watchListService.markCompleted(movie.id);
-      this.updateNextItems();
     }
   }
 
@@ -165,7 +146,6 @@ export class HomeComponent {
     const series = this.nextSeries();
     if (series) {
       this.watchListService.markDropped(series.id);
-      this.updateNextItems();
     }
   }
 
@@ -173,13 +153,11 @@ export class HomeComponent {
     const movie = this.nextMovie();
     if (movie) {
       this.watchListService.markDropped(movie.id);
-      this.updateNextItems();
     }
   }
 
   startBacklogItem(itemId: string): void {
     this.watchListService.markStarted(itemId);
-    this.updateNextItems();
   }
 
   dropBacklogItem(itemId: string): void {

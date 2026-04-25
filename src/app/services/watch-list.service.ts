@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Item, ItemType, ItemStatus, SeriesProgress, WatchHistoryEntry } from '../models/item.model';
 
@@ -226,5 +226,18 @@ export class WatchListService {
   private generateId(): string {
     return `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
+
+  items = computed(() => {
+    const data = this.storageService.getDataSignal()();
+    return data ? Object.values(data.items) : [];
+  });
+
+  inProgressSeries = computed(() => 
+    this.items().filter(i => i.type === 'series' && i.status === 'in-progress')
+  );
+
+  inProgressMovies = computed(() =>
+    this.items().filter(i => i.type === 'movie' && i.status === 'in-progress')
+  );
 }
 

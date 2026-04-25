@@ -1,6 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, computed } from '@angular/core';
 import { WatchListService } from './watch-list.service';
-import { Item } from '../models/item.model';
 
 @Injectable({
   providedIn: 'root'
@@ -9,66 +8,60 @@ export class RoundRobinService {
   private watchListService = inject(WatchListService);
 
 
-  getNextSeriesToWatch(): Item | null {
-    const allSeries = this.watchListService.getItemsByType('series');
-    const nonCompletedSeries = allSeries.filter(item => item.status === 'in-progress');
+  nextSeries = computed(() => {
+    const series = this.watchListService.inProgressSeries();
 
-    if (nonCompletedSeries.length === 0) {
+    if (series.length === 0) {
       return null;
     }
 
-    const sorted = [...nonCompletedSeries].sort((a, b) => {
+    const sorted = [...series].sort((a, b) => {
       const aDate = this.watchListService.getMostRecentWatchDate(a);
       const bDate = this.watchListService.getMostRecentWatchDate(b);
       return new Date(aDate).getTime() - new Date(bDate).getTime();
     });
 
-    for (const series of sorted) {
-      if (this.canSuggestSeries(series.id)) {
-        return series;
+    for (const s of sorted) {
+      if (this.canSuggestSeries(s.id)) {
+        return s;
       }
     }
 
     return sorted[0];
-  }
+  });
 
-  getNextMovieToWatch(): Item | null {
-    const allMovies = this.watchListService.getItemsByType('movie');
-    const nonCompletedMovies = allMovies.filter(item => item.status === 'in-progress');
+  nextMovie = computed(() => {
+    const movies = this.watchListService.inProgressMovies();
 
-    if (nonCompletedMovies.length === 0) {
+    if (movies.length === 0) {
       return null;
     }
 
-    const sorted = [...nonCompletedMovies].sort((a, b) => {
+    return [...movies].sort((a, b) => {
       const aDate = this.watchListService.getMostRecentWatchDate(a);
       const bDate = this.watchListService.getMostRecentWatchDate(b);
       return new Date(aDate).getTime() - new Date(bDate).getTime();
-    });
+    })[0];
+  });
 
-    return sorted[0];
-  }
+  private canSuggestSeries(seriesId: string): boolean {
+    const series = this.watchListService.inProgressSeries();
 
-  canSuggestSeries(seriesId: string): boolean {
-    const allSeries = this.watchListService.getItemsByType('series');
-    const nonCompletedSeries = allSeries.filter(item => item.status === 'in-progress');
-
-    if (nonCompletedSeries.length <= 1) {
+    if (series.length <= 1) {
       return true;
     }
 
-    const targetSeries = allSeries.find(s => s.id === seriesId);
-    if (!targetSeries || targetSeries.status !== 'in-progress') {
+    const targetSeries = series.find(s => s.id === seriesId);
+    if (!targetSeries) {
       return false;
     }
 
-    const otherSeries = nonCompletedSeries.filter(s => s.id !== seriesId);
+    const otherSeries = series.filter(s => s.id !== seriesId);
 
-    const allOthersWatched = otherSeries.every(series => {
-      return (series.watchHistory && series.watchHistory.length > 0);
+    const allOthersWatched = otherSeries.every(s => {
+      return (s.watchHistory && s.watchHistory.length > 0);
     });
 
     return allOthersWatched;
   }
 }
-
