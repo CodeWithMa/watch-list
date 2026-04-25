@@ -58,6 +58,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
             [item]="item"
             (markWatched)="markWatched(item.id)"
             (markCompleted)="markCompleted(item.id)"
+            (markDropped)="markDropped(item.id)"
             />
         } @empty {
           <p class="text-center text-light-font-muted dark:text-dark-font-muted p-8">
@@ -111,5 +112,9 @@ export class ItemListComponent {
 
   markCompleted(itemId: string): void {
     this.watchListService.markCompleted(itemId);
+  }
+
+  markDropped(itemId: string): void {
+    this.watchListService.markDropped(itemId);
   }
 }
