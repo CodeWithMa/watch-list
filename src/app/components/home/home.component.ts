@@ -22,6 +22,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
                 [item]="nextSeries()!"
                 (markWatched)="markSeriesWatched()"
                 (markCompleted)="markSeriesCompleted()"
+                (markDropped)="markSeriesDropped()"
                 />
             </div>
           } @else {
@@ -43,6 +44,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
                 [item]="nextMovie()!"
                 (markWatched)="markMovieWatched()"
                 (markCompleted)="markMovieCompleted()"
+                (markDropped)="markMovieDropped()"
                 />
             </div>
           } @else {
@@ -120,6 +122,22 @@ export class HomeComponent {
     const movie = this.nextMovie();
     if (movie) {
       this.watchListService.markCompleted(movie.id);
+      this.updateNextItems();
+    }
+  }
+
+  markSeriesDropped(): void {
+    const series = this.nextSeries();
+    if (series) {
+      this.watchListService.markDropped(series.id);
+      this.updateNextItems();
+    }
+  }
+
+  markMovieDropped(): void {
+    const movie = this.nextMovie();
+    if (movie) {
+      this.watchListService.markDropped(movie.id);
       this.updateNextItems();
     }
   }

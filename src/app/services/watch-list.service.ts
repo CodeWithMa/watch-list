@@ -131,6 +131,16 @@ export class WatchListService {
     });
   }
 
+  markDropped(itemId: string): void {
+    const item = this.getItemById(itemId);
+    if (!item) return;
+
+    this.updateItem({
+      ...item,
+      status: 'dropped'
+    });
+  }
+
   getItemById(itemId: string): Item | undefined {
     const data = this.storageService.getData();
     return data.items[itemId];
