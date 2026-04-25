@@ -125,7 +125,7 @@ export class AddItemComponent {
   season = 1;
   episode = 1;
   totalEpisodes: number | undefined;
-  startImmediately = true;
+  startImmediately = false;
 
   onTypeChange(): void {
     if (this.type === 'movie') {
