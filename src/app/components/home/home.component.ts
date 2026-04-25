@@ -185,6 +185,7 @@ export class HomeComponent {
   startBacklogItem(itemId: string): void {
     this.watchListService.markStarted(itemId);
     this.updateBacklog();
+    this.updateNextItems();
   }
 
   dropBacklogItem(itemId: string): void {
