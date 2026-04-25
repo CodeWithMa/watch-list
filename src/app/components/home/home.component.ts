@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
-import { StorageService } from '../../services/storage.service';
 import { ItemCardComponent } from '../item-card/item-card.component';
 
 
@@ -93,7 +92,6 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 export class HomeComponent {
   private roundRobinService = inject(RoundRobinService);
   private watchListService = inject(WatchListService);
-  private storageService = inject(StorageService);
 
   nextSeries = this.roundRobinService.nextSeries;
   nextMovie = this.roundRobinService.nextMovie;
@@ -103,16 +101,8 @@ export class HomeComponent {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   );
 
-  private allItems = computed(() => {
-    const data = this.storageService.getDataSignal()();
-    return data ? Object.values(data.items) : [];
-  });
-
-  private seriesItems = computed(() => this.allItems().filter(i => i.type === 'series'));
-  private movieItems = computed(() => this.allItems().filter(i => i.type === 'movie'));
-
-  protected hasSeries = computed(() => this.seriesItems().length > 0);
-  protected hasMovies = computed(() => this.movieItems().length > 0);
+  protected hasSeries = computed(() => this.watchListService.items().some(i => i.type === 'series'));
+  protected hasMovies = computed(() => this.watchListService.items().some(i => i.type === 'movie'));
 
   markSeriesWatched(): void {
     const series = this.nextSeries();
