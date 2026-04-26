@@ -36,4 +36,27 @@ describe('ItemFormComponent', () => {
     expect(completedButton?.className).toContain('bg-status-completed-bg-light');
     expect(completedButton?.className).toContain('border-transparent');
   });
+
+  it('disables submit when pristine if configured', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.componentRef.setInput('disableSubmitWhenPristine', true);
+    fixture.componentRef.setInput('initialValue', {
+      title: 'Completed Show',
+      type: 'series',
+      groupId: 'ungrouped',
+      status: 'completed',
+      season: 1,
+      episode: 8,
+      totalEpisodes: 10,
+      startImmediately: false
+    });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const submitButton = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(submitButton.disabled).toBe(true);
+  });
 });

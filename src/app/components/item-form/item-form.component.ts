@@ -150,7 +150,7 @@ import {
         <button
           type="submit"
           class="px-8 py-3 bg-accent-primary text-white border-none rounded cursor-pointer text-base font-medium hover:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-          [disabled]="itemForm.invalid || !formValue().title.trim()"
+          [disabled]="isSubmitDisabled()"
         >
           {{ submitLabel() }}
         </button>
@@ -174,6 +174,7 @@ export class ItemFormComponent {
   readonly showStatusPicker = input(true);
   readonly showDirtyState = input(false);
   readonly resetOnCancel = input(false);
+  readonly disableSubmitWhenPristine = input(false);
 
   readonly submitted = output<ItemFormValue>();
   readonly cancelled = output<void>();
@@ -189,6 +190,14 @@ export class ItemFormComponent {
     const current = this.formValue();
     const initial = normalizeFormValueForType(this.initialValue());
     return JSON.stringify(current) !== JSON.stringify(initial);
+  });
+
+  readonly isSubmitDisabled = computed(() => {
+    if (!this.formValue().title.trim()) {
+      return true;
+    }
+
+    return this.disableSubmitWhenPristine() && !this.isDirty();
   });
 
   setType(type: ItemFormValue['type']): void {

@@ -25,6 +25,7 @@ import {
             submitLabel="Save Changes"
             [showDirtyState]="true"
             [resetOnCancel]="true"
+            [disableSubmitWhenPristine]="true"
             (submitted)="saveChanges($event)"
           />
           <div class="flex gap-2 mt-4">
