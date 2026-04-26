@@ -1,13 +1,7 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
-import { Item, ItemType, ItemStatus, SeriesProgress, WatchHistoryEntry } from '../models/item.model';
-
-export interface HistoryEntry extends WatchHistoryEntry {
-  itemId: string;
-  itemTitle: string;
-  itemType: ItemType;
-  isDeleted?: boolean;
-}
+import { Item, ItemStatus, SeriesProgress } from '../models/item.model';
+import { HistoryEntry } from '../models/storage.model';
 
 @Injectable({
   providedIn: 'root'
@@ -156,35 +150,7 @@ export class WatchListService {
   }
 
   getAllWatchHistory(): HistoryEntry[] {
-    const data = this.storageService.getData();
-    const items = Object.values(data.items);
-    const deletedItems = data.deletedItems || {};
-    const history: HistoryEntry[] = [];
-
-    for (const item of items) {
-      for (const entry of item.watchHistory) {
-        history.push({
-          ...entry,
-          itemId: item.id,
-          itemTitle: item.title,
-          itemType: item.type
-        });
-      }
-    }
-
-    for (const deleted of Object.values(deletedItems)) {
-      for (const entry of deleted.watchHistory) {
-        history.push({
-          ...entry,
-          itemId: deleted.itemId,
-          itemTitle: deleted.itemTitle,
-          itemType: deleted.itemType,
-          isDeleted: true
-        });
-      }
-    }
-
-    return history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return this.history();
   }
 
   calculateProgress(item: Item): number | null {
@@ -212,7 +178,7 @@ export class WatchListService {
   }
 
   private generateId(): string {
-    return `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `item-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
   }
 
   items = computed(() => {
@@ -227,5 +193,38 @@ export class WatchListService {
   inProgressMovies = computed(() =>
     this.items().filter(i => i.type === 'movie' && i.status === 'in-progress')
   );
-}
 
+  history = computed(() => {
+    const data = this.storageService.getDataSignal()();
+    if (!data) {
+      return [];
+    }
+
+    const history: HistoryEntry[] = [];
+
+    for (const item of Object.values(data.items)) {
+      for (const entry of item.watchHistory) {
+        history.push({
+          ...entry,
+          itemId: item.id,
+          itemTitle: item.title,
+          itemType: item.type
+        });
+      }
+    }
+
+    for (const deleted of Object.values(data.deletedItems ?? {})) {
+      for (const entry of deleted.watchHistory) {
+        history.push({
+          ...entry,
+          itemId: deleted.itemId,
+          itemTitle: deleted.itemTitle,
+          itemType: deleted.itemType,
+          isDeleted: true
+        });
+      }
+    }
+
+    return history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  });
+}

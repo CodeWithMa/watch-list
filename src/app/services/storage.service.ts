@@ -1,10 +1,10 @@
 import { Injectable, signal } from '@angular/core';
-import { StorageData, CURRENT_SCHEMA_VERSION } from '../models/storage.model';
-import { Item, WatchHistoryEntry } from '../models/item.model';
+import { StorageData } from '../models/storage.model';
+import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
+import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
 
 const STORAGE_KEY = 'watchListData';
-const DEFAULT_SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
 
 @Injectable({
   providedIn: 'root'
@@ -21,64 +21,27 @@ export class StorageService {
     
     if (stored) {
       try {
-        const parsed = JSON.parse(stored) as StorageData;
-        const migrated = this.migrateDataOnly(parsed);
-        this.ensureDefaults(migrated);
-        this.data.set(migrated);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-        return migrated;
+        const normalized = normalizeStorageData(JSON.parse(stored));
+        this.data.set(normalized);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        return normalized;
       } catch (error) {
         console.error('Failed to parse stored data:', error);
-        return this.createDefaultData();
+        const defaultData = createDefaultStorageData();
+        this.data.set(defaultData);
+        return defaultData;
       }
     }
     
-    const defaultData = this.createDefaultData();
+    const defaultData = createDefaultStorageData();
     this.saveData(defaultData);
     return defaultData;
   }
 
-  migrateDataOnly(data: StorageData): StorageData {
-    if (data.schemaVersion >= CURRENT_SCHEMA_VERSION) {
-      return data;
-    }
-
-    const migrated = { ...data };
-
-    if (migrated.schemaVersion < 2) {
-      migrated.items = Object.fromEntries(
-        Object.entries(migrated.items).map(([id, item]) => {
-          const legacyItem = item as Item & { 
-            lastWatchedAt?: string; 
-            watchHistory?: unknown[];
-            progress?: { season: number; episode: number; totalEpisodes?: number };
-          };
-          let watchHistory = (legacyItem.watchHistory ?? []) as WatchHistoryEntry[];
-          
-          // Adjust episode numbers from 0-based to 1-based for non-completed items
-          let adjustedProgress = legacyItem.progress;
-          if (adjustedProgress && legacyItem.status !== 'completed') {
-            adjustedProgress = {
-              ...adjustedProgress,
-              episode: adjustedProgress.episode + 1
-            };
-          }
-          
-          if (watchHistory.length === 0 && 
-              (legacyItem.status === 'in-progress' || legacyItem.lastWatchedAt !== legacyItem.createdAt)) {
-            const entry: WatchHistoryEntry = { date: legacyItem.lastWatchedAt ?? '', season: legacyItem.progress?.season, episode: legacyItem.progress?.episode };
-            watchHistory = [entry];
-          }
-          
-          const itemWithoutLastWatched = { ...legacyItem };
-          delete itemWithoutLastWatched['lastWatchedAt'];
-          return [id, { ...itemWithoutLastWatched, watchHistory, progress: adjustedProgress }];
-        })
-      );
-      migrated.schemaVersion = 2;
-    }
-
-    return migrated;
+  importData(data: unknown): StorageData {
+    const normalized = normalizeStorageData(data);
+    this.saveData(normalized);
+    return normalized;
   }
 
   saveData(data: StorageData): void {
@@ -86,7 +49,6 @@ export class StorageService {
       ...data,
       lastModifiedAt: new Date().toISOString()
     };
-    this.ensureDefaults(updated);
     this.data.set(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }
@@ -112,39 +74,4 @@ export class StorageService {
     const data = this.getData();
     return Object.values(data.groups).sort((a, b) => a.order - b.order);
   }
-
-  private createDefaultData(): StorageData {
-    const now = new Date().toISOString();
-    return {
-      schemaVersion: DEFAULT_SCHEMA_VERSION,
-      lastModifiedAt: now,
-      groups: {
-        ungrouped: {
-          id: 'ungrouped',
-          name: 'Ungrouped',
-          order: 0
-        }
-      },
-      items: {},
-      deletedItems: {}
-    };
-  }
-
-  ensureUngroupedGroup(data: StorageData): void {
-    if (!data.groups['ungrouped']) {
-      data.groups['ungrouped'] = {
-        id: 'ungrouped',
-        name: 'Ungrouped',
-        order: 0
-      };
-    }
-  }
-
-  ensureDefaults(data: StorageData): void {
-    this.ensureUngroupedGroup(data);
-    if (!data.deletedItems) {
-      data.deletedItems = {};
-    }
-  }
 }
-
