@@ -1,6 +1,7 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Group } from '../models/group.model';
+import { DEFAULT_GROUP_ID } from '../domain/item.constants';
 
 @Injectable({
   providedIn: 'root'
@@ -18,7 +19,7 @@ export class GroupService {
     const groups = this.storageService.getGroups();
     const maxOrder = groups.length > 0 ? Math.max(...groups.map(g => g.order)) : -1;
     
-    const id = `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `group-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const newGroup: Group = {
       id,
       name,
@@ -48,7 +49,7 @@ export class GroupService {
   }
 
   deleteGroup(groupId: string): void {
-    if (groupId === 'ungrouped') {
+    if (groupId === DEFAULT_GROUP_ID) {
       throw new Error('Cannot delete the ungrouped group');
     }
 
@@ -63,7 +64,7 @@ export class GroupService {
       if (item.groupId === groupId) {
         items[item.id] = {
           ...item,
-          groupId: 'ungrouped'
+          groupId: DEFAULT_GROUP_ID
         };
       }
     });
@@ -107,4 +108,3 @@ export class GroupService {
     return data.groups[groupId];
   }
 }
-

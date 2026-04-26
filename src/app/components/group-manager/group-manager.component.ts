@@ -1,8 +1,8 @@
 import { Component, signal, inject } from '@angular/core';
-
 import { FormsModule } from '@angular/forms';
 import { GroupService } from '../../services/group.service';
 import { Group } from '../../models/group.model';
+import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
 
 @Component({
   selector: 'app-group-manager',
@@ -53,7 +53,7 @@ import { Group } from '../../models/group.model';
                   ↓
                 </button>
               }
-              @if (group.id !== 'ungrouped') {
+              @if (group.id !== defaultGroupId) {
                 <button
                   (click)="editGroup(group)"
                   class="px-4 py-2 border border-accent-warning rounded bg-accent-warning text-black dark:text-white hover:bg-accent-warning-hover cursor-pointer text-sm"
@@ -61,7 +61,7 @@ import { Group } from '../../models/group.model';
                   Edit
                 </button>
               }
-              @if (group.id !== 'ungrouped') {
+              @if (group.id !== defaultGroupId) {
                 <button
                   (click)="deleteGroup(group.id)"
                   class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white hover:bg-accent-danger-hover cursor-pointer text-sm"
@@ -101,6 +101,7 @@ export class GroupManagerComponent {
   private groupService = inject(GroupService);
 
   readonly groups = this.groupService.groups;
+  readonly defaultGroupId = DEFAULT_GROUP_ID;
 
   editingGroup = signal<Group | null>(null);
   editGroupName = '';
@@ -165,4 +166,3 @@ export class GroupManagerComponent {
     }
   }
 }
-

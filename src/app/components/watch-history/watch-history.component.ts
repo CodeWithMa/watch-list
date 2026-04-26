@@ -1,11 +1,7 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { WatchListService, HistoryEntry } from '../../services/watch-list.service';
-interface CalendarGroup {
-  relativeLabel: string;
-  dateLabel: string;
-  entries: (HistoryEntry & { relativeTime: string })[];
-}
+import { WatchListService } from '../../services/watch-list.service';
+import { groupHistoryEntries } from '../../utils/watch-history.utils';
 
 @Component({
   selector: 'app-watch-history',
@@ -65,70 +61,10 @@ interface CalendarGroup {
     </div>
   `
 })
-export class WatchHistoryComponent implements OnInit {
+export class WatchHistoryComponent {
   private watchListService = inject(WatchListService);
 
-  history = signal<HistoryEntry[]>([]);
+  history = this.watchListService.history;
 
-  calendarGroups = computed(() => {
-    const entries = this.history();
-    const groups: CalendarGroup[] = [];
-    const groupMap = new Map<string, (HistoryEntry & { relativeTime: string })[]>();
-
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    for (const entry of entries) {
-      const entryDate = new Date(entry.date);
-      const entryDay = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate());
-      const dayKey = entryDay.toISOString();
-
-      if (!groupMap.has(dayKey)) {
-        groupMap.set(dayKey, []);
-      }
-
-      const hours = entryDate.getHours();
-      const minutes = entryDate.getMinutes();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours % 12 || 12;
-      const displayMinutes = minutes < 10 ? '0' + minutes : minutes;
-      const relativeTime = `${displayHours}:${displayMinutes} ${ampm}`;
-
-      const augmentedEntry = { ...entry, relativeTime };
-      groupMap.get(dayKey)!.push(augmentedEntry);
-    }
-
-    groupMap.forEach((entries, dayKey) => {
-      const entryDay = new Date(dayKey);
-      let relativeLabel: string;
-
-      const daysDiff = Math.round((today.getTime() - entryDay.getTime()) / 86400000);
-
-      if (daysDiff === 0) {
-        relativeLabel = 'Today';
-      } else if (daysDiff === 1) {
-        relativeLabel = 'Yesterday';
-      } else if (daysDiff <= 6) {
-        relativeLabel = entryDay.toLocaleDateString('en-US', { weekday: 'long' });
-      } else {
-        relativeLabel = entryDay.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-      }
-
-      const dateLabel = entryDay.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-
-      groups.push({ relativeLabel, dateLabel, entries });
-    });
-
-    groups.sort((a, b) => new Date(b.entries[0].date).getTime() - new Date(a.entries[0].date).getTime());
-
-    return groups;
-  });
-
-  ngOnInit(): void {
-    this.history.set(this.watchListService.getAllWatchHistory());
-  }
+  calendarGroups = computed(() => groupHistoryEntries(this.history()));
 }

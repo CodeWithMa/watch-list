@@ -9,6 +9,13 @@ export interface DeletedItemHistory {
   deletedAt: string;
 }
 
+export interface HistoryEntry extends WatchHistoryEntry {
+  itemId: string;
+  itemTitle: string;
+  itemType: ItemType;
+  isDeleted?: boolean;
+}
+
 export interface StorageData {
   schemaVersion: number;
   lastModifiedAt: string;
@@ -18,4 +25,3 @@ export interface StorageData {
 }
 
 export const CURRENT_SCHEMA_VERSION = 2;
-

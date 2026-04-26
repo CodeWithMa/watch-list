@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { ItemCardComponent } from '../item-card/item-card.component';
-
+import { ItemType } from '../../models/item.model';
 
 @Component({
   selector: 'app-home',
@@ -99,8 +99,8 @@ export class HomeComponent {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   );
 
-  protected hasSeries = computed(() => this.watchListService.items().some(i => i.type === 'series'));
-  protected hasMovies = computed(() => this.watchListService.items().some(i => i.type === 'movie'));
+  protected hasSeries = computed(() => this.hasItemType('series'));
+  protected hasMovies = computed(() => this.hasItemType('movie'));
 
   markSeriesWatched(): void {
     const series = this.nextSeries();
@@ -150,5 +150,9 @@ export class HomeComponent {
 
   dropBacklogItem(itemId: string): void {
     this.watchListService.markDropped(itemId);
+  }
+
+  private hasItemType(type: ItemType): boolean {
+    return this.watchListService.items().some((item) => item.type === type);
   }
 }
