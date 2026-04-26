@@ -62,20 +62,18 @@ import { ItemCardComponent } from '../item-card/item-card.component';
       <div class="border-t border-light-border dark:border-dark-border pt-8 mt-8">
         <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Backlog</h2>
         @if (backlogItems().length > 0) {
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="overflow-hidden rounded-lg border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark">
             @for (item of backlogItems(); track item.id) {
-              <div class="border border-light-border dark:border-dark-border rounded-lg p-4 bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark">
-                <div class="flex justify-between items-center mb-2">
-                  <h3 class="m-0 text-lg">
-                    <a [routerLink]="['/items', item.id]" class="no-underline text-light-font dark:text-dark-font hover:text-accent-primary">{{ item.title }}</a>
-                  </h3>
-                  <span class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-1 rounded text-xs capitalize">{{ item.type }}</span>
+              <div class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-light-border dark:border-dark-border last:border-b-0">
+                <div class="min-w-0 flex items-center gap-3">
+                  <a [routerLink]="['/items', item.id]" class="truncate no-underline text-base font-medium text-light-font dark:text-dark-font hover:text-accent-primary">{{ item.title }}</a>
+                  <span class="shrink-0 rounded-full bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-1 text-xs capitalize text-light-font-secondary dark:text-dark-font-secondary">{{ item.type }}</span>
                 </div>
-                <div class="flex gap-2 mt-2">
-                  <button (click)="startBacklogItem(item.id)" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary">
+                <div class="flex shrink-0 gap-2">
+                  <button (click)="startBacklogItem(item.id)" class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary">
                     Add to currently watching
                   </button>
-                  <button (click)="dropBacklogItem(item.id)" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary">
+                  <button (click)="dropBacklogItem(item.id)" class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary">
                     Drop
                   </button>
                 </div>
