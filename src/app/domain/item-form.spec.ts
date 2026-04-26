@@ -2,7 +2,8 @@ import {
   buildItemMutationInput,
   createDefaultItemFormValue,
   createItemFormValue,
-  normalizeFormValueForType
+  normalizeFormValueForType,
+  prepareSubmittedItemFormValue
 } from './item-form';
 import { Item } from '../models/item.model';
 
@@ -66,6 +67,33 @@ describe('item-form helpers', () => {
       groupId: 'ungrouped',
       status: 'in-progress',
       progress: undefined
+    });
+  });
+
+  it('disables the add-flow override when submitting with a status picker', () => {
+    expect(
+      prepareSubmittedItemFormValue(
+        {
+          title: 'Series',
+          type: 'series',
+          groupId: 'ungrouped',
+          status: 'completed',
+          season: 1,
+          episode: 5,
+          totalEpisodes: 10,
+          startImmediately: true
+        },
+        false
+      )
+    ).toEqual({
+      title: 'Series',
+      type: 'series',
+      groupId: 'ungrouped',
+      status: 'completed',
+      season: 1,
+      episode: 5,
+      totalEpisodes: 10,
+      startImmediately: false
     });
   });
 

@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import { Component, computed, input, linkedSignal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
 import { statusBadgeClass } from '../../utils/status.utils';
 import {
   createDefaultItemFormValue,
   ItemFormValue,
-  normalizeFormValueForType
+  normalizeFormValueForType,
+  prepareSubmittedItemFormValue
 } from '../../domain/item-form';
 import {
   ITEM_STATUSES,
@@ -25,8 +26,8 @@ import {
         <input
           type="text"
           id="title"
-          [ngModel]="title()"
-          (ngModelChange)="title.set($event)"
+          [ngModel]="formValue().title"
+          (ngModelChange)="updateTitle($event)"
           name="title"
           required
           class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
@@ -40,7 +41,7 @@ import {
         <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font">Type *</label>
         <select
           id="type"
-          [ngModel]="type()"
+          [ngModel]="formValue().type"
           (ngModelChange)="setType($event)"
           name="type"
           class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
@@ -55,8 +56,8 @@ import {
         <label for="groupId" class="block mb-2 font-medium text-light-font dark:text-dark-font">Group *</label>
         <select
           id="groupId"
-          [ngModel]="groupId()"
-          (ngModelChange)="groupId.set($event)"
+          [ngModel]="formValue().groupId"
+          (ngModelChange)="updateGroupId($event)"
           name="groupId"
           required
           class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
@@ -74,9 +75,9 @@ import {
             @for (status of itemStatuses; track status) {
               <button
                 type="button"
-                (click)="statusValue.set(status)"
+                (click)="updateStatus(status)"
                 class="px-4 py-2 rounded font-medium cursor-pointer border transition-all"
-                [ngClass]="statusBadgeClass(statusValue() === status, status, true)"
+                [ngClass]="statusBadgeClass(formValue().status === status, status, true)"
               >
                 {{ itemStatusLabels[status] }}
               </button>
@@ -90,8 +91,8 @@ import {
           <label class="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
-              [ngModel]="startImmediately()"
-              (ngModelChange)="startImmediately.set($event)"
+              [ngModel]="formValue().startImmediately"
+              (ngModelChange)="updateStartImmediately($event)"
               name="startImmediately"
               class="w-5 h-5"
             />
@@ -100,15 +101,15 @@ import {
         </div>
       }
 
-      @if (type() === 'series') {
+      @if (formValue().type === 'series') {
         <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
           <div class="mb-6">
             <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font">Season</label>
             <input
               type="number"
               id="season"
-              [ngModel]="season()"
-              (ngModelChange)="season.set(toPositiveNumber($event, 1))"
+              [ngModel]="formValue().season"
+              (ngModelChange)="updateSeason($event)"
               name="season"
               min="1"
               class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
@@ -119,8 +120,8 @@ import {
             <input
               type="number"
               id="episode"
-              [ngModel]="episode()"
-              (ngModelChange)="episode.set(toPositiveNumber($event, 1))"
+              [ngModel]="formValue().episode"
+              (ngModelChange)="updateEpisode($event)"
               name="episode"
               min="1"
               class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
@@ -131,8 +132,8 @@ import {
             <input
               type="number"
               id="totalEpisodes"
-              [ngModel]="totalEpisodes()"
-              (ngModelChange)="totalEpisodes.set(toOptionalPositiveNumber($event))"
+              [ngModel]="formValue().totalEpisodes"
+              (ngModelChange)="updateTotalEpisodes($event)"
               name="totalEpisodes"
               min="1"
               class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
@@ -151,7 +152,7 @@ import {
         <button
           type="submit"
           class="px-8 py-3 bg-accent-primary text-white border-none rounded cursor-pointer text-base font-medium hover:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-          [disabled]="itemForm.invalid || !title().trim()"
+          [disabled]="itemForm.invalid || !formValue().title.trim()"
         >
           {{ submitLabel() }}
         </button>
@@ -185,67 +186,70 @@ export class ItemFormComponent {
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
   readonly statusBadgeClass = statusBadgeClass;
 
-  readonly title = signal('');
-  readonly type = signal<ItemFormValue['type']>('series');
-  readonly groupId = signal('');
-  readonly statusValue = signal<ItemFormValue['status']>('not-started');
-  readonly season = signal(1);
-  readonly episode = signal(1);
-  readonly totalEpisodes = signal<number | undefined>(undefined);
-  readonly startImmediately = signal(false);
-
-  readonly currentValue = computed<ItemFormValue>(() =>
-    normalizeFormValueForType({
-      title: this.title(),
-      type: this.type(),
-      groupId: this.groupId(),
-      status: this.statusValue(),
-      season: this.season(),
-      episode: this.episode(),
-      totalEpisodes: this.totalEpisodes(),
-      startImmediately: this.startImmediately()
-    })
-  );
+  readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
 
   readonly isDirty = computed(() => {
-    const current = this.currentValue();
+    const current = this.formValue();
     const initial = normalizeFormValueForType(this.initialValue());
     return JSON.stringify(current) !== JSON.stringify(initial);
   });
 
-  constructor() {
-    effect(() => {
-      this.applyValue(this.initialValue());
-    });
-  }
-
   setType(type: ItemFormValue['type']): void {
-    this.type.set(type);
-
-    if (type === 'movie') {
-      this.season.set(1);
-      this.episode.set(1);
-      this.totalEpisodes.set(undefined);
-    }
+    this.formValue.update((value) =>
+      normalizeFormValueForType({
+        ...value,
+        type
+      })
+    );
   }
 
   submit(): void {
-    const value = this.currentValue();
+    const value = this.formValue();
     if (!value.title.trim()) {
       return;
     }
 
+    const submittedValue = prepareSubmittedItemFormValue(value, this.showStartImmediately());
+
     this.submitted.emit({
-      ...value,
-      title: value.title.trim()
+      ...submittedValue,
+      title: submittedValue.title.trim()
     });
   }
 
   handleCancel(): void {
     if (this.resetOnCancel()) {
-      this.applyValue(this.initialValue());
+      this.formValue.set(normalizeFormValueForType(this.initialValue()));
     }
     this.cancelled.emit();
+  }
+
+  updateTitle(title: string): void {
+    this.updateFormValue({ title });
+  }
+
+  updateGroupId(groupId: string): void {
+    this.updateFormValue({ groupId });
+  }
+
+  updateStatus(status: ItemFormValue['status']): void {
+    this.updateFormValue({ status });
+  }
+
+  updateSeason(season: string | number | null | undefined): void {
+    this.updateFormValue({ season: this.toPositiveNumber(season, 1) });
+  }
+
+  updateEpisode(episode: string | number | null | undefined): void {
+    this.updateFormValue({ episode: this.toPositiveNumber(episode, 1) });
+  }
+
+  updateTotalEpisodes(totalEpisodes: string | number | null | undefined): void {
+    this.updateFormValue({ totalEpisodes: this.toOptionalPositiveNumber(totalEpisodes) });
+  }
+
+  updateStartImmediately(startImmediately: boolean): void {
+    this.updateFormValue({ startImmediately });
   }
 
   protected toPositiveNumber(value: string | number | null | undefined, fallback: number): number {
@@ -262,15 +266,12 @@ export class ItemFormComponent {
     return Number.isFinite(parsed) && parsed >= 1 ? parsed : undefined;
   }
 
-  private applyValue(value: ItemFormValue): void {
-    const normalized = normalizeFormValueForType(value);
-    this.title.set(normalized.title);
-    this.type.set(normalized.type);
-    this.groupId.set(normalized.groupId);
-    this.statusValue.set(normalized.status);
-    this.season.set(normalized.season);
-    this.episode.set(normalized.episode);
-    this.totalEpisodes.set(normalized.totalEpisodes);
-    this.startImmediately.set(normalized.startImmediately);
+  private updateFormValue(patch: Partial<ItemFormValue>): void {
+    this.formValue.update((value) =>
+      normalizeFormValueForType({
+        ...value,
+        ...patch
+      })
+    );
   }
 }

@@ -57,6 +57,20 @@ export function buildItemMutationInput(formValue: ItemFormValue): ItemMutationIn
   };
 }
 
+export function prepareSubmittedItemFormValue(
+  formValue: ItemFormValue,
+  allowStartImmediately: boolean
+): ItemFormValue {
+  if (allowStartImmediately) {
+    return formValue;
+  }
+
+  return {
+    ...formValue,
+    startImmediately: false
+  };
+}
+
 export function normalizeFormValueForType(formValue: ItemFormValue): ItemFormValue {
   if (formValue.type === 'series') {
     return formValue;
