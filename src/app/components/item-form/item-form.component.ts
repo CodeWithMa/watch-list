@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, input, linkedSignal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
-import { statusBadgeClass } from '../../utils/status.utils';
 import {
   createDefaultItemFormValue,
   ItemFormValue,
@@ -76,8 +75,7 @@ import {
               <button
                 type="button"
                 (click)="updateStatus(status)"
-                class="px-4 py-2 rounded font-medium cursor-pointer border transition-all"
-                [ngClass]="statusBadgeClass(formValue().status === status, status, true)"
+                [class]="statusButtonClass(status)"
               >
                 {{ itemStatusLabels[status] }}
               </button>
@@ -184,7 +182,6 @@ export class ItemFormComponent {
   readonly itemStatuses = ITEM_STATUSES;
   readonly itemTypeLabels = ITEM_TYPE_LABELS;
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
-  readonly statusBadgeClass = statusBadgeClass;
 
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
 
@@ -250,6 +247,28 @@ export class ItemFormComponent {
 
   updateStartImmediately(startImmediately: boolean): void {
     this.updateFormValue({ startImmediately });
+  }
+
+  statusButtonClass(status: ItemFormValue['status']): string {
+    const base = 'px-4 py-2 rounded font-medium cursor-pointer border transition-all';
+    const unselected =
+      'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary';
+    const selected = 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent';
+
+    if (this.formValue().status !== status) {
+      return `${base} ${unselected}`;
+    }
+
+    switch (status) {
+      case 'not-started':
+        return `${base} ${selected} bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark`;
+      case 'in-progress':
+        return `${base} ${selected} bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark`;
+      case 'completed':
+        return `${base} ${selected} bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark`;
+      case 'dropped':
+        return `${base} ${selected} bg-status-dropped-bg-light dark:bg-status-dropped-bg-dark text-status-dropped-text-light dark:text-status-dropped-text-dark`;
+    }
   }
 
   protected toPositiveNumber(value: string | number | null | undefined, fallback: number): number {
