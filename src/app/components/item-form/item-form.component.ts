@@ -302,7 +302,10 @@ export class ItemFormComponent {
     this.formValue.update((value) => {
       const newSeasons = [...value.seasons];
       if (newSeasons[index]) {
-        newSeasons[index] = { ...newSeasons[index], seasonNumber: parsed };
+        const hasDuplicate = newSeasons.some((s, i) => i !== index && s.seasonNumber === parsed);
+        if (!hasDuplicate) {
+          newSeasons[index] = { ...newSeasons[index], seasonNumber: parsed };
+        }
       }
       return { ...value, seasons: newSeasons };
     });
