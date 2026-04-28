@@ -176,7 +176,8 @@ function isSeriesProgress(progress: unknown): boolean {
   return (
     typeof candidate['season'] === 'number' &&
     typeof candidate['episode'] === 'number' &&
-    (candidate['totalEpisodes'] === undefined || typeof candidate['totalEpisodes'] === 'number')
+    (candidate['totalEpisodes'] === undefined || typeof candidate['totalEpisodes'] === 'number') &&
+    (candidate['totalSeasons'] === undefined || typeof candidate['totalSeasons'] === 'number')
   );
 }
 
