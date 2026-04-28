@@ -42,8 +42,27 @@ function migrateStorageData(data: StorageData): StorageData {
 
   const migrated = { ...data };
 
-  // Future migrations will be added here with version checks
-  // if (migrated.schemaVersion < 3) { ... }
+  if (migrated.schemaVersion < 3) {
+    for (const item of Object.values(migrated.items)) {
+      if (item.type === 'series' && item.progress) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const progress = item.progress as any;
+        if ('totalEpisodes' in progress && typeof progress.totalEpisodes === 'number') {
+          progress.seasons = [{
+            seasonNumber: progress.season,
+            totalEpisodes: progress.totalEpisodes
+          }];
+          delete progress.totalEpisodes;
+        } else if (!progress.seasons) {
+          progress.seasons = [];
+        }
+        if ('totalSeasons' in progress) {
+          delete progress.totalSeasons;
+        }
+      }
+    }
+    migrated.schemaVersion = 3;
+  }
 
   return migrated;
 }
@@ -173,12 +192,34 @@ function isSeriesProgress(progress: unknown): boolean {
   }
 
   const candidate = progress as Record<string, unknown>;
-  return (
-    typeof candidate['season'] === 'number' &&
-    typeof candidate['episode'] === 'number' &&
-    (candidate['totalEpisodes'] === undefined || typeof candidate['totalEpisodes'] === 'number') &&
-    (candidate['totalSeasons'] === undefined || typeof candidate['totalSeasons'] === 'number')
-  );
+
+  if (typeof candidate['season'] !== 'number' || typeof candidate['episode'] !== 'number') {
+    return false;
+  }
+
+  if (!Array.isArray(candidate['seasons'])) {
+    return false;
+  }
+
+  const seenSeasonNumbers = new Set<number>();
+  for (const entry of candidate['seasons'] as unknown[]) {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+    const seasonEntry = entry as Record<string, unknown>;
+    if (typeof seasonEntry['seasonNumber'] !== 'number') {
+      return false;
+    }
+    if (seasonEntry['totalEpisodes'] !== undefined && typeof seasonEntry['totalEpisodes'] !== 'number') {
+      return false;
+    }
+    if (seenSeasonNumbers.has(seasonEntry['seasonNumber'])) {
+      return false;
+    }
+    seenSeasonNumbers.add(seasonEntry['seasonNumber']);
+  }
+
+  return true;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

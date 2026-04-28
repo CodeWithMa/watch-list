@@ -1,11 +1,15 @@
 export type ItemType = 'series' | 'movie';
 export type ItemStatus = 'not-started' | 'in-progress' | 'completed' | 'dropped';
 
+export interface SeasonInfo {
+  seasonNumber: number;
+  totalEpisodes?: number;
+}
+
 export interface SeriesProgress {
   season: number;
   episode: number;
-  totalEpisodes?: number;
-  totalSeasons?: number;
+  seasons: SeasonInfo[];
 }
 
 export interface WatchHistoryEntry {

@@ -78,14 +78,22 @@ export class WatchListService {
         watchHistory: [...item.watchHistory, { date: now }]
       });
     } else if (item.type === 'series') {
-      const progress = item.progress || { season: 1, episode: 1 };
+      const progress = item.progress || { season: 1, episode: 1, seasons: [] };
       let newProgress: SeriesProgress;
       let newStatus: ItemStatus;
 
-      if (progress.totalEpisodes !== undefined) {
-        if (progress.episode >= progress.totalEpisodes) {
-          newStatus = 'completed';
-          newProgress = progress;
+      const currentSeasonInfo = progress.seasons.find(s => s.seasonNumber === progress.season);
+
+      if (currentSeasonInfo?.totalEpisodes !== undefined && progress.episode >= currentSeasonInfo.totalEpisodes) {
+        const nextSeasonNumber = progress.season + 1;
+        const nextSeasonExists = progress.seasons.some(s => s.seasonNumber === nextSeasonNumber);
+        if (nextSeasonExists) {
+          newProgress = {
+            ...progress,
+            season: nextSeasonNumber,
+            episode: 1
+          };
+          newStatus = 'in-progress';
         } else {
           newProgress = {
             ...progress,
@@ -158,10 +166,15 @@ export class WatchListService {
       return item.status === 'completed' ? 100 : 0;
     }
 
-    if (item.type === 'series' && item.progress?.totalEpisodes) {
+    if (item.type === 'series' && item.progress) {
       if (item.status === 'completed') return 100;
-      const { episode, totalEpisodes } = item.progress;
-      return Math.max(0, Math.round(((episode - 1) / totalEpisodes) * 100));
+      const currentSeason = item.progress.seasons.find(
+        (s) => s.seasonNumber === item.progress!.season
+      );
+      if (currentSeason?.totalEpisodes) {
+        const { episode } = item.progress;
+        return Math.max(0, Math.round(((episode - 1) / currentSeason.totalEpisodes) * 100));
+      }
     }
 
     return null;

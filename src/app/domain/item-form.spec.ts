@@ -1,10 +1,10 @@
 import {
-  buildItemMutationInput,
-  createDefaultItemFormValue,
-  createItemFormValue,
-  normalizeFormValueForType,
-  prepareSubmittedItemFormValue
-} from './item-form';
+   buildItemMutationInput,
+   createDefaultItemFormValue,
+   createItemFormValue,
+   normalizeFormValueForType,
+   prepareSubmittedItemFormValue
+ } from './item-form';
 import { Item } from '../models/item.model';
 
 describe('item-form helpers', () => {
@@ -16,7 +16,7 @@ describe('item-form helpers', () => {
       status: 'not-started',
       season: 1,
       episode: 1,
-      totalEpisodes: undefined,
+      seasons: [],
       startImmediately: false
     });
   });
@@ -31,7 +31,7 @@ describe('item-form helpers', () => {
       progress: {
         season: 2,
         episode: 4,
-        totalEpisodes: 10
+        seasons: [{ seasonNumber: 2, totalEpisodes: 10 }]
       },
       watchHistory: [],
       createdAt: '2026-04-20T08:00:00.000Z'
@@ -44,7 +44,7 @@ describe('item-form helpers', () => {
       status: 'in-progress',
       season: 2,
       episode: 4,
-      totalEpisodes: 10,
+      seasons: [{ seasonNumber: 2, totalEpisodes: 10 }],
       startImmediately: true
     });
   });
@@ -57,7 +57,7 @@ describe('item-form helpers', () => {
       status: 'not-started',
       season: 1,
       episode: 1,
-      totalEpisodes: undefined,
+      seasons: [],
       startImmediately: true
     });
 
@@ -80,7 +80,7 @@ describe('item-form helpers', () => {
           status: 'completed',
           season: 1,
           episode: 5,
-          totalEpisodes: 10,
+          seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
           startImmediately: true
         },
         false
@@ -92,7 +92,7 @@ describe('item-form helpers', () => {
       status: 'completed',
       season: 1,
       episode: 5,
-      totalEpisodes: 10,
+      seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
       startImmediately: false
     });
   });
@@ -106,7 +106,7 @@ describe('item-form helpers', () => {
         status: 'completed',
         season: 4,
         episode: 9,
-        totalEpisodes: 12,
+        seasons: [{ seasonNumber: 4, totalEpisodes: 12 }],
         startImmediately: false
       })
     ).toEqual({
@@ -116,7 +116,7 @@ describe('item-form helpers', () => {
       status: 'completed',
       season: 1,
       episode: 1,
-      totalEpisodes: undefined,
+      seasons: [],
       startImmediately: false
     });
   });

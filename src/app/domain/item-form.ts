@@ -1,4 +1,4 @@
-import { Item, ItemStatus, ItemType } from '../models/item.model';
+import { Item, ItemStatus, ItemType, SeasonInfo } from '../models/item.model';
 import { DEFAULT_GROUP_ID } from './item.constants';
 
 export interface ItemFormValue {
@@ -8,8 +8,7 @@ export interface ItemFormValue {
   status: ItemStatus;
   season: number;
   episode: number;
-  totalEpisodes?: number;
-  totalSeasons?: number;
+  seasons: SeasonInfo[];
   startImmediately: boolean;
 }
 
@@ -23,8 +22,7 @@ export function createDefaultItemFormValue(): ItemFormValue {
     status: 'not-started',
     season: 1,
     episode: 1,
-    totalEpisodes: undefined,
-    totalSeasons: undefined,
+    seasons: [],
     startImmediately: false
   };
 }
@@ -37,13 +35,13 @@ export function createItemFormValue(item: Item): ItemFormValue {
     status: item.status,
     season: item.progress?.season ?? 1,
     episode: item.progress?.episode ?? 1,
-    totalEpisodes: item.progress?.totalEpisodes,
-    totalSeasons: item.progress?.totalSeasons,
+    seasons: item.progress?.seasons ?? [],
     startImmediately: item.status === 'in-progress'
   };
 }
 
 export function buildItemMutationInput(formValue: ItemFormValue): ItemMutationInput {
+  const sortedSeasons = [...formValue.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber);
   return {
     title: formValue.title.trim(),
     type: formValue.type,
@@ -54,8 +52,7 @@ export function buildItemMutationInput(formValue: ItemFormValue): ItemMutationIn
         ? {
             season: formValue.season,
             episode: formValue.episode,
-            totalEpisodes: formValue.totalEpisodes,
-            totalSeasons: formValue.totalSeasons
+            seasons: sortedSeasons
           }
         : undefined
   };
@@ -84,7 +81,6 @@ export function normalizeFormValueForType(formValue: ItemFormValue): ItemFormVal
     ...formValue,
     season: 1,
     episode: 1,
-    totalEpisodes: undefined,
-    totalSeasons: undefined
+    seasons: []
   };
 }

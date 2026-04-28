@@ -45,6 +45,9 @@ describe('StorageService', () => {
     expect(data.groups['ungrouped']).toBeDefined();
     expect(data.deletedItems).toEqual({});
     expect(data.items['legacy'].progress?.episode).toBe(1);
+    expect(data.items['legacy'].progress?.seasons).toEqual([
+      { seasonNumber: 1, totalEpisodes: 12 }
+    ]);
     expect(data.items['legacy'].watchHistory).toEqual([
       {
         date: '2026-03-02T12:00:00.000Z',
