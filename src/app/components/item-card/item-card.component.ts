@@ -21,8 +21,14 @@ import { statusBadgeClass } from '../../utils/status.utils';
     
       @if (item().type === 'series' && item().progress) {
         <div class="my-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-          <span class="episode-info">
-            Episode {{ item().progress!.episode }}
+          <span class="season-info">
+            Season {{ item().progress!.season }}
+            @if (item().progress!.totalSeasons) {
+              <span> of {{ item().progress!.totalSeasons }}</span>
+            }
+          </span>
+          <span class="episode-info ml-2">
+            • Episode {{ item().progress!.episode }}
             @if (item().progress!.totalEpisodes) {
               <span> of {{ item().progress!.totalEpisodes }}</span>
             }

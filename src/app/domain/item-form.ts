@@ -9,6 +9,7 @@ export interface ItemFormValue {
   season: number;
   episode: number;
   totalEpisodes?: number;
+  totalSeasons?: number;
   startImmediately: boolean;
 }
 
@@ -23,6 +24,7 @@ export function createDefaultItemFormValue(): ItemFormValue {
     season: 1,
     episode: 1,
     totalEpisodes: undefined,
+    totalSeasons: undefined,
     startImmediately: false
   };
 }
@@ -36,6 +38,7 @@ export function createItemFormValue(item: Item): ItemFormValue {
     season: item.progress?.season ?? 1,
     episode: item.progress?.episode ?? 1,
     totalEpisodes: item.progress?.totalEpisodes,
+    totalSeasons: item.progress?.totalSeasons,
     startImmediately: item.status === 'in-progress'
   };
 }
@@ -51,7 +54,8 @@ export function buildItemMutationInput(formValue: ItemFormValue): ItemMutationIn
         ? {
             season: formValue.season,
             episode: formValue.episode,
-            totalEpisodes: formValue.totalEpisodes
+            totalEpisodes: formValue.totalEpisodes,
+            totalSeasons: formValue.totalSeasons
           }
         : undefined
   };
@@ -80,6 +84,7 @@ export function normalizeFormValueForType(formValue: ItemFormValue): ItemFormVal
     ...formValue,
     season: 1,
     episode: 1,
-    totalEpisodes: undefined
+    totalEpisodes: undefined,
+    totalSeasons: undefined
   };
 }

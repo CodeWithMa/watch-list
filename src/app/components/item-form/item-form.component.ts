@@ -137,6 +137,18 @@ import {
               class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
             />
           </div>
+          <div class="mb-6">
+            <label for="totalSeasons" class="block mb-2 font-medium text-light-font dark:text-dark-font">Total Seasons (optional)</label>
+            <input
+              type="number"
+              id="totalSeasons"
+              [ngModel]="formValue().totalSeasons"
+              (ngModelChange)="updateTotalSeasons($event)"
+              name="totalSeasons"
+              min="1"
+              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+            />
+          </div>
         </div>
       }
 
@@ -252,6 +264,10 @@ export class ItemFormComponent {
 
   updateTotalEpisodes(totalEpisodes: string | number | null | undefined): void {
     this.updateFormValue({ totalEpisodes: this.toOptionalPositiveNumber(totalEpisodes) });
+  }
+
+  updateTotalSeasons(totalSeasons: string | number | null | undefined): void {
+    this.updateFormValue({ totalSeasons: this.toOptionalPositiveNumber(totalSeasons) });
   }
 
   updateStartImmediately(startImmediately: boolean): void {

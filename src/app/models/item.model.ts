@@ -5,6 +5,7 @@ export interface SeriesProgress {
   season: number;
   episode: number;
   totalEpisodes?: number;
+  totalSeasons?: number;
 }
 
 export interface WatchHistoryEntry {
