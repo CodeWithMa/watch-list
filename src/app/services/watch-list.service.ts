@@ -95,11 +95,8 @@ export class WatchListService {
           };
           newStatus = 'in-progress';
         } else {
-          newProgress = {
-            ...progress,
-            episode: progress.episode + 1
-          };
-          newStatus = 'in-progress';
+          newProgress = { ...progress };
+          newStatus = 'completed';
         }
       } else {
         newProgress = {
