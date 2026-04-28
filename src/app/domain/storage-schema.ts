@@ -42,46 +42,8 @@ function migrateStorageData(data: StorageData): StorageData {
 
   const migrated = { ...data };
 
-  if (migrated.schemaVersion < 2) {
-    migrated.items = Object.fromEntries(
-      Object.entries(migrated.items).map(([id, item]) => {
-        const legacyItem = item as Item & {
-          lastWatchedAt?: string;
-          watchHistory?: unknown[];
-          progress?: { season: number; episode: number; totalEpisodes?: number };
-        };
-
-        let watchHistory = (legacyItem.watchHistory ?? []) as WatchHistoryEntry[];
-        let adjustedProgress = legacyItem.progress;
-
-        if (adjustedProgress && legacyItem.status !== 'completed') {
-          adjustedProgress = {
-            ...adjustedProgress,
-            episode: adjustedProgress.episode + 1
-          };
-        }
-
-        if (
-          watchHistory.length === 0 &&
-          (legacyItem.status === 'in-progress' || legacyItem.lastWatchedAt !== legacyItem.createdAt)
-        ) {
-          watchHistory = [
-            {
-              date: legacyItem.lastWatchedAt ?? '',
-              season: legacyItem.progress?.season,
-              episode: legacyItem.progress?.episode
-            }
-          ];
-        }
-
-        const itemWithoutLastWatched = { ...legacyItem };
-        delete itemWithoutLastWatched['lastWatchedAt'];
-
-        return [id, { ...itemWithoutLastWatched, watchHistory, progress: adjustedProgress }];
-      })
-    );
-    migrated.schemaVersion = 2;
-  }
+  // Future migrations will be added here with version checks
+  // if (migrated.schemaVersion < 3) { ... }
 
   return migrated;
 }

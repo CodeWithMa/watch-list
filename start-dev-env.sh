@@ -1,1 +1,1 @@
-nix-shell -I nixpkgs=channel:nixos-unstable -p opencode nodejs_25
+nix-shell -I nixpkgs=channel:nixos-unstable -p nodejs_25
