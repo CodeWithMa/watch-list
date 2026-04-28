@@ -18,7 +18,17 @@ import {
     <div class="max-w-[800px] mx-auto p-8">
       @if (item()) {
         <div class="border border-light-border dark:border-dark-border rounded-lg p-6">
-          <h2 class="mt-0 mb-6">Edit Item</h2>
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="mt-0">Edit Item</h2>
+            <div class="flex gap-2">
+              @if (!confirmDelete()) {
+                <button type="button" (click)="confirmDelete.set(true)" class="px-6 py-3 border border-accent-danger rounded bg-transparent text-accent-danger cursor-pointer hover:bg-accent-danger hover:text-white">Delete</button>
+              } @else {
+                <button type="button" (click)="deleteItem()" class="px-6 py-3 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse">Confirm Delete?</button>
+                <button type="button" (click)="cancelDelete()" class="px-6 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border border-light-border dark:border-dark-border rounded cursor-pointer">Cancel</button>
+              }
+            </div>
+          </div>
           <app-item-form
             [groups]="groups()"
             [initialValue]="formValue()"
@@ -28,14 +38,7 @@ import {
             [disableSubmitWhenPristine]="true"
             (submitted)="saveChanges($event)"
           />
-          <div class="flex gap-2 mt-4">
-            @if (!confirmDelete()) {
-              <button type="button" (click)="confirmDelete.set(true)" class="px-6 py-3 border border-accent-danger rounded bg-transparent text-accent-danger cursor-pointer hover:bg-accent-danger hover:text-white">Delete</button>
-            } @else {
-              <button type="button" (click)="deleteItem()" class="px-6 py-3 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse">Confirm Delete?</button>
-              <button type="button" (click)="cancelDelete()" class="px-6 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border border-light-border dark:border-dark-border rounded cursor-pointer">Cancel</button>
-            }
-          </div>
+
         </div>
       } @else {
         <div class="text-center px-8 py-16">
