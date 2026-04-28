@@ -85,12 +85,12 @@ export class WatchListService {
       const currentSeasonInfo = progress.seasons.find(s => s.seasonNumber === progress.season);
 
       if (currentSeasonInfo?.totalEpisodes !== undefined && progress.episode >= currentSeasonInfo.totalEpisodes) {
-        const nextSeasonNumber = progress.season + 1;
-        const nextSeasonExists = progress.seasons.some(s => s.seasonNumber === nextSeasonNumber);
-        if (nextSeasonExists) {
+        const sortedSeasons = [...progress.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber);
+        const nextSeasonInfo = sortedSeasons.find(s => s.seasonNumber > progress.season);
+        if (nextSeasonInfo) {
           newProgress = {
             ...progress,
-            season: nextSeasonNumber,
+            season: nextSeasonInfo.seasonNumber,
             episode: 1
           };
           newStatus = 'in-progress';
