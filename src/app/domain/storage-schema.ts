@@ -1,7 +1,15 @@
 import { DEFAULT_GROUP_ID, isItemStatus, isItemType } from './item.constants';
-import { Item, WatchHistoryEntry } from '../models/item.model';
+import { Item, SeasonInfo, WatchHistoryEntry } from '../models/item.model';
 import { CURRENT_SCHEMA_VERSION, DeletedItemHistory, StorageData } from '../models/storage.model';
 import { Group } from '../models/group.model';
+
+interface LegacyProgressV2 {
+  season: number;
+  episode: number;
+  totalEpisodes?: number;
+  totalSeasons?: number;
+  seasons?: SeasonInfo[];
+}
 
 export function createDefaultStorageData(): StorageData {
   const now = new Date().toISOString();
@@ -45,8 +53,7 @@ function migrateStorageData(data: StorageData): StorageData {
   if (migrated.schemaVersion < 3) {
     for (const item of Object.values(migrated.items)) {
       if (item.type === 'series' && item.progress) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const progress = item.progress as any;
+        const progress = item.progress as unknown as LegacyProgressV2;
         if ('totalEpisodes' in progress && typeof progress.totalEpisodes === 'number') {
           progress.seasons = [{
             seasonNumber: progress.season,
