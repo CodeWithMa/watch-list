@@ -329,16 +329,6 @@ export class ItemFormComponent {
     }));
   }
 
-  private hasDuplicateSeasonNumber(seasons: { seasonNumber: number }[], excludeIndex?: number): boolean {
-    const seen = new Set<number>();
-    for (let i = 0; i < seasons.length; i++) {
-      if (i === excludeIndex) continue;
-      if (seen.has(seasons[i].seasonNumber)) return true;
-      seen.add(seasons[i].seasonNumber);
-    }
-    return false;
-  }
-
   private getNextSeasonNumber(seasons: { seasonNumber: number }[]): number {
     if (seasons.length === 0) return 1;
     const max = Math.max(...seasons.map((s) => s.seasonNumber));
