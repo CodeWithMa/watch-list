@@ -21,10 +21,13 @@ import { statusBadgeClass } from '../../utils/status.utils';
     
       @if (item().type === 'series' && item().progress) {
         <div class="my-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-          <span class="episode-info">
-            Episode {{ item().progress!.episode }}
-            @if (item().progress!.totalEpisodes) {
-              <span> of {{ item().progress!.totalEpisodes }}</span>
+          <span class="season-info">
+            Season {{ item().progress!.season }}
+          </span>
+          <span class="episode-info ml-2">
+            • Episode {{ item().progress!.episode }}
+            @if (currentSeasonTotalEpisodes() !== undefined) {
+              <span> of {{ currentSeasonTotalEpisodes() }}</span>
             }
           </span>
           @if (progressPercent() !== null) {
@@ -76,6 +79,15 @@ export class ItemCardComponent {
 
   progressPercent = computed(() => {
     return this.watchListService.calculateProgress(this.item());
+  });
+
+  currentSeasonTotalEpisodes = computed(() => {
+    const item = this.item();
+    if (!item.progress?.seasons) return undefined;
+    const currentSeason = item.progress.seasons.find(
+      (s) => s.seasonNumber === item.progress!.season
+    );
+    return currentSeason?.totalEpisodes;
   });
 
   lastWatchedDate = computed(() => {

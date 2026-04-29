@@ -21,7 +21,7 @@ describe('ItemFormComponent', () => {
       status: 'completed',
       season: 1,
       episode: 8,
-      totalEpisodes: 10,
+      seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
       startImmediately: false
     });
 
@@ -48,7 +48,7 @@ describe('ItemFormComponent', () => {
       status: 'completed',
       season: 1,
       episode: 8,
-      totalEpisodes: 10,
+      seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
       startImmediately: false
     });
 

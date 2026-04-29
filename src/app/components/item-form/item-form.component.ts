@@ -126,16 +126,49 @@ import {
             />
           </div>
           <div class="mb-6">
-            <label for="totalEpisodes" class="block mb-2 font-medium text-light-font dark:text-dark-font">Total Episodes (optional)</label>
-            <input
-              type="number"
-              id="totalEpisodes"
-              [ngModel]="formValue().totalEpisodes"
-              (ngModelChange)="updateTotalEpisodes($event)"
-              name="totalEpisodes"
-              min="1"
-              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
-            />
+            <h3 class="mb-4 font-medium text-light-font dark:text-dark-font">Seasons</h3>
+            @for (season of formValue().seasons; track season.seasonNumber; let i = $index) {
+              <div class="flex gap-2 mb-4 items-end">
+                <div class="flex-1">
+                  <label for="seasonNumber{{ i }}" class="block mb-1 text-sm">Season</label>
+                  <input
+                    type="number"
+                    id="seasonNumber{{ i }}"
+                    [ngModel]="season.seasonNumber"
+                    (ngModelChange)="updateSeasonNumber(i, $event)"
+                    name="seasonNumber{{ i }}"
+                    min="1"
+                    class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
+                  />
+                </div>
+                <div class="flex-1">
+                  <label for="seasonEpisodes{{ i }}" class="block mb-1 text-sm">Episodes</label>
+                  <input
+                    type="number"
+                    id="seasonEpisodes{{ i }}"
+                    [ngModel]="season.totalEpisodes"
+                    (ngModelChange)="updateSeasonEpisodes(i, $event)"
+                    name="seasonEpisodes{{ i }}"
+                    min="1"
+                    class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
+                  />
+                </div>
+                <button
+                  type="button"
+                  (click)="removeSeason(season.seasonNumber)"
+                  class="px-3 py-2 bg-accent-danger text-white border-none rounded cursor-pointer text-sm hover:bg-accent-danger-hover"
+                >
+                  Remove
+                </button>
+              </div>
+            }
+            <button
+              type="button"
+              (click)="addSeason()"
+              class="px-4 py-2 bg-accent-secondary text-white border-none rounded cursor-pointer text-sm hover:bg-accent-secondary-hover"
+            >
+              Add Season
+            </button>
           </div>
         </div>
       }
@@ -250,12 +283,56 @@ export class ItemFormComponent {
     this.updateFormValue({ episode: this.toPositiveNumber(episode, 1) });
   }
 
-  updateTotalEpisodes(totalEpisodes: string | number | null | undefined): void {
-    this.updateFormValue({ totalEpisodes: this.toOptionalPositiveNumber(totalEpisodes) });
-  }
-
   updateStartImmediately(startImmediately: boolean): void {
     this.updateFormValue({ startImmediately });
+  }
+
+  addSeason(): void {
+    this.formValue.update((value) => {
+      const nextSeasonNumber = this.getNextSeasonNumber(value.seasons);
+      return {
+        ...value,
+        seasons: [...value.seasons, { seasonNumber: nextSeasonNumber, totalEpisodes: undefined as number | undefined }]
+      };
+    });
+  }
+
+  updateSeasonNumber(index: number, seasonNumber: string | number | null | undefined): void {
+    const parsed = this.toPositiveNumber(seasonNumber, 1);
+    this.formValue.update((value) => {
+      const newSeasons = [...value.seasons];
+      if (newSeasons[index]) {
+        const hasDuplicate = newSeasons.some((s, i) => i !== index && s.seasonNumber === parsed);
+        if (!hasDuplicate) {
+          newSeasons[index] = { ...newSeasons[index], seasonNumber: parsed };
+        }
+      }
+      return { ...value, seasons: newSeasons };
+    });
+  }
+
+  updateSeasonEpisodes(index: number, totalEpisodes: string | number | null | undefined): void {
+    const parsed = this.toOptionalPositiveNumber(totalEpisodes);
+    this.formValue.update((value) => {
+      const newSeasons = [...value.seasons];
+      if (newSeasons[index]) {
+        newSeasons[index] = { ...newSeasons[index], totalEpisodes: parsed };
+      }
+      return { ...value, seasons: newSeasons };
+    });
+  }
+
+  removeSeason(seasonNumber: number): void {
+    this.formValue.update((value) => ({
+      ...value,
+      seasons: value.seasons.filter((s) => s.seasonNumber !== seasonNumber)
+    }));
+  }
+
+  private getNextSeasonNumber(seasons: { seasonNumber: number }[]): number {
+    if (seasons.length === 0) return 1;
+    const max = Math.max(...seasons.map((s) => s.seasonNumber));
+    return max + 1;
   }
 
   statusButtonClass(status: ItemFormValue['status']): string {

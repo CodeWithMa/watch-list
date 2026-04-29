@@ -78,20 +78,26 @@ export class WatchListService {
         watchHistory: [...item.watchHistory, { date: now }]
       });
     } else if (item.type === 'series') {
-      const progress = item.progress || { season: 1, episode: 1 };
+      const progress = item.progress || { season: 1, episode: 1, seasons: [] };
       let newProgress: SeriesProgress;
       let newStatus: ItemStatus;
 
-      if (progress.totalEpisodes !== undefined) {
-        if (progress.episode >= progress.totalEpisodes) {
-          newStatus = 'completed';
-          newProgress = progress;
-        } else {
+      const currentSeasonInfo = progress.seasons.find(s => s.seasonNumber === progress.season);
+
+      const currentTotal = currentSeasonInfo?.totalEpisodes;
+      if (currentTotal !== undefined && currentTotal > 0 && progress.episode >= currentTotal) {
+        const sortedSeasons = [...progress.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber);
+        const nextSeasonInfo = sortedSeasons.find(s => s.seasonNumber > progress.season);
+        if (nextSeasonInfo) {
           newProgress = {
             ...progress,
-            episode: progress.episode + 1
+            season: nextSeasonInfo.seasonNumber,
+            episode: 1
           };
           newStatus = 'in-progress';
+        } else {
+          newProgress = { ...progress };
+          newStatus = 'completed';
         }
       } else {
         newProgress = {
@@ -158,10 +164,16 @@ export class WatchListService {
       return item.status === 'completed' ? 100 : 0;
     }
 
-    if (item.type === 'series' && item.progress?.totalEpisodes) {
+    if (item.type === 'series' && item.progress) {
       if (item.status === 'completed') return 100;
-      const { episode, totalEpisodes } = item.progress;
-      return Math.max(0, Math.round(((episode - 1) / totalEpisodes) * 100));
+      const currentSeason = item.progress.seasons.find(
+        (s) => s.seasonNumber === item.progress!.season
+      );
+      const currentTotal = currentSeason?.totalEpisodes;
+      if (currentTotal !== undefined && currentTotal > 0) {
+        const { episode } = item.progress;
+        return Math.max(0, Math.round(((episode - 1) / currentTotal) * 100));
+      }
     }
 
     return null;

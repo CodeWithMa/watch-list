@@ -1,7 +1,15 @@
 import { DEFAULT_GROUP_ID, isItemStatus, isItemType } from './item.constants';
-import { Item, WatchHistoryEntry } from '../models/item.model';
+import { Item, SeasonInfo, WatchHistoryEntry } from '../models/item.model';
 import { CURRENT_SCHEMA_VERSION, DeletedItemHistory, StorageData } from '../models/storage.model';
 import { Group } from '../models/group.model';
+
+interface LegacyProgressV2 {
+  season: number;
+  episode: number;
+  totalEpisodes?: number;
+  totalSeasons?: number;
+  seasons?: SeasonInfo[];
+}
 
 export function createDefaultStorageData(): StorageData {
   const now = new Date().toISOString();
@@ -42,8 +50,26 @@ function migrateStorageData(data: StorageData): StorageData {
 
   const migrated = { ...data };
 
-  // Future migrations will be added here with version checks
-  // if (migrated.schemaVersion < 3) { ... }
+  if (migrated.schemaVersion < 3) {
+    for (const item of Object.values(migrated.items)) {
+      if (item.type === 'series' && item.progress) {
+        const progress = item.progress as unknown as LegacyProgressV2;
+        if ('totalEpisodes' in progress && typeof progress.totalEpisodes === 'number') {
+          progress.seasons = [{
+            seasonNumber: progress.season,
+            totalEpisodes: progress.totalEpisodes
+          }];
+          delete progress.totalEpisodes;
+        } else if (!progress.seasons) {
+          progress.seasons = [];
+        }
+        if ('totalSeasons' in progress) {
+          delete progress.totalSeasons;
+        }
+      }
+    }
+    migrated.schemaVersion = 3;
+  }
 
   return migrated;
 }
@@ -173,11 +199,34 @@ function isSeriesProgress(progress: unknown): boolean {
   }
 
   const candidate = progress as Record<string, unknown>;
-  return (
-    typeof candidate['season'] === 'number' &&
-    typeof candidate['episode'] === 'number' &&
-    (candidate['totalEpisodes'] === undefined || typeof candidate['totalEpisodes'] === 'number')
-  );
+
+  if (typeof candidate['season'] !== 'number' || typeof candidate['episode'] !== 'number') {
+    return false;
+  }
+
+  if (!Array.isArray(candidate['seasons'])) {
+    return false;
+  }
+
+  const seenSeasonNumbers = new Set<number>();
+  for (const entry of candidate['seasons'] as unknown[]) {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+    const seasonEntry = entry as Record<string, unknown>;
+    if (typeof seasonEntry['seasonNumber'] !== 'number') {
+      return false;
+    }
+    if (seasonEntry['totalEpisodes'] !== undefined && typeof seasonEntry['totalEpisodes'] !== 'number') {
+      return false;
+    }
+    if (seenSeasonNumbers.has(seasonEntry['seasonNumber'])) {
+      return false;
+    }
+    seenSeasonNumbers.add(seasonEntry['seasonNumber']);
+  }
+
+  return true;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
