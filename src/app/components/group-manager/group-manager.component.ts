@@ -32,7 +32,6 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
           <div class="flex justify-between items-center p-4 border-b border-light-border-light dark:border-dark-border-light last:border-b-0">
             <div class="flex flex-col gap-1">
               <span class="font-medium text-lg">{{ group.name }}</span>
-              <span class="text-sm text-light-font-secondary dark:text-dark-font-secondary">Order: {{ group.order }}</span>
             </div>
             <div class="flex gap-2">
               @if (i > 0) {
