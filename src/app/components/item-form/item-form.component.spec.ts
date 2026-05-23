@@ -59,4 +59,29 @@ describe('ItemFormComponent', () => {
     const submitButton = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
     expect(submitButton.disabled).toBe(true);
   });
+
+  it('shows the duplicate title hint when provided', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.componentRef.setInput('duplicateTitleHint', 'An item named "Existing Show" already exists.');
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'An item named "Existing Show" already exists.'
+    );
+  });
+
+  it('does not show a duplicate title hint by default', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('already exists');
+  });
 });

@@ -34,6 +34,9 @@ import {
         @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
           <div class="text-accent-danger text-sm mt-1">Title is required</div>
         }
+        @if (duplicateTitleHint()) {
+          <div class="text-accent-secondary text-sm mt-1">{{ duplicateTitleHint() }}</div>
+        }
       </div>
 
       <div class="mb-6">
@@ -208,9 +211,11 @@ export class ItemFormComponent {
   readonly showDirtyState = input(false);
   readonly resetOnCancel = input(false);
   readonly disableSubmitWhenPristine = input(false);
+  readonly duplicateTitleHint = input('');
 
   readonly submitted = output<ItemFormValue>();
   readonly cancelled = output<void>();
+  readonly titleChanged = output<string>();
 
   readonly itemTypes = ITEM_TYPES;
   readonly itemStatuses = ITEM_STATUSES;
@@ -265,6 +270,7 @@ export class ItemFormComponent {
 
   updateTitle(title: string): void {
     this.updateFormValue({ title });
+    this.titleChanged.emit(title);
   }
 
   updateGroupId(groupId: string): void {

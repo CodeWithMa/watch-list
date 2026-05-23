@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
@@ -18,6 +18,8 @@ import { buildItemMutationInput, createDefaultItemFormValue, ItemFormValue } fro
         submitLabel="Add Item"
         [showStartImmediately]="true"
         [showStatusPicker]="false"
+        [duplicateTitleHint]="duplicateTitleHint()"
+        (titleChanged)="title.set($event)"
         (submitted)="onSubmit($event)"
         (cancelled)="cancel()"
       />
@@ -31,6 +33,19 @@ export class AddItemComponent {
 
   readonly groups = this.groupService.groups;
   readonly initialValue = createDefaultItemFormValue();
+  readonly title = signal('');
+  readonly duplicateTitleHint = computed(() => {
+    const normalizedTitle = this.normalizeTitle(this.title());
+    if (!normalizedTitle) {
+      return '';
+    }
+
+    const duplicate = this.watchListService
+      .items()
+      .find((item) => this.normalizeTitle(item.title) === normalizedTitle);
+
+    return duplicate ? `An item named "${duplicate.title}" already exists.` : '';
+  });
 
   onSubmit(formValue: ItemFormValue): void {
     this.watchListService.addItem(buildItemMutationInput(formValue));
@@ -40,5 +55,9 @@ export class AddItemComponent {
 
   cancel(): void {
     this.router.navigate(['/items']);
+  }
+
+  private normalizeTitle(title: string): string {
+    return title.trim().toLocaleLowerCase();
   }
 }
