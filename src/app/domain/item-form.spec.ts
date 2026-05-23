@@ -31,7 +31,7 @@ describe('item-form helpers', () => {
       progress: {
         season: 2,
         episode: 4,
-        seasons: [{ seasonNumber: 2, totalEpisodes: 10 }]
+        seasons: [{ seasonNumber: 2, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }]
       },
       watchHistory: [],
       createdAt: '2026-04-20T08:00:00.000Z'
@@ -44,7 +44,7 @@ describe('item-form helpers', () => {
       status: 'in-progress',
       season: 2,
       episode: 4,
-      seasons: [{ seasonNumber: 2, totalEpisodes: 10 }],
+      seasons: [{ seasonNumber: 2, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }],
       startImmediately: true
     });
   });
@@ -68,6 +68,23 @@ describe('item-form helpers', () => {
       status: 'in-progress',
       progress: undefined
     });
+  });
+
+  it('preserves first episode air dates when building series mutation input', () => {
+    const mutationInput = buildItemMutationInput({
+      title: 'Weekly Show',
+      type: 'series',
+      groupId: 'ungrouped',
+      status: 'in-progress',
+      season: 1,
+      episode: 3,
+      seasons: [{ seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }],
+      startImmediately: false
+    });
+
+    expect(mutationInput.progress?.seasons).toEqual([
+      { seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }
+    ]);
   });
 
   it('disables the add-flow override when submitting with a status picker', () => {

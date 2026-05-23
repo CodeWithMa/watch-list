@@ -4,6 +4,7 @@ export type ItemStatus = 'not-started' | 'in-progress' | 'completed' | 'dropped'
 export interface SeasonInfo {
   seasonNumber: number;
   totalEpisodes?: number;
+  firstEpisodeAirDate?: string;
 }
 
 export interface SeriesProgress {
@@ -28,4 +29,3 @@ export interface Item {
   watchHistory: WatchHistoryEntry[];
   createdAt: string;
 }
-

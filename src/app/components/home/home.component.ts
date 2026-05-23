@@ -28,7 +28,11 @@ import { ItemType } from '../../models/item.model';
           } @else {
             <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">
               @if (hasSeries()) {
-                No series currently being watched
+                @if (hasInProgressSeries()) {
+                  No aired series episodes available
+                } @else {
+                  No series currently being watched
+                }
               } @else {
                 No series in your watch list
               }
@@ -101,6 +105,7 @@ export class HomeComponent {
 
   protected hasSeries = computed(() => this.hasItemType('series'));
   protected hasMovies = computed(() => this.hasItemType('movie'));
+  protected hasInProgressSeries = computed(() => this.watchListService.inProgressSeries().length > 0);
 
   markSeriesWatched(): void {
     const series = this.nextSeries();
