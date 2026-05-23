@@ -131,7 +131,7 @@ import {
           <div class="mb-6">
             <h3 class="mb-4 font-medium text-light-font dark:text-dark-font">Seasons</h3>
             @for (season of formValue().seasons; track season.seasonNumber; let i = $index) {
-              <div class="flex gap-2 mb-4 items-end">
+              <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-4 items-end">
                 <div class="flex-1">
                   <label for="seasonNumber{{ i }}" class="block mb-1 text-sm">Season</label>
                   <input
@@ -153,6 +153,17 @@ import {
                     (ngModelChange)="updateSeasonEpisodes(i, $event)"
                     name="seasonEpisodes{{ i }}"
                     min="1"
+                    class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
+                  />
+                </div>
+                <div class="flex-1">
+                  <label for="seasonFirstAirDate{{ i }}" class="block mb-1 text-sm">First episode air date</label>
+                  <input
+                    type="date"
+                    id="seasonFirstAirDate{{ i }}"
+                    [ngModel]="season.firstEpisodeAirDate"
+                    (ngModelChange)="updateSeasonFirstAirDate(i, $event)"
+                    name="seasonFirstAirDate{{ i }}"
                     class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
                   />
                 </div>
@@ -328,6 +339,20 @@ export class ItemFormComponent {
     });
   }
 
+  updateSeasonFirstAirDate(index: number, firstEpisodeAirDate: string | null | undefined): void {
+    const normalized = this.toOptionalDateString(firstEpisodeAirDate);
+    this.formValue.update((value) => {
+      const newSeasons = [...value.seasons];
+      if (newSeasons[index]) {
+        newSeasons[index] = {
+          ...newSeasons[index],
+          firstEpisodeAirDate: normalized
+        };
+      }
+      return { ...value, seasons: newSeasons };
+    });
+  }
+
   removeSeason(seasonNumber: number): void {
     this.formValue.update((value) => ({
       ...value,
@@ -375,6 +400,14 @@ export class ItemFormComponent {
 
     const parsed = Number(value);
     return Number.isFinite(parsed) && parsed >= 1 ? parsed : undefined;
+  }
+
+  protected toOptionalDateString(value: string | null | undefined): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
   }
 
   private updateFormValue(patch: Partial<ItemFormValue>): void {

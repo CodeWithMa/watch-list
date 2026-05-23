@@ -71,6 +71,10 @@ function migrateStorageData(data: StorageData): StorageData {
     migrated.schemaVersion = 3;
   }
 
+  if (migrated.schemaVersion < 4) {
+    migrated.schemaVersion = 4;
+  }
+
   return migrated;
 }
 
@@ -220,6 +224,13 @@ function isSeriesProgress(progress: unknown): boolean {
     if (seasonEntry['totalEpisodes'] !== undefined && typeof seasonEntry['totalEpisodes'] !== 'number') {
       return false;
     }
+    if (
+      seasonEntry['firstEpisodeAirDate'] !== undefined &&
+      (typeof seasonEntry['firstEpisodeAirDate'] !== 'string' ||
+        !isDateOnlyString(seasonEntry['firstEpisodeAirDate']))
+    ) {
+      return false;
+    }
     if (seenSeasonNumbers.has(seasonEntry['seasonNumber'])) {
       return false;
     }
@@ -231,4 +242,8 @@ function isSeriesProgress(progress: unknown): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isDateOnlyString(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }

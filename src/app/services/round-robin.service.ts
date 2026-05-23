@@ -22,13 +22,18 @@ export class RoundRobinService {
       return new Date(aDate).getTime() - new Date(bDate).getTime();
     });
 
-    for (const s of sorted) {
-      if (this.canSuggestSeries(s.id, series)) {
+    const watchable = sorted.filter(s => this.hasAiredCurrentEpisode(s));
+    if (watchable.length === 0) {
+      return null;
+    }
+
+    for (const s of watchable) {
+      if (this.canSuggestSeries(s.id, watchable)) {
         return s;
       }
     }
 
-    return sorted[0];
+    return watchable[0];
   });
 
   nextMovie = computed(() => {
@@ -62,5 +67,40 @@ export class RoundRobinService {
     });
 
     return allOthersWatched;
+  }
+
+  hasAiredCurrentEpisode(series: Item, today = new Date()): boolean {
+    if (series.type !== 'series' || !series.progress) {
+      return true;
+    }
+
+    const currentSeason = series.progress.seasons.find(
+      s => s.seasonNumber === series.progress!.season
+    );
+    if (!currentSeason?.firstEpisodeAirDate) {
+      return true;
+    }
+
+    const airDate = this.getEpisodeAirDate(currentSeason.firstEpisodeAirDate, series.progress.episode);
+    if (!airDate) {
+      return true;
+    }
+
+    return airDate.getTime() <= this.startOfLocalDay(today).getTime();
+  }
+
+  private getEpisodeAirDate(firstEpisodeAirDate: string, episode: number): Date | null {
+    const [year, month, day] = firstEpisodeAirDate.split('-').map(Number);
+    if (!year || !month || !day) {
+      return null;
+    }
+
+    const airDate = new Date(year, month - 1, day);
+    airDate.setDate(airDate.getDate() + Math.max(0, episode - 1) * 7);
+    return airDate;
+  }
+
+  private startOfLocalDay(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   }
 }
