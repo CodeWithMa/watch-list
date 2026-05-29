@@ -13,7 +13,7 @@ describe('TmdbSuggestionService', () => {
         {
           provide: TmdbSettingsService,
           useValue: {
-            token: () => 'read-token'
+            getCredential: () => ({ type: 'read-token', value: 'read-token' })
           }
         }
       ]
@@ -35,6 +35,7 @@ describe('TmdbSuggestionService', () => {
 
     const request = http.expectOne((req) => req.url === 'https://api.themoviedb.org/3/search/multi');
     expect(request.request.headers.get('Authorization')).toBe('Bearer read-token');
+    expect(request.request.params.get('api_key')).toBeNull();
     expect(request.request.params.get('query')).toBe('breaking');
     expect(request.request.params.get('include_adult')).toBe('false');
 
@@ -82,7 +83,7 @@ describe('TmdbSuggestionService', () => {
     ]);
   });
 
-  it('returns no suggestions without a token or searchable query', () => {
+  it('uses the API key query param when no read token exists', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -91,7 +92,39 @@ describe('TmdbSuggestionService', () => {
         {
           provide: TmdbSettingsService,
           useValue: {
-            token: () => ''
+            getCredential: () => ({ type: 'api-key', value: 'api-key-value' })
+          }
+        }
+      ]
+    });
+
+    const service = TestBed.inject(TmdbSuggestionService);
+    const http = TestBed.inject(HttpTestingController);
+    let results: unknown;
+
+    service.search('breaking').subscribe((suggestions) => {
+      results = suggestions;
+    });
+
+    const request = http.expectOne((req) => req.url === 'https://api.themoviedb.org/3/search/multi');
+    expect(request.request.headers.get('Authorization')).toBeNull();
+    expect(request.request.params.get('api_key')).toBe('api-key-value');
+    request.flush({ results: [] });
+
+    expect(results).toEqual([]);
+    http.verify();
+  });
+
+  it('returns no suggestions without credentials or searchable query', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: TmdbSettingsService,
+          useValue: {
+            getCredential: () => null
           }
         }
       ]
@@ -108,6 +141,7 @@ describe('TmdbSuggestionService', () => {
 
     expect(results).toEqual([]);
     http.expectNone('https://api.themoviedb.org/3/search/multi');
+    http.verify();
   });
 
   it('handles HTTP errors as empty suggestions', () => {

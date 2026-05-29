@@ -29,21 +29,30 @@ export class TmdbSuggestionService {
 
   search(query: string): Observable<TmdbSuggestion[]> {
     const trimmedQuery = query.trim();
-    const token = this.settings.token();
+    const credential = this.settings.getCredential();
 
-    if (trimmedQuery.length < 2 || !token) {
+    if (trimmedQuery.length < 2 || !credential) {
       return of([]);
     }
 
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${token}`,
-      accept: 'application/json'
-    });
-    const params = new HttpParams()
+    const headers =
+      credential.type === 'read-token'
+        ? new HttpHeaders({
+            Authorization: `Bearer ${credential.value}`,
+            accept: 'application/json'
+          })
+        : new HttpHeaders({
+            accept: 'application/json'
+          });
+    let params = new HttpParams()
       .set('query', trimmedQuery)
       .set('include_adult', 'false')
       .set('language', 'en-US')
       .set('page', '1');
+
+    if (credential.type === 'api-key') {
+      params = params.set('api_key', credential.value);
+    }
 
     return this.http
       .get<TmdbSearchResponse>('https://api.themoviedb.org/3/search/multi', { headers, params })
