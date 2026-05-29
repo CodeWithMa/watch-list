@@ -1,13 +1,42 @@
 import { Component, signal, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 
 import { ImportExportService } from '../../services/import-export.service';
+import { TmdbSettingsService } from '../../services/tmdb-settings.service';
 
 @Component({
   selector: 'app-settings',
-  imports: [],
+  imports: [FormsModule],
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
+
+      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
+        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">TMDB</h2>
+        <div class="mb-4">
+          <label for="tmdbToken" class="block mb-2 font-medium text-light-font dark:text-dark-font">API Read Access Token</label>
+          <input
+            id="tmdbToken"
+            type="password"
+            [ngModel]="tmdbToken()"
+            (ngModelChange)="tmdbToken.set($event)"
+            autocomplete="off"
+            class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+          />
+          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">Used locally to fetch movie and series suggestions while adding items.</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <button (click)="saveTmdbToken()" class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium bg-accent-primary text-white hover:bg-accent-primary-hover">
+            Save Token
+          </button>
+          <button (click)="clearTmdbToken()" class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium bg-accent-secondary text-white hover:bg-accent-secondary-hover">
+            Clear Token
+          </button>
+        </div>
+        @if (tmdbSettingsMessage()) {
+          <div class="mt-4 text-sm text-accent-secondary">{{ tmdbSettingsMessage() }}</div>
+        }
+      </div>
     
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">Data Management</h2>
@@ -54,9 +83,28 @@ import { ImportExportService } from '../../services/import-export.service';
 })
 export class SettingsComponent {
   private importExportService = inject(ImportExportService);
+  private tmdbSettingsService = inject(TmdbSettingsService);
 
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
+  tmdbToken = signal(this.tmdbSettingsService.token());
+  tmdbSettingsMessage = signal<string | null>(
+    this.tmdbSettingsService.token() ? 'TMDB token is saved on this device.' : null
+  );
+
+  saveTmdbToken(): void {
+    this.tmdbSettingsService.saveToken(this.tmdbToken());
+    this.tmdbToken.set(this.tmdbSettingsService.token());
+    this.tmdbSettingsMessage.set(
+      this.tmdbSettingsService.token() ? 'TMDB token saved.' : 'TMDB token cleared.'
+    );
+  }
+
+  clearTmdbToken(): void {
+    this.tmdbSettingsService.clearToken();
+    this.tmdbToken.set('');
+    this.tmdbSettingsMessage.set('TMDB token cleared.');
+  }
 
   exportData(): void {
     try {
@@ -98,4 +146,3 @@ export class SettingsComponent {
     }
   }
 }
-

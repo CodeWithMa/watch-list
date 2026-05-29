@@ -85,6 +85,48 @@ describe('ItemFormComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('already exists');
   });
 
+  it('renders TMDB suggestions and applies the selected title and type', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.componentRef.setInput('suggestions', [
+      {
+        tmdbId: 11,
+        title: 'Star Wars',
+        type: 'movie',
+        year: '1977',
+        overview: 'A space opera.'
+      }
+    ]);
+    const selected: unknown[] = [];
+    fixture.componentInstance.suggestionSelected.subscribe((suggestion) => selected.push(suggestion));
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('button')
+    ) as HTMLButtonElement[];
+    const suggestionButton = buttons.find((button) =>
+      button.textContent?.includes('Star Wars')
+    );
+
+    expect(suggestionButton).toBeDefined();
+    suggestionButton?.click();
+
+    expect(fixture.componentInstance.formValue().title).toBe('Star Wars');
+    expect(fixture.componentInstance.formValue().type).toBe('movie');
+    expect(selected).toEqual([
+      {
+        tmdbId: 11,
+        title: 'Star Wars',
+        type: 'movie',
+        year: '1977',
+        overview: 'A space opera.'
+      }
+    ]);
+  });
+
   it('updates a season first episode air date', async () => {
     const fixture = TestBed.createComponent(ItemFormComponent);
     fixture.componentRef.setInput('groups', groups);

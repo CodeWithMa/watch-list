@@ -3,9 +3,11 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { GroupService } from '../../services/group.service';
 import { WatchListService } from '../../services/watch-list.service';
+import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { Item } from '../../models/item.model';
 import { AddItemComponent } from './add-item.component';
 import { vi } from 'vitest';
+import { of } from 'rxjs';
 
 describe('AddItemComponent', () => {
   const existingItems: Item[] = [
@@ -40,6 +42,12 @@ describe('AddItemComponent', () => {
           provide: GroupService,
           useValue: {
             groups: signal([{ id: 'ungrouped', name: 'Ungrouped', order: 0 }])
+          }
+        },
+        {
+          provide: TmdbSuggestionService,
+          useValue: {
+            search: vi.fn(() => of([]))
           }
         }
       ]
@@ -79,5 +87,29 @@ describe('AddItemComponent', () => {
 
     expect(watchListService.addItem).toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/items']);
+  });
+
+  it('clears suggestions after selecting a TMDB suggestion', () => {
+    const fixture = TestBed.createComponent(AddItemComponent);
+
+    fixture.componentInstance.suggestions.set([
+      {
+        tmdbId: 1396,
+        title: 'Breaking Bad',
+        type: 'series',
+        year: '2008'
+      }
+    ]);
+
+    fixture.componentInstance.onSuggestionSelected({
+      tmdbId: 1396,
+      title: 'Breaking Bad',
+      type: 'series',
+      year: '2008'
+    });
+
+    expect(fixture.componentInstance.title()).toBe('Breaking Bad');
+    expect(fixture.componentInstance.suggestions()).toEqual([]);
+    expect(fixture.componentInstance.suggestionsLoading()).toBe(false);
   });
 });
