@@ -7,7 +7,7 @@ import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { Item } from '../../models/item.model';
 import { AddItemComponent } from './add-item.component';
 import { vi } from 'vitest';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 describe('AddItemComponent', () => {
   const existingItems: Item[] = [
@@ -111,5 +111,48 @@ describe('AddItemComponent', () => {
     expect(fixture.componentInstance.title()).toBe('Breaking Bad');
     expect(fixture.componentInstance.suggestions()).toEqual([]);
     expect(fixture.componentInstance.suggestionsLoading()).toBe(false);
+  });
+
+  it('shows a TMDB error and keeps searching after a failed request', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      search
+        .mockReturnValueOnce(throwError(() => new Error('TMDB unavailable')))
+        .mockReturnValueOnce(
+          of([
+            {
+              tmdbId: 1396,
+              title: 'Breaking Bad',
+              type: 'series',
+              year: '2008'
+            }
+          ])
+        );
+      const fixture = TestBed.createComponent(AddItemComponent);
+
+      fixture.componentInstance.onTitleChanged('bad query');
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(fixture.componentInstance.suggestions()).toEqual([]);
+      expect(fixture.componentInstance.suggestionsLoading()).toBe(false);
+      expect(fixture.componentInstance.suggestionsError()).toBe('TMDB suggestions are unavailable.');
+
+      fixture.componentInstance.onTitleChanged('good query');
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(fixture.componentInstance.suggestions()).toEqual([
+        {
+          tmdbId: 1396,
+          title: 'Breaking Bad',
+          type: 'series',
+          year: '2008'
+        }
+      ]);
+      expect(fixture.componentInstance.suggestionsError()).toBe('');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

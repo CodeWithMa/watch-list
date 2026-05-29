@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
@@ -76,7 +76,12 @@ export class AddItemComponent {
           }
 
           this.suggestionsLoading.set(true);
-          return this.tmdbSuggestionService.search(normalizedTitle);
+          return this.tmdbSuggestionService.search(normalizedTitle).pipe(
+            catchError(() => {
+              this.suggestionsError.set('TMDB suggestions are unavailable.');
+              return of([]);
+            })
+          );
         }),
         takeUntilDestroyed(this.destroyRef)
       )
@@ -84,11 +89,6 @@ export class AddItemComponent {
         next: (suggestions) => {
           this.suggestions.set(suggestions);
           this.suggestionsLoading.set(false);
-        },
-        error: () => {
-          this.suggestions.set([]);
-          this.suggestionsLoading.set(false);
-          this.suggestionsError.set('TMDB suggestions are unavailable.');
         }
       });
   }

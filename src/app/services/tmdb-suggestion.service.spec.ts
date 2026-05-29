@@ -144,13 +144,15 @@ describe('TmdbSuggestionService', () => {
     http.verify();
   });
 
-  it('handles HTTP errors as empty suggestions', () => {
+  it('propagates HTTP errors to callers', () => {
     const service = TestBed.inject(TmdbSuggestionService);
     const http = TestBed.inject(HttpTestingController);
-    let results: unknown;
+    let errorStatus: number | undefined;
 
-    service.search('breaking').subscribe((suggestions) => {
-      results = suggestions;
+    service.search('breaking').subscribe({
+      error: (error: { status?: number }) => {
+        errorStatus = error.status;
+      }
     });
 
     http.expectOne((req) => req.url === 'https://api.themoviedb.org/3/search/multi').flush(
@@ -158,6 +160,6 @@ describe('TmdbSuggestionService', () => {
       { status: 401, statusText: 'Unauthorized' }
     );
 
-    expect(results).toEqual([]);
+    expect(errorStatus).toBe(401);
   });
 });

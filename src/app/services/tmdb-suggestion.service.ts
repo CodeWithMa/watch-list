@@ -1,6 +1,6 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { catchError, map, Observable, of } from 'rxjs';
+import { map, Observable, of } from 'rxjs';
 import { TmdbSuggestion } from '../models/tmdb-suggestion.model';
 import { TmdbSettingsService } from './tmdb-settings.service';
 
@@ -56,15 +56,7 @@ export class TmdbSuggestionService {
 
     return this.http
       .get<TmdbSearchResponse>('https://api.themoviedb.org/3/search/multi', { headers, params })
-      .pipe(
-        map((response) => this.mapResults(response.results ?? [])),
-        catchError((error: unknown) => {
-          if (error instanceof HttpErrorResponse) {
-            console.warn('TMDB suggestion search failed:', error.message);
-          }
-          return of([]);
-        })
-      );
+      .pipe(map((response) => this.mapResults(response.results ?? [])));
   }
 
   private mapResults(results: unknown[]): TmdbSuggestion[] {
