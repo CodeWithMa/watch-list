@@ -14,6 +14,16 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">TMDB</h2>
         <div class="mb-4">
+          <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer" class="inline-block">
+            <img
+              src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg"
+              alt="TMDB"
+              class="h-12 w-auto"
+            />
+          </a>
+          <p class="mt-3 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+        </div>
+        <div class="mb-4">
           <label for="tmdbToken" class="block mb-2 font-medium text-light-font dark:text-dark-font">API Read Access Token</label>
           <input
             id="tmdbToken"

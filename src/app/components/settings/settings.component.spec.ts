@@ -48,6 +48,28 @@ describe('SettingsComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('TMDB read access token saved');
   });
 
+  it('shows TMDB logo attribution', async () => {
+    configure({
+      token: '',
+      key: '',
+      credential: null
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const logo = fixture.nativeElement.querySelector('img[alt="TMDB"]') as HTMLImageElement;
+    const link = fixture.nativeElement.querySelector('a[href="https://www.themoviedb.org"]') as HTMLAnchorElement;
+
+    expect(logo).toBeDefined();
+    expect(logo.src).toContain('/assets/2/v4/logos/v2/blue_square_2-');
+    expect(link).toBeDefined();
+    expect(fixture.nativeElement.textContent).toContain(
+      'This product uses the TMDB API but is not endorsed or certified by TMDB.'
+    );
+  });
+
   it('shows a TMDB status message after saving credentials', () => {
     const tmdbSettingsService = configure({
       token: 'read-token',
