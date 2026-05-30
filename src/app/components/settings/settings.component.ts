@@ -101,9 +101,7 @@ export class SettingsComponent {
   successMessage = signal<string | null>(null);
   tmdbToken = signal(this.tmdbSettingsService.token());
   tmdbApiKey = signal(this.tmdbSettingsService.key());
-  tmdbSettingsMessage = signal<string | null>(
-    this.tmdbSettingsService.getCredential() ? this.getTmdbSettingsMessage() : null
-  );
+  tmdbSettingsMessage = signal<string | null>(null);
 
   saveTmdbToken(): void {
     this.tmdbSettingsService.saveCredentials(this.tmdbToken(), this.tmdbApiKey());
