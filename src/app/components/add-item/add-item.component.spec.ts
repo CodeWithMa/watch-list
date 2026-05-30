@@ -155,4 +155,23 @@ describe('AddItemComponent', () => {
       vi.useRealTimers();
     }
   });
+
+  it('does not search again for whitespace-only title changes', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      const fixture = TestBed.createComponent(AddItemComponent);
+
+      fixture.componentInstance.onTitleChanged('Breaking');
+      await vi.advanceTimersByTimeAsync(250);
+      fixture.componentInstance.onTitleChanged('Breaking ');
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(search).toHaveBeenCalledTimes(1);
+      expect(search).toHaveBeenCalledWith('Breaking');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

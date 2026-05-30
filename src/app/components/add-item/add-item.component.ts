@@ -65,7 +65,7 @@ export class AddItemComponent {
     this.titleChanges
       .pipe(
         debounceTime(250),
-        distinctUntilChanged(),
+        distinctUntilChanged((previous, current) => previous.trim() === current.trim()),
         switchMap((title) => {
           const normalizedTitle = title.trim();
           this.suggestionsError.set('');
