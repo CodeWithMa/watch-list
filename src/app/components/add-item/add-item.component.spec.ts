@@ -174,4 +174,39 @@ describe('AddItemComponent', () => {
       vi.useRealTimers();
     }
   });
+
+  it('does not run a pending debounced search after selecting a suggestion', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      const fixture = TestBed.createComponent(AddItemComponent);
+
+      fixture.componentInstance.suggestions.set([
+        {
+          tmdbId: 1396,
+          title: 'Breaking Bad',
+          type: 'series',
+          year: '2008'
+        }
+      ]);
+      fixture.componentInstance.onTitleChanged('Breakin');
+      await vi.advanceTimersByTimeAsync(100);
+      fixture.componentInstance.onSuggestionSelected({
+        tmdbId: 1396,
+        title: 'Breaking Bad',
+        type: 'series',
+        year: '2008'
+      });
+      await vi.advanceTimersByTimeAsync(250);
+
+      expect(search).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.title()).toBe('Breaking Bad');
+      expect(fixture.componentInstance.suggestions()).toEqual([]);
+      expect(fixture.componentInstance.suggestionsLoading()).toBe(false);
+      expect(fixture.componentInstance.suggestionsError()).toBe('');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

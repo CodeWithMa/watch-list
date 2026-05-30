@@ -41,6 +41,7 @@ export class AddItemComponent {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private titleChanges = new Subject<string>();
+  private skipNextSearch = false;
 
   readonly groups = this.groupService.groups;
   readonly initialValue = createDefaultItemFormValue();
@@ -70,9 +71,15 @@ export class AddItemComponent {
           const normalizedTitle = title.trim();
           this.suggestionsError.set('');
 
+          if (this.skipNextSearch) {
+            this.skipNextSearch = false;
+            this.suggestionsLoading.set(false);
+            return of([]);
+          }
+
           if (normalizedTitle.length < 2) {
             this.suggestionsLoading.set(false);
-            return this.tmdbSuggestionService.search(normalizedTitle);
+            return of([]);
           }
 
           this.suggestionsLoading.set(true);
@@ -100,6 +107,8 @@ export class AddItemComponent {
 
   onSuggestionSelected(suggestion: TmdbSuggestion): void {
     this.title.set(suggestion.title);
+    this.skipNextSearch = true;
+    this.titleChanges.next(suggestion.title);
     this.suggestions.set([]);
     this.suggestionsLoading.set(false);
     this.suggestionsError.set('');
