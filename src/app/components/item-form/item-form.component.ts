@@ -14,6 +14,7 @@ import {
   ITEM_TYPES,
   ITEM_TYPE_LABELS
 } from '../../domain/item.constants';
+import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
 
 @Component({
   selector: 'app-item-form',
@@ -36,6 +37,34 @@ import {
         }
         @if (duplicateTitleHint()) {
           <div class="text-accent-secondary text-sm mt-1">{{ duplicateTitleHint() }}</div>
+        }
+        @if (showSuggestions()) {
+          <div class="mt-3 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary overflow-hidden">
+            @if (suggestionsLoading()) {
+              <div class="px-3 py-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">Searching TMDB...</div>
+            } @else if (suggestionsError()) {
+              <div class="px-3 py-2 text-sm text-accent-secondary">{{ suggestionsError() }}</div>
+            } @else if (suggestions().length > 0) {
+              @for (suggestion of suggestions(); track suggestion.type + '-' + suggestion.tmdbId) {
+                <button
+                  type="button"
+                  (click)="selectSuggestion(suggestion)"
+                  class="w-full text-left px-3 py-3 border-0 border-b border-light-border dark:border-dark-border last:border-b-0 bg-transparent hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer"
+                >
+                  <span class="block text-light-font dark:text-dark-font font-medium">
+                    {{ suggestion.title }}
+                    @if (suggestion.year) {
+                      <span class="text-light-font-muted dark:text-dark-font-muted font-normal">({{ suggestion.year }})</span>
+                    }
+                  </span>
+                  <span class="block text-sm text-light-font-secondary dark:text-dark-font-secondary">{{ itemTypeLabels[suggestion.type] }}</span>
+                  @if (suggestion.overview) {
+                    <span class="block text-sm text-light-font-muted dark:text-dark-font-muted mt-1 line-clamp-2">{{ suggestion.overview }}</span>
+                  }
+                </button>
+              }
+            }
+          </div>
         }
       </div>
 
@@ -223,10 +252,14 @@ export class ItemFormComponent {
   readonly resetOnCancel = input(false);
   readonly disableSubmitWhenPristine = input(false);
   readonly duplicateTitleHint = input('');
+  readonly suggestions = input<TmdbSuggestion[]>([]);
+  readonly suggestionsLoading = input(false);
+  readonly suggestionsError = input('');
 
   readonly submitted = output<ItemFormValue>();
   readonly cancelled = output<void>();
   readonly titleChanged = output<string>();
+  readonly suggestionSelected = output<TmdbSuggestion>();
 
   readonly itemTypes = ITEM_TYPES;
   readonly itemStatuses = ITEM_STATUSES;
@@ -248,6 +281,10 @@ export class ItemFormComponent {
 
     return this.disableSubmitWhenPristine() && !this.isDirty();
   });
+
+  readonly showSuggestions = computed(
+    () => this.suggestionsLoading() || !!this.suggestionsError() || this.suggestions().length > 0
+  );
 
   setType(type: ItemFormValue['type']): void {
     this.formValue.update((value) =>
@@ -282,6 +319,17 @@ export class ItemFormComponent {
   updateTitle(title: string): void {
     this.updateFormValue({ title });
     this.titleChanged.emit(title);
+  }
+
+  selectSuggestion(suggestion: TmdbSuggestion): void {
+    this.formValue.update((value) =>
+      normalizeFormValueForType({
+        ...value,
+        title: suggestion.title,
+        type: suggestion.type
+      })
+    );
+    this.suggestionSelected.emit(suggestion);
   }
 
   updateGroupId(groupId: string): void {

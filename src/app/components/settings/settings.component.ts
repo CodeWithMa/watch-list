@@ -1,13 +1,64 @@
 import { Component, signal, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 
 import { ImportExportService } from '../../services/import-export.service';
+import { TmdbSettingsService } from '../../services/tmdb-settings.service';
 
 @Component({
   selector: 'app-settings',
-  imports: [],
+  imports: [FormsModule],
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
+
+      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
+        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">TMDB</h2>
+        <div class="mb-4">
+          <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer" class="inline-block">
+            <img
+              src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg"
+              alt="TMDB"
+              class="h-12 w-auto"
+            />
+          </a>
+          <p class="mt-3 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+        </div>
+        <div class="mb-4">
+          <label for="tmdbToken" class="block mb-2 font-medium text-light-font dark:text-dark-font">API Read Access Token</label>
+          <input
+            id="tmdbToken"
+            type="password"
+            [ngModel]="tmdbToken()"
+            (ngModelChange)="tmdbToken.set($event)"
+            autocomplete="off"
+            class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+          />
+          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">Preferred for fetching movie and series suggestions while adding items.</p>
+        </div>
+        <div class="mb-4">
+          <label for="tmdbApiKey" class="block mb-2 font-medium text-light-font dark:text-dark-font">API Key</label>
+          <input
+            id="tmdbApiKey"
+            type="password"
+            [ngModel]="tmdbApiKey()"
+            (ngModelChange)="tmdbApiKey.set($event)"
+            autocomplete="off"
+            class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+          />
+          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">Used as a fallback when no read access token is saved.</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <button (click)="saveTmdbToken()" class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium bg-accent-primary text-white hover:bg-accent-primary-hover">
+            Save Credentials
+          </button>
+          <button (click)="clearTmdbToken()" class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium bg-accent-secondary text-white hover:bg-accent-secondary-hover">
+            Clear Credentials
+          </button>
+        </div>
+        @if (tmdbSettingsMessage()) {
+          <div class="mt-4 text-sm text-accent-secondary">{{ tmdbSettingsMessage() }}</div>
+        }
+      </div>
     
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">Data Management</h2>
@@ -54,9 +105,38 @@ import { ImportExportService } from '../../services/import-export.service';
 })
 export class SettingsComponent {
   private importExportService = inject(ImportExportService);
+  private tmdbSettingsService = inject(TmdbSettingsService);
 
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
+  tmdbToken = signal(this.tmdbSettingsService.token());
+  tmdbApiKey = signal(this.tmdbSettingsService.key());
+  tmdbSettingsMessage = signal<string | null>(null);
+
+  saveTmdbToken(): void {
+    this.tmdbSettingsService.saveCredentials(this.tmdbToken(), this.tmdbApiKey());
+    this.tmdbToken.set(this.tmdbSettingsService.token());
+    this.tmdbApiKey.set(this.tmdbSettingsService.key());
+    this.tmdbSettingsMessage.set(this.getTmdbSettingsMessage());
+  }
+
+  clearTmdbToken(): void {
+    this.tmdbSettingsService.clearCredentials();
+    this.tmdbToken.set('');
+    this.tmdbApiKey.set('');
+    this.tmdbSettingsMessage.set('TMDB credentials cleared.');
+  }
+
+  private getTmdbSettingsMessage(): string {
+    const credential = this.tmdbSettingsService.getCredential();
+    if (!credential) {
+      return 'TMDB credentials cleared.';
+    }
+
+    return credential.type === 'read-token'
+      ? 'TMDB read access token saved and will be used first.'
+      : 'TMDB API key saved and will be used as fallback.';
+  }
 
   exportData(): void {
     try {
@@ -98,4 +178,3 @@ export class SettingsComponent {
     }
   }
 }
-
