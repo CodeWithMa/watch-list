@@ -7,7 +7,7 @@ import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { Item } from '../../models/item.model';
 import { AddItemComponent } from './add-item.component';
 import { vi } from 'vitest';
-import { Subject, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 describe('AddItemComponent', () => {
   const existingItems: Item[] = [
@@ -200,6 +200,66 @@ describe('AddItemComponent', () => {
     });
 
     expect(fixture.componentInstance.autofillPatch()).toBeNull();
+  });
+
+  it('cancels the previous TMDB details request when another series is selected', () => {
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    let firstRequestUnsubscribed = false;
+    vi.mocked(tmdbSuggestionService.getSeriesDetails)
+      .mockReturnValueOnce(
+        new Observable((subscriber) => {
+          subscriber.next({
+            seasons: [
+              {
+                seasonNumber: 1,
+                totalEpisodes: 7
+              }
+            ]
+          });
+          return () => {
+            firstRequestUnsubscribed = true;
+          };
+        })
+      )
+      .mockReturnValueOnce(
+        of({
+          seasons: [
+            {
+              seasonNumber: 1,
+              totalEpisodes: 10
+            }
+          ]
+        })
+      );
+    const fixture = TestBed.createComponent(AddItemComponent);
+
+    fixture.componentInstance.onSuggestionSelected({
+      tmdbId: 1396,
+      title: 'Breaking Bad',
+      type: 'series',
+      year: '2008'
+    });
+    fixture.componentInstance.onSuggestionSelected({
+      tmdbId: 66732,
+      title: 'Stranger Things',
+      type: 'series',
+      year: '2016'
+    });
+
+    expect(firstRequestUnsubscribed).toBe(true);
+    expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(1396);
+    expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(66732);
+    expect(fixture.componentInstance.autofillPatch()).toEqual({
+      id: 2,
+      value: {
+        seasons: [
+          {
+            seasonNumber: 1,
+            totalEpisodes: 10
+          }
+        ]
+      }
+    });
   });
 
   it('clears pending autofill details after the title changes', () => {

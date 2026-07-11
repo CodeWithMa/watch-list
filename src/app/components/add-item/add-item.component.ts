@@ -42,6 +42,7 @@ export class AddItemComponent {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private titleChanges = new Subject<string>();
+  private selectedTmdbSeriesIds = new Subject<number | null>();
   private skipNextSearch = false;
 
   readonly groups = this.groupService.groups;
@@ -52,7 +53,6 @@ export class AddItemComponent {
   readonly suggestionsError = signal('');
   readonly autofillPatch = signal<{ id: number; value: Partial<ItemFormValue> } | null>(null);
   private autofillPatchId = 0;
-  private selectedTmdbSeriesId: number | null = null;
   readonly duplicateTitleHint = computed(() => {
     const normalizedTitle = this.normalizeTitle(this.title());
     if (!normalizedTitle) {
@@ -102,12 +102,38 @@ export class AddItemComponent {
           this.suggestionsLoading.set(false);
         }
       });
+
+    this.selectedTmdbSeriesIds
+      .pipe(
+        switchMap((tmdbId) => {
+          if (tmdbId === null) {
+            return of(null);
+          }
+
+          return this.tmdbSuggestionService
+            .getSeriesDetails(tmdbId)
+            .pipe(catchError(() => of(null)));
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((details) => {
+        if (!details) {
+          return;
+        }
+
+        this.autofillPatch.set({
+          id: ++this.autofillPatchId,
+          value: {
+            seasons: details.seasons
+          }
+        });
+      });
   }
 
   onTitleChanged(title: string): void {
     this.title.set(title);
-    this.selectedTmdbSeriesId = null;
     this.autofillPatch.set(null);
+    this.selectedTmdbSeriesIds.next(null);
     this.titleChanges.next(title);
   }
 
@@ -120,30 +146,12 @@ export class AddItemComponent {
     this.suggestionsError.set('');
 
     if (suggestion.type !== 'series') {
-      this.selectedTmdbSeriesId = null;
       this.autofillPatch.set(null);
+      this.selectedTmdbSeriesIds.next(null);
       return;
     }
 
-    this.selectedTmdbSeriesId = suggestion.tmdbId;
-    this.tmdbSuggestionService
-      .getSeriesDetails(suggestion.tmdbId)
-      .pipe(
-        catchError(() => of(null)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe((details) => {
-        if (!details || this.selectedTmdbSeriesId !== suggestion.tmdbId) {
-          return;
-        }
-
-        this.autofillPatch.set({
-          id: ++this.autofillPatchId,
-          value: {
-            seasons: details.seasons
-          }
-        });
-      });
+    this.selectedTmdbSeriesIds.next(suggestion.tmdbId);
   }
 
   onSubmit(formValue: ItemFormValue): void {
