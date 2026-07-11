@@ -154,6 +154,17 @@ describe('AddItemComponent', () => {
   it('does not fetch season details for movie suggestions', () => {
     const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
     const fixture = TestBed.createComponent(AddItemComponent);
+    fixture.componentInstance.autofillPatch.set({
+      id: 1,
+      value: {
+        seasons: [
+          {
+            seasonNumber: 1,
+            totalEpisodes: 7
+          }
+        ]
+      }
+    });
 
     fixture.componentInstance.onSuggestionSelected({
       tmdbId: 11,
@@ -187,6 +198,25 @@ describe('AddItemComponent', () => {
         }
       ]
     });
+
+    expect(fixture.componentInstance.autofillPatch()).toBeNull();
+  });
+
+  it('clears pending autofill details after the title changes', () => {
+    const fixture = TestBed.createComponent(AddItemComponent);
+    fixture.componentInstance.autofillPatch.set({
+      id: 1,
+      value: {
+        seasons: [
+          {
+            seasonNumber: 1,
+            totalEpisodes: 7
+          }
+        ]
+      }
+    });
+
+    fixture.componentInstance.onTitleChanged('Different show');
 
     expect(fixture.componentInstance.autofillPatch()).toBeNull();
   });

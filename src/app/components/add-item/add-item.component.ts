@@ -107,6 +107,7 @@ export class AddItemComponent {
   onTitleChanged(title: string): void {
     this.title.set(title);
     this.selectedTmdbSeriesId = null;
+    this.autofillPatch.set(null);
     this.titleChanges.next(title);
   }
 
@@ -120,6 +121,7 @@ export class AddItemComponent {
 
     if (suggestion.type !== 'series') {
       this.selectedTmdbSeriesId = null;
+      this.autofillPatch.set(null);
       return;
     }
 
