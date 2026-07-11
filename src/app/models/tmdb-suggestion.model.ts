@@ -1,5 +1,4 @@
-import { ItemType } from './item.model';
-import { SeasonInfo } from './item.model';
+import { ItemType, SeasonInfo } from './item.model';
 
 export interface TmdbSuggestion {
   tmdbId: number;
