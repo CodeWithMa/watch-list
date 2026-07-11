@@ -1,4 +1,4 @@
-import { Component, computed, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
 import { groupHistoryEntries } from '../../utils/watch-history.utils';
@@ -6,7 +6,6 @@ import { groupHistoryEntries } from '../../utils/watch-history.utils';
 @Component({
   selector: 'app-watch-history',
   imports: [RouterLink],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Watch History</h1>

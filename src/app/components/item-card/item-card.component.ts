@@ -1,4 +1,4 @@
-import { Component, input, output, computed, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Item } from '../../models/item.model';
@@ -10,7 +10,6 @@ import { statusBadgeClass } from '../../utils/status.utils';
 @Component({
   selector: 'app-item-card',
   imports: [CommonModule, RouterLink, ProgressBarComponent, TimeAgoComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="border border-light-border dark:border-dark-border rounded-lg p-4 mb-4 bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark">
       <div class="flex justify-between items-center mb-2">
@@ -19,7 +18,7 @@ import { statusBadgeClass } from '../../utils/status.utils';
         </h3>
         <span class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-1 rounded text-xs capitalize">{{ item().type }}</span>
       </div>
-    
+
       @if (item().type === 'series' && item().progress) {
         <div class="my-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">
           <span class="season-info">
@@ -38,13 +37,13 @@ import { statusBadgeClass } from '../../utils/status.utils';
           }
         </div>
       }
-    
+
       @if (progressPercent() !== null) {
         <app-progress-bar
           [percentage]="progressPercent()!"
           />
       }
-    
+
       <div class="flex gap-4 my-2 text-sm">
         <span class="px-2 py-1 rounded font-medium capitalize"
           [ngClass]="statusBadgeClass(true, item().status)">
@@ -52,7 +51,7 @@ import { statusBadgeClass } from '../../utils/status.utils';
         </span>
         <app-time-ago [date]="lastWatchedDate()" />
       </div>
-    
+
       <div class="flex gap-2 mt-2">
         <button (click)="markWatched.emit()" [disabled]="item().status === 'completed' || item().status === 'dropped'" class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:not-disabled:bg-light-bg-tertiary dark:hover:not-disabled:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed">
           Mark Watched

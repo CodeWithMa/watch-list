@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
@@ -12,7 +12,6 @@ import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
 @Component({
   selector: 'app-add-item',
   imports: [ItemFormComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="max-w-[600px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Add New Item</h1>

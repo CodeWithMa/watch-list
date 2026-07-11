@@ -1,4 +1,4 @@
-import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GroupService } from '../../services/group.service';
 import { Group } from '../../models/group.model';
@@ -7,11 +7,10 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
 @Component({
   selector: 'app-group-manager',
   imports: [FormsModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Group Management</h1>
-    
+
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-8">
         <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Create New Group</h2>
         <form (ngSubmit)="createGroup()" class="flex gap-4">
@@ -26,7 +25,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
           <button type="submit" class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer font-medium hover:bg-accent-primary-hover">Create Group</button>
         </form>
       </div>
-    
+
       <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-lg p-6">
         <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Groups</h2>
         @for (group of groups(); track group.id; let i = $index) {
@@ -73,7 +72,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
           </div>
         }
       </div>
-    
+
       @if (editingGroup()) {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]">
           <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary p-8 rounded-lg min-w-[400px]">

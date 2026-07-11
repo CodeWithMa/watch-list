@@ -1,4 +1,4 @@
-import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ImportExportService } from '../../services/import-export.service';
@@ -7,7 +7,6 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
 @Component({
   selector: 'app-settings',
   imports: [FormsModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
@@ -60,7 +59,7 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
           <div class="mt-4 text-sm text-accent-secondary">{{ tmdbSettingsMessage() }}</div>
         }
       </div>
-    
+
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">Data Management</h2>
         <div class="mb-4 last:mb-0">
@@ -85,7 +84,7 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">Replace all data with imported JSON file</p>
         </div>
       </div>
-    
+
       @if (errorMessage()) {
         <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
           <div class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark p-4 rounded border border-error-border-light dark:border-error-border-dark">
@@ -93,7 +92,7 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
           </div>
         </div>
       }
-    
+
       @if (successMessage()) {
         <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
           <div class="bg-success-bg-light dark:bg-success-bg-dark text-success-text-light dark:text-success-text-dark p-4 rounded border border-success-border-light dark:border-success-border-dark">
@@ -153,7 +152,7 @@ export class SettingsComponent {
   async onFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    
+
     if (!file) {
       return;
     }
