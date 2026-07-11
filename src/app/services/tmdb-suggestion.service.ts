@@ -1,7 +1,7 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map, Observable, of } from 'rxjs';
-import { TmdbSuggestion } from '../models/tmdb-suggestion.model';
+import { TmdbSeriesDetails, TmdbSuggestion } from '../models/tmdb-suggestion.model';
 import { TmdbSettingsService } from './tmdb-settings.service';
 
 interface TmdbSearchResponse {
@@ -20,6 +20,16 @@ interface TmdbSearchResult {
   popularity?: unknown;
 }
 
+interface TmdbTvDetailsResponse {
+  seasons?: unknown[];
+}
+
+interface TmdbTvSeason {
+  season_number?: unknown;
+  episode_count?: unknown;
+  air_date?: unknown;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -29,34 +39,72 @@ export class TmdbSuggestionService {
 
   search(query: string): Observable<TmdbSuggestion[]> {
     const trimmedQuery = query.trim();
-    const credential = this.settings.getCredential();
+    const requestOptions = this.createRequestOptions();
 
-    if (trimmedQuery.length < 2 || !credential) {
+    if (trimmedQuery.length < 2 || !requestOptions) {
       return of([]);
     }
 
-    const headers =
-      credential.type === 'read-token'
-        ? new HttpHeaders({
-            Authorization: `Bearer ${credential.value}`,
-            accept: 'application/json'
-          })
-        : new HttpHeaders({
-            accept: 'application/json'
-          });
     let params = new HttpParams()
       .set('query', trimmedQuery)
       .set('include_adult', 'false')
       .set('language', 'en-US')
       .set('page', '1');
 
-    if (credential.type === 'api-key') {
-      params = params.set('api_key', credential.value);
+    if (requestOptions.apiKey) {
+      params = params.set('api_key', requestOptions.apiKey);
     }
 
     return this.http
-      .get<TmdbSearchResponse>('https://api.themoviedb.org/3/search/multi', { headers, params })
+      .get<TmdbSearchResponse>('https://api.themoviedb.org/3/search/multi', {
+        headers: requestOptions.headers,
+        params
+      })
       .pipe(map((response) => this.mapResults(response.results ?? [])));
+  }
+
+  getSeriesDetails(tmdbId: number): Observable<TmdbSeriesDetails | null> {
+    const requestOptions = this.createRequestOptions();
+
+    if (!Number.isInteger(tmdbId) || tmdbId < 1 || !requestOptions) {
+      return of(null);
+    }
+
+    let params = new HttpParams().set('language', 'en-US');
+    if (requestOptions.apiKey) {
+      params = params.set('api_key', requestOptions.apiKey);
+    }
+
+    return this.http
+      .get<TmdbTvDetailsResponse>(`https://api.themoviedb.org/3/tv/${tmdbId}`, {
+        headers: requestOptions.headers,
+        params
+      })
+      .pipe(map((response) => ({ seasons: this.mapSeasons(response.seasons ?? []) })));
+  }
+
+  private createRequestOptions(): { headers: HttpHeaders; apiKey?: string } | null {
+    const credential = this.settings.getCredential();
+
+    if (!credential) {
+      return null;
+    }
+
+    if (credential.type === 'read-token') {
+      return {
+        headers: new HttpHeaders({
+          Authorization: `Bearer ${credential.value}`,
+          accept: 'application/json'
+        })
+      };
+    }
+
+    return {
+      headers: new HttpHeaders({
+        accept: 'application/json'
+      }),
+      apiKey: credential.value
+    };
   }
 
   private mapResults(results: unknown[]): TmdbSuggestion[] {
@@ -104,6 +152,40 @@ export class TmdbSuggestionService {
       year: typeof date === 'string' && date.length >= 4 ? date.slice(0, 4) : undefined,
       overview: typeof result.overview === 'string' ? result.overview : undefined,
       posterPath: typeof result.poster_path === 'string' ? result.poster_path : undefined
+    };
+  }
+
+  private mapSeasons(seasons: unknown[]) {
+    return seasons
+      .map((season) => this.mapSeason(season))
+      .filter((season): season is NonNullable<ReturnType<typeof this.mapSeason>> => season !== null)
+      .sort((a, b) => a.seasonNumber - b.seasonNumber);
+  }
+
+  private mapSeason(season: unknown) {
+    if (!season || typeof season !== 'object') {
+      return null;
+    }
+
+    const candidate = season as TmdbTvSeason;
+    if (
+      typeof candidate.season_number !== 'number' ||
+      candidate.season_number < 1 ||
+      !Number.isInteger(candidate.season_number)
+    ) {
+      return null;
+    }
+
+    return {
+      seasonNumber: candidate.season_number,
+      totalEpisodes:
+        typeof candidate.episode_count === 'number' && candidate.episode_count >= 1
+          ? candidate.episode_count
+          : undefined,
+      firstEpisodeAirDate:
+        typeof candidate.air_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(candidate.air_date)
+          ? candidate.air_date
+          : undefined
     };
   }
 }

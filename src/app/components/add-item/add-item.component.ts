@@ -26,6 +26,7 @@ import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
         [suggestions]="suggestions()"
         [suggestionsLoading]="suggestionsLoading()"
         [suggestionsError]="suggestionsError()"
+        [autofillPatch]="autofillPatch()"
         (titleChanged)="onTitleChanged($event)"
         (suggestionSelected)="onSuggestionSelected($event)"
         (submitted)="onSubmit($event)"
@@ -49,6 +50,9 @@ export class AddItemComponent {
   readonly suggestions = signal<TmdbSuggestion[]>([]);
   readonly suggestionsLoading = signal(false);
   readonly suggestionsError = signal('');
+  readonly autofillPatch = signal<{ id: number; value: Partial<ItemFormValue> } | null>(null);
+  private autofillPatchId = 0;
+  private selectedTmdbSeriesId: number | null = null;
   readonly duplicateTitleHint = computed(() => {
     const normalizedTitle = this.normalizeTitle(this.title());
     if (!normalizedTitle) {
@@ -102,6 +106,7 @@ export class AddItemComponent {
 
   onTitleChanged(title: string): void {
     this.title.set(title);
+    this.selectedTmdbSeriesId = null;
     this.titleChanges.next(title);
   }
 
@@ -112,6 +117,31 @@ export class AddItemComponent {
     this.suggestions.set([]);
     this.suggestionsLoading.set(false);
     this.suggestionsError.set('');
+
+    if (suggestion.type !== 'series') {
+      this.selectedTmdbSeriesId = null;
+      return;
+    }
+
+    this.selectedTmdbSeriesId = suggestion.tmdbId;
+    this.tmdbSuggestionService
+      .getSeriesDetails(suggestion.tmdbId)
+      .pipe(
+        catchError(() => of(null)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((details) => {
+        if (!details || this.selectedTmdbSeriesId !== suggestion.tmdbId) {
+          return;
+        }
+
+        this.autofillPatch.set({
+          id: ++this.autofillPatchId,
+          value: {
+            seasons: details.seasons
+          }
+        });
+      });
   }
 
   onSubmit(formValue: ItemFormValue): void {
