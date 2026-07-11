@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
@@ -9,6 +9,7 @@ import { ItemType } from '../../models/item.model';
 @Component({
   selector: 'app-home',
   imports: [ItemCardComponent, CommonModule, RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="max-w-[1200px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">What should I watch now?</h1>

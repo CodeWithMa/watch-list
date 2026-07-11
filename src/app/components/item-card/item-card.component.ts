@@ -1,4 +1,4 @@
-import { Component, input, output, computed, inject } from '@angular/core';
+import { Component, input, output, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Item } from '../../models/item.model';
@@ -10,6 +10,7 @@ import { statusBadgeClass } from '../../utils/status.utils';
 @Component({
   selector: 'app-item-card',
   imports: [CommonModule, RouterLink, ProgressBarComponent, TimeAgoComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="border border-light-border dark:border-dark-border rounded-lg p-4 mb-4 bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark">
       <div class="flex justify-between items-center mb-2">

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, input, linkedSignal, output } from '@angular/core';
+import { Component, computed, effect, input, linkedSignal, output, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
 import {
@@ -24,6 +24,7 @@ export interface ItemFormAutofillPatch {
 @Component({
   selector: 'app-item-form',
   imports: [CommonModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form (ngSubmit)="submit()" #itemForm="ngForm" class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-8 rounded-lg">
       <div class="mb-6">

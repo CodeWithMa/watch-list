@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
@@ -14,6 +14,7 @@ import {
 @Component({
   selector: 'app-item-detail',
   imports: [ItemFormComponent, RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       @if (item()) {

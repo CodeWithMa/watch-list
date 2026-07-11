@@ -1,4 +1,4 @@
-import { Component, computed, signal, inject } from '@angular/core';
+import { Component, computed, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { FormsModule } from '@angular/forms';
@@ -11,6 +11,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 @Component({
   selector: 'app-item-list',
   imports: [FormsModule, RouterLink, ItemCardComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="max-w-[1200px] mx-auto p-8">
       <div class="flex justify-between items-center mb-8">

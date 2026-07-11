@@ -1,8 +1,9 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-time-ago',
   imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <span [title]="dateString()" class="text-light-font-secondary dark:text-dark-font-secondary text-[0.9em]">{{ timeAgo() }}</span>
   `

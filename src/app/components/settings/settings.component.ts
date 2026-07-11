@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ImportExportService } from '../../services/import-export.service';
@@ -7,6 +7,7 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
 @Component({
   selector: 'app-settings',
   imports: [FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>

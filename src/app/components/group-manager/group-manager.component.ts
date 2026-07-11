@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GroupService } from '../../services/group.service';
 import { Group } from '../../models/group.model';
@@ -7,6 +7,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
 @Component({
   selector: 'app-group-manager',
   imports: [FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Group Management</h1>

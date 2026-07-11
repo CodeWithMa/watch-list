@@ -1,8 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ThemeService, Theme } from '../../services/theme.service';
 
 @Component({
   selector: 'app-theme-switcher',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button 
       (click)="themeService.cycleTheme()"
