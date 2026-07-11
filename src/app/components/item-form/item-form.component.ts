@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, input, linkedSignal, output } from '@angular/core';
+import { Component, computed, effect, input, linkedSignal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
 import {
@@ -15,6 +15,11 @@ import {
   ITEM_TYPE_LABELS
 } from '../../domain/item.constants';
 import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
+
+export interface ItemFormAutofillPatch {
+  id: number;
+  value: Partial<ItemFormValue>;
+}
 
 @Component({
   selector: 'app-item-form',
@@ -255,6 +260,7 @@ export class ItemFormComponent {
   readonly suggestions = input<TmdbSuggestion[]>([]);
   readonly suggestionsLoading = input(false);
   readonly suggestionsError = input('');
+  readonly autofillPatch = input<ItemFormAutofillPatch | null>(null);
 
   readonly submitted = output<ItemFormValue>();
   readonly cancelled = output<void>();
@@ -285,6 +291,20 @@ export class ItemFormComponent {
   readonly showSuggestions = computed(
     () => this.suggestionsLoading() || !!this.suggestionsError() || this.suggestions().length > 0
   );
+
+  private lastAppliedAutofillPatchId: number | null = null;
+
+  constructor() {
+    effect(() => {
+      const patch = this.autofillPatch();
+      if (!patch || patch.id === this.lastAppliedAutofillPatchId) {
+        return;
+      }
+
+      this.lastAppliedAutofillPatchId = patch.id;
+      this.updateFormValue(patch.value);
+    });
+  }
 
   setType(type: ItemFormValue['type']): void {
     this.formValue.update((value) =>

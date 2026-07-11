@@ -1,7 +1,6 @@
 services:
   watch-list:
     image: watch-list-dev:latest
-    # user: '${UID:-1000}:${GID:-1000}'
     build:
       context: ./
       dockerfile: ./Dockerfile

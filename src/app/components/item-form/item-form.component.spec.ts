@@ -148,4 +148,45 @@ describe('ItemFormComponent', () => {
 
     expect(fixture.componentInstance.formValue().seasons[0].firstEpisodeAirDate).toBe('2026-05-01');
   });
+
+  it('applies an autofill patch once when the patch id changes', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.componentRef.setInput('initialValue', {
+      title: 'Weekly Show',
+      type: 'series',
+      groupId: 'ungrouped',
+      status: 'not-started',
+      season: 1,
+      episode: 1,
+      seasons: [],
+      startImmediately: false
+    });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentRef.setInput('autofillPatch', {
+      id: 1,
+      value: {
+        seasons: [
+          {
+            seasonNumber: 1,
+            totalEpisodes: 10,
+            firstEpisodeAirDate: '2026-05-01'
+          }
+        ]
+      }
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.formValue().seasons).toEqual([
+      {
+        seasonNumber: 1,
+        totalEpisodes: 10,
+        firstEpisodeAirDate: '2026-05-01'
+      }
+    ]);
+  });
 });

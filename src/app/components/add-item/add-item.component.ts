@@ -26,6 +26,7 @@ import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
         [suggestions]="suggestions()"
         [suggestionsLoading]="suggestionsLoading()"
         [suggestionsError]="suggestionsError()"
+        [autofillPatch]="autofillPatch()"
         (titleChanged)="onTitleChanged($event)"
         (suggestionSelected)="onSuggestionSelected($event)"
         (submitted)="onSubmit($event)"
@@ -41,6 +42,7 @@ export class AddItemComponent {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private titleChanges = new Subject<string>();
+  private selectedTmdbSeriesIds = new Subject<number | null>();
   private skipNextSearch = false;
 
   readonly groups = this.groupService.groups;
@@ -49,6 +51,8 @@ export class AddItemComponent {
   readonly suggestions = signal<TmdbSuggestion[]>([]);
   readonly suggestionsLoading = signal(false);
   readonly suggestionsError = signal('');
+  readonly autofillPatch = signal<{ id: number; value: Partial<ItemFormValue> } | null>(null);
+  private autofillPatchId = 0;
   readonly duplicateTitleHint = computed(() => {
     const normalizedTitle = this.normalizeTitle(this.title());
     if (!normalizedTitle) {
@@ -98,10 +102,38 @@ export class AddItemComponent {
           this.suggestionsLoading.set(false);
         }
       });
+
+    this.selectedTmdbSeriesIds
+      .pipe(
+        switchMap((tmdbId) => {
+          if (tmdbId === null) {
+            return of(null);
+          }
+
+          return this.tmdbSuggestionService
+            .getSeriesDetails(tmdbId)
+            .pipe(catchError(() => of(null)));
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((details) => {
+        if (!details) {
+          return;
+        }
+
+        this.autofillPatch.set({
+          id: ++this.autofillPatchId,
+          value: {
+            seasons: details.seasons
+          }
+        });
+      });
   }
 
   onTitleChanged(title: string): void {
     this.title.set(title);
+    this.autofillPatch.set(null);
+    this.selectedTmdbSeriesIds.next(null);
     this.titleChanges.next(title);
   }
 
@@ -112,6 +144,14 @@ export class AddItemComponent {
     this.suggestions.set([]);
     this.suggestionsLoading.set(false);
     this.suggestionsError.set('');
+
+    if (suggestion.type !== 'series') {
+      this.autofillPatch.set(null);
+      this.selectedTmdbSeriesIds.next(null);
+      return;
+    }
+
+    this.selectedTmdbSeriesIds.next(suggestion.tmdbId);
   }
 
   onSubmit(formValue: ItemFormValue): void {
