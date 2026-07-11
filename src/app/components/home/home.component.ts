@@ -12,7 +12,7 @@ import { ItemType } from '../../models/item.model';
   template: `
     <div class="max-w-[1200px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">What should I watch now?</h1>
-    
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
           <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Next Series</h2>
@@ -39,7 +39,7 @@ import { ItemType } from '../../models/item.model';
             </p>
           }
         </div>
-    
+
         <div>
           <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Next Movie</h2>
           @if (nextMovie()) {
@@ -97,7 +97,7 @@ export class HomeComponent {
 
   nextSeries = this.roundRobinService.nextSeries;
   nextMovie = this.roundRobinService.nextMovie;
-  backlogItems = computed(() => 
+  backlogItems = computed(() =>
     this.watchListService.items()
       .filter(item => item.status === 'not-started')
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())

@@ -23,12 +23,12 @@ import { ItemCardComponent } from '../item-card/item-card.component';
               <option [value]="group.id">{{ group.name }}</option>
             }
           </select>
-          <input type="text" placeholder="Search by name..." [ngModel]="searchFilter()" (ngModelChange)="searchFilter.set($event)" 
+          <input type="text" placeholder="Search by name..." [ngModel]="searchFilter()" (ngModelChange)="searchFilter.set($event)"
             class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font w-64" />
           <a [routerLink]="['/items/add']" class="px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover">Add Item</a>
         </div>
       </div>
-    
+
       <div class="flex gap-4 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded">
         <label class="flex items-center gap-2 cursor-pointer">
           <input type="radio" name="statusFilter" value="all" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" />
@@ -51,7 +51,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
           Dropped
         </label>
       </div>
-    
+
       <div class="flex flex-col gap-4">
         @for (item of filteredItems(); track item.id) {
           <app-item-card
@@ -79,7 +79,7 @@ export class ItemListComponent {
   statusFilter = signal<string>('all');
   searchFilter = signal<string>('');
   groupFilter = signal<string>('');
-  
+
   allItems = computed(() => {
     const data = this.storageService.getDataSignal()();
     return data ? Object.values(data.items) : [];
@@ -90,19 +90,19 @@ export class ItemListComponent {
     const statusFilter = this.statusFilter();
     const search = this.searchFilter().toLowerCase();
     const groupFilter = this.groupFilter();
-    
+
     if (search) {
       items = items.filter(item => item.title.toLowerCase().includes(search));
     }
-    
+
     if (statusFilter !== 'all') {
       items = items.filter(item => item.status === statusFilter);
     }
-    
+
     if (groupFilter) {
       items = items.filter(item => item.groupId === groupFilter);
     }
-    
+
     return [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   });
 

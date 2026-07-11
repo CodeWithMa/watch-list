@@ -4,7 +4,7 @@ import { ThemeService, Theme } from '../../services/theme.service';
 @Component({
   selector: 'app-theme-switcher',
   template: `
-    <button 
+    <button
       (click)="themeService.cycleTheme()"
       [attr.aria-label]="getAriaLabel()"
       class="p-2 rounded hover:bg-light-hover dark:hover:bg-dark-hover transition-colors duration-200"
