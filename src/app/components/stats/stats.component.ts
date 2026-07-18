@@ -475,8 +475,9 @@ export class StatsComponent {
 
   mostActiveDay = computed(() => {
     const { counts, dayNames } = this.dayOfWeekCounts();
-    const maxIdx = counts.indexOf(Math.max(...counts));
-    return dayNames[maxIdx];
+    const max = Math.max(...counts);
+    if (max === 0) return '—';
+    return dayNames[counts.indexOf(max)];
   });
 
   mostActiveDayCount = computed(() => {
@@ -498,7 +499,7 @@ export class StatsComponent {
 
   mostActiveTimeOfDay = computed(() => {
     const periods = this.timeOfDayCounts();
-    let maxKey = 'Morning';
+    let maxKey = '—';
     let maxVal = 0;
     for (const [key, val] of Object.entries(periods)) {
       if (val > maxVal) {
