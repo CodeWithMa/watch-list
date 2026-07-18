@@ -331,7 +331,12 @@ export class StatsComponent {
   });
 
   seriesCountByStatus = computed(() => {
-    const counts: Record<string, number> = { 'not-started': 0, 'in-progress': 0, 'completed': 0, 'dropped': 0 };
+    const counts: Record<string, number> = {
+      'not-started': 0,
+      'in-progress': 0,
+      completed: 0,
+      dropped: 0,
+    };
     for (const item of this.items()) {
       if (item.type === 'series') {
         counts[item.status]++;
@@ -341,7 +346,12 @@ export class StatsComponent {
   });
 
   moviesCountByStatus = computed(() => {
-    const counts: Record<string, number> = { 'not-started': 0, 'in-progress': 0, 'completed': 0, 'dropped': 0 };
+    const counts: Record<string, number> = {
+      'not-started': 0,
+      'in-progress': 0,
+      completed: 0,
+      dropped: 0,
+    };
     for (const item of this.items()) {
       if (item.type === 'movie') {
         counts[item.status]++;
