@@ -216,7 +216,7 @@ export class StatsComponent {
   });
 
   avgTimeToComplete = computed(() => {
-    const completed = this.items().filter(i => i.status === 'completed');
+    const completed = this.items().filter(i => i.type === 'movie' && i.status === 'completed');
     if (completed.length === 0) return 'N/A';
     const totalMs = completed.reduce((sum, item) => {
       const created = new Date(item.createdAt).getTime();
