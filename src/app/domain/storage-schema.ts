@@ -20,11 +20,11 @@ export function createDefaultStorageData(): StorageData {
       [DEFAULT_GROUP_ID]: {
         id: DEFAULT_GROUP_ID,
         name: 'Ungrouped',
-        order: 0
-      }
+        order: 0,
+      },
     },
     items: {},
-    deletedItems: {}
+    deletedItems: {},
   };
 }
 
@@ -55,10 +55,12 @@ function migrateStorageData(data: StorageData): StorageData {
       if (item.type === 'series' && item.progress) {
         const progress = item.progress as unknown as LegacyProgressV2;
         if ('totalEpisodes' in progress && typeof progress.totalEpisodes === 'number') {
-          progress.seasons = [{
-            seasonNumber: progress.season,
-            totalEpisodes: progress.totalEpisodes
-          }];
+          progress.seasons = [
+            {
+              seasonNumber: progress.season,
+              totalEpisodes: progress.totalEpisodes,
+            },
+          ];
           delete progress.totalEpisodes;
         } else if (!progress.seasons) {
           progress.seasons = [];
@@ -82,15 +84,14 @@ function applyStorageDefaults(data: StorageData): StorageData {
   return {
     ...data,
     groups: {
-      [DEFAULT_GROUP_ID]:
-        data.groups[DEFAULT_GROUP_ID] ?? {
-          id: DEFAULT_GROUP_ID,
-          name: 'Ungrouped',
-          order: 0
-        },
-      ...data.groups
+      [DEFAULT_GROUP_ID]: data.groups[DEFAULT_GROUP_ID] ?? {
+        id: DEFAULT_GROUP_ID,
+        name: 'Ungrouped',
+        order: 0,
+      },
+      ...data.groups,
     },
-    deletedItems: data.deletedItems ?? {}
+    deletedItems: data.deletedItems ?? {},
   };
 }
 
@@ -221,7 +222,10 @@ function isSeriesProgress(progress: unknown): boolean {
     if (typeof seasonEntry['seasonNumber'] !== 'number') {
       return false;
     }
-    if (seasonEntry['totalEpisodes'] !== undefined && typeof seasonEntry['totalEpisodes'] !== 'number') {
+    if (
+      seasonEntry['totalEpisodes'] !== undefined &&
+      typeof seasonEntry['totalEpisodes'] !== 'number'
+    ) {
       return false;
     }
     if (

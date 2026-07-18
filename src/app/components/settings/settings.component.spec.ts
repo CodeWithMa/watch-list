@@ -11,7 +11,7 @@ describe('SettingsComponent', () => {
       key: vi.fn(() => credentials.key),
       getCredential: vi.fn(() => credentials.credential),
       saveCredentials: vi.fn(),
-      clearCredentials: vi.fn()
+      clearCredentials: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -20,14 +20,14 @@ describe('SettingsComponent', () => {
           provide: ImportExportService,
           useValue: {
             exportData: vi.fn(),
-            importData: vi.fn()
-          }
+            importData: vi.fn(),
+          },
         },
         {
           provide: TmdbSettingsService,
-          useValue: tmdbSettingsService
-        }
-      ]
+          useValue: tmdbSettingsService,
+        },
+      ],
     });
 
     return tmdbSettingsService;
@@ -37,7 +37,7 @@ describe('SettingsComponent', () => {
     configure({
       token: 'read-token',
       key: 'api-key',
-      credential: { type: 'read-token', value: 'read-token' }
+      credential: { type: 'read-token', value: 'read-token' },
     });
     const fixture = TestBed.createComponent(SettingsComponent);
 
@@ -52,7 +52,7 @@ describe('SettingsComponent', () => {
     configure({
       token: '',
       key: '',
-      credential: null
+      credential: null,
     });
     const fixture = TestBed.createComponent(SettingsComponent);
 
@@ -60,13 +60,15 @@ describe('SettingsComponent', () => {
     await fixture.whenStable();
 
     const logo = fixture.nativeElement.querySelector('img[alt="TMDB"]') as HTMLImageElement;
-    const link = fixture.nativeElement.querySelector('a[href="https://www.themoviedb.org"]') as HTMLAnchorElement;
+    const link = fixture.nativeElement.querySelector(
+      'a[href="https://www.themoviedb.org"]',
+    ) as HTMLAnchorElement;
 
     expect(logo).toBeDefined();
     expect(logo.src).toContain('/assets/2/v4/logos/v2/blue_square_2-');
     expect(link).toBeDefined();
     expect(fixture.nativeElement.textContent).toContain(
-      'This product uses the TMDB API but is not endorsed or certified by TMDB.'
+      'This product uses the TMDB API but is not endorsed or certified by TMDB.',
     );
   });
 
@@ -74,7 +76,7 @@ describe('SettingsComponent', () => {
     const tmdbSettingsService = configure({
       token: 'read-token',
       key: 'api-key',
-      credential: { type: 'read-token', value: 'read-token' }
+      credential: { type: 'read-token', value: 'read-token' },
     });
     const fixture = TestBed.createComponent(SettingsComponent);
 
@@ -82,7 +84,7 @@ describe('SettingsComponent', () => {
 
     expect(tmdbSettingsService.saveCredentials).toHaveBeenCalledWith('read-token', 'api-key');
     expect(fixture.componentInstance.tmdbSettingsMessage()).toBe(
-      'TMDB read access token saved and will be used first.'
+      'TMDB read access token saved and will be used first.',
     );
   });
 
@@ -90,7 +92,7 @@ describe('SettingsComponent', () => {
     const tmdbSettingsService = configure({
       token: 'read-token',
       key: 'api-key',
-      credential: { type: 'read-token', value: 'read-token' }
+      credential: { type: 'read-token', value: 'read-token' },
     });
     const fixture = TestBed.createComponent(SettingsComponent);
 

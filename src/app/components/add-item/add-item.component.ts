@@ -6,7 +6,11 @@ import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { ItemFormComponent } from '../item-form/item-form.component';
-import { buildItemMutationInput, createDefaultItemFormValue, ItemFormValue } from '../../domain/item-form';
+import {
+  buildItemMutationInput,
+  createDefaultItemFormValue,
+  ItemFormValue,
+} from '../../domain/item-form';
 import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
 
 @Component({
@@ -33,7 +37,7 @@ import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
         (cancelled)="cancel()"
       />
     </div>
-    `
+  `,
 })
 export class AddItemComponent {
   private watchListService = inject(WatchListService);
@@ -91,16 +95,16 @@ export class AddItemComponent {
             catchError(() => {
               this.suggestionsError.set('TMDB suggestions are unavailable.');
               return of([]);
-            })
+            }),
           );
         }),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (suggestions) => {
           this.suggestions.set(suggestions);
           this.suggestionsLoading.set(false);
-        }
+        },
       });
 
     this.selectedTmdbSeriesIds
@@ -114,7 +118,7 @@ export class AddItemComponent {
             .getSeriesDetails(tmdbId)
             .pipe(catchError(() => of(null)));
         }),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((details) => {
         if (!details) {
@@ -124,8 +128,8 @@ export class AddItemComponent {
         this.autofillPatch.set({
           id: ++this.autofillPatchId,
           value: {
-            seasons: details.seasons
-          }
+            seasons: details.seasons,
+          },
         });
       });
   }

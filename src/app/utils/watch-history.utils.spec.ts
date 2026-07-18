@@ -8,7 +8,7 @@ describe('groupHistoryEntries', () => {
         itemId: '1',
         itemTitle: 'Movie',
         itemType: 'movie',
-        date: '2026-04-25T09:30:00'
+        date: '2026-04-25T09:30:00',
       },
       {
         itemId: '2',
@@ -16,8 +16,8 @@ describe('groupHistoryEntries', () => {
         itemType: 'series',
         date: '2026-04-26T08:15:00',
         season: 1,
-        episode: 3
-      }
+        episode: 3,
+      },
     ];
 
     const grouped = groupHistoryEntries(entries, 'en-US', new Date('2026-04-26T12:00:00'));
@@ -36,8 +36,8 @@ describe('groupHistoryEntries', () => {
         itemType: 'series',
         date: '2026-04-22T18:45:00',
         season: 2,
-        episode: 1
-      }
+        episode: 1,
+      },
     ];
 
     const grouped = groupHistoryEntries(entries, 'en-US', new Date('2026-04-26T12:00:00'));

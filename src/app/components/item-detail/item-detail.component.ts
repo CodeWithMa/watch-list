@@ -8,7 +8,7 @@ import {
   buildItemMutationInput,
   createDefaultItemFormValue,
   createItemFormValue,
-  ItemFormValue
+  ItemFormValue,
 } from '../../domain/item-form';
 
 @Component({
@@ -22,10 +22,28 @@ import {
             <h2 class="mt-0">Edit Item</h2>
             <div class="flex gap-2">
               @if (!confirmDelete()) {
-                <button type="button" (click)="confirmDelete.set(true)" class="px-6 py-3 border border-accent-danger rounded bg-transparent text-accent-danger cursor-pointer hover:bg-accent-danger hover:text-white">Delete</button>
+                <button
+                  type="button"
+                  (click)="confirmDelete.set(true)"
+                  class="px-6 py-3 border border-accent-danger rounded bg-transparent text-accent-danger cursor-pointer hover:bg-accent-danger hover:text-white"
+                >
+                  Delete
+                </button>
               } @else {
-                <button type="button" (click)="deleteItem()" class="px-6 py-3 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse">Confirm Delete?</button>
-                <button type="button" (click)="cancelDelete()" class="px-6 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border border-light-border dark:border-dark-border rounded cursor-pointer">Cancel</button>
+                <button
+                  type="button"
+                  (click)="deleteItem()"
+                  class="px-6 py-3 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse"
+                >
+                  Confirm Delete?
+                </button>
+                <button
+                  type="button"
+                  (click)="cancelDelete()"
+                  class="px-6 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border border-light-border dark:border-dark-border rounded cursor-pointer"
+                >
+                  Cancel
+                </button>
               }
             </div>
           </div>
@@ -38,7 +56,6 @@ import {
             [disableSubmitWhenPristine]="true"
             (submitted)="saveChanges($event)"
           />
-
         </div>
       } @else {
         <div class="text-center px-8 py-16">
@@ -47,7 +64,7 @@ import {
         </div>
       }
     </div>
-    `
+  `,
 })
 export class ItemDetailComponent {
   private route = inject(ActivatedRoute);
@@ -59,7 +76,7 @@ export class ItemDetailComponent {
 
   readonly item = computed<Item | null>(() => {
     const id = this.route.snapshot.paramMap.get('id');
-    return id ? this.watchListService.items().find((item) => item.id === id) ?? null : null;
+    return id ? (this.watchListService.items().find((item) => item.id === id) ?? null) : null;
   });
   readonly formValue = computed(() => {
     const currentItem = this.item();
@@ -73,7 +90,7 @@ export class ItemDetailComponent {
 
     const updated: Item = {
       ...currentItem,
-      ...buildItemMutationInput(formValue)
+      ...buildItemMutationInput(formValue),
     };
 
     this.watchListService.updateItem(updated);

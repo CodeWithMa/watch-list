@@ -31,7 +31,7 @@ interface TmdbTvSeason {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TmdbSuggestionService {
   private readonly http = inject(HttpClient);
@@ -58,7 +58,7 @@ export class TmdbSuggestionService {
     return this.http
       .get<TmdbSearchResponse>('https://api.themoviedb.org/3/search/multi', {
         headers: requestOptions.headers,
-        params
+        params,
       })
       .pipe(map((response) => this.mapResults(response.results ?? [])));
   }
@@ -78,7 +78,7 @@ export class TmdbSuggestionService {
     return this.http
       .get<TmdbTvDetailsResponse>(`https://api.themoviedb.org/3/tv/${tmdbId}`, {
         headers: requestOptions.headers,
-        params
+        params,
       })
       .pipe(map((response) => ({ seasons: this.mapSeasons(response.seasons ?? []) })));
   }
@@ -94,16 +94,16 @@ export class TmdbSuggestionService {
       return {
         headers: new HttpHeaders({
           Authorization: `Bearer ${credential.value}`,
-          accept: 'application/json'
-        })
+          accept: 'application/json',
+        }),
       };
     }
 
     return {
       headers: new HttpHeaders({
-        accept: 'application/json'
+        accept: 'application/json',
       }),
-      apiKey: credential.value
+      apiKey: credential.value,
     };
   }
 
@@ -139,7 +139,7 @@ export class TmdbSuggestionService {
     result: TmdbSearchResult,
     type: TmdbSuggestion['type'],
     title: unknown,
-    date: unknown
+    date: unknown,
   ): TmdbSuggestion | null {
     if (typeof title !== 'string' || !title.trim()) {
       return null;
@@ -151,7 +151,7 @@ export class TmdbSuggestionService {
       type,
       year: typeof date === 'string' && date.length >= 4 ? date.slice(0, 4) : undefined,
       overview: typeof result.overview === 'string' ? result.overview : undefined,
-      posterPath: typeof result.poster_path === 'string' ? result.poster_path : undefined
+      posterPath: typeof result.poster_path === 'string' ? result.poster_path : undefined,
     };
   }
 
@@ -185,7 +185,7 @@ export class TmdbSuggestionService {
       firstEpisodeAirDate:
         typeof candidate.air_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(candidate.air_date)
           ? candidate.air_date
-          : undefined
+          : undefined,
     };
   }
 }

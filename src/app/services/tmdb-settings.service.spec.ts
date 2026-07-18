@@ -18,9 +18,9 @@ describe('TmdbSettingsService', () => {
         },
         removeItem(key: string) {
           delete store[key];
-        }
+        },
       },
-      writable: true
+      writable: true,
     });
   });
 

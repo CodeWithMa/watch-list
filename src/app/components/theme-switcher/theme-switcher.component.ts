@@ -12,14 +12,36 @@ import { ThemeService, Theme } from '../../services/theme.service';
     >
       @switch (themeService.theme()) {
         @case ('system') {
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-light-font dark:text-dark-font">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="text-light-font dark:text-dark-font"
+          >
             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
             <line x1="8" y1="21" x2="16" y2="21"></line>
             <line x1="12" y1="17" x2="12" y2="21"></line>
           </svg>
         }
         @case ('light') {
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-light-font dark:text-dark-font">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="text-light-font dark:text-dark-font"
+          >
             <circle cx="12" cy="12" r="5"></circle>
             <line x1="12" y1="1" x2="12" y2="3"></line>
             <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -32,13 +54,24 @@ import { ThemeService, Theme } from '../../services/theme.service';
           </svg>
         }
         @case ('dark') {
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-light-font dark:text-dark-font">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="text-light-font dark:text-dark-font"
+          >
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
           </svg>
         }
       }
     </button>
-  `
+  `,
 })
 export class ThemeSwitcherComponent {
   protected themeService = inject(ThemeService);
@@ -46,9 +79,9 @@ export class ThemeSwitcherComponent {
   getAriaLabel(): string {
     const current = this.themeService.theme();
     const next: Record<Theme, string> = {
-      'system': 'Switch to Light mode',
-      'light': 'Switch to Dark mode',
-      'dark': 'Switch to System mode'
+      system: 'Switch to Light mode',
+      light: 'Switch to Dark mode',
+      dark: 'Switch to System mode',
     };
     return next[current];
   }

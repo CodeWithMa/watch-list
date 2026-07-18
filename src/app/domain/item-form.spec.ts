@@ -1,10 +1,10 @@
 import {
-   buildItemMutationInput,
-   createDefaultItemFormValue,
-   createItemFormValue,
-   normalizeFormValueForType,
-   prepareSubmittedItemFormValue
- } from './item-form';
+  buildItemMutationInput,
+  createDefaultItemFormValue,
+  createItemFormValue,
+  normalizeFormValueForType,
+  prepareSubmittedItemFormValue,
+} from './item-form';
 import { Item } from '../models/item.model';
 
 describe('item-form helpers', () => {
@@ -17,7 +17,7 @@ describe('item-form helpers', () => {
       season: 1,
       episode: 1,
       seasons: [],
-      startImmediately: false
+      startImmediately: false,
     });
   });
 
@@ -31,10 +31,10 @@ describe('item-form helpers', () => {
       progress: {
         season: 2,
         episode: 4,
-        seasons: [{ seasonNumber: 2, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }]
+        seasons: [{ seasonNumber: 2, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }],
       },
       watchHistory: [],
-      createdAt: '2026-04-20T08:00:00.000Z'
+      createdAt: '2026-04-20T08:00:00.000Z',
     };
 
     expect(createItemFormValue(item)).toEqual({
@@ -45,7 +45,7 @@ describe('item-form helpers', () => {
       season: 2,
       episode: 4,
       seasons: [{ seasonNumber: 2, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }],
-      startImmediately: true
+      startImmediately: true,
     });
   });
 
@@ -58,7 +58,7 @@ describe('item-form helpers', () => {
       season: 1,
       episode: 1,
       seasons: [],
-      startImmediately: true
+      startImmediately: true,
     });
 
     expect(mutationInput).toEqual({
@@ -66,7 +66,7 @@ describe('item-form helpers', () => {
       type: 'movie',
       groupId: 'ungrouped',
       status: 'in-progress',
-      progress: undefined
+      progress: undefined,
     });
   });
 
@@ -79,11 +79,11 @@ describe('item-form helpers', () => {
       season: 1,
       episode: 3,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }],
-      startImmediately: false
+      startImmediately: false,
     });
 
     expect(mutationInput.progress?.seasons).toEqual([
-      { seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }
+      { seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' },
     ]);
   });
 
@@ -98,10 +98,10 @@ describe('item-form helpers', () => {
           season: 1,
           episode: 5,
           seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
-          startImmediately: true
+          startImmediately: true,
         },
-        false
-      )
+        false,
+      ),
     ).toEqual({
       title: 'Series',
       type: 'series',
@@ -110,7 +110,7 @@ describe('item-form helpers', () => {
       season: 1,
       episode: 5,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
-      startImmediately: false
+      startImmediately: false,
     });
   });
 
@@ -124,8 +124,8 @@ describe('item-form helpers', () => {
         season: 4,
         episode: 9,
         seasons: [{ seasonNumber: 4, totalEpisodes: 12 }],
-        startImmediately: false
-      })
+        startImmediately: false,
+      }),
     ).toEqual({
       title: 'Movie Night',
       type: 'movie',
@@ -134,7 +134,7 @@ describe('item-form helpers', () => {
       season: 1,
       episode: 1,
       seasons: [],
-      startImmediately: false
+      startImmediately: false,
     });
   });
 });

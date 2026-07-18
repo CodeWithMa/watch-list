@@ -4,7 +4,7 @@ import { Group } from '../models/group.model';
 import { DEFAULT_GROUP_ID } from '../domain/item.constants';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class GroupService {
   private storageService = inject(StorageService);
@@ -17,21 +17,21 @@ export class GroupService {
   createGroup(name: string): Group {
     const data = this.storageService.getData();
     const groups = this.storageService.getGroups();
-    const maxOrder = groups.length > 0 ? Math.max(...groups.map(g => g.order)) : -1;
-    
+    const maxOrder = groups.length > 0 ? Math.max(...groups.map((g) => g.order)) : -1;
+
     const id = `group-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const newGroup: Group = {
       id,
       name,
-      order: maxOrder + 1
+      order: maxOrder + 1,
     };
 
     this.storageService.saveData({
       ...data,
       groups: {
         ...data.groups,
-        [id]: newGroup
-      }
+        [id]: newGroup,
+      },
     });
 
     return newGroup;
@@ -43,8 +43,8 @@ export class GroupService {
       ...data,
       groups: {
         ...data.groups,
-        [group.id]: group
-      }
+        [group.id]: group,
+      },
     });
   }
 
@@ -54,17 +54,15 @@ export class GroupService {
     }
 
     const data = this.storageService.getData();
-    const groups = Object.fromEntries(
-      Object.entries(data.groups).filter(([id]) => id !== groupId)
-    );
+    const groups = Object.fromEntries(Object.entries(data.groups).filter(([id]) => id !== groupId));
 
     // Move all items from this group to ungrouped
     const items = { ...data.items };
-    Object.values(items).forEach(item => {
+    Object.values(items).forEach((item) => {
       if (item.groupId === groupId) {
         items[item.id] = {
           ...item,
-          groupId: DEFAULT_GROUP_ID
+          groupId: DEFAULT_GROUP_ID,
         };
       }
     });
@@ -72,7 +70,7 @@ export class GroupService {
     this.storageService.saveData({
       ...data,
       groups,
-      items
+      items,
     });
   }
 
@@ -85,13 +83,13 @@ export class GroupService {
       if (group) {
         groups[id] = {
           ...group,
-          order: index
+          order: index,
         };
       }
     });
 
     // Keep any groups not in the reorder list
-    Object.values(data.groups).forEach(group => {
+    Object.values(data.groups).forEach((group) => {
       if (!groups[group.id]) {
         groups[group.id] = group;
       }
@@ -99,7 +97,7 @@ export class GroupService {
 
     this.storageService.saveData({
       ...data,
-      groups
+      groups,
     });
   }
 

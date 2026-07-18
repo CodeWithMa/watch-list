@@ -5,14 +5,14 @@ export const ITEM_STATUSES: ItemStatus[] = ['not-started', 'in-progress', 'compl
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   series: 'Series',
-  movie: 'Movie'
+  movie: 'Movie',
 };
 
 export const ITEM_STATUS_LABELS: Record<ItemStatus, string> = {
   'not-started': 'Not Started',
   'in-progress': 'In Progress',
   completed: 'Completed',
-  dropped: 'Dropped'
+  dropped: 'Dropped',
 };
 
 export const DEFAULT_GROUP_ID = 'ungrouped';

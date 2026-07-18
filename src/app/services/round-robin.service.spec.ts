@@ -11,9 +11,15 @@ describe('RoundRobinService', () => {
   beforeEach(() => {
     store = {};
     const localStorageMock = {
-      clear() { Object.keys(store).forEach(key => delete store[key]); },
-      getItem(key: string) { return store[key] ?? null; },
-      setItem(key: string, value: string) { store[key] = value; }
+      clear() {
+        Object.keys(store).forEach((key) => delete store[key]);
+      },
+      getItem(key: string) {
+        return store[key] ?? null;
+      },
+      setItem(key: string, value: string) {
+        store[key] = value;
+      },
     };
     Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
 
@@ -28,14 +34,14 @@ describe('RoundRobinService', () => {
         id: 'future',
         title: 'Future Show',
         createdAt: '2026-01-01T10:00:00.000Z',
-        firstEpisodeAirDate: '2099-01-01'
+        firstEpisodeAirDate: '2099-01-01',
       }),
       createSeries({
         id: 'available',
         title: 'Available Show',
         createdAt: '2026-02-01T10:00:00.000Z',
-        firstEpisodeAirDate: '2020-01-01'
-      })
+        firstEpisodeAirDate: '2020-01-01',
+      }),
     ]);
 
     expect(service.nextSeries()?.id).toBe('available');
@@ -47,14 +53,14 @@ describe('RoundRobinService', () => {
         id: 'future-1',
         title: 'Future Show 1',
         createdAt: '2026-01-01T10:00:00.000Z',
-        firstEpisodeAirDate: '2099-01-01'
+        firstEpisodeAirDate: '2099-01-01',
       }),
       createSeries({
         id: 'future-2',
         title: 'Future Show 2',
         createdAt: '2026-02-01T10:00:00.000Z',
-        firstEpisodeAirDate: '2099-02-01'
-      })
+        firstEpisodeAirDate: '2099-02-01',
+      }),
     ]);
 
     expect(service.nextSeries()).toBeNull();
@@ -64,7 +70,7 @@ describe('RoundRobinService', () => {
     const series = createSeries({
       id: 'legacy',
       title: 'Legacy Show',
-      createdAt: '2026-01-01T10:00:00.000Z'
+      createdAt: '2026-01-01T10:00:00.000Z',
     });
     saveItems([series]);
 
@@ -77,7 +83,7 @@ describe('RoundRobinService', () => {
       title: 'Weekly Show',
       createdAt: '2026-01-01T10:00:00.000Z',
       episode: 3,
-      firstEpisodeAirDate: '2026-05-01'
+      firstEpisodeAirDate: '2026-05-01',
     });
 
     expect(service.hasAiredCurrentEpisode(series, new Date(2026, 4, 14))).toBe(false);
@@ -89,8 +95,8 @@ describe('RoundRobinService', () => {
       schemaVersion: 4,
       lastModifiedAt: '2026-04-01T10:00:00.000Z',
       groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
-      items: Object.fromEntries(items.map(item => [item.id, item])),
-      deletedItems: {}
+      items: Object.fromEntries(items.map((item) => [item.id, item])),
+      deletedItems: {},
     });
   }
 
@@ -115,12 +121,12 @@ describe('RoundRobinService', () => {
           {
             seasonNumber: 1,
             totalEpisodes: 10,
-            firstEpisodeAirDate: options.firstEpisodeAirDate
-          }
-        ]
+            firstEpisodeAirDate: options.firstEpisodeAirDate,
+          },
+        ],
       },
       watchHistory: options.watchHistory ?? [],
-      createdAt: options.createdAt
+      createdAt: options.createdAt,
     };
   }
 });

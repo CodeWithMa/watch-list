@@ -23,7 +23,7 @@ export function createDefaultItemFormValue(): ItemFormValue {
     season: 1,
     episode: 1,
     seasons: [],
-    startImmediately: false
+    startImmediately: false,
   };
 }
 
@@ -36,7 +36,7 @@ export function createItemFormValue(item: Item): ItemFormValue {
     season: item.progress?.season ?? 1,
     episode: item.progress?.episode ?? 1,
     seasons: item.progress?.seasons ?? [],
-    startImmediately: item.status === 'in-progress'
+    startImmediately: item.status === 'in-progress',
   };
 }
 
@@ -52,15 +52,15 @@ export function buildItemMutationInput(formValue: ItemFormValue): ItemMutationIn
         ? {
             season: formValue.season,
             episode: formValue.episode,
-            seasons: sortedSeasons
+            seasons: sortedSeasons,
           }
-        : undefined
+        : undefined,
   };
 }
 
 export function prepareSubmittedItemFormValue(
   formValue: ItemFormValue,
-  allowStartImmediately: boolean
+  allowStartImmediately: boolean,
 ): ItemFormValue {
   if (allowStartImmediately) {
     return formValue;
@@ -68,7 +68,7 @@ export function prepareSubmittedItemFormValue(
 
   return {
     ...formValue,
-    startImmediately: false
+    startImmediately: false,
   };
 }
 
@@ -81,6 +81,6 @@ export function normalizeFormValueForType(formValue: ItemFormValue): ItemFormVal
     ...formValue,
     season: 1,
     episode: 1,
-    seasons: []
+    seasons: [],
   };
 }

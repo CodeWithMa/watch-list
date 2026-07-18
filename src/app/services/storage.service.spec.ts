@@ -6,11 +6,17 @@ describe('StorageService', () => {
     const store: Record<string, string> = {};
     Object.defineProperty(window, 'localStorage', {
       value: {
-        clear() { Object.keys(store).forEach(key => delete store[key]); },
-        getItem(key: string) { return store[key] ?? null; },
-        setItem(key: string, value: string) { store[key] = value; }
+        clear() {
+          Object.keys(store).forEach((key) => delete store[key]);
+        },
+        getItem(key: string) {
+          return store[key] ?? null;
+        },
+        setItem(key: string, value: string) {
+          store[key] = value;
+        },
       },
-      writable: true
+      writable: true,
     });
   });
 
@@ -42,34 +48,32 @@ describe('StorageService', () => {
             season: 2,
             episode: 3,
             totalEpisodes: 10,
-            totalSeasons: 3
+            totalSeasons: 3,
           },
           watchHistory: [
             {
               date: '2026-03-02T12:00:00.000Z',
               season: 2,
-              episode: 3
-            }
-          ]
-        }
-      }
+              episode: 3,
+            },
+          ],
+        },
+      },
     });
 
     const data = service.getData();
     expect(data.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
 
     const progress = data.items['series1'].progress!;
-    expect(progress.seasons).toEqual([
-      { seasonNumber: 2, totalEpisodes: 10 }
-    ]);
+    expect(progress.seasons).toEqual([{ seasonNumber: 2, totalEpisodes: 10 }]);
     expect('totalEpisodes' in progress).toBe(false);
     expect('totalSeasons' in progress).toBe(false);
     expect(data.items['series1'].watchHistory).toEqual([
       {
         date: '2026-03-02T12:00:00.000Z',
         season: 2,
-        episode: 3
-      }
+        episode: 3,
+      },
     ]);
   });
 
@@ -81,8 +85,8 @@ describe('StorageService', () => {
         schemaVersion: 2,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: {},
-        items: []
-      })
+        items: [],
+      }),
     ).toThrowError('Invalid data format');
   });
 
@@ -104,17 +108,15 @@ describe('StorageService', () => {
           progress: {
             season: 1,
             episode: 2,
-            seasons: [
-              { seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }
-            ]
+            seasons: [{ seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }],
           },
-          watchHistory: []
-        }
-      }
+          watchHistory: [],
+        },
+      },
     });
 
-    expect(
-      service.getData().items['series1'].progress?.seasons[0].firstEpisodeAirDate
-    ).toBe('2026-05-01');
+    expect(service.getData().items['series1'].progress?.seasons[0].firstEpisodeAirDate).toBe(
+      '2026-05-01',
+    );
   });
 });

@@ -15,7 +15,9 @@ import { ItemType } from '../../models/item.model';
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
-          <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Next Series</h2>
+          <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+            Next Series
+          </h2>
           @if (nextSeries()) {
             <div class="mb-4">
               <app-item-card
@@ -23,10 +25,12 @@ import { ItemType } from '../../models/item.model';
                 (markWatched)="markSeriesWatched()"
                 (markCompleted)="markSeriesCompleted()"
                 (markDropped)="markSeriesDropped()"
-                />
+              />
             </div>
           } @else {
-            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">
+            <p
+              class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg"
+            >
               @if (hasSeries()) {
                 @if (hasInProgressSeries()) {
                   No aired series episodes available
@@ -41,7 +45,9 @@ import { ItemType } from '../../models/item.model';
         </div>
 
         <div>
-          <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Next Movie</h2>
+          <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+            Next Movie
+          </h2>
           @if (nextMovie()) {
             <div class="mb-4">
               <app-item-card
@@ -49,10 +55,12 @@ import { ItemType } from '../../models/item.model';
                 (markWatched)="markMovieWatched()"
                 (markCompleted)="markMovieCompleted()"
                 (markDropped)="markMovieDropped()"
-                />
+              />
             </div>
           } @else {
-            <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">
+            <p
+              class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg"
+            >
               @if (hasMovies()) {
                 No movies currently being watched
               } @else {
@@ -64,20 +72,39 @@ import { ItemType } from '../../models/item.model';
       </div>
 
       <div class="border-t border-light-border dark:border-dark-border pt-8 mt-8">
-        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Backlog</h2>
+        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+          Backlog
+        </h2>
         @if (backlogItems().length > 0) {
-          <div class="overflow-hidden rounded-lg border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark">
+          <div
+            class="overflow-hidden rounded-lg border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark"
+          >
             @for (item of backlogItems(); track item.id) {
-              <div class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-light-border dark:border-dark-border last:border-b-0">
+              <div
+                class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-light-border dark:border-dark-border last:border-b-0"
+              >
                 <div class="min-w-0 flex items-center gap-3">
-                  <a [routerLink]="['/items', item.id]" class="truncate no-underline text-base font-medium text-light-font dark:text-dark-font hover:text-accent-primary">{{ item.title }}</a>
-                  <span class="shrink-0 rounded-full bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-1 text-xs capitalize text-light-font-secondary dark:text-dark-font-secondary">{{ item.type }}</span>
+                  <a
+                    [routerLink]="['/items', item.id]"
+                    class="truncate no-underline text-base font-medium text-light-font dark:text-dark-font hover:text-accent-primary"
+                    >{{ item.title }}</a
+                  >
+                  <span
+                    class="shrink-0 rounded-full bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-1 text-xs capitalize text-light-font-secondary dark:text-dark-font-secondary"
+                    >{{ item.type }}</span
+                  >
                 </div>
                 <div class="flex shrink-0 gap-2">
-                  <button (click)="startBacklogItem(item.id)" class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary">
+                  <button
+                    (click)="startBacklogItem(item.id)"
+                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  >
                     Add to currently watching
                   </button>
-                  <button (click)="dropBacklogItem(item.id)" class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary">
+                  <button
+                    (click)="dropBacklogItem(item.id)"
+                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  >
                     Drop
                   </button>
                 </div>
@@ -85,11 +112,15 @@ import { ItemType } from '../../models/item.model';
             }
           </div>
         } @else {
-          <p class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg">No items in backlog</p>
+          <p
+            class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg"
+          >
+            No items in backlog
+          </p>
         }
       </div>
     </div>
-  `
+  `,
 })
 export class HomeComponent {
   private roundRobinService = inject(RoundRobinService);
@@ -98,14 +129,17 @@ export class HomeComponent {
   nextSeries = this.roundRobinService.nextSeries;
   nextMovie = this.roundRobinService.nextMovie;
   backlogItems = computed(() =>
-    this.watchListService.items()
-      .filter(item => item.status === 'not-started')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    this.watchListService
+      .items()
+      .filter((item) => item.status === 'not-started')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   );
 
   protected hasSeries = computed(() => this.hasItemType('series'));
   protected hasMovies = computed(() => this.hasItemType('movie'));
-  protected hasInProgressSeries = computed(() => this.watchListService.inProgressSeries().length > 0);
+  protected hasInProgressSeries = computed(
+    () => this.watchListService.inProgressSeries().length > 0,
+  );
 
   markSeriesWatched(): void {
     const series = this.nextSeries();
