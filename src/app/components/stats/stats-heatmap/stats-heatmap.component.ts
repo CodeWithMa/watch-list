@@ -31,7 +31,9 @@ interface MonthLabel {
         <div class="flex gap-0">
           <div class="flex flex-col gap-[3px] mr-1">
             @for (dayLabel of dayLabels; track dayLabel) {
-              <span class="text-[10px] text-light-font-muted dark:text-dark-font-muted h-[13px] leading-[13px] text-right">
+              <span
+                class="text-[10px] text-light-font-muted dark:text-dark-font-muted h-[13px] leading-[13px] text-right"
+              >
                 {{ dayLabel }}
               </span>
             }
@@ -46,9 +48,15 @@ interface MonthLabel {
                     [class]="getCellClass(day.level)"
                     [attr.data-tooltip]="day.date + ': ' + day.count + ' entry/entries'"
                   >
-                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-light-bg-primary dark:bg-dark-bg-primary border border-light-border dark:border-dark-border rounded text-xs text-light-font dark:text-dark-font whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-light dark:shadow-dark">
-                      <span class="font-medium">{{ day.count }} {{ day.count === 1 ? 'entry' : 'entries' }}</span>
-                      <span class="text-light-font-muted dark:text-dark-font-muted ml-1">{{ formatTooltipDate(day.date) }}</span>
+                    <div
+                      class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-light-bg-primary dark:bg-dark-bg-primary border border-light-border dark:border-dark-border rounded text-xs text-light-font dark:text-dark-font whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-light dark:shadow-dark"
+                    >
+                      <span class="font-medium"
+                        >{{ day.count }} {{ day.count === 1 ? 'entry' : 'entries' }}</span
+                      >
+                      <span class="text-light-font-muted dark:text-dark-font-muted ml-1">{{
+                        formatTooltipDate(day.date)
+                      }}</span>
                     </div>
                   </div>
                 }
@@ -59,7 +67,9 @@ interface MonthLabel {
 
         <div class="flex items-center gap-2 mt-3 justify-end">
           <span class="text-[10px] text-light-font-muted dark:text-dark-font-muted">Less</span>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-light-bg-tertiary dark:bg-dark-bg-tertiary"></div>
+          <div
+            class="w-[13px] h-[13px] rounded-[2px] bg-light-bg-tertiary dark:bg-dark-bg-tertiary"
+          ></div>
           <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-primary/25"></div>
           <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-primary/50"></div>
           <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-primary"></div>
@@ -67,7 +77,7 @@ interface MonthLabel {
         </div>
       </div>
     </div>
-  `
+  `,
 })
 export class StatsHeatmapComponent {
   historyEntries = input.required<HistoryEntry[]>();
@@ -149,7 +159,7 @@ export class StatsHeatmapComponent {
       if (month !== lastMonth) {
         labels.push({
           label: date.toLocaleDateString('en-US', { month: 'short' }),
-          weekIndex: i
+          weekIndex: i,
         });
         lastMonth = month;
       }
@@ -160,16 +170,25 @@ export class StatsHeatmapComponent {
 
   getCellClass(level: 0 | 1 | 2 | 3): string {
     switch (level) {
-      case 0: return 'bg-light-bg-tertiary dark:bg-dark-bg-tertiary';
-      case 1: return 'bg-accent-primary/25';
-      case 2: return 'bg-accent-primary/50';
-      case 3: return 'bg-accent-primary';
+      case 0:
+        return 'bg-light-bg-tertiary dark:bg-dark-bg-tertiary';
+      case 1:
+        return 'bg-accent-primary/25';
+      case 2:
+        return 'bg-accent-primary/50';
+      case 3:
+        return 'bg-accent-primary';
     }
   }
 
   formatTooltipDate(dateStr: string): string {
     const parts = dateStr.split('-');
     const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   }
 }
