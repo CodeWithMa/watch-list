@@ -331,20 +331,20 @@ export class StatsComponent {
   });
 
   seriesCountByStatus = computed(() => {
-    const counts: Record<string, number> = {};
+    const counts: Record<string, number> = { 'not-started': 0, 'in-progress': 0, 'completed': 0, 'dropped': 0 };
     for (const item of this.items()) {
       if (item.type === 'series') {
-        counts[item.status] = (counts[item.status] ?? 0) + 1;
+        counts[item.status]++;
       }
     }
     return counts;
   });
 
   moviesCountByStatus = computed(() => {
-    const counts: Record<string, number> = {};
+    const counts: Record<string, number> = { 'not-started': 0, 'in-progress': 0, 'completed': 0, 'dropped': 0 };
     for (const item of this.items()) {
       if (item.type === 'movie') {
-        counts[item.status] = (counts[item.status] ?? 0) + 1;
+        counts[item.status]++;
       }
     }
     return counts;
