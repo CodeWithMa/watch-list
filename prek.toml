@@ -30,7 +30,7 @@ hooks = [
     id = "prettier",
     name = "Prettier",
     language = "system",
-    entry = "bunx prettier --check",
+    entry = "bunx prettier --write",
     files = "\\.(ts|html|css)$",
   },
   {
