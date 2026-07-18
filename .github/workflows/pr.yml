@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: npx tsc --noEmit -p tsconfig.app.json
+      - run: bunx tsc --noEmit -p tsconfig.app.json
 
   test:
     runs-on: ubuntu-latest
