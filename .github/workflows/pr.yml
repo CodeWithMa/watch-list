@@ -16,7 +16,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run lint
-      - run: npx prettier --check "src/**/*.{ts,html,css}"
+      - run: bunx prettier --check "src/**/*.{ts,html,css}"
 
   typecheck:
     runs-on: ubuntu-latest
