@@ -17,11 +17,11 @@ interface MonthLabel {
   template: `
     <div class="overflow-x-auto">
       <div class="inline-block min-w-[720px]">
-        <div class="flex gap-[3px] mb-1 pl-[36px]">
+        <div class="relative h-[14px] mb-1 pl-[36px]">
           @for (month of monthLabels(); track month.label + month.weekIndex) {
             <span
-              class="text-[10px] text-light-font-muted dark:text-dark-font-muted"
-              [style.margin-left]="month.weekIndex === 0 ? '0' : 'auto'"
+              class="absolute text-[10px] text-light-font-muted dark:text-dark-font-muted -translate-x-1/2"
+              [style.left]="month.weekIndex * 16 + 'px'"
             >
               {{ month.label }}
             </span>
