@@ -6,13 +6,13 @@ import {
   createDefaultItemFormValue,
   ItemFormValue,
   normalizeFormValueForType,
-  prepareSubmittedItemFormValue
+  prepareSubmittedItemFormValue,
 } from '../../domain/item-form';
 import {
   ITEM_STATUSES,
   ITEM_STATUS_LABELS,
   ITEM_TYPES,
-  ITEM_TYPE_LABELS
+  ITEM_TYPE_LABELS,
 } from '../../domain/item.constants';
 import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
 
@@ -25,9 +25,15 @@ export interface ItemFormAutofillPatch {
   selector: 'app-item-form',
   imports: [CommonModule, FormsModule],
   template: `
-    <form (ngSubmit)="submit()" #itemForm="ngForm" class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-8 rounded-lg">
+    <form
+      (ngSubmit)="submit()"
+      #itemForm="ngForm"
+      class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-8 rounded-lg"
+    >
       <div class="mb-6">
-        <label for="title" class="block mb-2 font-medium text-light-font dark:text-dark-font">Title *</label>
+        <label for="title" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+          >Title *</label
+        >
         <input
           type="text"
           id="title"
@@ -44,9 +50,15 @@ export interface ItemFormAutofillPatch {
           <div class="text-accent-secondary text-sm mt-1">{{ duplicateTitleHint() }}</div>
         }
         @if (showSuggestions()) {
-          <div class="mt-3 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary overflow-hidden">
+          <div
+            class="mt-3 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary overflow-hidden"
+          >
             @if (suggestionsLoading()) {
-              <div class="px-3 py-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">Searching TMDB...</div>
+              <div
+                class="px-3 py-2 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+              >
+                Searching TMDB...
+              </div>
             } @else if (suggestionsError()) {
               <div class="px-3 py-2 text-sm text-accent-secondary">{{ suggestionsError() }}</div>
             } @else if (suggestions().length > 0) {
@@ -59,12 +71,20 @@ export interface ItemFormAutofillPatch {
                   <span class="block text-light-font dark:text-dark-font font-medium">
                     {{ suggestion.title }}
                     @if (suggestion.year) {
-                      <span class="text-light-font-muted dark:text-dark-font-muted font-normal">({{ suggestion.year }})</span>
+                      <span class="text-light-font-muted dark:text-dark-font-muted font-normal"
+                        >({{ suggestion.year }})</span
+                      >
                     }
                   </span>
-                  <span class="block text-sm text-light-font-secondary dark:text-dark-font-secondary">{{ itemTypeLabels[suggestion.type] }}</span>
+                  <span
+                    class="block text-sm text-light-font-secondary dark:text-dark-font-secondary"
+                    >{{ itemTypeLabels[suggestion.type] }}</span
+                  >
                   @if (suggestion.overview) {
-                    <span class="block text-sm text-light-font-muted dark:text-dark-font-muted mt-1 line-clamp-2">{{ suggestion.overview }}</span>
+                    <span
+                      class="block text-sm text-light-font-muted dark:text-dark-font-muted mt-1 line-clamp-2"
+                      >{{ suggestion.overview }}</span
+                    >
                   }
                 </button>
               }
@@ -74,7 +94,9 @@ export interface ItemFormAutofillPatch {
       </div>
 
       <div class="mb-6">
-        <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font">Type *</label>
+        <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+          >Type *</label
+        >
         <select
           id="type"
           [ngModel]="formValue().type"
@@ -89,7 +111,9 @@ export interface ItemFormAutofillPatch {
       </div>
 
       <div class="mb-6">
-        <label for="groupId" class="block mb-2 font-medium text-light-font dark:text-dark-font">Group *</label>
+        <label for="groupId" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+          >Group *</label
+        >
         <select
           id="groupId"
           [ngModel]="formValue().groupId"
@@ -139,7 +163,9 @@ export interface ItemFormAutofillPatch {
       @if (formValue().type === 'series') {
         <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
           <div class="mb-6">
-            <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font">Season</label>
+            <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+              >Season</label
+            >
             <input
               type="number"
               id="season"
@@ -151,7 +177,9 @@ export interface ItemFormAutofillPatch {
             />
           </div>
           <div class="mb-6">
-            <label for="episode" class="block mb-2 font-medium text-light-font dark:text-dark-font">Episode</label>
+            <label for="episode" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+              >Episode</label
+            >
             <input
               type="number"
               id="episode"
@@ -191,7 +219,9 @@ export interface ItemFormAutofillPatch {
                   />
                 </div>
                 <div class="flex-1">
-                  <label for="seasonFirstAirDate{{ i }}" class="block mb-1 text-sm">First episode air date</label>
+                  <label for="seasonFirstAirDate{{ i }}" class="block mb-1 text-sm"
+                    >First episode air date</label
+                  >
                   <input
                     type="date"
                     id="seasonFirstAirDate{{ i }}"
@@ -222,7 +252,9 @@ export interface ItemFormAutofillPatch {
       }
 
       @if (showDirtyState() && isDirty()) {
-        <div class="mb-4 px-3 py-2 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary border border-accent-secondary text-accent-secondary text-sm">
+        <div
+          class="mb-4 px-3 py-2 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary border border-accent-secondary text-accent-secondary text-sm"
+        >
           You have unsaved changes
         </div>
       }
@@ -244,7 +276,7 @@ export interface ItemFormAutofillPatch {
         </button>
       </div>
     </form>
-  `
+  `,
 })
 export class ItemFormComponent {
   readonly groups = input.required<Group[]>();
@@ -289,7 +321,7 @@ export class ItemFormComponent {
   });
 
   readonly showSuggestions = computed(
-    () => this.suggestionsLoading() || !!this.suggestionsError() || this.suggestions().length > 0
+    () => this.suggestionsLoading() || !!this.suggestionsError() || this.suggestions().length > 0,
   );
 
   private lastAppliedAutofillPatchId: number | null = null;
@@ -310,8 +342,8 @@ export class ItemFormComponent {
     this.formValue.update((value) =>
       normalizeFormValueForType({
         ...value,
-        type
-      })
+        type,
+      }),
     );
   }
 
@@ -325,7 +357,7 @@ export class ItemFormComponent {
 
     this.submitted.emit({
       ...submittedValue,
-      title: submittedValue.title.trim()
+      title: submittedValue.title.trim(),
     });
   }
 
@@ -346,8 +378,8 @@ export class ItemFormComponent {
       normalizeFormValueForType({
         ...value,
         title: suggestion.title,
-        type: suggestion.type
-      })
+        type: suggestion.type,
+      }),
     );
     this.suggestionSelected.emit(suggestion);
   }
@@ -377,7 +409,10 @@ export class ItemFormComponent {
       const nextSeasonNumber = this.getNextSeasonNumber(value.seasons);
       return {
         ...value,
-        seasons: [...value.seasons, { seasonNumber: nextSeasonNumber, totalEpisodes: undefined as number | undefined }]
+        seasons: [
+          ...value.seasons,
+          { seasonNumber: nextSeasonNumber, totalEpisodes: undefined as number | undefined },
+        ],
       };
     });
   }
@@ -414,7 +449,7 @@ export class ItemFormComponent {
       if (newSeasons[index]) {
         newSeasons[index] = {
           ...newSeasons[index],
-          firstEpisodeAirDate: normalized
+          firstEpisodeAirDate: normalized,
         };
       }
       return { ...value, seasons: newSeasons };
@@ -424,7 +459,7 @@ export class ItemFormComponent {
   removeSeason(seasonNumber: number): void {
     this.formValue.update((value) => ({
       ...value,
-      seasons: value.seasons.filter((s) => s.seasonNumber !== seasonNumber)
+      seasons: value.seasons.filter((s) => s.seasonNumber !== seasonNumber),
     }));
   }
 
@@ -461,7 +496,9 @@ export class ItemFormComponent {
     return Number.isFinite(parsed) && parsed >= 1 ? parsed : fallback;
   }
 
-  protected toOptionalPositiveNumber(value: string | number | null | undefined): number | undefined {
+  protected toOptionalPositiveNumber(
+    value: string | number | null | undefined,
+  ): number | undefined {
     if (value === '' || value === null || value === undefined) {
       return undefined;
     }
@@ -482,8 +519,8 @@ export class ItemFormComponent {
     this.formValue.update((value) =>
       normalizeFormValueForType({
         ...value,
-        ...patch
-      })
+        ...patch,
+      }),
     );
   }
 }

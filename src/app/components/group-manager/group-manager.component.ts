@@ -12,7 +12,9 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Group Management</h1>
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-8">
-        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Create New Group</h2>
+        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+          Create New Group
+        </h2>
         <form (ngSubmit)="createGroup()" class="flex gap-4">
           <input
             type="text"
@@ -21,15 +23,24 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
             placeholder="Group name"
             required
             class="flex-1 p-3 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
-            />
-          <button type="submit" class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer font-medium hover:bg-accent-primary-hover">Create Group</button>
+          />
+          <button
+            type="submit"
+            class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer font-medium hover:bg-accent-primary-hover"
+          >
+            Create Group
+          </button>
         </form>
       </div>
 
-      <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-lg p-6">
+      <div
+        class="bg-light-bg-secondary dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-lg p-6"
+      >
         <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Groups</h2>
         @for (group of groups(); track group.id; let i = $index) {
-          <div class="flex justify-between items-center p-4 border-b border-light-border-light dark:border-dark-border-light last:border-b-0">
+          <div
+            class="flex justify-between items-center p-4 border-b border-light-border-light dark:border-dark-border-light last:border-b-0"
+          >
             <div class="flex flex-col gap-1">
               <span class="font-medium text-lg">{{ group.name }}</span>
             </div>
@@ -39,7 +50,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
                   (click)="moveUp(group.id)"
                   class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                   title="Move up"
-                  >
+                >
                   ↑
                 </button>
               }
@@ -48,7 +59,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
                   (click)="moveDown(group.id)"
                   class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                   title="Move down"
-                  >
+                >
                   ↓
                 </button>
               }
@@ -56,7 +67,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
                 <button
                   (click)="editGroup(group)"
                   class="px-4 py-2 border border-accent-warning rounded bg-accent-warning text-black dark:text-white hover:bg-accent-warning-hover cursor-pointer text-sm"
-                  >
+                >
                   Edit
                 </button>
               }
@@ -64,7 +75,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
                 <button
                   (click)="deleteGroup(group.id)"
                   class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white hover:bg-accent-danger-hover cursor-pointer text-sm"
-                  >
+                >
                   Delete
                 </button>
               }
@@ -84,17 +95,28 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
                 name="editGroupName"
                 required
                 class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
-                />
+              />
               <div class="flex gap-4 mt-6">
-                <button type="submit" class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer hover:bg-accent-primary-hover">Save</button>
-                <button type="button" (click)="cancelEdit()" class="px-6 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer hover:bg-accent-secondary-hover">Cancel</button>
+                <button
+                  type="submit"
+                  class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer hover:bg-accent-primary-hover"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  (click)="cancelEdit()"
+                  class="px-6 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer hover:bg-accent-secondary-hover"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
         </div>
       }
     </div>
-    `
+  `,
 })
 export class GroupManagerComponent {
   private groupService = inject(GroupService);
@@ -124,7 +146,7 @@ export class GroupManagerComponent {
     if (group && this.editGroupName.trim()) {
       this.groupService.updateGroup({
         ...group,
-        name: this.editGroupName.trim()
+        name: this.editGroupName.trim(),
       });
       this.cancelEdit();
     }
@@ -136,7 +158,9 @@ export class GroupManagerComponent {
   }
 
   deleteGroup(groupId: string): void {
-    if (confirm('Are you sure you want to delete this group? Items will be moved to "Ungrouped".')) {
+    if (
+      confirm('Are you sure you want to delete this group? Items will be moved to "Ungrouped".')
+    ) {
       try {
         this.groupService.deleteGroup(groupId);
       } catch {
@@ -147,9 +171,9 @@ export class GroupManagerComponent {
 
   moveUp(groupId: string): void {
     const sorted = this.groups();
-    const index = sorted.findIndex(g => g.id === groupId);
+    const index = sorted.findIndex((g) => g.id === groupId);
     if (index > 0) {
-      const groupIds = sorted.map(g => g.id);
+      const groupIds = sorted.map((g) => g.id);
       [groupIds[index], groupIds[index - 1]] = [groupIds[index - 1], groupIds[index]];
       this.groupService.reorderGroups(groupIds);
     }
@@ -157,9 +181,9 @@ export class GroupManagerComponent {
 
   moveDown(groupId: string): void {
     const sorted = this.groups();
-    const index = sorted.findIndex(g => g.id === groupId);
+    const index = sorted.findIndex((g) => g.id === groupId);
     if (index < sorted.length - 1) {
-      const groupIds = sorted.map(g => g.id);
+      const groupIds = sorted.map((g) => g.id);
       [groupIds[index], groupIds[index + 1]] = [groupIds[index + 1], groupIds[index]];
       this.groupService.reorderGroups(groupIds);
     }

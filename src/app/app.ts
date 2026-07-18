@@ -6,7 +6,7 @@ import { ThemeSwitcherComponent } from './components/theme-switcher/theme-switch
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeSwitcherComponent],
   templateUrl: './app.html',
-  styles: [':host { display: block; min-height: 100vh; }']
+  styles: [':host { display: block; min-height: 100vh; }'],
 })
 export class App {
   protected readonly title = signal('watch-list');

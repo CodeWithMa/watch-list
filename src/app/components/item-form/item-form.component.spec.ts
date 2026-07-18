@@ -7,8 +7,8 @@ describe('ItemFormComponent', () => {
     {
       id: 'ungrouped',
       name: 'Ungrouped',
-      order: 0
-    }
+      order: 0,
+    },
   ];
 
   it('applies the selected status color on first render', async () => {
@@ -22,14 +22,16 @@ describe('ItemFormComponent', () => {
       season: 1,
       episode: 8,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
-      startImmediately: false
+      startImmediately: false,
     });
 
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    ) as HTMLButtonElement[];
     const completedButton = buttons.find((button) => button.textContent?.trim() === 'Completed');
 
     expect(completedButton).toBeDefined();
@@ -49,28 +51,33 @@ describe('ItemFormComponent', () => {
       season: 1,
       episode: 8,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
-      startImmediately: false
+      startImmediately: false,
     });
 
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const submitButton = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const submitButton = fixture.nativeElement.querySelector(
+      'button[type="submit"]',
+    ) as HTMLButtonElement;
     expect(submitButton.disabled).toBe(true);
   });
 
   it('shows the duplicate title hint when provided', async () => {
     const fixture = TestBed.createComponent(ItemFormComponent);
     fixture.componentRef.setInput('groups', groups);
-    fixture.componentRef.setInput('duplicateTitleHint', 'An item named "Existing Show" already exists.');
+    fixture.componentRef.setInput(
+      'duplicateTitleHint',
+      'An item named "Existing Show" already exists.',
+    );
 
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain(
-      'An item named "Existing Show" already exists.'
+      'An item named "Existing Show" already exists.',
     );
   });
 
@@ -94,22 +101,22 @@ describe('ItemFormComponent', () => {
         title: 'Star Wars',
         type: 'movie',
         year: '1977',
-        overview: 'A space opera.'
-      }
+        overview: 'A space opera.',
+      },
     ]);
     const selected: unknown[] = [];
-    fixture.componentInstance.suggestionSelected.subscribe((suggestion) => selected.push(suggestion));
+    fixture.componentInstance.suggestionSelected.subscribe((suggestion) =>
+      selected.push(suggestion),
+    );
 
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
     const buttons = Array.from(
-      fixture.nativeElement.querySelectorAll('button')
+      fixture.nativeElement.querySelectorAll('button'),
     ) as HTMLButtonElement[];
-    const suggestionButton = buttons.find((button) =>
-      button.textContent?.includes('Star Wars')
-    );
+    const suggestionButton = buttons.find((button) => button.textContent?.includes('Star Wars'));
 
     expect(suggestionButton).toBeDefined();
     suggestionButton?.click();
@@ -122,8 +129,8 @@ describe('ItemFormComponent', () => {
         title: 'Star Wars',
         type: 'movie',
         year: '1977',
-        overview: 'A space opera.'
-      }
+        overview: 'A space opera.',
+      },
     ]);
   });
 
@@ -138,7 +145,7 @@ describe('ItemFormComponent', () => {
       season: 1,
       episode: 1,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
-      startImmediately: false
+      startImmediately: false,
     });
 
     fixture.detectChanges();
@@ -160,7 +167,7 @@ describe('ItemFormComponent', () => {
       season: 1,
       episode: 1,
       seasons: [],
-      startImmediately: false
+      startImmediately: false,
     });
 
     fixture.detectChanges();
@@ -173,10 +180,10 @@ describe('ItemFormComponent', () => {
           {
             seasonNumber: 1,
             totalEpisodes: 10,
-            firstEpisodeAirDate: '2026-05-01'
-          }
-        ]
-      }
+            firstEpisodeAirDate: '2026-05-01',
+          },
+        ],
+      },
     });
     fixture.detectChanges();
     await fixture.whenStable();
@@ -185,8 +192,8 @@ describe('ItemFormComponent', () => {
       {
         seasonNumber: 1,
         totalEpisodes: 10,
-        firstEpisodeAirDate: '2026-05-01'
-      }
+        firstEpisodeAirDate: '2026-05-01',
+      },
     ]);
   });
 });

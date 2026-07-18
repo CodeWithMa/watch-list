@@ -13,10 +13,10 @@ describe('TmdbSuggestionService', () => {
         {
           provide: TmdbSettingsService,
           useValue: {
-            getCredential: () => ({ type: 'read-token', value: 'read-token' })
-          }
-        }
-      ]
+            getCredential: () => ({ type: 'read-token', value: 'read-token' }),
+          },
+        },
+      ],
     });
   });
 
@@ -33,7 +33,9 @@ describe('TmdbSuggestionService', () => {
       suggestions = results;
     });
 
-    const request = http.expectOne((req) => req.url === 'https://api.themoviedb.org/3/search/multi');
+    const request = http.expectOne(
+      (req) => req.url === 'https://api.themoviedb.org/3/search/multi',
+    );
     expect(request.request.headers.get('Authorization')).toBe('Bearer read-token');
     expect(request.request.params.get('api_key')).toBeNull();
     expect(request.request.params.get('query')).toBe('breaking');
@@ -47,20 +49,20 @@ describe('TmdbSuggestionService', () => {
           title: 'Breaking Movie',
           release_date: '2026-01-02',
           overview: 'Movie overview',
-          poster_path: '/movie.jpg'
+          poster_path: '/movie.jpg',
         },
         {
           id: 2,
           media_type: 'tv',
           name: 'Breaking Show',
-          first_air_date: '2025-03-04'
+          first_air_date: '2025-03-04',
         },
         {
           id: 3,
           media_type: 'person',
-          name: 'Actor'
-        }
-      ]
+          name: 'Actor',
+        },
+      ],
     });
 
     expect(suggestions).toEqual([
@@ -70,7 +72,7 @@ describe('TmdbSuggestionService', () => {
         type: 'movie',
         year: '2026',
         overview: 'Movie overview',
-        posterPath: '/movie.jpg'
+        posterPath: '/movie.jpg',
       },
       {
         tmdbId: 2,
@@ -78,8 +80,8 @@ describe('TmdbSuggestionService', () => {
         type: 'series',
         year: '2025',
         overview: undefined,
-        posterPath: undefined
-      }
+        posterPath: undefined,
+      },
     ]);
   });
 
@@ -92,10 +94,10 @@ describe('TmdbSuggestionService', () => {
         {
           provide: TmdbSettingsService,
           useValue: {
-            getCredential: () => ({ type: 'api-key', value: 'api-key-value' })
-          }
-        }
-      ]
+            getCredential: () => ({ type: 'api-key', value: 'api-key-value' }),
+          },
+        },
+      ],
     });
 
     const service = TestBed.inject(TmdbSuggestionService);
@@ -106,7 +108,9 @@ describe('TmdbSuggestionService', () => {
       results = suggestions;
     });
 
-    const request = http.expectOne((req) => req.url === 'https://api.themoviedb.org/3/search/multi');
+    const request = http.expectOne(
+      (req) => req.url === 'https://api.themoviedb.org/3/search/multi',
+    );
     expect(request.request.headers.get('Authorization')).toBeNull();
     expect(request.request.params.get('api_key')).toBe('api-key-value');
     request.flush({ results: [] });
@@ -133,24 +137,24 @@ describe('TmdbSuggestionService', () => {
         {
           season_number: 0,
           episode_count: 5,
-          air_date: '2009-02-17'
+          air_date: '2009-02-17',
         },
         {
           season_number: 2,
           episode_count: 13,
-          air_date: '2009-03-08'
+          air_date: '2009-03-08',
         },
         {
           season_number: 1,
           episode_count: 7,
-          air_date: '2008-01-20'
+          air_date: '2008-01-20',
         },
         {
           season_number: 3,
           episode_count: 0,
-          air_date: 'not-a-date'
-        }
-      ]
+          air_date: 'not-a-date',
+        },
+      ],
     });
 
     expect(details).toEqual({
@@ -158,19 +162,19 @@ describe('TmdbSuggestionService', () => {
         {
           seasonNumber: 1,
           totalEpisodes: 7,
-          firstEpisodeAirDate: '2008-01-20'
+          firstEpisodeAirDate: '2008-01-20',
         },
         {
           seasonNumber: 2,
           totalEpisodes: 13,
-          firstEpisodeAirDate: '2009-03-08'
+          firstEpisodeAirDate: '2009-03-08',
         },
         {
           seasonNumber: 3,
           totalEpisodes: undefined,
-          firstEpisodeAirDate: undefined
-        }
-      ]
+          firstEpisodeAirDate: undefined,
+        },
+      ],
     });
   });
 
@@ -183,10 +187,10 @@ describe('TmdbSuggestionService', () => {
         {
           provide: TmdbSettingsService,
           useValue: {
-            getCredential: () => null
-          }
-        }
-      ]
+            getCredential: () => null,
+          },
+        },
+      ],
     });
 
     const service = TestBed.inject(TmdbSuggestionService);
@@ -215,13 +219,12 @@ describe('TmdbSuggestionService', () => {
     service.search('breaking').subscribe({
       error: (error: { status?: number }) => {
         errorStatus = error.status;
-      }
+      },
     });
 
-    http.expectOne((req) => req.url === 'https://api.themoviedb.org/3/search/multi').flush(
-      { status_message: 'Invalid token' },
-      { status: 401, statusText: 'Unauthorized' }
-    );
+    http
+      .expectOne((req) => req.url === 'https://api.themoviedb.org/3/search/multi')
+      .flush({ status_message: 'Invalid token' }, { status: 401, statusText: 'Unauthorized' });
 
     expect(errorStatus).toBe(401);
   });

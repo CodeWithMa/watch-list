@@ -2,11 +2,10 @@ import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ImportExportService {
   private storageService = inject(StorageService);
-
 
   exportData(): void {
     const data = this.storageService.getData();

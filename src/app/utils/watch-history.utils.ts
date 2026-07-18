@@ -9,7 +9,7 @@ export interface CalendarGroup {
 export function groupHistoryEntries(
   entries: HistoryEntry[],
   locale = 'en-US',
-  now = new Date()
+  now = new Date(),
 ): CalendarGroup[] {
   const groups: CalendarGroup[] = [];
   const groupMap = new Map<string, (HistoryEntry & { relativeTime: string })[]>();
@@ -26,7 +26,7 @@ export function groupHistoryEntries(
 
     groupMap.get(dayKey)!.push({
       ...entry,
-      relativeTime: formatClockTime(entryDate)
+      relativeTime: formatClockTime(entryDate),
     });
   }
 
@@ -39,13 +39,15 @@ export function groupHistoryEntries(
       dateLabel: entryDay.toLocaleDateString(locale, {
         month: 'short',
         day: 'numeric',
-        year: 'numeric'
+        year: 'numeric',
       }),
-      entries: dayEntries
+      entries: dayEntries,
     });
   });
 
-  groups.sort((a, b) => new Date(b.entries[0].date).getTime() - new Date(a.entries[0].date).getTime());
+  groups.sort(
+    (a, b) => new Date(b.entries[0].date).getTime() - new Date(a.entries[0].date).getTime(),
+  );
 
   return groups;
 }

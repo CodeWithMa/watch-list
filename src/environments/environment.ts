@@ -1,3 +1,3 @@
 export const environment = {
-  enableServiceWorker: false
+  enableServiceWorker: false,
 };

@@ -3,4 +3,3 @@ export interface Group {
   name: string;
   order: number;
 }
-

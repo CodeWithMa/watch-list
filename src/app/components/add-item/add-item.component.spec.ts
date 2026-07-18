@@ -20,11 +20,11 @@ describe('AddItemComponent', () => {
       progress: {
         season: 1,
         episode: 1,
-        seasons: []
+        seasons: [],
       },
       watchHistory: [],
-      createdAt: '2026-05-01T10:00:00.000Z'
-    }
+      createdAt: '2026-05-01T10:00:00.000Z',
+    },
   ];
 
   beforeEach(() => {
@@ -35,23 +35,23 @@ describe('AddItemComponent', () => {
           provide: WatchListService,
           useValue: {
             items: signal(existingItems),
-            addItem: vi.fn()
-          }
+            addItem: vi.fn(),
+          },
         },
         {
           provide: GroupService,
           useValue: {
-            groups: signal([{ id: 'ungrouped', name: 'Ungrouped', order: 0 }])
-          }
+            groups: signal([{ id: 'ungrouped', name: 'Ungrouped', order: 0 }]),
+          },
         },
         {
           provide: TmdbSuggestionService,
           useValue: {
             search: vi.fn(() => of([])),
-            getSeriesDetails: vi.fn(() => of(null))
-          }
-        }
-      ]
+            getSeriesDetails: vi.fn(() => of(null)),
+          },
+        },
+      ],
     });
   });
 
@@ -65,7 +65,7 @@ describe('AddItemComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain(
-      'An item named "Existing Show" already exists.'
+      'An item named "Existing Show" already exists.',
     );
   });
 
@@ -83,7 +83,7 @@ describe('AddItemComponent', () => {
       season: 1,
       episode: 1,
       seasons: [],
-      startImmediately: false
+      startImmediately: false,
     });
 
     expect(watchListService.addItem).toHaveBeenCalled();
@@ -98,15 +98,15 @@ describe('AddItemComponent', () => {
         tmdbId: 1396,
         title: 'Breaking Bad',
         type: 'series',
-        year: '2008'
-      }
+        year: '2008',
+      },
     ]);
 
     fixture.componentInstance.onSuggestionSelected({
       tmdbId: 1396,
       title: 'Breaking Bad',
       type: 'series',
-      year: '2008'
+      year: '2008',
     });
 
     expect(fixture.componentInstance.title()).toBe('Breaking Bad');
@@ -122,10 +122,10 @@ describe('AddItemComponent', () => {
           {
             seasonNumber: 1,
             totalEpisodes: 7,
-            firstEpisodeAirDate: '2008-01-20'
-          }
-        ]
-      })
+            firstEpisodeAirDate: '2008-01-20',
+          },
+        ],
+      }),
     );
     const fixture = TestBed.createComponent(AddItemComponent);
 
@@ -133,7 +133,7 @@ describe('AddItemComponent', () => {
       tmdbId: 1396,
       title: 'Breaking Bad',
       type: 'series',
-      year: '2008'
+      year: '2008',
     });
 
     expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(1396);
@@ -144,10 +144,10 @@ describe('AddItemComponent', () => {
           {
             seasonNumber: 1,
             totalEpisodes: 7,
-            firstEpisodeAirDate: '2008-01-20'
-          }
-        ]
-      }
+            firstEpisodeAirDate: '2008-01-20',
+          },
+        ],
+      },
     });
   });
 
@@ -160,17 +160,17 @@ describe('AddItemComponent', () => {
         seasons: [
           {
             seasonNumber: 1,
-            totalEpisodes: 7
-          }
-        ]
-      }
+            totalEpisodes: 7,
+          },
+        ],
+      },
     });
 
     fixture.componentInstance.onSuggestionSelected({
       tmdbId: 11,
       title: 'Star Wars',
       type: 'movie',
-      year: '1977'
+      year: '1977',
     });
 
     expect(tmdbSuggestionService.getSeriesDetails).not.toHaveBeenCalled();
@@ -187,16 +187,16 @@ describe('AddItemComponent', () => {
       tmdbId: 1396,
       title: 'Breaking Bad',
       type: 'series',
-      year: '2008'
+      year: '2008',
     });
     fixture.componentInstance.onTitleChanged('Different show');
     details.next({
       seasons: [
         {
           seasonNumber: 1,
-          totalEpisodes: 7
-        }
-      ]
+          totalEpisodes: 7,
+        },
+      ],
     });
 
     expect(fixture.componentInstance.autofillPatch()).toBeNull();
@@ -212,24 +212,24 @@ describe('AddItemComponent', () => {
             seasons: [
               {
                 seasonNumber: 1,
-                totalEpisodes: 7
-              }
-            ]
+                totalEpisodes: 7,
+              },
+            ],
           });
           return () => {
             firstRequestUnsubscribed = true;
           };
-        })
+        }),
       )
       .mockReturnValueOnce(
         of({
           seasons: [
             {
               seasonNumber: 1,
-              totalEpisodes: 10
-            }
-          ]
-        })
+              totalEpisodes: 10,
+            },
+          ],
+        }),
       );
     const fixture = TestBed.createComponent(AddItemComponent);
 
@@ -237,13 +237,13 @@ describe('AddItemComponent', () => {
       tmdbId: 1396,
       title: 'Breaking Bad',
       type: 'series',
-      year: '2008'
+      year: '2008',
     });
     fixture.componentInstance.onSuggestionSelected({
       tmdbId: 66732,
       title: 'Stranger Things',
       type: 'series',
-      year: '2016'
+      year: '2016',
     });
 
     expect(firstRequestUnsubscribed).toBe(true);
@@ -255,10 +255,10 @@ describe('AddItemComponent', () => {
         seasons: [
           {
             seasonNumber: 1,
-            totalEpisodes: 10
-          }
-        ]
-      }
+            totalEpisodes: 10,
+          },
+        ],
+      },
     });
   });
 
@@ -270,10 +270,10 @@ describe('AddItemComponent', () => {
         seasons: [
           {
             seasonNumber: 1,
-            totalEpisodes: 7
-          }
-        ]
-      }
+            totalEpisodes: 7,
+          },
+        ],
+      },
     });
 
     fixture.componentInstance.onTitleChanged('Different show');
@@ -294,9 +294,9 @@ describe('AddItemComponent', () => {
               tmdbId: 1396,
               title: 'Breaking Bad',
               type: 'series',
-              year: '2008'
-            }
-          ])
+              year: '2008',
+            },
+          ]),
         );
       const fixture = TestBed.createComponent(AddItemComponent);
 
@@ -305,7 +305,9 @@ describe('AddItemComponent', () => {
 
       expect(fixture.componentInstance.suggestions()).toEqual([]);
       expect(fixture.componentInstance.suggestionsLoading()).toBe(false);
-      expect(fixture.componentInstance.suggestionsError()).toBe('TMDB suggestions are unavailable.');
+      expect(fixture.componentInstance.suggestionsError()).toBe(
+        'TMDB suggestions are unavailable.',
+      );
 
       fixture.componentInstance.onTitleChanged('good query');
       await vi.advanceTimersByTimeAsync(250);
@@ -315,8 +317,8 @@ describe('AddItemComponent', () => {
           tmdbId: 1396,
           title: 'Breaking Bad',
           type: 'series',
-          year: '2008'
-        }
+          year: '2008',
+        },
       ]);
       expect(fixture.componentInstance.suggestionsError()).toBe('');
     } finally {
@@ -355,8 +357,8 @@ describe('AddItemComponent', () => {
           tmdbId: 1396,
           title: 'Breaking Bad',
           type: 'series',
-          year: '2008'
-        }
+          year: '2008',
+        },
       ]);
       fixture.componentInstance.onTitleChanged('Breakin');
       await vi.advanceTimersByTimeAsync(100);
@@ -364,7 +366,7 @@ describe('AddItemComponent', () => {
         tmdbId: 1396,
         title: 'Breaking Bad',
         type: 'series',
-        year: '2008'
+        year: '2008',
       });
       await vi.advanceTimersByTimeAsync(250);
 

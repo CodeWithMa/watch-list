@@ -11,9 +11,15 @@ describe('WatchListService', () => {
   beforeEach(() => {
     store = {};
     const localStorageMock = {
-      clear() { Object.keys(store).forEach(key => delete store[key]); },
-      getItem(key: string) { return store[key] ?? null; },
-      setItem(key: string, value: string) { store[key] = value; }
+      clear() {
+        Object.keys(store).forEach((key) => delete store[key]);
+      },
+      getItem(key: string) {
+        return store[key] ?? null;
+      },
+      setItem(key: string, value: string) {
+        store[key] = value;
+      },
     };
     Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
 
@@ -33,12 +39,10 @@ describe('WatchListService', () => {
         progress: {
           season: 1,
           episode: 10,
-          seasons: [
-            { seasonNumber: 1, totalEpisodes: 10 }
-          ]
+          seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
         } as SeriesProgress,
         watchHistory: [],
-        createdAt: '2026-04-01T10:00:00.000Z'
+        createdAt: '2026-04-01T10:00:00.000Z',
       };
 
       storageService.saveData({
@@ -46,7 +50,7 @@ describe('WatchListService', () => {
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
         items: { 'series-1': item },
-        deletedItems: {}
+        deletedItems: {},
       });
 
       service.markWatched('series-1');
@@ -68,11 +72,11 @@ describe('WatchListService', () => {
           episode: 10,
           seasons: [
             { seasonNumber: 1, totalEpisodes: 10 },
-            { seasonNumber: 2, totalEpisodes: 8 }
-          ]
+            { seasonNumber: 2, totalEpisodes: 8 },
+          ],
         } as SeriesProgress,
         watchHistory: [],
-        createdAt: '2026-04-01T10:00:00.000Z'
+        createdAt: '2026-04-01T10:00:00.000Z',
       };
 
       storageService.saveData({
@@ -80,7 +84,7 @@ describe('WatchListService', () => {
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
         items: { 'series-2': item },
-        deletedItems: {}
+        deletedItems: {},
       });
 
       service.markWatched('series-2');
@@ -103,11 +107,11 @@ describe('WatchListService', () => {
           episode: 5,
           seasons: [
             { seasonNumber: 1, totalEpisodes: 5 },
-            { seasonNumber: 3, totalEpisodes: 8 }
-          ]
+            { seasonNumber: 3, totalEpisodes: 8 },
+          ],
         } as SeriesProgress,
         watchHistory: [],
-        createdAt: '2026-04-01T10:00:00.000Z'
+        createdAt: '2026-04-01T10:00:00.000Z',
       };
 
       storageService.saveData({
@@ -115,7 +119,7 @@ describe('WatchListService', () => {
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
         items: { 'series-3': item },
-        deletedItems: {}
+        deletedItems: {},
       });
 
       service.markWatched('series-3');

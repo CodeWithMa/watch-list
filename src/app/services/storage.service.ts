@@ -7,7 +7,7 @@ import { createDefaultStorageData, normalizeStorageData } from '../domain/storag
 const STORAGE_KEY = 'watchListData';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class StorageService {
   private readonly data = signal<StorageData | null>(null);
@@ -18,7 +18,7 @@ export class StorageService {
 
   loadData(): StorageData {
     const stored = localStorage.getItem(STORAGE_KEY);
-    
+
     if (stored) {
       try {
         const normalized = normalizeStorageData(JSON.parse(stored));
@@ -32,7 +32,7 @@ export class StorageService {
         return defaultData;
       }
     }
-    
+
     const defaultData = createDefaultStorageData();
     this.saveData(defaultData);
     return defaultData;
@@ -47,7 +47,7 @@ export class StorageService {
   saveData(data: StorageData): void {
     const updated: StorageData = {
       ...data,
-      lastModifiedAt: new Date().toISOString()
+      lastModifiedAt: new Date().toISOString(),
     };
     this.data.set(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));

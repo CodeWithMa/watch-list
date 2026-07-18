@@ -4,8 +4,12 @@ import { Component, computed, input } from '@angular/core';
   selector: 'app-time-ago',
   imports: [],
   template: `
-    <span [title]="dateString()" class="text-light-font-secondary dark:text-dark-font-secondary text-[0.9em]">{{ timeAgo() }}</span>
-  `
+    <span
+      [title]="dateString()"
+      class="text-light-font-secondary dark:text-dark-font-secondary text-[0.9em]"
+      >{{ timeAgo() }}</span
+    >
+  `,
 })
 export class TimeAgoComponent {
   date = input.required<string>();
@@ -44,4 +48,3 @@ export class TimeAgoComponent {
     }
   });
 }
-

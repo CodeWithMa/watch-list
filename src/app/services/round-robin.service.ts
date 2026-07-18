@@ -3,11 +3,10 @@ import { WatchListService } from './watch-list.service';
 import { Item } from '../models/item.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class RoundRobinService {
   private watchListService = inject(WatchListService);
-
 
   nextSeries = computed(() => {
     const series = this.watchListService.inProgressSeries();
@@ -22,7 +21,7 @@ export class RoundRobinService {
       return new Date(aDate).getTime() - new Date(bDate).getTime();
     });
 
-    const watchable = sorted.filter(s => this.hasAiredCurrentEpisode(s));
+    const watchable = sorted.filter((s) => this.hasAiredCurrentEpisode(s));
     if (watchable.length === 0) {
       return null;
     }
@@ -55,15 +54,15 @@ export class RoundRobinService {
       return true;
     }
 
-    const targetSeries = series.find(s => s.id === seriesId);
+    const targetSeries = series.find((s) => s.id === seriesId);
     if (!targetSeries) {
       return false;
     }
 
-    const otherSeries = series.filter(s => s.id !== seriesId);
+    const otherSeries = series.filter((s) => s.id !== seriesId);
 
-    const allOthersWatched = otherSeries.every(s => {
-      return (s.watchHistory && s.watchHistory.length > 0);
+    const allOthersWatched = otherSeries.every((s) => {
+      return s.watchHistory && s.watchHistory.length > 0;
     });
 
     return allOthersWatched;
@@ -75,13 +74,16 @@ export class RoundRobinService {
     }
 
     const currentSeason = series.progress.seasons.find(
-      s => s.seasonNumber === series.progress!.season
+      (s) => s.seasonNumber === series.progress!.season,
     );
     if (!currentSeason?.firstEpisodeAirDate) {
       return true;
     }
 
-    const airDate = this.getEpisodeAirDate(currentSeason.firstEpisodeAirDate, series.progress.episode);
+    const airDate = this.getEpisodeAirDate(
+      currentSeason.firstEpisodeAirDate,
+      series.progress.episode,
+    );
     if (!airDate) {
       return true;
     }

@@ -4,7 +4,7 @@ import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 export type Theme = 'system' | 'light' | 'dark';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ThemeService implements OnDestroy {
   private readonly STORAGE_KEY = 'theme';
@@ -60,8 +60,8 @@ export class ThemeService implements OnDestroy {
     }
 
     const currentTheme = this.theme();
-    const isDark = currentTheme === 'dark' ||
-      (currentTheme === 'system' && this.mediaQuery?.matches);
+    const isDark =
+      currentTheme === 'dark' || (currentTheme === 'system' && this.mediaQuery?.matches);
 
     this.document.documentElement.classList.toggle('dark', isDark);
   }

@@ -4,12 +4,10 @@ const TMDB_READ_TOKEN_KEY = 'tmdbReadAccessToken';
 const TMDB_API_KEY = 'tmdbApiKey';
 
 export type TmdbCredential =
-  | { type: 'read-token'; value: string }
-  | { type: 'api-key'; value: string }
-  | null;
+  { type: 'read-token'; value: string } | { type: 'api-key'; value: string } | null;
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TmdbSettingsService {
   private readonly readAccessToken = signal(this.loadToken());
