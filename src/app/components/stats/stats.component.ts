@@ -400,10 +400,16 @@ export class StatsComponent {
     if (dates.size === 0) return 0;
 
     const today = new Date();
-
-    let streak = 0;
     const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
+    if (!dates.has(StatsComponent.toLocalDateKey(current))) {
+      current.setDate(current.getDate() - 1);
+      if (!dates.has(StatsComponent.toLocalDateKey(current))) {
+        return 0;
+      }
+    }
+
+    let streak = 0;
     while (true) {
       const key = StatsComponent.toLocalDateKey(current);
       if (dates.has(key)) {
