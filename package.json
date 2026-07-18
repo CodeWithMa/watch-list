@@ -46,6 +46,7 @@
     "@angular/cli": "^22.0.6",
     "@angular/compiler-cli": "^22.0.6",
     "@eslint/js": "^10.0.1",
+    "@j178/prek": "^0.4.10",
     "@tailwindcss/postcss": "^4.3.2",
     "@tauri-apps/cli": "^2.11.4",
     "angular-eslint": "^22.0.0",
