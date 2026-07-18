@@ -6,6 +6,19 @@ import { SettingsComponent } from './settings.component';
 import { vi } from 'vitest';
 
 describe('SettingsComponent', () => {
+  let origHash: string;
+  let origVersion: string;
+
+  beforeEach(() => {
+    origHash = environment.commitHash;
+    origVersion = environment.appVersion;
+  });
+
+  afterEach(() => {
+    environment.commitHash = origHash;
+    environment.appVersion = origVersion;
+  });
+
   function configure(credentials: { token: string; key: string; credential: TmdbCredential }) {
     const tmdbSettingsService = {
       token: vi.fn(() => credentials.token),
@@ -104,8 +117,6 @@ describe('SettingsComponent', () => {
   });
 
   it('renders About section with version info', () => {
-    const origHash = environment.commitHash;
-    const origVersion = environment.appVersion;
     environment.commitHash = 'abc123456789';
     environment.appVersion = '1.2.3';
 
@@ -120,8 +131,5 @@ describe('SettingsComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Watch List v1.2.3');
     expect(fixture.nativeElement.textContent).toContain('abc1234');
-
-    environment.commitHash = origHash;
-    environment.appVersion = origVersion;
   });
 });
