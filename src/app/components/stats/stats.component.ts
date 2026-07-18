@@ -2,7 +2,6 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
 import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
-import { Item } from '../../models/item.model';
 
 @Component({
   selector: 'app-stats',
@@ -188,25 +187,25 @@ import { Item } from '../../models/item.model';
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">In Progress</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesByStatus('in-progress')
+                      seriesCountByStatus()['in-progress'] ?? 0
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Completed</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesByStatus('completed')
+                      seriesCountByStatus()['completed'] ?? 0
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Dropped</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesByStatus('dropped')
+                      seriesCountByStatus()['dropped'] ?? 0
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Not Started</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesByStatus('not-started')
+                      seriesCountByStatus()['not-started'] ?? 0
                     }}</span>
                   </div>
                   <div
@@ -233,25 +232,25 @@ import { Item } from '../../models/item.model';
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">In Progress</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesByStatus('in-progress')
+                      moviesCountByStatus()['in-progress'] ?? 0
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Completed</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesByStatus('completed')
+                      moviesCountByStatus()['completed'] ?? 0
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Dropped</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesByStatus('dropped')
+                      moviesCountByStatus()['dropped'] ?? 0
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Not Started</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesByStatus('not-started')
+                      moviesCountByStatus()['not-started'] ?? 0
                     }}</span>
                   </div>
                   <div
@@ -331,11 +330,25 @@ export class StatsComponent {
     return count;
   });
 
-  seriesByStatus = (status: Item['status']): number =>
-    this.items().filter((i) => i.type === 'series' && i.status === status).length;
+  private seriesCountByStatus = computed(() => {
+    const counts: Record<string, number> = {};
+    for (const item of this.items()) {
+      if (item.type === 'series') {
+        counts[item.status] = (counts[item.status] ?? 0) + 1;
+      }
+    }
+    return counts;
+  });
 
-  moviesByStatus = (status: Item['status']): number =>
-    this.items().filter((i) => i.type === 'movie' && i.status === status).length;
+  private moviesCountByStatus = computed(() => {
+    const counts: Record<string, number> = {};
+    for (const item of this.items()) {
+      if (item.type === 'movie') {
+        counts[item.status] = (counts[item.status] ?? 0) + 1;
+      }
+    }
+    return counts;
+  });
 
   mostWatchedItems = computed(() => {
     return [...this.items()]
