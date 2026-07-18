@@ -1,0 +1,52 @@
+exclude = { glob = ["dist/**", "node_modules/**", ".angular/**", "src-tauri/target/**", "tsconfig*.json"] }
+
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace" },
+  { id = "end-of-file-fixer" },
+  { id = "check-yaml" },
+  { id = "check-json" },
+  { id = "check-toml" },
+  { id = "check-merge-conflict" },
+  { id = "detect-private-key" },
+  { id = "check-added-large-files" },
+  { id = "no-commit-to-branch", args = ["--branch", "main", "--branch", "dev"] },
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+  {
+    id = "eslint",
+    name = "ESLint",
+    language = "system",
+    entry = "bun run lint",
+    files = "\\.(ts|html)$",
+    types_or = ["file"],
+    pass_filenames = false,
+  },
+  {
+    id = "prettier",
+    name = "Prettier",
+    language = "system",
+    entry = "bunx prettier --check",
+    files = "\\.(ts|html|css)$",
+  },
+  {
+    id = "tsc",
+    name = "TypeScript",
+    language = "system",
+    entry = "bunx tsc --noEmit -p tsconfig.app.json",
+    files = "\\.ts$",
+    pass_filenames = false,
+  },
+  {
+    id = "cargo-fmt",
+    name = "cargo fmt",
+    language = "system",
+    entry = "bash -c 'cd src-tauri && cargo fmt --check'",
+    files = "\\.rs$",
+    pass_filenames = false,
+  },
+]
