@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { environment } from '../../../environments/environment';
 import { ImportExportService } from '../../services/import-export.service';
 import { TmdbCredential, TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { SettingsComponent } from './settings.component';
@@ -100,5 +101,27 @@ describe('SettingsComponent', () => {
 
     expect(tmdbSettingsService.clearCredentials).toHaveBeenCalled();
     expect(fixture.componentInstance.tmdbSettingsMessage()).toBe('TMDB credentials cleared.');
+  });
+
+  it('renders About section with version info', () => {
+    const origHash = environment.commitHash;
+    const origVersion = environment.appVersion;
+    environment.commitHash = 'abc123456789';
+    environment.appVersion = '1.2.3';
+
+    configure({
+      token: '',
+      key: '',
+      credential: null,
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Watch List v1.2.3');
+    expect(fixture.nativeElement.textContent).toContain('abc1234');
+
+    environment.commitHash = origHash;
+    environment.appVersion = origVersion;
   });
 });
