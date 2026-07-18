@@ -365,9 +365,10 @@ export class StatsComponent {
       return sum + (lastWatch - created);
     }, 0);
     const avgDays = totalMs / completed.length / (1000 * 60 * 60 * 24);
-    if (avgDays < 1) return '< 1 day';
-    if (avgDays === 1) return '1 day';
-    return `${Math.round(avgDays)} days`;
+    const rounded = Math.round(avgDays);
+    if (rounded <= 0) return '< 1 day';
+    if (rounded === 1) return '1 day';
+    return `${rounded} days`;
   });
 
   private static toLocalDateKey(date: Date): string {
