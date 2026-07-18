@@ -74,10 +74,22 @@ export class StatsHeatmapComponent {
 
   dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 
+  private static toLocalDateKey(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private static toLocalDateKeyFromISO(iso: string): string {
+    const d = new Date(iso);
+    return StatsHeatmapComponent.toLocalDateKey(d);
+  }
+
   private entryCountByDate = computed(() => {
     const map = new Map<string, number>();
     for (const entry of this.historyEntries()) {
-      const dateKey = entry.date.slice(0, 10);
+      const dateKey = StatsHeatmapComponent.toLocalDateKeyFromISO(entry.date);
       map.set(dateKey, (map.get(dateKey) ?? 0) + 1);
     }
     return map;
@@ -98,7 +110,7 @@ export class StatsHeatmapComponent {
     const counts = this.entryCountByDate();
 
     while (current <= end) {
-      const dateKey = current.toISOString().slice(0, 10);
+      const dateKey = StatsHeatmapComponent.toLocalDateKey(current);
       const count = counts.get(dateKey) ?? 0;
       let level: 0 | 1 | 2 | 3 = 0;
       if (count >= 3) level = 3;
@@ -130,7 +142,8 @@ export class StatsHeatmapComponent {
       const firstDayOfWeek = weeks[i][0];
       if (!firstDayOfWeek) continue;
 
-      const date = new Date(firstDayOfWeek.date);
+      const parts = firstDayOfWeek.date.split('-');
+      const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
       const month = date.getMonth();
 
       if (month !== lastMonth) {
@@ -155,7 +168,8 @@ export class StatsHeatmapComponent {
   }
 
   formatTooltipDate(dateStr: string): string {
-    const date = new Date(dateStr + 'T00:00:00');
+    const parts = dateStr.split('-');
+    const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   }
 }

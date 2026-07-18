@@ -231,10 +231,21 @@ export class StatsComponent {
     return `${Math.round(avgDays)} days`;
   });
 
+  private static toLocalDateKey(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private static toLocalDateKeyFromISO(iso: string): string {
+    return StatsComponent.toLocalDateKey(new Date(iso));
+  }
+
   private uniqueWatchDates = computed(() => {
     const dates = new Set<string>();
     for (const entry of this.history()) {
-      dates.add(entry.date.slice(0, 10));
+      dates.add(StatsComponent.toLocalDateKeyFromISO(entry.date));
     }
     return dates;
   });
@@ -254,7 +265,7 @@ export class StatsComponent {
     const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     while (true) {
-      const key = current.toISOString().slice(0, 10);
+      const key = StatsComponent.toLocalDateKey(current);
       if (dates.has(key)) {
         streak++;
         current.setDate(current.getDate() - 1);
@@ -274,9 +285,11 @@ export class StatsComponent {
     let current = 1;
 
     for (let i = 1; i < dates.length; i++) {
-      const prev = new Date(dates[i - 1] + 'T00:00:00');
-      const curr = new Date(dates[i] + 'T00:00:00');
-      const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+      const [py, pm, pd] = dates[i - 1].split('-').map(Number);
+      const [cy, cm, cd] = dates[i].split('-').map(Number);
+      const prevTime = new Date(py, pm - 1, pd).getTime();
+      const currTime = new Date(cy, cm - 1, cd).getTime();
+      const diffDays = (currTime - prevTime) / (1000 * 60 * 60 * 24);
 
       if (diffDays === 1) {
         current++;
