@@ -187,25 +187,25 @@ import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">In Progress</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesCountByStatus()['in-progress'] ?? 0
+                      seriesCountByStatus()['in-progress']
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Completed</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesCountByStatus()['completed'] ?? 0
+                      seriesCountByStatus()['completed']
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Dropped</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesCountByStatus()['dropped'] ?? 0
+                      seriesCountByStatus()['dropped']
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Not Started</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesCountByStatus()['not-started'] ?? 0
+                      seriesCountByStatus()['not-started']
                     }}</span>
                   </div>
                   <div
@@ -232,25 +232,25 @@ import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">In Progress</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesCountByStatus()['in-progress'] ?? 0
+                      moviesCountByStatus()['in-progress']
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Completed</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesCountByStatus()['completed'] ?? 0
+                      moviesCountByStatus()['completed']
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Dropped</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesCountByStatus()['dropped'] ?? 0
+                      moviesCountByStatus()['dropped']
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Not Started</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesCountByStatus()['not-started'] ?? 0
+                      moviesCountByStatus()['not-started']
                     }}</span>
                   </div>
                   <div
@@ -330,7 +330,7 @@ export class StatsComponent {
     return count;
   });
 
-  private seriesCountByStatus = computed(() => {
+  seriesCountByStatus = computed(() => {
     const counts: Record<string, number> = {};
     for (const item of this.items()) {
       if (item.type === 'series') {
@@ -340,7 +340,7 @@ export class StatsComponent {
     return counts;
   });
 
-  private moviesCountByStatus = computed(() => {
+  moviesCountByStatus = computed(() => {
     const counts: Record<string, number> = {};
     for (const item of this.items()) {
       if (item.type === 'movie') {
