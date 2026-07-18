@@ -46,7 +46,6 @@ interface MonthLabel {
                   <div
                     class="w-[13px] h-[13px] rounded-[2px] relative group cursor-default"
                     [class]="getCellClass(day.level)"
-                    [attr.data-tooltip]="day.date + ': ' + day.count + ' entry/entries'"
                   >
                     <div
                       class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-light-bg-primary dark:bg-dark-bg-primary border border-light-border dark:border-dark-border rounded text-xs text-light-font dark:text-dark-font whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-light dark:shadow-dark"
