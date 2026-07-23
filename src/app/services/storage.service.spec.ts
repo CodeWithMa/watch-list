@@ -90,6 +90,37 @@ describe('StorageService', () => {
     ).toThrowError('Invalid data format');
   });
 
+  it('rejects series with duplicate season numbers', () => {
+    const service = new StorageService();
+
+    expect(() =>
+      service.importData({
+        schemaVersion: 4,
+        lastModifiedAt: '2026-04-01T10:00:00.000Z',
+        groups: {},
+        items: {
+          series1: {
+            id: 'series1',
+            title: 'Test Series',
+            type: 'series',
+            groupId: 'ungrouped',
+            status: 'in-progress',
+            createdAt: '2026-03-01T10:00:00.000Z',
+            progress: {
+              season: 1,
+              episode: 1,
+              seasons: [
+                { seasonNumber: 1, totalEpisodes: 10 },
+                { seasonNumber: 1, totalEpisodes: 8 },
+              ],
+            },
+            watchHistory: [],
+          },
+        },
+      }),
+    ).toThrowError('Invalid migrated data');
+  });
+
   it('accepts v4 series seasons with a first episode air date', () => {
     const service = new StorageService();
 
