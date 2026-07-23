@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
+import { toLocalDateKey, toLocalDateKeyFromISO } from '../../utils/date.utils';
 import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
 
 @Component({
@@ -394,21 +395,10 @@ export class StatsComponent {
     return `${rounded} days`;
   });
 
-  private static toLocalDateKey(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
-  private static toLocalDateKeyFromISO(iso: string): string {
-    return StatsComponent.toLocalDateKey(new Date(iso));
-  }
-
   private uniqueWatchDates = computed(() => {
     const dates = new Set<string>();
     for (const entry of this.history()) {
-      dates.add(StatsComponent.toLocalDateKeyFromISO(entry.date));
+      dates.add(toLocalDateKeyFromISO(entry.date));
     }
     return dates;
   });
@@ -425,16 +415,16 @@ export class StatsComponent {
     const today = new Date();
     const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    if (!dates.has(StatsComponent.toLocalDateKey(current))) {
+    if (!dates.has(toLocalDateKey(current))) {
       current.setDate(current.getDate() - 1);
-      if (!dates.has(StatsComponent.toLocalDateKey(current))) {
+      if (!dates.has(toLocalDateKey(current))) {
         return 0;
       }
     }
 
     let streak = 0;
     while (true) {
-      const key = StatsComponent.toLocalDateKey(current);
+      const key = toLocalDateKey(current);
       if (dates.has(key)) {
         streak++;
         current.setDate(current.getDate() - 1);

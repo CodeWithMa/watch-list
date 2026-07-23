@@ -1,5 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import { HistoryEntry } from '../../../models/storage.model';
+import { toLocalDateKey, toLocalDateKeyFromISO } from '../../../utils/date.utils';
 
 interface DayCell {
   date: string;
@@ -83,22 +84,10 @@ export class StatsHeatmapComponent {
 
   dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 
-  private static toLocalDateKey(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
-  private static toLocalDateKeyFromISO(iso: string): string {
-    const d = new Date(iso);
-    return StatsHeatmapComponent.toLocalDateKey(d);
-  }
-
   private entryCountByDate = computed(() => {
     const map = new Map<string, number>();
     for (const entry of this.historyEntries()) {
-      const dateKey = StatsHeatmapComponent.toLocalDateKeyFromISO(entry.date);
+      const dateKey = toLocalDateKeyFromISO(entry.date);
       map.set(dateKey, (map.get(dateKey) ?? 0) + 1);
     }
     return map;
@@ -119,7 +108,7 @@ export class StatsHeatmapComponent {
     const counts = this.entryCountByDate();
 
     while (current <= end) {
-      const dateKey = StatsHeatmapComponent.toLocalDateKey(current);
+      const dateKey = toLocalDateKey(current);
       const count = counts.get(dateKey) ?? 0;
       let level: 0 | 1 | 2 | 3 = 0;
       if (count >= 3) level = 3;
