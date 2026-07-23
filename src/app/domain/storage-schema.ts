@@ -1,15 +1,80 @@
-import { DEFAULT_GROUP_ID, isItemStatus, isItemType } from './item.constants';
-import { Item, SeasonInfo, WatchHistoryEntry } from '../models/item.model';
-import { CURRENT_SCHEMA_VERSION, DeletedItemHistory, StorageData } from '../models/storage.model';
-import { Group } from '../models/group.model';
+import { z } from 'zod';
+import { DEFAULT_GROUP_ID } from './item.constants';
+import { CURRENT_SCHEMA_VERSION, StorageData } from '../models/storage.model';
 
 interface LegacyProgressV2 {
   season: number;
   episode: number;
   totalEpisodes?: number;
   totalSeasons?: number;
-  seasons?: SeasonInfo[];
+  seasons?: { seasonNumber: number; totalEpisodes?: number }[];
 }
+
+const SeasonInfoSchema = z.object({
+  seasonNumber: z.number(),
+  totalEpisodes: z.number().optional(),
+  firstEpisodeAirDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+});
+
+const SeriesProgressSchema = z
+  .object({
+    season: z.number(),
+    episode: z.number(),
+    seasons: z.array(SeasonInfoSchema),
+  })
+  .refine(
+    (data) => {
+      const seen = new Set<number>();
+      return data.seasons.every((s) => {
+        if (seen.has(s.seasonNumber)) return false;
+        seen.add(s.seasonNumber);
+        return true;
+      });
+    },
+    { message: 'Duplicate season numbers in seasons array' },
+  );
+
+const WatchHistoryEntrySchema = z.object({
+  date: z.string(),
+  season: z.number().optional(),
+  episode: z.number().optional(),
+});
+
+const ItemSchema = z.object({
+  id: z.string(),
+  type: z.enum(['series', 'movie']),
+  title: z.string(),
+  groupId: z.string(),
+  status: z.enum(['not-started', 'in-progress', 'completed', 'dropped']),
+  progress: SeriesProgressSchema.optional(),
+  watchHistory: z.array(WatchHistoryEntrySchema),
+  createdAt: z.string(),
+});
+
+const GroupSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  order: z.number(),
+});
+
+const DeletedItemHistorySchema = z.object({
+  itemId: z.string(),
+  itemTitle: z.string(),
+  itemType: z.enum(['series', 'movie']),
+  watchHistory: z.array(WatchHistoryEntrySchema),
+  deletedAt: z.string(),
+});
+
+const StorageDataSchema = z.object({
+  schemaVersion: z.number(),
+  lastModifiedAt: z.string(),
+  groups: z.record(z.string(), GroupSchema),
+  items: z.record(z.string(), ItemSchema),
+  deletedItems: z.record(z.string(), DeletedItemHistorySchema).optional(),
+});
 
 export function createDefaultStorageData(): StorageData {
   const now = new Date().toISOString();
@@ -36,11 +101,39 @@ export function normalizeStorageData(data: unknown): StorageData {
   const migrated = migrateStorageData(data);
   const normalized = applyStorageDefaults(migrated);
 
-  if (!isNormalizedStorageData(normalized)) {
+  const result = StorageDataSchema.safeParse(normalized);
+  if (!result.success) {
     throw new Error('Invalid migrated data');
   }
 
-  return normalized;
+  return result.data as StorageData;
+}
+
+function isStorageDataShape(data: unknown): data is StorageData {
+  if (!data || typeof data !== 'object') {
+    return false;
+  }
+
+  const candidate = data as Record<string, unknown>;
+
+  if (
+    typeof candidate['schemaVersion'] !== 'number' ||
+    typeof candidate['lastModifiedAt'] !== 'string' ||
+    !candidate['groups'] ||
+    !candidate['items']
+  ) {
+    return false;
+  }
+
+  if (!isRecord(candidate['groups']) || !isRecord(candidate['items'])) {
+    return false;
+  }
+
+  if (candidate['deletedItems'] !== undefined && !isRecord(candidate['deletedItems'])) {
+    return false;
+  }
+
+  return true;
 }
 
 function migrateStorageData(data: StorageData): StorageData {
@@ -95,159 +188,6 @@ function applyStorageDefaults(data: StorageData): StorageData {
   };
 }
 
-function isStorageDataShape(data: unknown): data is StorageData {
-  if (!data || typeof data !== 'object') {
-    return false;
-  }
-
-  const candidate = data as Record<string, unknown>;
-
-  if (
-    typeof candidate['schemaVersion'] !== 'number' ||
-    typeof candidate['lastModifiedAt'] !== 'string' ||
-    !candidate['groups'] ||
-    !candidate['items']
-  ) {
-    return false;
-  }
-
-  if (!isRecord(candidate['groups']) || !isRecord(candidate['items'])) {
-    return false;
-  }
-
-  if (candidate['deletedItems'] !== undefined && !isRecord(candidate['deletedItems'])) {
-    return false;
-  }
-
-  return Object.values(candidate['groups']).every(isGroup);
-}
-
-function isNormalizedStorageData(data: StorageData): boolean {
-  return (
-    Object.values(data.groups).every(isGroup) &&
-    Object.values(data.items).every(isItem) &&
-    Object.values(data.deletedItems ?? {}).every(isDeletedItem)
-  );
-}
-
-function isGroup(group: unknown): group is Group {
-  if (!group || typeof group !== 'object') {
-    return false;
-  }
-
-  const candidate = group as Record<string, unknown>;
-  return (
-    typeof candidate['id'] === 'string' &&
-    typeof candidate['name'] === 'string' &&
-    typeof candidate['order'] === 'number'
-  );
-}
-
-function isItem(item: unknown): item is Item {
-  if (!item || typeof item !== 'object') {
-    return false;
-  }
-
-  const candidate = item as Record<string, unknown>;
-
-  if (
-    typeof candidate['id'] !== 'string' ||
-    typeof candidate['title'] !== 'string' ||
-    typeof candidate['groupId'] !== 'string' ||
-    !isItemStatus(candidate['status']) ||
-    typeof candidate['createdAt'] !== 'string' ||
-    !isItemType(candidate['type']) ||
-    !Array.isArray(candidate['watchHistory'])
-  ) {
-    return false;
-  }
-
-  if (!candidate['watchHistory'].every(isWatchHistoryEntry)) {
-    return false;
-  }
-
-  if (candidate['type'] === 'series' && candidate['progress'] !== undefined) {
-    return isSeriesProgress(candidate['progress']);
-  }
-
-  return true;
-}
-
-function isDeletedItem(entry: unknown): entry is DeletedItemHistory {
-  if (!entry || typeof entry !== 'object') {
-    return false;
-  }
-
-  const candidate = entry as Record<string, unknown>;
-  return (
-    typeof candidate['itemId'] === 'string' &&
-    typeof candidate['itemTitle'] === 'string' &&
-    isItemType(candidate['itemType']) &&
-    typeof candidate['deletedAt'] === 'string' &&
-    Array.isArray(candidate['watchHistory']) &&
-    candidate['watchHistory'].every(isWatchHistoryEntry)
-  );
-}
-
-function isWatchHistoryEntry(entry: unknown): entry is WatchHistoryEntry {
-  if (!entry || typeof entry !== 'object') {
-    return false;
-  }
-
-  const candidate = entry as Record<string, unknown>;
-  return typeof candidate['date'] === 'string';
-}
-
-function isSeriesProgress(progress: unknown): boolean {
-  if (!progress || typeof progress !== 'object') {
-    return false;
-  }
-
-  const candidate = progress as Record<string, unknown>;
-
-  if (typeof candidate['season'] !== 'number' || typeof candidate['episode'] !== 'number') {
-    return false;
-  }
-
-  if (!Array.isArray(candidate['seasons'])) {
-    return false;
-  }
-
-  const seenSeasonNumbers = new Set<number>();
-  for (const entry of candidate['seasons'] as unknown[]) {
-    if (!entry || typeof entry !== 'object') {
-      return false;
-    }
-    const seasonEntry = entry as Record<string, unknown>;
-    if (typeof seasonEntry['seasonNumber'] !== 'number') {
-      return false;
-    }
-    if (
-      seasonEntry['totalEpisodes'] !== undefined &&
-      typeof seasonEntry['totalEpisodes'] !== 'number'
-    ) {
-      return false;
-    }
-    if (
-      seasonEntry['firstEpisodeAirDate'] !== undefined &&
-      (typeof seasonEntry['firstEpisodeAirDate'] !== 'string' ||
-        !isDateOnlyString(seasonEntry['firstEpisodeAirDate']))
-    ) {
-      return false;
-    }
-    if (seenSeasonNumbers.has(seasonEntry['seasonNumber'])) {
-      return false;
-    }
-    seenSeasonNumbers.add(seasonEntry['seasonNumber']);
-  }
-
-  return true;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isDateOnlyString(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
