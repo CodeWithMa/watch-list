@@ -19,11 +19,23 @@ const SeasonInfoSchema = z.object({
     .optional(),
 });
 
-const SeriesProgressSchema = z.object({
-  season: z.number(),
-  episode: z.number(),
-  seasons: z.array(SeasonInfoSchema),
-});
+const SeriesProgressSchema = z
+  .object({
+    season: z.number(),
+    episode: z.number(),
+    seasons: z.array(SeasonInfoSchema),
+  })
+  .refine(
+    (data) => {
+      const seen = new Set<number>();
+      return data.seasons.every((s) => {
+        if (seen.has(s.seasonNumber)) return false;
+        seen.add(s.seasonNumber);
+        return true;
+      });
+    },
+    { message: 'Duplicate season numbers in seasons array' },
+  );
 
 const WatchHistoryEntrySchema = z.object({
   date: z.string(),
