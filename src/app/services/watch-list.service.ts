@@ -1,7 +1,26 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
-import { Item, ItemStatus, SeriesProgress } from '../models/item.model';
+import { Item, SeriesProgress } from '../models/item.model';
 import { HistoryEntry } from '../models/storage.model';
+
+function advanceSeriesProgress(progress: SeriesProgress): {
+  progress: SeriesProgress;
+  completed: boolean;
+} {
+  const currentSeasonInfo = progress.seasons.find((s) => s.seasonNumber === progress.season);
+  const currentTotal = currentSeasonInfo?.totalEpisodes;
+
+  if (currentTotal !== undefined && currentTotal > 0 && progress.episode >= currentTotal) {
+    const sorted = [...progress.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber);
+    const next = sorted.find((s) => s.seasonNumber > progress.season);
+    if (next) {
+      return { progress: { ...progress, season: next.seasonNumber, episode: 1 }, completed: false };
+    }
+    return { progress, completed: true };
+  }
+
+  return { progress: { ...progress, episode: progress.episode + 1 }, completed: false };
+}
 
 @Injectable({
   providedIn: 'root',
@@ -79,50 +98,21 @@ export class WatchListService {
         status: 'completed',
         watchHistory: [...item.watchHistory, { date: now }],
       });
-    } else if (item.type === 'series') {
-      const progress = item.progress || { season: 1, episode: 1, seasons: [] };
-      let newProgress: SeriesProgress;
-      let newStatus: ItemStatus;
-
-      const currentSeasonInfo = progress.seasons.find((s) => s.seasonNumber === progress.season);
-
-      const currentTotal = currentSeasonInfo?.totalEpisodes;
-      if (currentTotal !== undefined && currentTotal > 0 && progress.episode >= currentTotal) {
-        const sortedSeasons = [...progress.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber);
-        const nextSeasonInfo = sortedSeasons.find((s) => s.seasonNumber > progress.season);
-        if (nextSeasonInfo) {
-          newProgress = {
-            ...progress,
-            season: nextSeasonInfo.seasonNumber,
-            episode: 1,
-          };
-          newStatus = 'in-progress';
-        } else {
-          newProgress = { ...progress };
-          newStatus = 'completed';
-        }
-      } else {
-        newProgress = {
-          ...progress,
-          episode: progress.episode + 1,
-        };
-        newStatus = 'in-progress';
-      }
-
-      this.updateItem({
-        ...item,
-        status: newStatus,
-        progress: newProgress,
-        watchHistory: [
-          ...item.watchHistory,
-          {
-            date: now,
-            season: progress.season,
-            episode: progress.episode,
-          },
-        ],
-      });
+      return;
     }
+
+    const progress = item.progress || { season: 1, episode: 1, seasons: [] };
+    const { progress: newProgress, completed } = advanceSeriesProgress(progress);
+
+    this.updateItem({
+      ...item,
+      status: completed ? 'completed' : 'in-progress',
+      progress: newProgress,
+      watchHistory: [
+        ...item.watchHistory,
+        { date: now, season: progress.season, episode: progress.episode },
+      ],
+    });
   }
 
   markCompleted(itemId: string): void {
