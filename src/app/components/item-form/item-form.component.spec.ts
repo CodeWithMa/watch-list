@@ -134,7 +134,7 @@ describe('ItemFormComponent', () => {
     ]);
   });
 
-  it('updates a season first episode air date', async () => {
+  it('updates seasons via updateSeasons', async () => {
     const fixture = TestBed.createComponent(ItemFormComponent);
     fixture.componentRef.setInput('groups', groups);
     fixture.componentRef.setInput('initialValue', {
@@ -151,7 +151,9 @@ describe('ItemFormComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    fixture.componentInstance.updateSeasonFirstAirDate(0, '2026-05-01');
+    fixture.componentInstance.updateSeasons([
+      { seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' },
+    ]);
 
     expect(fixture.componentInstance.formValue().seasons[0].firstEpisodeAirDate).toBe('2026-05-01');
   });
