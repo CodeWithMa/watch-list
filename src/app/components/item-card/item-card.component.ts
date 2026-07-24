@@ -50,7 +50,7 @@ import { statusBadgeClass } from '../../utils/status.utils';
       <div class="flex gap-4 my-2 text-sm">
         <span
           class="px-2 py-1 rounded font-medium capitalize"
-          [ngClass]="statusBadgeClass(true, item().status)"
+          [class]="statusBadgeClass(item().status)"
         >
           {{ item().status }}
         </span>
