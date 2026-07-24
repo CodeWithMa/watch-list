@@ -92,7 +92,6 @@ hooks = [
     name = "Commitlint",
     language = "system",
     entry = "bunx commitlint --edit",
-    pass_filenames = false,
     stages = ["commit-msg"],
   },
 ]
