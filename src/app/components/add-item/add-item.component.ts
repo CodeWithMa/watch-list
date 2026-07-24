@@ -122,18 +122,20 @@ export class AddItemComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((details) => {
-        if (!details) {
+        const posterPath = this.pendingSeriesPosterPath;
+        this.pendingSeriesPosterPath = undefined;
+
+        if (!details && !posterPath) {
           return;
         }
 
         this.autofillPatch.set({
           id: ++this.autofillPatchId,
           value: {
-            seasons: details.seasons,
-            posterPath: this.pendingSeriesPosterPath,
+            seasons: details?.seasons,
+            posterPath,
           },
         });
-        this.pendingSeriesPosterPath = undefined;
       });
   }
 
