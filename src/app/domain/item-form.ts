@@ -86,6 +86,5 @@ export function normalizeFormValueForType(formValue: ItemFormValue): ItemFormVal
     season: 1,
     episode: 1,
     seasons: [],
-    posterPath: formValue.posterPath,
   };
 }
