@@ -3,15 +3,15 @@ exclude = { glob = ["dist/**", "node_modules/**", ".angular/**", "src-tauri/targ
 [[repos]]
 repo = "builtin"
 hooks = [
-  { id = "trailing-whitespace" },
-  { id = "end-of-file-fixer" },
-  { id = "check-yaml" },
-  { id = "check-json" },
-  { id = "check-toml" },
-  { id = "check-merge-conflict" },
-  { id = "detect-private-key" },
-  { id = "check-added-large-files" },
-  { id = "no-commit-to-branch", args = ["--branch", "main", "--branch", "dev"] },
+  { id = "trailing-whitespace", stages = ["pre-commit"] },
+  { id = "end-of-file-fixer", stages = ["pre-commit"] },
+  { id = "check-yaml", stages = ["pre-commit"] },
+  { id = "check-json", stages = ["pre-commit"] },
+  { id = "check-toml", stages = ["pre-commit"] },
+  { id = "check-merge-conflict", stages = ["pre-commit"] },
+  { id = "detect-private-key", stages = ["pre-commit"] },
+  { id = "check-added-large-files", stages = ["pre-commit"] },
+  { id = "no-commit-to-branch", args = ["--branch", "main", "--branch", "dev"], stages = ["pre-commit"] },
 ]
 
 [[repos]]
@@ -25,6 +25,7 @@ hooks = [
     files = "\\.(ts|html)$",
     types_or = ["file"],
     pass_filenames = false,
+    stages = ["pre-commit"],
   },
   {
     id = "prettier",
@@ -32,6 +33,7 @@ hooks = [
     language = "system",
     entry = "bunx prettier --write",
     files = "\\.(ts|html|css)$",
+    stages = ["pre-commit"],
   },
   {
     id = "tsc",
@@ -40,6 +42,7 @@ hooks = [
     entry = "bunx tsc --noEmit -p tsconfig.app.json",
     files = "\\.ts$",
     pass_filenames = false,
+    stages = ["pre-commit"],
   },
   {
     id = "cargo-fmt",
@@ -48,5 +51,48 @@ hooks = [
     entry = "bash -c 'cd src-tauri && cargo fmt --check'",
     files = "\\.rs$",
     pass_filenames = false,
+    stages = ["pre-commit"],
+  },
+  {
+    id = "cargo-clippy",
+    name = "cargo clippy",
+    language = "system",
+    entry = "bash -c 'cd src-tauri && cargo clippy -- -D warnings'",
+    files = "\\.rs$",
+    pass_filenames = false,
+    stages = ["pre-commit"],
+  },
+  {
+    id = "cargo-check",
+    name = "cargo check",
+    language = "system",
+    entry = "bash -c 'cd src-tauri && cargo check'",
+    files = "\\.rs$",
+    pass_filenames = false,
+    stages = ["pre-commit"],
+  },
+  {
+    id = "bun-audit",
+    name = "Dependency Audit",
+    language = "system",
+    entry = "bun audit --prod",
+    pass_filenames = false,
+    stages = ["pre-commit"],
+  },
+  {
+    id = "knip",
+    name = "Knip (dead code)",
+    language = "system",
+    entry = "bun run --bun knip",
+    pass_filenames = false,
+    stages = ["pre-commit"],
+  },
+  {
+    id = "commitlint",
+    name = "Commitlint",
+    language = "system",
+    entry = "bunx commitlint --edit",
+    pass_filenames = false,
+    stages = ["commit-msg"],
   },
 ]
