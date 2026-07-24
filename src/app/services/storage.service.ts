@@ -54,11 +54,7 @@ export class StorageService {
   }
 
   getData(): StorageData {
-    const current = this.data();
-    if (current) {
-      return current;
-    }
-    return this.loadData();
+    return this.data()!;
   }
 
   getDataSignal() {
