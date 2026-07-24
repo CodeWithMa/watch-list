@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { ItemCardComponent } from '../item-card/item-card.component';
-import { ItemType } from '../../models/item.model';
+import { Item, ItemType } from '../../models/item.model';
 
 @Component({
   selector: 'app-home',
@@ -22,9 +22,9 @@ import { ItemType } from '../../models/item.model';
             <div class="mb-4">
               <app-item-card
                 [item]="nextSeries()!"
-                (markWatched)="markSeriesWatched()"
-                (markCompleted)="markSeriesCompleted()"
-                (markDropped)="markSeriesDropped()"
+                (markWatched)="markItem(nextSeries, 'watched')"
+                (markCompleted)="markItem(nextSeries, 'completed')"
+                (markDropped)="markItem(nextSeries, 'dropped')"
               />
             </div>
           } @else {
@@ -52,9 +52,9 @@ import { ItemType } from '../../models/item.model';
             <div class="mb-4">
               <app-item-card
                 [item]="nextMovie()!"
-                (markWatched)="markMovieWatched()"
-                (markCompleted)="markMovieCompleted()"
-                (markDropped)="markMovieDropped()"
+                (markWatched)="markItem(nextMovie, 'watched')"
+                (markCompleted)="markItem(nextMovie, 'completed')"
+                (markDropped)="markItem(nextMovie, 'dropped')"
               />
             </div>
           } @else {
@@ -141,46 +141,15 @@ export class HomeComponent {
     () => this.watchListService.inProgressSeries().length > 0,
   );
 
-  markSeriesWatched(): void {
-    const series = this.nextSeries();
-    if (series) {
-      this.watchListService.markWatched(series.id);
-    }
-  }
-
-  markSeriesCompleted(): void {
-    const series = this.nextSeries();
-    if (series) {
-      this.watchListService.markCompleted(series.id);
-    }
-  }
-
-  markMovieWatched(): void {
-    const movie = this.nextMovie();
-    if (movie) {
-      this.watchListService.markWatched(movie.id);
-    }
-  }
-
-  markMovieCompleted(): void {
-    const movie = this.nextMovie();
-    if (movie) {
-      this.watchListService.markCompleted(movie.id);
-    }
-  }
-
-  markSeriesDropped(): void {
-    const series = this.nextSeries();
-    if (series) {
-      this.watchListService.markDropped(series.id);
-    }
-  }
-
-  markMovieDropped(): void {
-    const movie = this.nextMovie();
-    if (movie) {
-      this.watchListService.markDropped(movie.id);
-    }
+  markItem(
+    getter: () => Item | null | undefined,
+    action: 'watched' | 'completed' | 'dropped',
+  ): void {
+    const item = getter();
+    if (!item) return;
+    if (action === 'watched') this.watchListService.markWatched(item.id);
+    else if (action === 'completed') this.watchListService.markCompleted(item.id);
+    else this.watchListService.markDropped(item.id);
   }
 
   startBacklogItem(itemId: string): void {
