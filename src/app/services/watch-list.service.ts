@@ -2,10 +2,6 @@ import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Item, ItemStatus, SeriesProgress } from '../models/item.model';
 import { HistoryEntry } from '../models/storage.model';
-import {
-  calculateProgress as calculateProgressFn,
-  getMostRecentWatchDate as getMostRecentWatchDateFn,
-} from '../utils/progress.utils';
 
 @Injectable({
   providedIn: 'root',
@@ -167,9 +163,6 @@ export class WatchListService {
   getAllWatchHistory(): HistoryEntry[] {
     return this.history();
   }
-
-  calculateProgress = calculateProgressFn;
-  getMostRecentWatchDate = getMostRecentWatchDateFn;
 
   private generateId(): string {
     return `item-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;

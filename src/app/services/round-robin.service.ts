@@ -1,6 +1,7 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { WatchListService } from './watch-list.service';
 import { Item } from '../models/item.model';
+import { getMostRecentWatchDate } from '../utils/progress.utils';
 
 @Injectable({
   providedIn: 'root',
@@ -16,8 +17,8 @@ export class RoundRobinService {
     }
 
     const sorted = [...series].sort((a, b) => {
-      const aDate = this.watchListService.getMostRecentWatchDate(a);
-      const bDate = this.watchListService.getMostRecentWatchDate(b);
+      const aDate = getMostRecentWatchDate(a);
+      const bDate = getMostRecentWatchDate(b);
       return new Date(aDate).getTime() - new Date(bDate).getTime();
     });
 
@@ -43,8 +44,8 @@ export class RoundRobinService {
     }
 
     return [...movies].sort((a, b) => {
-      const aDate = this.watchListService.getMostRecentWatchDate(a);
-      const bDate = this.watchListService.getMostRecentWatchDate(b);
+      const aDate = getMostRecentWatchDate(a);
+      const bDate = getMostRecentWatchDate(b);
       return new Date(aDate).getTime() - new Date(bDate).getTime();
     })[0];
   });
