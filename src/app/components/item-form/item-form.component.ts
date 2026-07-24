@@ -164,10 +164,40 @@ export interface ItemFormAutofillPatch {
       }
 
       @if (formValue().type === 'series') {
-        <app-season-editor
-          [seasons]="formValue().seasons"
-          (seasonsChange)="updateSeasons($event)"
-        />
+        <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
+          <div class="mb-6">
+            <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+              >Season</label
+            >
+            <input
+              type="number"
+              id="season"
+              [ngModel]="formValue().season"
+              (ngModelChange)="updateSeason($event)"
+              name="season"
+              min="1"
+              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+            />
+          </div>
+          <div class="mb-6">
+            <label for="episode" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+              >Episode</label
+            >
+            <input
+              type="number"
+              id="episode"
+              [ngModel]="formValue().episode"
+              (ngModelChange)="updateEpisode($event)"
+              name="episode"
+              min="1"
+              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+            />
+          </div>
+          <app-season-editor
+            [seasons]="formValue().seasons"
+            (seasonsChange)="updateSeasons($event)"
+          />
+        </div>
       }
 
       @if (showDirtyState() && isDirty()) {
