@@ -174,7 +174,8 @@ describe('AddItemComponent', () => {
     });
 
     expect(tmdbSuggestionService.getSeriesDetails).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.autofillPatch()).toBeNull();
+    expect(fixture.componentInstance.autofillPatch()).not.toBeNull();
+    expect(fixture.componentInstance.autofillPatch()?.value.posterPath).toBeUndefined();
   });
 
   it('does not apply stale TMDB details after the title changes', () => {

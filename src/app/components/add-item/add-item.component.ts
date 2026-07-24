@@ -129,6 +129,7 @@ export class AddItemComponent {
           id: ++this.autofillPatchId,
           value: {
             seasons: details.seasons,
+            posterPath: this.autofillPatch()?.value.posterPath,
           },
         });
       });
@@ -150,7 +151,12 @@ export class AddItemComponent {
     this.suggestionsError.set('');
 
     if (suggestion.type !== 'series') {
-      this.autofillPatch.set(null);
+      this.autofillPatch.set({
+        id: ++this.autofillPatchId,
+        value: {
+          posterPath: suggestion.posterPath,
+        },
+      });
       this.selectedTmdbSeriesIds.next(null);
       return;
     }
