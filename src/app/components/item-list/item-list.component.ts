@@ -2,7 +2,6 @@ import { Component, computed, signal, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { FormsModule } from '@angular/forms';
-import { StorageService } from '../../services/storage.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 
@@ -112,7 +111,6 @@ import { ItemCardComponent } from '../item-card/item-card.component';
   `,
 })
 export class ItemListComponent {
-  private storageService = inject(StorageService);
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
 
@@ -122,10 +120,7 @@ export class ItemListComponent {
   searchFilter = signal<string>('');
   groupFilter = signal<string>('');
 
-  allItems = computed(() => {
-    const data = this.storageService.getDataSignal()();
-    return data ? Object.values(data.items) : [];
-  });
+  allItems = this.watchListService.items;
 
   filteredItems = computed(() => {
     let items = this.allItems();
