@@ -142,6 +142,7 @@ export class AddItemComponent {
   onTitleChanged(title: string): void {
     this.title.set(title);
     this.autofillPatch.set(null);
+    this.pendingSeriesPosterPath = undefined;
     this.selectedTmdbSeriesIds.next(null);
     this.titleChanges.next(title);
   }
@@ -161,6 +162,7 @@ export class AddItemComponent {
           posterPath: suggestion.posterPath,
         },
       });
+      this.pendingSeriesPosterPath = undefined;
       this.selectedTmdbSeriesIds.next(null);
       return;
     }
