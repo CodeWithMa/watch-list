@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, effect, input, linkedSignal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
+import { SeasonInfo } from '../../models/item.model';
+import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
 import {
   createDefaultItemFormValue,
   ItemFormValue,
@@ -14,7 +16,9 @@ import {
   ITEM_TYPES,
   ITEM_TYPE_LABELS,
 } from '../../domain/item.constants';
-import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
+import { SeasonEditorComponent } from '../season-editor/season-editor.component';
+import { statusButtonClass } from '../../utils/status.utils';
+import { toPositiveNumber } from '../../utils/form.utils';
 
 export interface ItemFormAutofillPatch {
   id: number;
@@ -23,7 +27,7 @@ export interface ItemFormAutofillPatch {
 
 @Component({
   selector: 'app-item-form',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SeasonEditorComponent],
   template: `
     <form
       (ngSubmit)="submit()"
@@ -190,64 +194,10 @@ export interface ItemFormAutofillPatch {
               class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
             />
           </div>
-          <div class="mb-6">
-            <h3 class="mb-4 font-medium text-light-font dark:text-dark-font">Seasons</h3>
-            @for (season of formValue().seasons; track season.seasonNumber; let i = $index) {
-              <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-4 items-end">
-                <div class="flex-1">
-                  <label for="seasonNumber{{ i }}" class="block mb-1 text-sm">Season</label>
-                  <input
-                    type="number"
-                    id="seasonNumber{{ i }}"
-                    [ngModel]="season.seasonNumber"
-                    (ngModelChange)="updateSeasonNumber(i, $event)"
-                    name="seasonNumber{{ i }}"
-                    min="1"
-                    class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
-                  />
-                </div>
-                <div class="flex-1">
-                  <label for="seasonEpisodes{{ i }}" class="block mb-1 text-sm">Episodes</label>
-                  <input
-                    type="number"
-                    id="seasonEpisodes{{ i }}"
-                    [ngModel]="season.totalEpisodes"
-                    (ngModelChange)="updateSeasonEpisodes(i, $event)"
-                    name="seasonEpisodes{{ i }}"
-                    min="1"
-                    class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
-                  />
-                </div>
-                <div class="flex-1">
-                  <label for="seasonFirstAirDate{{ i }}" class="block mb-1 text-sm"
-                    >First episode air date</label
-                  >
-                  <input
-                    type="date"
-                    id="seasonFirstAirDate{{ i }}"
-                    [ngModel]="season.firstEpisodeAirDate"
-                    (ngModelChange)="updateSeasonFirstAirDate(i, $event)"
-                    name="seasonFirstAirDate{{ i }}"
-                    class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
-                  />
-                </div>
-                <button
-                  type="button"
-                  (click)="removeSeason(season.seasonNumber)"
-                  class="px-3 py-2 bg-accent-danger text-white border-none rounded cursor-pointer text-sm hover:bg-accent-danger-hover"
-                >
-                  Remove
-                </button>
-              </div>
-            }
-            <button
-              type="button"
-              (click)="addSeason()"
-              class="px-4 py-2 bg-accent-secondary text-white border-none rounded cursor-pointer text-sm hover:bg-accent-secondary-hover"
-            >
-              Add Season
-            </button>
-          </div>
+          <app-season-editor
+            [seasons]="formValue().seasons"
+            (seasonsChange)="updateSeasons($event)"
+          />
         </div>
       }
 
@@ -305,6 +255,10 @@ export class ItemFormComponent {
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
+
+  updateSeasons(value: SeasonInfo[]): void {
+    this.formValue.update((v) => ({ ...v, seasons: value }));
+  }
 
   readonly isDirty = computed(() => {
     const current = this.formValue();
@@ -393,126 +347,19 @@ export class ItemFormComponent {
   }
 
   updateSeason(season: string | number | null | undefined): void {
-    this.updateFormValue({ season: this.toPositiveNumber(season, 1) });
+    this.updateFormValue({ season: toPositiveNumber(season, 1) });
   }
 
   updateEpisode(episode: string | number | null | undefined): void {
-    this.updateFormValue({ episode: this.toPositiveNumber(episode, 1) });
+    this.updateFormValue({ episode: toPositiveNumber(episode, 1) });
   }
 
   updateStartImmediately(startImmediately: boolean): void {
     this.updateFormValue({ startImmediately });
   }
 
-  addSeason(): void {
-    this.formValue.update((value) => {
-      const nextSeasonNumber = this.getNextSeasonNumber(value.seasons);
-      return {
-        ...value,
-        seasons: [
-          ...value.seasons,
-          { seasonNumber: nextSeasonNumber, totalEpisodes: undefined as number | undefined },
-        ],
-      };
-    });
-  }
-
-  updateSeasonNumber(index: number, seasonNumber: string | number | null | undefined): void {
-    const parsed = this.toPositiveNumber(seasonNumber, 1);
-    this.formValue.update((value) => {
-      const newSeasons = [...value.seasons];
-      if (newSeasons[index]) {
-        const hasDuplicate = newSeasons.some((s, i) => i !== index && s.seasonNumber === parsed);
-        if (!hasDuplicate) {
-          newSeasons[index] = { ...newSeasons[index], seasonNumber: parsed };
-        }
-      }
-      return { ...value, seasons: newSeasons };
-    });
-  }
-
-  updateSeasonEpisodes(index: number, totalEpisodes: string | number | null | undefined): void {
-    const parsed = this.toOptionalPositiveNumber(totalEpisodes);
-    this.formValue.update((value) => {
-      const newSeasons = [...value.seasons];
-      if (newSeasons[index]) {
-        newSeasons[index] = { ...newSeasons[index], totalEpisodes: parsed };
-      }
-      return { ...value, seasons: newSeasons };
-    });
-  }
-
-  updateSeasonFirstAirDate(index: number, firstEpisodeAirDate: string | null | undefined): void {
-    const normalized = this.toOptionalDateString(firstEpisodeAirDate);
-    this.formValue.update((value) => {
-      const newSeasons = [...value.seasons];
-      if (newSeasons[index]) {
-        newSeasons[index] = {
-          ...newSeasons[index],
-          firstEpisodeAirDate: normalized,
-        };
-      }
-      return { ...value, seasons: newSeasons };
-    });
-  }
-
-  removeSeason(seasonNumber: number): void {
-    this.formValue.update((value) => ({
-      ...value,
-      seasons: value.seasons.filter((s) => s.seasonNumber !== seasonNumber),
-    }));
-  }
-
-  private getNextSeasonNumber(seasons: { seasonNumber: number }[]): number {
-    if (seasons.length === 0) return 1;
-    const max = Math.max(...seasons.map((s) => s.seasonNumber));
-    return max + 1;
-  }
-
   statusButtonClass(status: ItemFormValue['status']): string {
-    const base = 'px-4 py-2 rounded font-medium cursor-pointer border transition-all';
-    const unselected =
-      'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary';
-    const selected = 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] border-transparent';
-
-    if (this.formValue().status !== status) {
-      return `${base} ${unselected}`;
-    }
-
-    switch (status) {
-      case 'not-started':
-        return `${base} ${selected} bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark`;
-      case 'in-progress':
-        return `${base} ${selected} bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark`;
-      case 'completed':
-        return `${base} ${selected} bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark`;
-      case 'dropped':
-        return `${base} ${selected} bg-status-dropped-bg-light dark:bg-status-dropped-bg-dark text-status-dropped-text-light dark:text-status-dropped-text-dark`;
-    }
-  }
-
-  protected toPositiveNumber(value: string | number | null | undefined, fallback: number): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed >= 1 ? parsed : fallback;
-  }
-
-  protected toOptionalPositiveNumber(
-    value: string | number | null | undefined,
-  ): number | undefined {
-    if (value === '' || value === null || value === undefined) {
-      return undefined;
-    }
-
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed >= 1 ? parsed : undefined;
-  }
-
-  protected toOptionalDateString(value: string | null | undefined): string | undefined {
-    if (!value) {
-      return undefined;
-    }
-
-    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
+    return statusButtonClass(this.formValue().status === status, status);
   }
 
   private updateFormValue(patch: Partial<ItemFormValue>): void {
