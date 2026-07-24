@@ -48,6 +48,7 @@ export class AddItemComponent {
   private titleChanges = new Subject<string>();
   private selectedTmdbSeriesIds = new Subject<number | null>();
   private skipNextSearch = false;
+  private pendingSeriesPosterPath: string | undefined;
 
   readonly groups = this.groupService.groups;
   readonly initialValue = createDefaultItemFormValue();
@@ -129,9 +130,10 @@ export class AddItemComponent {
           id: ++this.autofillPatchId,
           value: {
             seasons: details.seasons,
-            posterPath: this.autofillPatch()?.value.posterPath,
+            posterPath: this.pendingSeriesPosterPath,
           },
         });
+        this.pendingSeriesPosterPath = undefined;
       });
   }
 
@@ -161,6 +163,7 @@ export class AddItemComponent {
       return;
     }
 
+    this.pendingSeriesPosterPath = suggestion.posterPath;
     this.selectedTmdbSeriesIds.next(suggestion.tmdbId);
   }
 
