@@ -29,9 +29,5 @@ export function toOptionalDateString(value: string | null | undefined): string |
   if (!value) {
     return undefined;
   }
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  return trimmed;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
 }

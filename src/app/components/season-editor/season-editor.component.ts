@@ -2,6 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SeasonInfo } from '../../models/item.model';
+import {
+  toPositiveNumber,
+  toOptionalPositiveNumber,
+  toOptionalDateString,
+} from '../../utils/form.utils';
 
 @Component({
   selector: 'app-season-editor',
@@ -83,7 +88,7 @@ export class SeasonEditorComponent {
   }
 
   updateSeasonNumber(index: number, seasonNumber: string | number | null | undefined): void {
-    const parsed = this.toPositiveNumber(seasonNumber, 1);
+    const parsed = toPositiveNumber(seasonNumber, 1);
     const newSeasons = [...this.seasons()];
     if (newSeasons[index]) {
       const hasDuplicate = newSeasons.some((s, i) => i !== index && s.seasonNumber === parsed);
@@ -95,7 +100,7 @@ export class SeasonEditorComponent {
   }
 
   updateSeasonEpisodes(index: number, totalEpisodes: string | number | null | undefined): void {
-    const parsed = this.toOptionalPositiveNumber(totalEpisodes);
+    const parsed = toOptionalPositiveNumber(totalEpisodes);
     const newSeasons = [...this.seasons()];
     if (newSeasons[index]) {
       newSeasons[index] = { ...newSeasons[index], totalEpisodes: parsed };
@@ -104,7 +109,7 @@ export class SeasonEditorComponent {
   }
 
   updateSeasonFirstAirDate(index: number, firstEpisodeAirDate: string | null | undefined): void {
-    const normalized = this.toOptionalDateString(firstEpisodeAirDate);
+    const normalized = toOptionalDateString(firstEpisodeAirDate);
     const newSeasons = [...this.seasons()];
     if (newSeasons[index]) {
       newSeasons[index] = {
@@ -124,27 +129,5 @@ export class SeasonEditorComponent {
     if (seasons.length === 0) return 1;
     const max = Math.max(...seasons.map((s) => s.seasonNumber));
     return max + 1;
-  }
-
-  private toPositiveNumber(value: string | number | null | undefined, fallback: number): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed >= 1 ? parsed : fallback;
-  }
-
-  private toOptionalPositiveNumber(value: string | number | null | undefined): number | undefined {
-    if (value === '' || value === null || value === undefined) {
-      return undefined;
-    }
-
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed >= 1 ? parsed : undefined;
-  }
-
-  private toOptionalDateString(value: string | null | undefined): string | undefined {
-    if (!value) {
-      return undefined;
-    }
-
-    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
   }
 }

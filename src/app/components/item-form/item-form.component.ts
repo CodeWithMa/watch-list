@@ -18,6 +18,7 @@ import {
 } from '../../domain/item.constants';
 import { SeasonEditorComponent } from '../season-editor/season-editor.component';
 import { statusButtonClass } from '../../utils/status.utils';
+import { toPositiveNumber } from '../../utils/form.utils';
 
 export interface ItemFormAutofillPatch {
   id: number;
@@ -346,11 +347,11 @@ export class ItemFormComponent {
   }
 
   updateSeason(season: string | number | null | undefined): void {
-    this.updateFormValue({ season: Number(season) || 1 });
+    this.updateFormValue({ season: toPositiveNumber(season, 1) });
   }
 
   updateEpisode(episode: string | number | null | undefined): void {
-    this.updateFormValue({ episode: Number(episode) || 1 });
+    this.updateFormValue({ episode: toPositiveNumber(episode, 1) });
   }
 
   updateStartImmediately(startImmediately: boolean): void {
