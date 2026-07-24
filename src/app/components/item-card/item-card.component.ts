@@ -1,10 +1,10 @@
-import { Component, input, output, computed, inject } from '@angular/core';
+import { Component, input, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Item } from '../../models/item.model';
 import { ProgressBarComponent } from '../progress-bar/progress-bar.component';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
-import { WatchListService } from '../../services/watch-list.service';
+import { calculateProgress, getMostRecentWatchDate } from '../../utils/progress.utils';
 import { statusBadgeClass } from '../../utils/status.utils';
 
 @Component({
@@ -86,8 +86,6 @@ import { statusBadgeClass } from '../../utils/status.utils';
   `,
 })
 export class ItemCardComponent {
-  private watchListService = inject(WatchListService);
-
   item = input.required<Item>();
   markWatched = output<void>();
   markCompleted = output<void>();
@@ -95,7 +93,7 @@ export class ItemCardComponent {
   protected statusBadgeClass = statusBadgeClass;
 
   progressPercent = computed(() => {
-    return this.watchListService.calculateProgress(this.item());
+    return calculateProgress(this.item());
   });
 
   currentSeasonTotalEpisodes = computed(() => {
@@ -108,6 +106,6 @@ export class ItemCardComponent {
   });
 
   lastWatchedDate = computed(() => {
-    return this.watchListService.getMostRecentWatchDate(this.item());
+    return getMostRecentWatchDate(this.item());
   });
 }
