@@ -132,7 +132,7 @@ export class AddItemComponent {
         this.autofillPatch.set({
           id: ++this.autofillPatchId,
           value: {
-            seasons: details?.seasons,
+            ...(details ? { seasons: details.seasons } : {}),
             posterPath,
           },
         });
