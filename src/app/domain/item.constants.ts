@@ -16,11 +16,3 @@ export const ITEM_STATUS_LABELS: Record<ItemStatus, string> = {
 };
 
 export const DEFAULT_GROUP_ID = 'ungrouped';
-
-export function isItemType(value: unknown): value is ItemType {
-  return typeof value === 'string' && ITEM_TYPES.includes(value as ItemType);
-}
-
-export function isItemStatus(value: unknown): value is ItemStatus {
-  return typeof value === 'string' && ITEM_STATUSES.includes(value as ItemStatus);
-}
