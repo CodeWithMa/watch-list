@@ -1,4 +1,8 @@
 {
   "$schema": "https://knip.dev/schema.json",
-  "project": ["src/**/*.ts", "src/**/*.css"]
+  "project": ["src/**/*.ts", "src/**/*.css"],
+  "ignoreDependencies": ["@commitlint/cli", "@j178/prek"],
+  "ignoreExportsUsedInFile": {
+    "interface": true
+  }
 }
