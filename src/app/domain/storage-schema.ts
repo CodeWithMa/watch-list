@@ -52,6 +52,7 @@ const ItemSchema = z.object({
   progress: SeriesProgressSchema.optional(),
   watchHistory: z.array(WatchHistoryEntrySchema),
   createdAt: z.string(),
+  posterPath: z.string().optional(),
 });
 
 const GroupSchema = z.object({
@@ -168,6 +169,15 @@ function migrateStorageData(data: StorageData): StorageData {
 
   if (migrated.schemaVersion < 4) {
     migrated.schemaVersion = 4;
+  }
+
+  if (migrated.schemaVersion < 5) {
+    for (const item of Object.values(migrated.items)) {
+      if (!('posterPath' in item)) {
+        Object.assign(item, { posterPath: undefined });
+      }
+    }
+    migrated.schemaVersion = 5;
   }
 
   return migrated;

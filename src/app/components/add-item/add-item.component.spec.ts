@@ -134,6 +134,7 @@ describe('AddItemComponent', () => {
       title: 'Breaking Bad',
       type: 'series',
       year: '2008',
+      posterPath: '/breaking-bad.jpg',
     });
 
     expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(1396);
@@ -147,6 +148,7 @@ describe('AddItemComponent', () => {
             firstEpisodeAirDate: '2008-01-20',
           },
         ],
+        posterPath: '/breaking-bad.jpg',
       },
     });
   });
@@ -154,27 +156,18 @@ describe('AddItemComponent', () => {
   it('does not fetch season details for movie suggestions', () => {
     const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
     const fixture = TestBed.createComponent(AddItemComponent);
-    fixture.componentInstance.autofillPatch.set({
-      id: 1,
-      value: {
-        seasons: [
-          {
-            seasonNumber: 1,
-            totalEpisodes: 7,
-          },
-        ],
-      },
-    });
 
     fixture.componentInstance.onSuggestionSelected({
       tmdbId: 11,
       title: 'Star Wars',
       type: 'movie',
       year: '1977',
+      posterPath: '/star-wars.jpg',
     });
 
     expect(tmdbSuggestionService.getSeriesDetails).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.autofillPatch()).toBeNull();
+    expect(fixture.componentInstance.autofillPatch()).not.toBeNull();
+    expect(fixture.componentInstance.autofillPatch()?.value.posterPath).toBe('/star-wars.jpg');
   });
 
   it('does not apply stale TMDB details after the title changes', () => {
@@ -200,6 +193,64 @@ describe('AddItemComponent', () => {
     });
 
     expect(fixture.componentInstance.autofillPatch()).toBeNull();
+  });
+
+  it('does not apply stale poster from a series when the title changes before details resolve', () => {
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
+    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(details.asObservable());
+    const fixture = TestBed.createComponent(AddItemComponent);
+
+    fixture.componentInstance.onSuggestionSelected({
+      tmdbId: 1396,
+      title: 'Breaking Bad',
+      type: 'series',
+      year: '2008',
+      posterPath: '/breaking-bad.jpg',
+    });
+    fixture.componentInstance.onTitleChanged('Different show');
+    details.next({
+      seasons: [
+        {
+          seasonNumber: 1,
+          totalEpisodes: 7,
+        },
+      ],
+    });
+
+    expect(fixture.componentInstance.autofillPatch()).toBeNull();
+  });
+
+  it('does not apply stale poster from a series when a movie is selected before details resolve', () => {
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
+    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(details.asObservable());
+    const fixture = TestBed.createComponent(AddItemComponent);
+
+    fixture.componentInstance.onSuggestionSelected({
+      tmdbId: 1396,
+      title: 'Breaking Bad',
+      type: 'series',
+      year: '2008',
+      posterPath: '/breaking-bad.jpg',
+    });
+    fixture.componentInstance.onSuggestionSelected({
+      tmdbId: 11,
+      title: 'Star Wars',
+      type: 'movie',
+      year: '1977',
+      posterPath: '/star-wars.jpg',
+    });
+    details.next({
+      seasons: [
+        {
+          seasonNumber: 1,
+          totalEpisodes: 7,
+        },
+      ],
+    });
+
+    expect(fixture.componentInstance.autofillPatch()?.value.posterPath).toBe('/star-wars.jpg');
   });
 
   it('cancels the previous TMDB details request when another series is selected', () => {

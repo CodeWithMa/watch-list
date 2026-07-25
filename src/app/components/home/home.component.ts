@@ -20,12 +20,27 @@ import { Item, ItemType } from '../../models/item.model';
           </h2>
           @if (nextSeries()) {
             <div class="mb-4">
-              <app-item-card
-                [item]="nextSeries()!"
-                (markWatched)="markItem(nextSeries, 'watched')"
-                (markCompleted)="markItem(nextSeries, 'completed')"
-                (markDropped)="markItem(nextSeries, 'dropped')"
-              />
+              <app-item-card [item]="nextSeries()!" />
+              <div class="flex gap-2 mt-3">
+                <button
+                  (click)="markItem(nextSeries, 'watched')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Mark Watched
+                </button>
+                <button
+                  (click)="markItem(nextSeries, 'completed')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Mark Completed
+                </button>
+                <button
+                  (click)="markItem(nextSeries, 'dropped')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Drop
+                </button>
+              </div>
             </div>
           } @else {
             <p
@@ -50,12 +65,27 @@ import { Item, ItemType } from '../../models/item.model';
           </h2>
           @if (nextMovie()) {
             <div class="mb-4">
-              <app-item-card
-                [item]="nextMovie()!"
-                (markWatched)="markItem(nextMovie, 'watched')"
-                (markCompleted)="markItem(nextMovie, 'completed')"
-                (markDropped)="markItem(nextMovie, 'dropped')"
-              />
+              <app-item-card [item]="nextMovie()!" />
+              <div class="flex gap-2 mt-3">
+                <button
+                  (click)="markItem(nextMovie, 'watched')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Mark Watched
+                </button>
+                <button
+                  (click)="markItem(nextMovie, 'completed')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Mark Completed
+                </button>
+                <button
+                  (click)="markItem(nextMovie, 'dropped')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Drop
+                </button>
+              </div>
             </div>
           } @else {
             <p
