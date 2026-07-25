@@ -1,1 +1,2 @@
 - **No Amending:** Never use `git commit --amend`. Always create new, discrete commits for every set of changes.
+- This project uses bun. Examples: `bun run lint`, `bun run build`, `bun run test --no-watch`.
