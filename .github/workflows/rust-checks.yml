@@ -33,7 +33,7 @@ jobs:
 
       - uses: ./.github/actions/setup-rust
         with:
-          components: clippy, rustfmt
+          components: clippy,rustfmt
 
       - name: cargo fmt
         if: ${{ inputs.run_fmt == true || inputs.run_fmt == null }}
