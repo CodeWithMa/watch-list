@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignoreDependencies": ["@commitlint/cli", "@j178/prek"],
+  "ignoreDependencies": ["@commitlint/cli", "@j178/prek", "prettier"],
   "ignoreExportsUsedInFile": {
     "interface": true
   }
