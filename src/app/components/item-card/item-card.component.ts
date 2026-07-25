@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Item } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { calculateProgress, getMostRecentWatchDate } from '../../utils/progress.utils';
+import { statusLineColor } from '../../utils/status.utils';
 import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 
 @Component({
@@ -13,6 +14,7 @@ import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
     <div
       class="border border-light-border dark:border-dark-border rounded-lg bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark overflow-hidden"
     >
+      <div [class]="'h-1 ' + statusColorClass()"></div>
       <div class="relative">
         @if (posterUrl()) {
           <img
@@ -27,11 +29,6 @@ import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
             class="w-full aspect-[2/3] object-cover"
           />
         }
-        <span
-          class="absolute top-0 left-0 px-2 py-1 text-xs font-medium capitalize bg-black/60 text-white backdrop-blur-sm"
-        >
-          {{ item().status }}
-        </span>
         @if (item().type === 'series' && item().progress) {
           <span
             class="absolute top-0 right-0 px-2 py-1 text-xs font-medium bg-black/60 text-white backdrop-blur-sm"
@@ -69,6 +66,7 @@ export class ItemCardComponent {
 
   posterUrl = computed(() => getPosterUrl(this.item().posterPath));
   placeholderUrl = computed(() => getPlaceholderUrl());
+  statusColorClass = computed(() => statusLineColor(this.item().status));
 
   progressPercent = computed(() => {
     return calculateProgress(this.item());

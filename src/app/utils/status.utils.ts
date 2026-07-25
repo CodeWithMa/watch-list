@@ -1,5 +1,16 @@
 import { ItemStatus } from '../models/item.model';
 
+export function statusLineColor(status: ItemStatus): string {
+  const colors: Record<ItemStatus, string> = {
+    'not-started': 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark',
+    'in-progress': 'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark',
+    completed: 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark',
+    dropped: 'bg-status-dropped-bg-light dark:bg-status-dropped-bg-dark',
+  };
+
+  return colors[status];
+}
+
 export function statusButtonClass(isSelected: boolean, status: ItemStatus): string {
   const base = 'px-4 py-2 rounded font-medium cursor-pointer border transition-all';
   const unselected =
