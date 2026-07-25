@@ -152,7 +152,10 @@ export interface ItemFormAutofillPatch {
                   <div
                     class="mt-1 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary max-h-48 overflow-y-auto"
                   >
-                    @for (suggestion of posterSuggestions(); track suggestion.type + '-' + suggestion.tmdbId) {
+                    @for (
+                      suggestion of posterSuggestions();
+                      track suggestion.type + '-' + suggestion.tmdbId
+                    ) {
                       <button
                         type="button"
                         (click)="selectPosterFromTmdb(suggestion)"
