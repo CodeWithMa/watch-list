@@ -24,6 +24,16 @@ bun run build
 - Mark watched item as watched
 - Rinse and repeat
 
+## Development
+
+This project uses [prek](https://github.com/j178/prek) for Git hooks.
+After installing dependencies, install the hooks:
+
+``` shell
+bunx prek install
+bunx prek install -t commit-msg
+```
+
 ## Privacy
 
 Data is stored locally in your browser using localStorage. Nothing is ever sent to a server. Your watch history stays on your device.
