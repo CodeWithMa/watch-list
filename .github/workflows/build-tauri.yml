@@ -21,8 +21,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release delete dev-release --yes --cleanup-tag || true
 
+  checks:
+    uses: ./.github/workflows/rust-checks.yml
+
   build:
-    needs: cleanup
+    needs: [cleanup, checks]
     strategy:
       fail-fast: false
       matrix:
