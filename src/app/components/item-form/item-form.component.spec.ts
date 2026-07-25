@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { Group } from '../../models/group.model';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { ItemFormComponent } from './item-form.component';
+import { vi } from 'vitest';
+import { of, throwError } from 'rxjs';
 
 describe('ItemFormComponent', () => {
   const groups: Group[] = [
@@ -17,7 +19,9 @@ describe('ItemFormComponent', () => {
       providers: [
         {
           provide: TmdbSuggestionService,
-          useValue: { search: () => ({ pipe: () => ({ subscribe: () => ({}) }) }) },
+          useValue: {
+            search: vi.fn(() => of([])),
+          },
         },
       ],
     });
@@ -209,5 +213,163 @@ describe('ItemFormComponent', () => {
         firstEpisodeAirDate: '2026-05-01',
       },
     ]);
+  });
+
+  it('searches TMDB for posters after debounce', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      search.mockReturnValue(
+        of([
+          {
+            tmdbId: 1,
+            title: 'Test Movie',
+            type: 'movie',
+            posterPath: '/poster.jpg',
+          },
+        ]),
+      );
+
+      const fixture = TestBed.createComponent(ItemFormComponent);
+      fixture.componentRef.setInput('groups', groups);
+      fixture.detectChanges();
+
+      fixture.componentInstance.onPosterSearchChanged('test');
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(search).toHaveBeenCalledWith('test');
+      expect(fixture.componentInstance.posterSuggestions()).toEqual([
+        {
+          tmdbId: 1,
+          title: 'Test Movie',
+          type: 'movie',
+          posterPath: '/poster.jpg',
+        },
+      ]);
+      expect(fixture.componentInstance.posterSuggestionsLoading()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('filters out poster suggestions without posterPath', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      search.mockReturnValue(
+        of([
+          {
+            tmdbId: 1,
+            title: 'With Poster',
+            type: 'movie',
+            posterPath: '/poster.jpg',
+          },
+          {
+            tmdbId: 2,
+            title: 'No Poster',
+            type: 'movie',
+          },
+        ]),
+      );
+
+      const fixture = TestBed.createComponent(ItemFormComponent);
+      fixture.componentRef.setInput('groups', groups);
+      fixture.detectChanges();
+
+      fixture.componentInstance.onPosterSearchChanged('test');
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(fixture.componentInstance.posterSuggestions()).toEqual([
+        {
+          tmdbId: 1,
+          title: 'With Poster',
+          type: 'movie',
+          posterPath: '/poster.jpg',
+        },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not search for poster with query shorter than 2 characters', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      const fixture = TestBed.createComponent(ItemFormComponent);
+      fixture.componentRef.setInput('groups', groups);
+      fixture.detectChanges();
+
+      fixture.componentInstance.onPosterSearchChanged('a');
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(search).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.posterSuggestions()).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('sets poster path on the form when selecting a TMDB poster suggestion', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      search.mockReturnValue(
+        of([
+          {
+            tmdbId: 1,
+            title: 'Test Movie',
+            type: 'movie',
+            posterPath: '/new-poster.jpg',
+          },
+        ]),
+      );
+
+      const fixture = TestBed.createComponent(ItemFormComponent);
+      fixture.componentRef.setInput('groups', groups);
+      fixture.detectChanges();
+
+      fixture.componentInstance.onPosterSearchChanged('test');
+      await vi.advanceTimersByTimeAsync(300);
+
+      fixture.componentInstance.selectPosterFromTmdb({
+        tmdbId: 1,
+        title: 'Test Movie',
+        type: 'movie',
+        posterPath: '/new-poster.jpg',
+      });
+
+      expect(fixture.componentInstance.formValue().posterPath).toBe('/new-poster.jpg');
+      expect(fixture.componentInstance.posterSearchQuery()).toBe('');
+      expect(fixture.componentInstance.posterSuggestions()).toEqual([]);
+      expect(fixture.componentInstance.showPosterSearch()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows TMDB error when poster search fails', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      search.mockReturnValue(throwError(() => new Error('TMDB unavailable')));
+
+      const fixture = TestBed.createComponent(ItemFormComponent);
+      fixture.componentRef.setInput('groups', groups);
+      fixture.detectChanges();
+
+      fixture.componentInstance.onPosterSearchChanged('test');
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(fixture.componentInstance.posterSuggestionsError()).toBe('TMDB search unavailable.');
+      expect(fixture.componentInstance.posterSuggestionsLoading()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
