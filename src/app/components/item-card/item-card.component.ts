@@ -51,6 +51,13 @@ import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
           >
             {{ item().status }}
           </span>
+          @if (item().type === 'series' && item().progress) {
+            <span
+              class="px-1.5 py-0.5 rounded font-medium bg-light-bg-tertiary dark:bg-dark-bg-tertiary text-light-font-secondary dark:text-dark-font-secondary"
+            >
+              S{{ item().progress!.season }}E{{ item().progress!.episode }}
+            </span>
+          }
           <app-time-ago [date]="lastWatchedDate()" />
         </div>
       </div>
