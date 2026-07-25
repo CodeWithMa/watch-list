@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
+import { Subject, catchError, debounceTime, of, switchMap } from 'rxjs';
 import { Group } from '../../models/group.model';
 import { SeasonInfo } from '../../models/item.model';
 import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
@@ -421,7 +421,6 @@ export class ItemFormComponent {
     this.posterSearchChanges
       .pipe(
         debounceTime(300),
-        distinctUntilChanged((prev, curr) => prev.trim() === curr.trim()),
         switchMap((query) => {
           const trimmed = query.trim();
           this.posterSuggestionsError.set('');
@@ -531,6 +530,7 @@ export class ItemFormComponent {
       this.updateFormValue({ posterPath: suggestion.posterPath });
     }
     this.posterSearchQuery.set('');
+    this.posterSearchChanges.next('');
     this.posterSuggestions.set([]);
     this.showPosterSearch.set(false);
   }

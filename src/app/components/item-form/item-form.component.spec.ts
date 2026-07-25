@@ -352,6 +352,45 @@ describe('ItemFormComponent', () => {
     }
   });
 
+  it('re-triggers poster search when re-typing the same query after selection', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      search.mockReturnValue(
+        of([
+          {
+            tmdbId: 1,
+            title: 'Test Movie',
+            type: 'movie',
+            posterPath: '/poster.jpg',
+          },
+        ]),
+      );
+
+      const fixture = TestBed.createComponent(ItemFormComponent);
+      fixture.componentRef.setInput('groups', groups);
+      fixture.detectChanges();
+
+      fixture.componentInstance.onPosterSearchChanged('batman');
+      await vi.advanceTimersByTimeAsync(300);
+      expect(search).toHaveBeenCalledTimes(1);
+
+      fixture.componentInstance.selectPosterFromTmdb({
+        tmdbId: 1,
+        title: 'Test Movie',
+        type: 'movie',
+        posterPath: '/poster.jpg',
+      });
+
+      fixture.componentInstance.onPosterSearchChanged('batman');
+      await vi.advanceTimersByTimeAsync(300);
+      expect(search).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('shows TMDB error when poster search fails', async () => {
     vi.useFakeTimers();
     const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
