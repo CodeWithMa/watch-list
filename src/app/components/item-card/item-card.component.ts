@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Item } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { calculateProgress, getMostRecentWatchDate } from '../../utils/progress.utils';
-import { statusBadgeClass } from '../../utils/status.utils';
+import { statusLineColor } from '../../utils/status.utils';
 import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 
 @Component({
@@ -14,19 +14,29 @@ import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
     <div
       class="border border-light-border dark:border-dark-border rounded-lg bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark overflow-hidden"
     >
-      @if (posterUrl()) {
-        <img
-          [src]="posterUrl()"
-          [alt]="item().title + ' poster'"
-          class="w-full aspect-[2/3] object-cover"
-        />
-      } @else {
-        <img
-          [src]="placeholderUrl()"
-          [alt]="item().title + ' placeholder poster'"
-          class="w-full aspect-[2/3] object-cover"
-        />
-      }
+      <div [class]="'h-1 ' + statusColorClass()"></div>
+      <div class="relative">
+        @if (posterUrl()) {
+          <img
+            [src]="posterUrl()"
+            [alt]="item().title + ' poster'"
+            class="w-full aspect-[2/3] object-cover"
+          />
+        } @else {
+          <img
+            [src]="placeholderUrl()"
+            [alt]="item().title + ' placeholder poster'"
+            class="w-full aspect-[2/3] object-cover"
+          />
+        }
+        @if (item().type === 'series' && item().progress) {
+          <span
+            class="absolute top-0 right-0 px-2 py-1 text-xs font-medium bg-black/60 text-white backdrop-blur-sm"
+          >
+            S{{ item().progress!.season }}E{{ item().progress!.episode }}
+          </span>
+        }
+      </div>
 
       <div class="w-full h-1 bg-light-border dark:bg-dark-border">
         <div
@@ -44,13 +54,7 @@ import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
           >
         </h3>
 
-        <div class="flex items-center gap-2 mt-1.5 text-xs">
-          <span
-            class="px-1.5 py-0.5 rounded font-medium capitalize"
-            [class]="statusBadgeClass(item().status)"
-          >
-            {{ item().status }}
-          </span>
+        <div class="mt-1.5 text-xs text-light-font-secondary dark:text-dark-font-secondary">
           <app-time-ago [date]="lastWatchedDate()" />
         </div>
       </div>
@@ -59,10 +63,10 @@ import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 })
 export class ItemCardComponent {
   item = input.required<Item>();
-  protected statusBadgeClass = statusBadgeClass;
 
   posterUrl = computed(() => getPosterUrl(this.item().posterPath));
   placeholderUrl = computed(() => getPlaceholderUrl());
+  statusColorClass = computed(() => statusLineColor(this.item().status));
 
   progressPercent = computed(() => {
     return calculateProgress(this.item());

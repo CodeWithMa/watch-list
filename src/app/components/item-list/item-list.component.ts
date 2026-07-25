@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
+import { ITEM_STATUSES, ITEM_STATUS_LABELS } from '../../domain/item.constants';
+import { statusButtonClass, FilterStatus } from '../../utils/status.utils';
 
 import { ItemCardComponent } from '../item-card/item-card.component';
 
@@ -40,57 +42,25 @@ import { ItemCardComponent } from '../item-card/item-card.component';
         </div>
       </div>
 
-      <div class="flex gap-4 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded">
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name="statusFilter"
-            value="all"
-            [ngModel]="statusFilter()"
-            (ngModelChange)="statusFilter.set($event)"
-          />
+      <div
+        class="flex flex-wrap gap-3 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded"
+      >
+        <button
+          type="button"
+          (click)="statusFilter.set('all')"
+          [class]="getFilterButtonClass('all')"
+        >
           All
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name="statusFilter"
-            value="not-started"
-            [ngModel]="statusFilter()"
-            (ngModelChange)="statusFilter.set($event)"
-          />
-          Not Started
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name="statusFilter"
-            value="in-progress"
-            [ngModel]="statusFilter()"
-            (ngModelChange)="statusFilter.set($event)"
-          />
-          In Progress
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name="statusFilter"
-            value="completed"
-            [ngModel]="statusFilter()"
-            (ngModelChange)="statusFilter.set($event)"
-          />
-          Completed
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name="statusFilter"
-            value="dropped"
-            [ngModel]="statusFilter()"
-            (ngModelChange)="statusFilter.set($event)"
-          />
-          Dropped
-        </label>
+        </button>
+        @for (status of itemStatuses; track status) {
+          <button
+            type="button"
+            (click)="statusFilter.set(status)"
+            [class]="getFilterButtonClass(status)"
+          >
+            {{ itemStatusLabels[status] }}
+          </button>
+        }
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -110,12 +80,18 @@ export class ItemListComponent {
   private groupService = inject(GroupService);
 
   readonly groups = this.groupService.groups;
+  readonly itemStatuses = ITEM_STATUSES;
+  readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
-  statusFilter = signal<string>('all');
+  statusFilter = signal<FilterStatus>('all');
   searchFilter = signal<string>('');
   groupFilter = signal<string>('');
 
   allItems = this.watchListService.items;
+
+  getFilterButtonClass(status: FilterStatus): string {
+    return statusButtonClass(this.statusFilter() === status, status);
+  }
 
   filteredItems = computed(() => {
     let items = this.allItems();

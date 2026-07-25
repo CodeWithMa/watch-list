@@ -1,21 +1,19 @@
 import { ItemStatus } from '../models/item.model';
 
-export function statusBadgeClass(status: ItemStatus): string {
-  const colorClasses: Record<ItemStatus, string> = {
-    'not-started':
-      'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark',
-    'in-progress':
-      'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark',
-    completed:
-      'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark',
-    dropped:
-      'bg-status-dropped-bg-light dark:bg-status-dropped-bg-dark text-status-dropped-text-light dark:text-status-dropped-text-dark',
+export function statusLineColor(status: ItemStatus): string {
+  const colors: Record<ItemStatus, string> = {
+    'not-started': 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark',
+    'in-progress': 'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark',
+    completed: 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark',
+    dropped: 'bg-status-dropped-bg-light dark:bg-status-dropped-bg-dark',
   };
 
-  return `px-2 py-1 rounded font-medium ${colorClasses[status]}`;
+  return colors[status];
 }
 
-export function statusButtonClass(isSelected: boolean, status: ItemStatus): string {
+export type FilterStatus = ItemStatus | 'all';
+
+export function statusButtonClass(isSelected: boolean, status: FilterStatus): string {
   const base = 'px-4 py-2 rounded font-medium cursor-pointer border transition-all';
   const unselected =
     'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary';
@@ -23,6 +21,10 @@ export function statusButtonClass(isSelected: boolean, status: ItemStatus): stri
 
   if (!isSelected) {
     return `${base} ${unselected}`;
+  }
+
+  if (status === 'all') {
+    return `${base} ${selected} bg-light-bg-tertiary dark:bg-dark-bg-tertiary`;
   }
 
   const colorClasses: Record<ItemStatus, string> = {
