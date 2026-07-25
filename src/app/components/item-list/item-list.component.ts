@@ -93,14 +93,9 @@ import { ItemCardComponent } from '../item-card/item-card.component';
         </label>
       </div>
 
-      <div class="flex flex-col gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         @for (item of filteredItems(); track item.id) {
-          <app-item-card
-            [item]="item"
-            (markWatched)="markWatched(item.id)"
-            (markCompleted)="markCompleted(item.id)"
-            (markDropped)="markDropped(item.id)"
-          />
+          <app-item-card [item]="item" />
         } @empty {
           <p class="text-center text-light-font-muted dark:text-dark-font-muted p-8">
             No items found
@@ -144,16 +139,4 @@ export class ItemListComponent {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   });
-
-  markWatched(itemId: string): void {
-    this.watchListService.markWatched(itemId);
-  }
-
-  markCompleted(itemId: string): void {
-    this.watchListService.markCompleted(itemId);
-  }
-
-  markDropped(itemId: string): void {
-    this.watchListService.markDropped(itemId);
-  }
 }

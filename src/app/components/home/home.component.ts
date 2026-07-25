@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { ItemCardComponent } from '../item-card/item-card.component';
-import { Item, ItemType } from '../../models/item.model';
+import { ItemType } from '../../models/item.model';
 
 @Component({
   selector: 'app-home',
@@ -20,12 +20,7 @@ import { Item, ItemType } from '../../models/item.model';
           </h2>
           @if (nextSeries()) {
             <div class="mb-4">
-              <app-item-card
-                [item]="nextSeries()!"
-                (markWatched)="markItem(nextSeries, 'watched')"
-                (markCompleted)="markItem(nextSeries, 'completed')"
-                (markDropped)="markItem(nextSeries, 'dropped')"
-              />
+              <app-item-card [item]="nextSeries()!" />
             </div>
           } @else {
             <p
@@ -50,12 +45,7 @@ import { Item, ItemType } from '../../models/item.model';
           </h2>
           @if (nextMovie()) {
             <div class="mb-4">
-              <app-item-card
-                [item]="nextMovie()!"
-                (markWatched)="markItem(nextMovie, 'watched')"
-                (markCompleted)="markItem(nextMovie, 'completed')"
-                (markDropped)="markItem(nextMovie, 'dropped')"
-              />
+              <app-item-card [item]="nextMovie()!" />
             </div>
           } @else {
             <p
@@ -140,17 +130,6 @@ export class HomeComponent {
   protected hasInProgressSeries = computed(
     () => this.watchListService.inProgressSeries().length > 0,
   );
-
-  markItem(
-    getter: () => Item | null | undefined,
-    action: 'watched' | 'completed' | 'dropped',
-  ): void {
-    const item = getter();
-    if (!item) return;
-    if (action === 'watched') this.watchListService.markWatched(item.id);
-    else if (action === 'completed') this.watchListService.markCompleted(item.id);
-    else this.watchListService.markDropped(item.id);
-  }
 
   startBacklogItem(itemId: string): void {
     this.watchListService.markStarted(itemId);
