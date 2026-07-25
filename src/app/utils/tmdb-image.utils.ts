@@ -16,7 +16,17 @@ export function getPosterUrl(posterPath: string | undefined): string | null {
   if (!posterPath) {
     return null;
   }
-  return `${TMDB_IMAGE_BASE_URL}${posterPath}`;
+
+  if (posterPath.startsWith('/')) {
+    return `${TMDB_IMAGE_BASE_URL}${posterPath}`;
+  }
+
+  try {
+    new URL(posterPath);
+    return posterPath;
+  } catch {
+    return null;
+  }
 }
 
 export function getPlaceholderUrl(): string {

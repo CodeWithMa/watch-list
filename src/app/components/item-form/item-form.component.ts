@@ -1,6 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, input, linkedSignal, output } from '@angular/core';
+import {
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  input,
+  linkedSignal,
+  output,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { Subject, catchError, debounceTime, of, switchMap } from 'rxjs';
 import { Group } from '../../models/group.model';
 import { SeasonInfo } from '../../models/item.model';
 import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
@@ -16,9 +28,11 @@ import {
   ITEM_TYPES,
   ITEM_TYPE_LABELS,
 } from '../../domain/item.constants';
+import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { SeasonEditorComponent } from '../season-editor/season-editor.component';
 import { statusButtonClass } from '../../utils/status.utils';
 import { toPositiveNumber } from '../../utils/form.utils';
+import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 
 export interface ItemFormAutofillPatch {
   id: number;
@@ -95,6 +109,109 @@ export interface ItemFormAutofillPatch {
             }
           </div>
         }
+      </div>
+
+      <div class="mb-6">
+        <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Poster</span>
+        <div class="flex gap-4">
+          <div class="shrink-0">
+            @if (posterPreviewUrl()) {
+              <img
+                [src]="posterPreviewUrl()"
+                alt="Poster preview"
+                class="w-32 aspect-[2/3] object-cover rounded border border-light-border dark:border-dark-border"
+              />
+            } @else {
+              <img
+                [src]="posterPlaceholderUrl()"
+                alt="No poster"
+                class="w-32 aspect-[2/3] object-cover rounded border border-light-border dark:border-dark-border"
+              />
+            }
+          </div>
+          <div class="flex-1 flex flex-col gap-3 min-w-0">
+            @if (showPosterSearch()) {
+              <div>
+                <input
+                  type="text"
+                  [ngModel]="posterSearchQuery()"
+                  (ngModelChange)="onPosterSearchChanged($event)"
+                  name="posterSearch"
+                  placeholder="Search TMDB for a poster..."
+                  class="w-full p-2 border border-light-border dark:border-dark-border rounded text-sm box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
+                />
+                @if (posterSuggestionsLoading()) {
+                  <div class="mt-1 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+                    Searching...
+                  </div>
+                } @else if (posterSuggestionsError()) {
+                  <div class="mt-1 text-xs text-accent-secondary">
+                    {{ posterSuggestionsError() }}
+                  </div>
+                } @else if (posterSuggestions().length > 0) {
+                  <div
+                    class="mt-1 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary max-h-48 overflow-y-auto"
+                  >
+                    @for (
+                      suggestion of posterSuggestions();
+                      track suggestion.type + '-' + suggestion.tmdbId
+                    ) {
+                      <button
+                        type="button"
+                        (click)="selectPosterFromTmdb(suggestion)"
+                        class="w-full text-left px-2 py-1.5 border-0 border-b border-light-border dark:border-dark-border last:border-b-0 bg-transparent hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer flex items-center gap-2"
+                      >
+                        @if (suggestion.posterPath) {
+                          <img
+                            [src]="getPosterThumbUrl(suggestion.posterPath)"
+                            alt=""
+                            class="w-8 aspect-[2/3] object-cover rounded shrink-0"
+                          />
+                        }
+                        <span class="text-xs text-light-font dark:text-dark-font truncate">
+                          {{ suggestion.title }}
+                          @if (suggestion.year) {
+                            <span class="text-light-font-muted dark:text-dark-font-muted"
+                              >({{ suggestion.year }})</span
+                            >
+                          }
+                        </span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+            <div class="flex gap-2">
+              <input
+                type="text"
+                [ngModel]="formValue().posterPath"
+                (ngModelChange)="onPosterUrlChanged($event)"
+                name="posterUrl"
+                placeholder="Or enter poster URL"
+                class="flex-1 p-2 border border-light-border dark:border-dark-border rounded text-sm box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary min-w-0"
+              />
+              @if (formValue().posterPath) {
+                <button
+                  type="button"
+                  (click)="clearPoster()"
+                  class="px-3 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm shrink-0"
+                >
+                  Clear
+                </button>
+              }
+            </div>
+            @if (!showPosterSearch()) {
+              <button
+                type="button"
+                (click)="showPosterSearch.set(true)"
+                class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
+              >
+                Search TMDB
+              </button>
+            }
+          </div>
+        </div>
       </div>
 
       <div class="mb-6">
@@ -229,6 +346,10 @@ export interface ItemFormAutofillPatch {
   `,
 })
 export class ItemFormComponent {
+  private tmdbSuggestionService = inject(TmdbSuggestionService);
+  private destroyRef = inject(DestroyRef);
+  private posterSearchChanges = new Subject<string>();
+
   readonly groups = input.required<Group[]>();
   readonly initialValue = input<ItemFormValue>(createDefaultItemFormValue());
   readonly submitLabel = input('Save');
@@ -254,7 +375,16 @@ export class ItemFormComponent {
   readonly itemTypeLabels = ITEM_TYPE_LABELS;
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
+  readonly posterSearchQuery = signal('');
+  readonly posterSuggestions = signal<TmdbSuggestion[]>([]);
+  readonly posterSuggestionsLoading = signal(false);
+  readonly posterSuggestionsError = signal('');
+  readonly showPosterSearch = signal(false);
+
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
+
+  readonly posterPreviewUrl = computed(() => getPosterUrl(this.formValue().posterPath));
+  readonly posterPlaceholderUrl = computed(() => getPlaceholderUrl());
 
   updateSeasons(value: SeasonInfo[]): void {
     this.formValue.update((v) => ({ ...v, seasons: value }));
@@ -290,6 +420,33 @@ export class ItemFormComponent {
       this.lastAppliedAutofillPatchId = patch.id;
       this.updateFormValue(patch.value);
     });
+
+    this.posterSearchChanges
+      .pipe(
+        debounceTime(300),
+        switchMap((query) => {
+          const trimmed = query.trim();
+          this.posterSuggestionsError.set('');
+
+          if (trimmed.length < 2) {
+            this.posterSuggestionsLoading.set(false);
+            return of([]);
+          }
+
+          this.posterSuggestionsLoading.set(true);
+          return this.tmdbSuggestionService.search(trimmed).pipe(
+            catchError(() => {
+              this.posterSuggestionsError.set('TMDB search unavailable.');
+              return of([]);
+            }),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((results) => {
+        this.posterSuggestions.set(results.filter((s) => s.posterPath));
+        this.posterSuggestionsLoading.set(false);
+      });
   }
 
   setType(type: ItemFormValue['type']): void {
@@ -360,6 +517,33 @@ export class ItemFormComponent {
 
   statusButtonClass(status: ItemFormValue['status']): string {
     return statusButtonClass(this.formValue().status === status, status);
+  }
+
+  getPosterThumbUrl(posterPath: string): string | null {
+    return getPosterUrl(posterPath);
+  }
+
+  onPosterSearchChanged(query: string): void {
+    this.posterSearchQuery.set(query);
+    this.posterSearchChanges.next(query);
+  }
+
+  selectPosterFromTmdb(suggestion: TmdbSuggestion): void {
+    if (suggestion.posterPath) {
+      this.updateFormValue({ posterPath: suggestion.posterPath });
+    }
+    this.posterSearchQuery.set('');
+    this.posterSearchChanges.next('');
+    this.posterSuggestions.set([]);
+    this.showPosterSearch.set(false);
+  }
+
+  onPosterUrlChanged(url: string): void {
+    this.updateFormValue({ posterPath: url || undefined });
+  }
+
+  clearPoster(): void {
+    this.updateFormValue({ posterPath: undefined });
   }
 
   private updateFormValue(patch: Partial<ItemFormValue>): void {
