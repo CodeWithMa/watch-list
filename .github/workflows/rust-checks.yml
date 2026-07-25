@@ -36,16 +36,16 @@ jobs:
           components: clippy, rustfmt
 
       - name: cargo fmt
-        if: ${{ inputs.run_fmt != false }}
+        if: ${{ inputs.run_fmt == true || inputs.run_fmt == null }}
         working-directory: src-tauri
         run: cargo fmt --check
 
       - name: cargo clippy
-        if: ${{ inputs.run_clippy != false }}
+        if: ${{ inputs.run_clippy == true || inputs.run_clippy == null }}
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
 
       - name: cargo check
-        if: ${{ inputs.run_check != false }}
+        if: ${{ inputs.run_check == true || inputs.run_check == null }}
         working-directory: src-tauri
         run: cargo check
