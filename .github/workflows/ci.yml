@@ -18,8 +18,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - uses: j178/prek-action@v2
-        with:
-          extra-args: "--all-files --skip no-commit-to-branch"
 
   test:
     runs-on: ubuntu-latest
