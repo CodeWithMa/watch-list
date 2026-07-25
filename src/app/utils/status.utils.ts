@@ -1,20 +1,5 @@
 import { ItemStatus } from '../models/item.model';
 
-export function statusBadgeClass(status: ItemStatus): string {
-  const colorClasses: Record<ItemStatus, string> = {
-    'not-started':
-      'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark',
-    'in-progress':
-      'bg-status-in-progress-bg-light dark:bg-status-in-progress-bg-dark text-status-in-progress-text-light dark:text-status-in-progress-text-dark',
-    completed:
-      'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark',
-    dropped:
-      'bg-status-dropped-bg-light dark:bg-status-dropped-bg-dark text-status-dropped-text-light dark:text-status-dropped-text-dark',
-  };
-
-  return `px-2 py-1 rounded font-medium ${colorClasses[status]}`;
-}
-
 export function statusButtonClass(isSelected: boolean, status: ItemStatus): string {
   const base = 'px-4 py-2 rounded font-medium cursor-pointer border transition-all';
   const unselected =
