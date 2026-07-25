@@ -21,8 +21,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release delete dev-release --yes --cleanup-tag || true
 
+  checks:
+    uses: ./.github/workflows/rust-checks.yml
+
   build:
-    needs: cleanup
+    needs: [cleanup, checks]
     strategy:
       fail-fast: false
       matrix:
@@ -46,21 +49,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
-      - name: Rust setup
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
         with:
-          targets: ${{ matrix.target }}
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
+          target: ${{ matrix.target }}
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
