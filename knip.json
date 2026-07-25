@@ -1,5 +1,5 @@
 {
-  "$schema": "https://knip.dev/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreDependencies": ["@commitlint/cli", "@j178/prek"],
   "ignoreExportsUsedInFile": {
     "interface": true
