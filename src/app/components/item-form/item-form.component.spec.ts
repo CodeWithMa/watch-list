@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { Group } from '../../models/group.model';
+import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { ItemFormComponent } from './item-form.component';
 
 describe('ItemFormComponent', () => {
@@ -10,6 +11,17 @@ describe('ItemFormComponent', () => {
       order: 0,
     },
   ];
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: TmdbSuggestionService,
+          useValue: { search: () => ({ pipe: () => ({ subscribe: () => ({}) }) }) },
+        },
+      ],
+    });
+  });
 
   it('applies the selected status color on first render', async () => {
     const fixture = TestBed.createComponent(ItemFormComponent);

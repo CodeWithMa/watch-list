@@ -10,7 +10,6 @@ import {
   createItemFormValue,
   ItemFormValue,
 } from '../../domain/item-form';
-import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 
 @Component({
   selector: 'app-item-detail',
@@ -18,23 +17,6 @@ import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       @if (item()) {
-        <div
-          class="border border-light-border dark:border-dark-border rounded-lg overflow-hidden mb-6"
-        >
-          @if (posterUrl()) {
-            <img
-              [src]="posterUrl()"
-              [alt]="item()!.title + ' poster'"
-              class="w-full h-96 object-cover"
-            />
-          } @else {
-            <img
-              [src]="placeholderUrl()"
-              [alt]="item()!.title + ' placeholder poster'"
-              class="w-full h-96 object-cover"
-            />
-          }
-        </div>
         <div class="border border-light-border dark:border-dark-border rounded-lg p-6">
           <div class="flex justify-between items-center mb-6">
             <h2 class="mt-0">Edit Item</h2>
@@ -100,11 +82,6 @@ export class ItemDetailComponent {
     const currentItem = this.item();
     return currentItem ? createItemFormValue(currentItem) : createDefaultItemFormValue();
   });
-  readonly posterUrl = computed(() => {
-    const currentItem = this.item();
-    return currentItem ? getPosterUrl(currentItem.posterPath) : null;
-  });
-  readonly placeholderUrl = computed(() => getPlaceholderUrl());
   confirmDelete = signal(false);
 
   saveChanges(formValue: ItemFormValue): void {

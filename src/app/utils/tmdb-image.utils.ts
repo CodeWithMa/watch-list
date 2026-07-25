@@ -19,6 +19,23 @@ export function getPosterUrl(posterPath: string | undefined): string | null {
   return `${TMDB_IMAGE_BASE_URL}${posterPath}`;
 }
 
+export function getPosterPreviewUrl(posterPath: string | undefined): string | null {
+  if (!posterPath) {
+    return null;
+  }
+
+  if (posterPath.startsWith('/')) {
+    return `${TMDB_IMAGE_BASE_URL}${posterPath}`;
+  }
+
+  try {
+    new URL(posterPath);
+    return posterPath;
+  } catch {
+    return null;
+  }
+}
+
 export function getPlaceholderUrl(): string {
   return `data:image/svg+xml;base64,${btoa(getPlaceholderSvg())}`;
 }
