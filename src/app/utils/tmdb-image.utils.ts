@@ -16,13 +16,6 @@ export function getPosterUrl(posterPath: string | undefined): string | null {
   if (!posterPath) {
     return null;
   }
-  return `${TMDB_IMAGE_BASE_URL}${posterPath}`;
-}
-
-export function getPosterPreviewUrl(posterPath: string | undefined): string | null {
-  if (!posterPath) {
-    return null;
-  }
 
   if (posterPath.startsWith('/')) {
     return `${TMDB_IMAGE_BASE_URL}${posterPath}`;

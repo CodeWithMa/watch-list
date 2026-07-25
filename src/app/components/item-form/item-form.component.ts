@@ -32,7 +32,7 @@ import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { SeasonEditorComponent } from '../season-editor/season-editor.component';
 import { statusButtonClass } from '../../utils/status.utils';
 import { toPositiveNumber } from '../../utils/form.utils';
-import { getPosterPreviewUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
+import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 
 export interface ItemFormAutofillPatch {
   id: number;
@@ -380,7 +380,7 @@ export class ItemFormComponent {
 
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
 
-  readonly posterPreviewUrl = computed(() => getPosterPreviewUrl(this.formValue().posterPath));
+  readonly posterPreviewUrl = computed(() => getPosterUrl(this.formValue().posterPath));
   readonly posterPlaceholderUrl = computed(() => getPlaceholderUrl());
 
   updateSeasons(value: SeasonInfo[]): void {
@@ -518,7 +518,7 @@ export class ItemFormComponent {
   }
 
   getPosterThumbUrl(posterPath: string): string | null {
-    return getPosterPreviewUrl(posterPath);
+    return getPosterUrl(posterPath);
   }
 
   onPosterSearchChanged(query: string): void {
