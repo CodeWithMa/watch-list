@@ -11,7 +11,9 @@ export function statusLineColor(status: ItemStatus): string {
   return colors[status];
 }
 
-export function statusButtonClass(isSelected: boolean, status: ItemStatus): string {
+export type FilterStatus = ItemStatus | 'all';
+
+export function statusButtonClass(isSelected: boolean, status: FilterStatus): string {
   const base = 'px-4 py-2 rounded font-medium cursor-pointer border transition-all';
   const unselected =
     'bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border-light-border dark:border-dark-border hover:border-accent-primary';
@@ -19,6 +21,10 @@ export function statusButtonClass(isSelected: boolean, status: ItemStatus): stri
 
   if (!isSelected) {
     return `${base} ${unselected}`;
+  }
+
+  if (status === 'all') {
+    return `${base} ${selected} bg-light-bg-tertiary dark:bg-dark-bg-tertiary`;
   }
 
   const colorClasses: Record<ItemStatus, string> = {
