@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { ItemCardComponent } from '../item-card/item-card.component';
-import { ItemType } from '../../models/item.model';
+import { Item, ItemType } from '../../models/item.model';
 
 @Component({
   selector: 'app-home',
@@ -21,6 +21,26 @@ import { ItemType } from '../../models/item.model';
           @if (nextSeries()) {
             <div class="mb-4">
               <app-item-card [item]="nextSeries()!" />
+              <div class="flex gap-2 mt-3">
+                <button
+                  (click)="markItem(nextSeries, 'watched')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Mark Watched
+                </button>
+                <button
+                  (click)="markItem(nextSeries, 'completed')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Mark Completed
+                </button>
+                <button
+                  (click)="markItem(nextSeries, 'dropped')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Drop
+                </button>
+              </div>
             </div>
           } @else {
             <p
@@ -46,6 +66,26 @@ import { ItemType } from '../../models/item.model';
           @if (nextMovie()) {
             <div class="mb-4">
               <app-item-card [item]="nextMovie()!" />
+              <div class="flex gap-2 mt-3">
+                <button
+                  (click)="markItem(nextMovie, 'watched')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Mark Watched
+                </button>
+                <button
+                  (click)="markItem(nextMovie, 'completed')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Mark Completed
+                </button>
+                <button
+                  (click)="markItem(nextMovie, 'dropped')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Drop
+                </button>
+              </div>
             </div>
           } @else {
             <p
@@ -130,6 +170,17 @@ export class HomeComponent {
   protected hasInProgressSeries = computed(
     () => this.watchListService.inProgressSeries().length > 0,
   );
+
+  markItem(
+    getter: () => Item | null | undefined,
+    action: 'watched' | 'completed' | 'dropped',
+  ): void {
+    const item = getter();
+    if (!item) return;
+    if (action === 'watched') this.watchListService.markWatched(item.id);
+    else if (action === 'completed') this.watchListService.markCompleted(item.id);
+    else this.watchListService.markDropped(item.id);
+  }
 
   startBacklogItem(itemId: string): void {
     this.watchListService.markStarted(itemId);
