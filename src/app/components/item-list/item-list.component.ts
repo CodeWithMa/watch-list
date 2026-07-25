@@ -83,7 +83,7 @@ export class ItemListComponent {
   readonly itemStatuses = ITEM_STATUSES;
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
-  statusFilter = signal<string>('all');
+  statusFilter = signal<FilterStatus>('all');
   searchFilter = signal<string>('');
   groupFilter = signal<string>('');
 
