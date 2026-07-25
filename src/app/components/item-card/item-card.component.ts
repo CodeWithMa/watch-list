@@ -28,13 +28,13 @@ import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
           />
         }
         <span
-          class="absolute top-2 left-2 px-1.5 py-0.5 rounded text-xs font-medium capitalize bg-black/60 text-white backdrop-blur-sm"
+          class="absolute top-0 left-0 px-2 py-1 text-xs font-medium capitalize bg-black/60 text-white backdrop-blur-sm"
         >
           {{ item().status }}
         </span>
         @if (item().type === 'series' && item().progress) {
           <span
-            class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-xs font-medium bg-black/60 text-white backdrop-blur-sm"
+            class="absolute top-0 right-0 px-2 py-1 text-xs font-medium bg-black/60 text-white backdrop-blur-sm"
           >
             S{{ item().progress!.season }}E{{ item().progress!.episode }}
           </span>
