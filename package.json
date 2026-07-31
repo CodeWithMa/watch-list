@@ -51,6 +51,7 @@
     "@j178/prek": "^0.4.10",
     "@tailwindcss/postcss": "^4.3.3",
     "@tauri-apps/cli": "^2.11.4",
+    "@vitest/coverage-v8": "^4.1.10",
     "angular-eslint": "^22.1.0",
     "eslint": "^10.7.0",
     "jsdom": "^27.4.0",
