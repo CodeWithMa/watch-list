@@ -21,6 +21,19 @@ describe('StorageService', () => {
     expect(data.deletedItems).toEqual({});
   });
 
+  it('allows initialization to be retried after an open failure', async () => {
+    const service = new StorageService();
+    const storage = service as unknown as {
+      openDatabase: () => Promise<IDBDatabase>;
+    };
+    vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
+
+    await expect(service.initialize()).rejects.toThrowError('Unavailable');
+    await expect(service.initialize()).resolves.toBeUndefined();
+
+    expect(service.getData().schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+  });
+
   it('loads data persisted by an earlier service instance', async () => {
     const firstService = new StorageService();
     await firstService.initialize();

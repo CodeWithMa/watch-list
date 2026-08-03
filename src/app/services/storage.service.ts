@@ -20,7 +20,10 @@ export class StorageService {
   private writeQueue: Promise<void> = Promise.resolve();
 
   initialize(): Promise<void> {
-    this.initialization ??= this.loadData();
+    this.initialization ??= this.loadData().catch((error: unknown) => {
+      this.initialization = null;
+      throw error;
+    });
     return this.initialization;
   }
 
@@ -112,6 +115,8 @@ export class StorageService {
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('Failed to open IndexedDB'));
+      request.onblocked = () =>
+        reject(new Error('IndexedDB open request is blocked by another open connection'));
     });
   }
 
