@@ -19,7 +19,12 @@ jobs:
       - name: Delete old release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release delete dev-release --yes --cleanup-tag || true
+        run: gh release delete dev-release --yes || true
+
+      - name: Delete old release tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/dev-release" || true
 
   checks:
     uses: ./.github/workflows/rust-checks.yml
