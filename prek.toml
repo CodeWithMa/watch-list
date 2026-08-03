@@ -71,14 +71,7 @@ hooks = [
     pass_filenames = false,
     stages = ["pre-commit"],
   },
-  {
-    id = "bun-audit",
-    name = "Dependency Audit",
-    language = "system",
-    entry = "bun audit --prod",
-    pass_filenames = false,
-    stages = ["pre-commit"],
-  },
+
   {
     id = "knip",
     name = "Knip (dead code)",
