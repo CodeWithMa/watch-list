@@ -24,7 +24,7 @@ export class ImportExportService {
   async importData(file: File): Promise<void> {
     try {
       const text = await file.text();
-      this.storageService.importData(JSON.parse(text));
+      await this.storageService.importData(JSON.parse(text));
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file', { cause: error });

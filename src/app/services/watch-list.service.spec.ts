@@ -2,29 +2,16 @@ import { TestBed } from '@angular/core/testing';
 import { WatchListService } from './watch-list.service';
 import { StorageService } from './storage.service';
 import { Item, SeriesProgress } from '../models/item.model';
+import 'fake-indexeddb/auto';
 
 describe('WatchListService', () => {
   let storageService: StorageService;
   let service: WatchListService;
-  let store: Record<string, string>;
 
-  beforeEach(() => {
-    store = {};
-    const localStorageMock = {
-      clear() {
-        Object.keys(store).forEach((key) => delete store[key]);
-      },
-      getItem(key: string) {
-        return store[key] ?? null;
-      },
-      setItem(key: string, value: string) {
-        store[key] = value;
-      },
-    };
-    Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
-
+  beforeEach(async () => {
     TestBed.configureTestingModule({});
     storageService = TestBed.inject(StorageService);
+    await storageService.initialize();
     service = TestBed.inject(WatchListService);
   });
 

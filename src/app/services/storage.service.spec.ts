@@ -1,27 +1,11 @@
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { StorageService } from './storage.service';
+import 'fake-indexeddb/auto';
 
 describe('StorageService', () => {
-  beforeEach(() => {
-    const store: Record<string, string> = {};
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        clear() {
-          Object.keys(store).forEach((key) => delete store[key]);
-        },
-        getItem(key: string) {
-          return store[key] ?? null;
-        },
-        setItem(key: string, value: string) {
-          store[key] = value;
-        },
-      },
-      writable: true,
-    });
-  });
-
-  it('creates a default dataset when storage is empty', () => {
+  it('creates a default dataset when storage is empty', async () => {
     const service = new StorageService();
+    await service.initialize();
     const data = service.getData();
 
     expect(data.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
@@ -29,8 +13,27 @@ describe('StorageService', () => {
     expect(data.deletedItems).toEqual({});
   });
 
-  it('migrates v2 data with totalEpisodes to the current seasons array', () => {
+  it('loads data persisted by an earlier service instance', async () => {
+    const firstService = new StorageService();
+    await firstService.initialize();
+    await firstService.importData({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      lastModifiedAt: '2026-04-01T10:00:00.000Z',
+      groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
+      items: {},
+      deletedItems: {},
+    });
+
+    const secondService = new StorageService();
+    await secondService.initialize();
+
+    expect(secondService.getData().lastModifiedAt).not.toBe('2026-04-01T10:00:00.000Z');
+    expect(secondService.getData().groups).toEqual(firstService.getData().groups);
+  });
+
+  it('migrates v2 data with totalEpisodes to the current seasons array', async () => {
     const service = new StorageService();
+    await service.initialize();
 
     service.importData({
       schemaVersion: 2,
@@ -77,23 +80,25 @@ describe('StorageService', () => {
     ]);
   });
 
-  it('rejects invalid imports', () => {
+  it('rejects invalid imports', async () => {
     const service = new StorageService();
+    await service.initialize();
 
-    expect(() =>
+    await expect(
       service.importData({
         schemaVersion: 2,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: {},
         items: [],
       }),
-    ).toThrowError('Invalid data format');
+    ).rejects.toThrowError('Invalid data format');
   });
 
-  it('rejects series with duplicate season numbers', () => {
+  it('rejects series with duplicate season numbers', async () => {
     const service = new StorageService();
+    await service.initialize();
 
-    expect(() =>
+    await expect(
       service.importData({
         schemaVersion: 4,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
@@ -118,11 +123,12 @@ describe('StorageService', () => {
           },
         },
       }),
-    ).toThrowError('Invalid migrated data');
+    ).rejects.toThrowError('Invalid migrated data');
   });
 
-  it('accepts v4 series seasons with a first episode air date', () => {
+  it('accepts v4 series seasons with a first episode air date', async () => {
     const service = new StorageService();
+    await service.initialize();
 
     service.importData({
       schemaVersion: 4,
