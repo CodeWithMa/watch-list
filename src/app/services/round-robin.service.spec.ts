@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { RoundRobinService } from './round-robin.service';
 import { StorageService } from './storage.service';
-import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 import { Item } from '../models/item.model';
 
 describe('RoundRobinService', () => {
@@ -9,6 +9,10 @@ describe('RoundRobinService', () => {
   let service: RoundRobinService;
 
   beforeEach(async () => {
+    Object.defineProperty(globalThis, 'indexedDB', {
+      configurable: true,
+      value: new IDBFactory(),
+    });
     TestBed.configureTestingModule({});
     storageService = TestBed.inject(StorageService);
     await storageService.initialize();

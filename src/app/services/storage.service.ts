@@ -15,6 +15,7 @@ const DATA_KEY = 'watch-list-data';
 export class StorageService {
   private readonly data = signal<StorageData | null>(null);
   private database: IDBDatabase | null = null;
+  private lastPersistedData: StorageData | null = null;
   private initialization: Promise<void> | null = null;
   private writeQueue: Promise<void> = Promise.resolve();
 
@@ -40,8 +41,16 @@ export class StorageService {
     };
     this.data.set(updated);
     const write = this.writeQueue.then(() => this.writeData(updated));
-    this.writeQueue = write.catch((error: unknown) =>
-      console.error('Failed to save watch-list data:', error),
+    this.writeQueue = write.then(
+      () => {
+        this.lastPersistedData = updated;
+      },
+      (error: unknown) => {
+        if (this.data() === updated) {
+          this.data.set(this.lastPersistedData);
+        }
+        console.error('Failed to save watch-list data:', error);
+      },
     );
     return write;
   }
@@ -69,13 +78,26 @@ export class StorageService {
     const stored = await this.readData();
 
     if (stored) {
-      this.data.set(normalizeStorageData(stored));
+      let normalized: StorageData;
+      try {
+        normalized = normalizeStorageData(stored);
+      } catch (error) {
+        console.error('Failed to load stored watch-list data:', error);
+        await this.setPersistedData(createDefaultStorageData());
+        return;
+      }
+
+      await this.setPersistedData(normalized);
       return;
     }
 
-    const defaultData = createDefaultStorageData();
-    this.data.set(defaultData);
-    await this.writeData(defaultData);
+    await this.setPersistedData(createDefaultStorageData());
+  }
+
+  private async setPersistedData(data: StorageData): Promise<void> {
+    await this.writeData(data);
+    this.lastPersistedData = data;
+    this.data.set(data);
   }
 
   private openDatabase(): Promise<IDBDatabase> {

@@ -2,13 +2,17 @@ import { TestBed } from '@angular/core/testing';
 import { WatchListService } from './watch-list.service';
 import { StorageService } from './storage.service';
 import { Item, SeriesProgress } from '../models/item.model';
-import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 
 describe('WatchListService', () => {
   let storageService: StorageService;
   let service: WatchListService;
 
   beforeEach(async () => {
+    Object.defineProperty(globalThis, 'indexedDB', {
+      configurable: true,
+      value: new IDBFactory(),
+    });
     TestBed.configureTestingModule({});
     storageService = TestBed.inject(StorageService);
     await storageService.initialize();
