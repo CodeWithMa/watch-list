@@ -20,6 +20,7 @@ describe('SettingsComponent', () => {
           provide: ImportExportService,
           useValue: {
             exportData: vi.fn(),
+            exportRecoveryBackup: vi.fn(),
             importData: vi.fn(),
           },
         },

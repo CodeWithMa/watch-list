@@ -99,6 +99,17 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
           </p>
         </div>
         <div class="mb-4 last:mb-0">
+          <button
+            (click)="exportRecoveryBackup()"
+            class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-secondary text-white hover:bg-accent-secondary-hover"
+          >
+            Export Recovery Backup
+          </button>
+          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+            Download data saved before an unreadable storage record was replaced
+          </p>
+        </div>
+        <div class="mb-4 last:mb-0">
           <label class="flex items-center gap-2 cursor-pointer">
             <input
               type="file"
@@ -184,6 +195,18 @@ export class SettingsComponent {
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch {
       this.errorMessage.set('Failed to export data');
+      setTimeout(() => this.errorMessage.set(null), 5000);
+    }
+  }
+
+  async exportRecoveryBackup(): Promise<void> {
+    try {
+      await this.importExportService.exportRecoveryBackup();
+      this.successMessage.set('Recovery backup exported successfully');
+      setTimeout(() => this.successMessage.set(null), 3000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export recovery backup';
+      this.errorMessage.set(message);
       setTimeout(() => this.errorMessage.set(null), 5000);
     }
   }

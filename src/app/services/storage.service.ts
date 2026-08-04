@@ -8,12 +8,14 @@ const DATABASE_NAME = 'watch-list';
 const DATABASE_VERSION = 1;
 const STORE_NAME = 'storage';
 const DATA_KEY = 'watch-list-data';
+const BACKUP_KEY = 'watch-list-data-backup';
 
 @Injectable({
   providedIn: 'root',
 })
 export class StorageService {
   private readonly data = signal<StorageData | null>(null);
+  private readonly saveError = signal<string | null>(null);
   private database: IDBDatabase | null = null;
   private lastPersistedData: StorageData | null = null;
   private initialization: Promise<void> | null = null;
@@ -22,6 +24,8 @@ export class StorageService {
   initialize(): Promise<void> {
     this.initialization ??= this.loadData().catch((error: unknown) => {
       this.initialization = null;
+      this.database?.close();
+      this.database = null;
       throw error;
     });
     return this.initialization;
@@ -37,6 +41,18 @@ export class StorageService {
     void this.persistData(data);
   }
 
+  getSaveErrorSignal() {
+    return this.saveError.asReadonly();
+  }
+
+  async getRecoveryBackup(): Promise<unknown> {
+    const backup = await this.readRecord(BACKUP_KEY);
+    if (backup === undefined) {
+      throw new Error('No recovery backup is available');
+    }
+    return backup;
+  }
+
   private persistData(data: StorageData): Promise<void> {
     const updated: StorageData = {
       ...data,
@@ -47,11 +63,14 @@ export class StorageService {
     this.writeQueue = write.then(
       () => {
         this.lastPersistedData = updated;
+        this.saveError.set(null);
       },
       (error: unknown) => {
         if (this.data() === updated) {
           this.data.set(this.lastPersistedData);
         }
+        const message = error instanceof Error ? error.message : String(error);
+        this.saveError.set(message);
         console.error('Failed to save watch-list data:', error);
       },
     );
@@ -80,27 +99,45 @@ export class StorageService {
     this.database = await this.openDatabase();
     const stored = await this.readData();
 
-    if (stored) {
+    if (stored !== undefined) {
       let normalized: StorageData;
+      let storedSnapshot: unknown;
       try {
+        storedSnapshot = structuredClone(stored);
         normalized = normalizeStorageData(stored);
       } catch (error) {
         console.error('Failed to load stored watch-list data:', error);
-        await this.setPersistedData(createDefaultStorageData());
+        await this.backupRawData(stored);
+        const defaults = createDefaultStorageData();
+        await this.writeData(defaults);
+        this.lastPersistedData = defaults;
+        this.data.set(defaults);
         return;
       }
 
-      await this.setPersistedData(normalized);
+      if (!storageDataEqual(normalized, storedSnapshot)) {
+        await this.writeData(normalized);
+      }
+      this.lastPersistedData = normalized;
+      this.data.set(normalized);
       return;
     }
 
-    await this.setPersistedData(createDefaultStorageData());
+    const defaults = createDefaultStorageData();
+    await this.writeData(defaults);
+    this.lastPersistedData = defaults;
+    this.data.set(defaults);
   }
 
-  private async setPersistedData(data: StorageData): Promise<void> {
-    await this.writeData(data);
-    this.lastPersistedData = data;
-    this.data.set(data);
+  private async backupRawData(raw: unknown): Promise<void> {
+    const transaction = this.database!.transaction(STORE_NAME, 'readwrite');
+    transaction.objectStore(STORE_NAME).put(raw, BACKUP_KEY);
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error('Failed to back up corrupted data'));
+      transaction.onabort = () =>
+        reject(transaction.error ?? new Error('Backup transaction was aborted'));
+    });
   }
 
   private openDatabase(): Promise<IDBDatabase> {
@@ -115,13 +152,18 @@ export class StorageService {
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('Failed to open IndexedDB'));
-      request.onblocked = () =>
+      request.onblocked = () => {
         reject(new Error('IndexedDB open request is blocked by another open connection'));
+      };
     });
   }
 
-  private readData(): Promise<StorageData | undefined> {
-    const request = this.getStore('readonly').get(DATA_KEY) as IDBRequest<StorageData | undefined>;
+  private readData(): Promise<unknown | undefined> {
+    return this.readRecord(DATA_KEY);
+  }
+
+  private readRecord(key: string): Promise<unknown | undefined> {
+    const request = this.getStore('readonly').get(key) as IDBRequest<unknown | undefined>;
     return this.requestResult(request);
   }
 
@@ -150,4 +192,34 @@ export class StorageService {
       request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
     });
   }
+}
+
+function storageDataEqual(left: unknown, right: unknown, seen = new WeakMap<object, object>()): boolean {
+  if (Object.is(left, right)) {
+    return true;
+  }
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object') {
+    return false;
+  }
+  if (left.constructor !== right.constructor) {
+    return false;
+  }
+
+  const previousRight = seen.get(left);
+  if (previousRight) {
+    return previousRight === right;
+  }
+  seen.set(left, right);
+
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord);
+  const rightKeys = Object.keys(rightRecord);
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  return leftKeys.every(
+    (key) => Object.prototype.hasOwnProperty.call(rightRecord, key) && storageDataEqual(leftRecord[key], rightRecord[key], seen),
+  );
 }

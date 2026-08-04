@@ -8,13 +8,21 @@ export class ImportExportService {
   private storageService = inject(StorageService);
 
   exportData(): void {
-    const data = this.storageService.getData();
+    this.downloadJson(this.storageService.getData(), 'watch-list-export');
+  }
+
+  async exportRecoveryBackup(): Promise<void> {
+    const backup = await this.storageService.getRecoveryBackup();
+    this.downloadJson(backup, 'watch-list-recovery-backup');
+  }
+
+  private downloadJson(data: unknown, filenamePrefix: string): void {
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `watch-list-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `${filenamePrefix}-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

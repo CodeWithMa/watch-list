@@ -1,7 +1,7 @@
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { StorageService } from './storage.service';
 import { IDBFactory } from 'fake-indexeddb';
-import { vi } from 'vitest';
+import { vi, afterEach } from 'vitest';
 
 describe('StorageService', () => {
   beforeEach(() => {
@@ -9,6 +9,10 @@ describe('StorageService', () => {
       configurable: true,
       value: new IDBFactory(),
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('creates a default dataset when storage is empty', async () => {
@@ -34,6 +38,42 @@ describe('StorageService', () => {
     expect(service.getData().schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
   });
 
+  it('closes an opened database when initialization fails', async () => {
+    const service = new StorageService();
+    const database = { close: vi.fn() } as unknown as IDBDatabase;
+    const storage = service as unknown as {
+      openDatabase: () => Promise<IDBDatabase>;
+      readData: () => Promise<unknown | undefined>;
+      writeData: (data: unknown) => Promise<void>;
+    };
+    vi.spyOn(storage, 'openDatabase').mockResolvedValue(database);
+    vi.spyOn(storage, 'readData').mockResolvedValue(undefined);
+    vi.spyOn(storage, 'writeData').mockRejectedValue(new Error('Disk full'));
+
+    await expect(service.initialize()).rejects.toThrowError('Disk full');
+
+    expect(database.close).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a blocked open request without reading its unavailable result', async () => {
+    const service = new StorageService();
+    const request = {
+      onupgradeneeded: null,
+      onsuccess: null,
+      onerror: null,
+      onblocked: null,
+      get result(): never {
+        throw new DOMException('The request is still pending', 'InvalidStateError');
+      },
+    } as unknown as IDBOpenDBRequest;
+    vi.spyOn(indexedDB, 'open').mockReturnValue(request);
+
+    const opening = (service as unknown as { openDatabase: () => Promise<IDBDatabase> }).openDatabase();
+    request.onblocked!({} as IDBVersionChangeEvent);
+
+    await expect(opening).rejects.toThrowError('IndexedDB open request is blocked');
+  });
+
   it('loads data persisted by an earlier service instance', async () => {
     const firstService = new StorageService();
     await firstService.initialize();
@@ -56,7 +96,8 @@ describe('StorageService', () => {
     const firstService = new StorageService();
     await firstService.initialize();
     const database = (firstService as unknown as { database: IDBDatabase }).database;
-    await writeRecord(database, { invalid: true });
+    const corruptData = { invalid: true };
+    await writeRecord(database, corruptData);
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const secondService = new StorageService();
@@ -69,6 +110,61 @@ describe('StorageService', () => {
       deletedItems: {},
     });
     expect(error).toHaveBeenCalledWith('Failed to load stored watch-list data:', expect.any(Error));
+  });
+
+  it('backs up unreadable data to a separate key', async () => {
+    const firstService = new StorageService();
+    await firstService.initialize();
+    const database = (firstService as unknown as { database: IDBDatabase }).database;
+    const corruptData = { invalid: true };
+    await writeRecord(database, corruptData);
+
+    const secondService = new StorageService();
+    await secondService.initialize();
+
+    const backup = await readRecord(database, 'watch-list-data-backup');
+    expect(backup).toEqual(corruptData);
+    await expect(secondService.getRecoveryBackup()).resolves.toEqual(corruptData);
+  });
+
+  it('does not overwrite unreadable data when creating its backup fails', async () => {
+    const firstService = new StorageService();
+    await firstService.initialize();
+    const database = (firstService as unknown as { database: IDBDatabase }).database;
+    const corruptData = { invalid: true };
+    await writeRecord(database, corruptData);
+
+    const secondService = new StorageService();
+    const storage = secondService as unknown as {
+      backupRawData: (data: unknown) => Promise<void>;
+    };
+    vi.spyOn(storage, 'backupRawData').mockRejectedValue(new Error('Backup unavailable'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(secondService.initialize()).rejects.toThrowError('Backup unavailable');
+
+    await expect(readRecord(database, 'watch-list-data')).resolves.toEqual(corruptData);
+  });
+
+  it('writes normalization defaults back to storage', async () => {
+    const service = new StorageService();
+    await service.initialize();
+    const database = (service as unknown as { database: IDBDatabase }).database;
+    await writeRecord(database, {
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      lastModifiedAt: '2026-04-01T10:00:00.000Z',
+      groups: {},
+      items: {},
+    });
+
+    const reloadedService = new StorageService();
+    await reloadedService.initialize();
+
+    const persisted = await readRecord<Record<string, unknown>>(database, 'watch-list-data');
+    expect(persisted?.['deletedItems']).toEqual({});
+    expect(persisted?.['groups']).toMatchObject({
+      ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 },
+    });
   });
 
   it('migrates v2 data with totalEpisodes to the current seasons array', async () => {
@@ -258,5 +354,15 @@ function writeRecord(database: IDBDatabase, data: unknown): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
+  });
+}
+
+function readRecord<T>(database: IDBDatabase, key: string): Promise<T | undefined> {
+  const transaction = database.transaction('storage', 'readonly');
+  const request = transaction.objectStore('storage').get(key) as IDBRequest<T | undefined>;
+
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
   });
 }
