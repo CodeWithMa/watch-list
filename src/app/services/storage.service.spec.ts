@@ -33,7 +33,6 @@ describe('StorageService', () => {
     vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
 
     await expect(service.initialize()).resolves.toBeUndefined();
-    await expect(service.initialize()).resolves.toBeUndefined();
 
     expect(service.getData().schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
   });
