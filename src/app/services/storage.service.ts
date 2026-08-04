@@ -81,7 +81,7 @@ export class StorageService {
     const write = this.writeQueue.then(() => this.writeData(writeSnapshot));
     this.writeQueue = write.then(
       () => {
-        this.lastPersistedData = cloneStorageData(updated);
+        this.lastPersistedData = cloneStorageData(writeSnapshot);
         this.saveError.set(null);
       },
       (error: unknown) => {
