@@ -67,14 +67,16 @@ describe('SeasonEditorComponent', () => {
     });
 
     it('does not emit when the new number duplicates another season', () => {
-      setSeasons([
+      const seasons = [
         { seasonNumber: 1, totalEpisodes: 10 },
         { seasonNumber: 2, totalEpisodes: 8 },
-      ]);
+      ];
+      setSeasons(seasons);
 
       component.updateSeasonNumber(1, 1);
 
       expect(emitted).toEqual([]);
+      expect(component.seasons()).toEqual(seasons);
     });
 
     it('falls back to 1 for invalid input', () => {
@@ -86,11 +88,13 @@ describe('SeasonEditorComponent', () => {
     });
 
     it('ignores an out of range index', () => {
-      setSeasons([{ seasonNumber: 1, totalEpisodes: 10 }]);
+      const seasons = [{ seasonNumber: 1, totalEpisodes: 10 }];
+      setSeasons(seasons);
 
       component.updateSeasonNumber(5, 9);
 
       expect(emitted).toEqual([]);
+      expect(component.seasons()).toEqual(seasons);
     });
   });
 
@@ -112,11 +116,13 @@ describe('SeasonEditorComponent', () => {
     });
 
     it('ignores an out of range index', () => {
-      setSeasons([{ seasonNumber: 1, totalEpisodes: 10 }]);
+      const seasons = [{ seasonNumber: 1, totalEpisodes: 10 }];
+      setSeasons(seasons);
 
       component.updateSeasonEpisodes(5, 12);
 
       expect(emitted).toEqual([]);
+      expect(component.seasons()).toEqual(seasons);
     });
   });
 
