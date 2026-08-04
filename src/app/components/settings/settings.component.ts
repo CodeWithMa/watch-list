@@ -1,12 +1,13 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
 import { TmdbSettingsService } from '../../services/tmdb-settings.service';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule],
+  imports: [FormsModule, DatePipe],
   template: `
     <div class="max-w-[800px] mx-auto p-8">
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
@@ -139,10 +140,35 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
           </div>
         </div>
       }
+
+      @if (recoveryBackups().length > 0) {
+        <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
+          <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+            Recovery Backups
+          </h2>
+          @for (backup of recoveryBackups(); track backup.key) {
+            <div
+              class="flex items-center justify-between mb-3 last:mb-0 p-3 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary"
+            >
+              <div>
+                <div class="text-sm text-light-font dark:text-dark-font">
+                  {{ backup.timestamp | date: 'medium' }}
+                </div>
+              </div>
+              <button
+                (click)="exportRecoveryBackup(backup.key)"
+                class="px-4 py-2 border-none rounded cursor-pointer text-sm font-medium bg-accent-secondary text-white hover:bg-accent-secondary-hover"
+              >
+                Download
+              </button>
+            </div>
+          }
+        </div>
+      }
     </div>
   `,
 })
-export class SettingsComponent {
+export class SettingsComponent implements OnInit {
   private importExportService = inject(ImportExportService);
   private tmdbSettingsService = inject(TmdbSettingsService);
 
@@ -151,6 +177,11 @@ export class SettingsComponent {
   tmdbToken = signal(this.tmdbSettingsService.token());
   tmdbApiKey = signal(this.tmdbSettingsService.key());
   tmdbSettingsMessage = signal<string | null>(null);
+  recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
+
+  ngOnInit(): void {
+    this.loadRecoveryBackups();
+  }
 
   saveTmdbToken(): void {
     this.tmdbSettingsService.saveCredentials(this.tmdbToken(), this.tmdbApiKey());
@@ -185,6 +216,30 @@ export class SettingsComponent {
     } catch {
       this.errorMessage.set('Failed to export data');
       setTimeout(() => this.errorMessage.set(null), 5000);
+    }
+  }
+
+  async exportRecoveryBackup(key: string): Promise<void> {
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+
+    try {
+      await this.importExportService.exportRecoveryBackup(key);
+      this.successMessage.set('Recovery backup exported successfully');
+      setTimeout(() => this.successMessage.set(null), 3000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export recovery backup';
+      this.errorMessage.set(message);
+      setTimeout(() => this.errorMessage.set(null), 5000);
+    }
+  }
+
+  private async loadRecoveryBackups(): Promise<void> {
+    try {
+      const backups = await this.importExportService.getRecoveryBackups();
+      this.recoveryBackups.set(backups);
+    } catch {
+      this.recoveryBackups.set([]);
     }
   }
 

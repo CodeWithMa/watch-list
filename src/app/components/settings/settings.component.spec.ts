@@ -20,6 +20,8 @@ describe('SettingsComponent', () => {
           provide: ImportExportService,
           useValue: {
             exportData: vi.fn(),
+            getRecoveryBackups: vi.fn().mockResolvedValue([]),
+            exportRecoveryBackup: vi.fn().mockResolvedValue(undefined),
             importData: vi.fn(),
           },
         },
@@ -100,5 +102,61 @@ describe('SettingsComponent', () => {
 
     expect(tmdbSettingsService.clearCredentials).toHaveBeenCalled();
     expect(fixture.componentInstance.tmdbSettingsMessage()).toBe('TMDB credentials cleared.');
+  });
+
+  it('shows recovery backup export feedback on success', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    await fixture.componentInstance.exportRecoveryBackup('watch-list-data-backup-123');
+
+    expect(exportService.exportRecoveryBackup).toHaveBeenCalledWith('watch-list-data-backup-123');
+    expect(fixture.componentInstance.successMessage()).toBe(
+      'Recovery backup exported successfully',
+    );
+    expect(fixture.componentInstance.errorMessage()).toBeNull();
+  });
+
+  it('shows recovery backup export feedback on failure', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    vi.spyOn(exportService, 'exportRecoveryBackup').mockRejectedValue(
+      new Error('No recovery backup'),
+    );
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    await fixture.componentInstance.exportRecoveryBackup('watch-list-data-backup-123');
+
+    expect(exportService.exportRecoveryBackup).toHaveBeenCalledWith('watch-list-data-backup-123');
+    expect(fixture.componentInstance.errorMessage()).toBe('No recovery backup');
+    expect(fixture.componentInstance.successMessage()).toBeNull();
+  });
+
+  it('hides recovery backups section when no backups exist', async () => {
+    configure({ token: '', key: '', credential: null });
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.textContent).not.toContain('Recovery Backups');
+  });
+
+  it('shows recovery backups section when backups exist', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    vi.spyOn(exportService, 'getRecoveryBackups').mockResolvedValue([
+      { key: 'watch-list-data-backup-1234567890', timestamp: new Date('2026-01-15T10:30:00.000Z') },
+      { key: 'watch-list-data-backup-1234567800', timestamp: new Date('2026-01-14T09:00:00.000Z') },
+    ]);
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Recovery Backups');
+    expect(fixture.nativeElement.textContent).toContain('Download');
   });
 });

@@ -4,7 +4,7 @@ This is my tool to suggest me what to watch next.
 
 ## Getting Started
 
-``` shell
+```shell
 
 # Install dependencies
 bun install
@@ -29,11 +29,11 @@ bun run build
 This project uses [prek](https://github.com/j178/prek) for Git hooks.
 After installing dependencies, install the hooks:
 
-``` shell
+```shell
 bunx prek install
 bunx prek install -t commit-msg
 ```
 
 ## Privacy
 
-Data is stored locally in your browser using localStorage. Nothing is ever sent to a server. Your watch history stays on your device.
+Watch-list data is stored locally in your browser using IndexedDB. Nothing is ever sent to a server. Your watch history stays on your device. Export your data before upgrading from versions that used localStorage if you want to keep it.

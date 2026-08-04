@@ -52,6 +52,15 @@
   </div>
 </nav>
 
+@if (saveError()) {
+  <div
+    role="alert"
+    class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark px-8 py-3 text-center border-b border-error-border-light dark:border-error-border-dark"
+  >
+    Your last change could not be saved and was reverted. {{ saveError() }}
+  </div>
+}
+
 <main class="min-h-[calc(100vh-80px)] bg-light-bg-primary dark:bg-dark-bg-primary">
   <router-outlet />
 </main>

@@ -1,30 +1,21 @@
 import { TestBed } from '@angular/core/testing';
 import { RoundRobinService } from './round-robin.service';
 import { StorageService } from './storage.service';
+import { IDBFactory } from 'fake-indexeddb';
 import { Item } from '../models/item.model';
 
 describe('RoundRobinService', () => {
   let storageService: StorageService;
   let service: RoundRobinService;
-  let store: Record<string, string>;
 
-  beforeEach(() => {
-    store = {};
-    const localStorageMock = {
-      clear() {
-        Object.keys(store).forEach((key) => delete store[key]);
-      },
-      getItem(key: string) {
-        return store[key] ?? null;
-      },
-      setItem(key: string, value: string) {
-        store[key] = value;
-      },
-    };
-    Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
-
+  beforeEach(async () => {
+    Object.defineProperty(globalThis, 'indexedDB', {
+      configurable: true,
+      value: new IDBFactory(),
+    });
     TestBed.configureTestingModule({});
     storageService = TestBed.inject(StorageService);
+    await storageService.initialize();
     service = TestBed.inject(RoundRobinService);
   });
 
