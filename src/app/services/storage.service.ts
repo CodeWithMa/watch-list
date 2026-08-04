@@ -26,7 +26,10 @@ export class StorageService {
       this.initialization = null;
       this.database?.close();
       this.database = null;
-      throw error;
+      console.error('Storage initialization failed, falling back to in-memory session:', error);
+      const defaults = createDefaultStorageData();
+      this.lastPersistedData = cloneStorageData(defaults);
+      this.data.set(cloneStorageData(defaults));
     });
     return this.initialization;
   }
@@ -99,36 +102,59 @@ export class StorageService {
 
   private async loadData(): Promise<void> {
     this.database = await this.openDatabase();
-    const stored = await this.readData();
+    try {
+      const stored = await this.readData();
 
-    if (stored !== undefined) {
-      let normalized: StorageData;
-      let storedSnapshot: unknown;
-      try {
-        storedSnapshot = structuredClone(stored);
-        normalized = normalizeStorageData(stored);
-      } catch (error) {
-        console.error('Failed to load stored watch-list data:', error);
-        await this.backupRawData(stored);
-        const defaults = createDefaultStorageData();
-        await this.writeData(defaults);
-        this.lastPersistedData = cloneStorageData(defaults);
-        this.data.set(cloneStorageData(defaults));
+      if (stored !== undefined) {
+        let normalized: StorageData;
+        let storedSnapshot: unknown;
+        try {
+          storedSnapshot = structuredClone(stored);
+          normalized = normalizeStorageData(stored);
+        } catch (error) {
+          console.error('Failed to load stored watch-list data:', error);
+          await this.backupRawData(storedSnapshot);
+          const defaults = createDefaultStorageData();
+          try {
+            await this.writeData(defaults);
+          } catch {
+            this.database?.close();
+            this.database = null;
+          }
+          this.lastPersistedData = cloneStorageData(defaults);
+          this.data.set(cloneStorageData(defaults));
+          return;
+        }
+
+        if (!storageDataEqual(normalized, storedSnapshot)) {
+          try {
+            await this.writeData(normalized);
+          } catch {
+            this.database?.close();
+            this.database = null;
+          }
+        }
+        this.lastPersistedData = cloneStorageData(normalized);
+        this.data.set(cloneStorageData(normalized));
         return;
       }
 
-      if (!storageDataEqual(normalized, storedSnapshot)) {
-        await this.writeData(normalized);
+      const defaults = createDefaultStorageData();
+      try {
+        await this.writeData(defaults);
+      } catch {
+        this.database?.close();
+        this.database = null;
       }
-      this.lastPersistedData = cloneStorageData(normalized);
-      this.data.set(cloneStorageData(normalized));
-      return;
+      this.lastPersistedData = cloneStorageData(defaults);
+      this.data.set(cloneStorageData(defaults));
+    } catch {
+      this.database?.close();
+      this.database = null;
+      const defaults = createDefaultStorageData();
+      this.lastPersistedData = cloneStorageData(defaults);
+      this.data.set(cloneStorageData(defaults));
     }
-
-    const defaults = createDefaultStorageData();
-    await this.writeData(defaults);
-    this.lastPersistedData = cloneStorageData(defaults);
-    this.data.set(cloneStorageData(defaults));
   }
 
   private async backupRawData(raw: unknown): Promise<void> {
@@ -174,8 +200,14 @@ export class StorageService {
   }
 
   private readRecord(key: string): Promise<unknown | undefined> {
-    const request = this.getStore('readonly').get(key) as IDBRequest<unknown | undefined>;
-    return this.requestResult(request);
+    const transaction = this.database!.transaction(STORE_NAME, 'readonly');
+    const request = transaction.objectStore(STORE_NAME).get(key) as IDBRequest<unknown | undefined>;
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
+      transaction.onabort = () =>
+        reject(transaction.error ?? new Error('IndexedDB read transaction aborted'));
+    });
   }
 
   private writeData(data: StorageData): Promise<void> {
@@ -187,20 +219,6 @@ export class StorageService {
         reject(transaction.error ?? new Error('Failed to write to IndexedDB'));
       transaction.onabort = () =>
         reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
-    });
-  }
-
-  private getStore(mode: IDBTransactionMode): IDBObjectStore {
-    if (!this.database) {
-      throw new Error('Storage has not been initialized');
-    }
-    return this.database.transaction(STORE_NAME, mode).objectStore(STORE_NAME);
-  }
-
-  private requestResult<T>(request: IDBRequest<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
     });
   }
 }

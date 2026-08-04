@@ -32,7 +32,7 @@ describe('StorageService', () => {
     };
     vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
 
-    await expect(service.initialize()).rejects.toThrowError('Unavailable');
+    await expect(service.initialize()).resolves.toBeUndefined();
     await expect(service.initialize()).resolves.toBeUndefined();
 
     expect(service.getData().schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
@@ -50,7 +50,7 @@ describe('StorageService', () => {
     vi.spyOn(storage, 'readData').mockResolvedValue(undefined);
     vi.spyOn(storage, 'writeData').mockRejectedValue(new Error('Disk full'));
 
-    await expect(service.initialize()).rejects.toThrowError('Disk full');
+    await expect(service.initialize()).resolves.toBeUndefined();
 
     expect(database.close).toHaveBeenCalledOnce();
   });
@@ -152,7 +152,7 @@ describe('StorageService', () => {
     vi.spyOn(storage, 'backupRawData').mockRejectedValue(new Error('Backup unavailable'));
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    await expect(secondService.initialize()).rejects.toThrowError('Backup unavailable');
+    await expect(secondService.initialize()).resolves.toBeUndefined();
 
     await expect(readRecord(database, 'watch-list-data')).resolves.toEqual(corruptData);
   });
