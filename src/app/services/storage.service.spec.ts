@@ -122,7 +122,7 @@ describe('StorageService', () => {
     expect(error).toHaveBeenCalledWith('Failed to load stored watch-list data:', expect.any(Error));
   });
 
-  it('backs up unreadable data to a separate key', async () => {
+  it('backs up unreadable data to a timestamped key', async () => {
     const firstService = new StorageService();
     await firstService.initialize();
     const database = (firstService as unknown as { database: IDBDatabase }).database;
@@ -132,9 +132,66 @@ describe('StorageService', () => {
     const secondService = new StorageService();
     await secondService.initialize();
 
-    const backup = await readRecord(database, 'watch-list-data-backup');
+    const backups = await secondService.getRecoveryBackups();
+    expect(backups).toHaveLength(1);
+    expect(backups[0].timestamp).toBeInstanceOf(Date);
+    const backup = await readRecord(database, backups[0].key);
     expect(backup).toEqual(corruptData);
-    await expect(secondService.getRecoveryBackup()).resolves.toEqual(corruptData);
+  });
+
+  it('returns recovery backups sorted newest first', async () => {
+    const firstService = new StorageService();
+    await firstService.initialize();
+    const database = (firstService as unknown as { database: IDBDatabase }).database;
+
+    const oldTimestamp = 1000000000000;
+    const newTimestamp = 1000000001000;
+    await writeRecord(database, { old: true }, `watch-list-data-backup-${oldTimestamp}`);
+    await writeRecord(database, { new: true }, `watch-list-data-backup-${newTimestamp}`);
+
+    const secondService = new StorageService();
+    await secondService.initialize();
+
+    const backups = await secondService.getRecoveryBackups();
+    expect(backups).toHaveLength(2);
+    expect(backups[0].key).toBe(`watch-list-data-backup-${newTimestamp}`);
+    expect(backups[1].key).toBe(`watch-list-data-backup-${oldTimestamp}`);
+  });
+
+  it('prunes old backups beyond the limit', async () => {
+    const firstService = new StorageService();
+    await firstService.initialize();
+    const database = (firstService as unknown as { database: IDBDatabase }).database;
+
+    for (let i = 0; i < 12; i++) {
+      await writeRecord(database, { index: i }, `watch-list-data-backup-${1000000000000 + i}`);
+    }
+    await writeRecord(database, { invalid: true });
+
+    const secondService = new StorageService();
+    await secondService.initialize();
+
+    const backups = await secondService.getRecoveryBackups();
+    expect(backups).toHaveLength(10);
+    expect(backups[9].key).toBe('watch-list-data-backup-1000000000003');
+  });
+
+  it('throws when getting a backup by invalid key', async () => {
+    const firstService = new StorageService();
+    await firstService.initialize();
+
+    await expect(firstService.getRecoveryBackupByKey('invalid-key')).rejects.toThrow(
+      'Invalid backup key',
+    );
+  });
+
+  it('throws when getting a backup by key that does not exist', async () => {
+    const firstService = new StorageService();
+    await firstService.initialize();
+
+    await expect(
+      firstService.getRecoveryBackupByKey('watch-list-data-backup-9999999999999'),
+    ).rejects.toThrow('Recovery backup not found');
   });
 
   it('does not overwrite unreadable data when creating its backup fails', async () => {
@@ -373,9 +430,9 @@ function withGroup(data: ReturnType<StorageService['getData']>, id: string) {
   };
 }
 
-function writeRecord(database: IDBDatabase, data: unknown): Promise<void> {
+function writeRecord(database: IDBDatabase, data: unknown, key = 'watch-list-data'): Promise<void> {
   const transaction = database.transaction('storage', 'readwrite');
-  transaction.objectStore('storage').put(data, 'watch-list-data');
+  transaction.objectStore('storage').put(data, key);
 
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();

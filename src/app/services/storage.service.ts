@@ -8,7 +8,8 @@ const DATABASE_NAME = 'watch-list';
 const DATABASE_VERSION = 1;
 const STORE_NAME = 'storage';
 const DATA_KEY = 'watch-list-data';
-const BACKUP_KEY = 'watch-list-data-backup';
+const BACKUP_PREFIX = 'watch-list-data-backup-';
+const BACKUP_LIMIT = 10;
 
 @Injectable({
   providedIn: 'root',
@@ -48,10 +49,23 @@ export class StorageService {
     return this.saveError.asReadonly();
   }
 
-  async getRecoveryBackup(): Promise<unknown> {
-    const backup = await this.readRecord(BACKUP_KEY);
+  async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
+    const keys = await this.listBackupKeys();
+    return keys
+      .map((key) => ({
+        key,
+        timestamp: new Date(Number(key.slice(BACKUP_PREFIX.length))),
+      }))
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  async getRecoveryBackupByKey(key: string): Promise<unknown> {
+    if (!key.startsWith(BACKUP_PREFIX)) {
+      throw new Error('Invalid backup key');
+    }
+    const backup = await this.readRecord(key);
     if (backup === undefined) {
-      throw new Error('No recovery backup is available');
+      throw new Error('Recovery backup not found');
     }
     return backup;
   }
@@ -158,8 +172,9 @@ export class StorageService {
   }
 
   private async backupRawData(raw: unknown): Promise<void> {
+    const key = `${BACKUP_PREFIX}${Date.now()}`;
     const transaction = this.database!.transaction(STORE_NAME, 'readwrite');
-    transaction.objectStore(STORE_NAME).put(raw, BACKUP_KEY);
+    transaction.objectStore(STORE_NAME).put(raw, key);
     await new Promise<void>((resolve, reject) => {
       transaction.oncomplete = () => resolve();
       transaction.onerror = () =>
@@ -167,6 +182,43 @@ export class StorageService {
       transaction.onabort = () =>
         reject(transaction.error ?? new Error('Backup transaction was aborted'));
     });
+    await this.pruneOldBackups();
+  }
+
+  private async pruneOldBackups(): Promise<void> {
+    const keys = await this.listBackupKeys();
+    if (keys.length <= BACKUP_LIMIT) {
+      return;
+    }
+    const toDelete = keys.slice(BACKUP_LIMIT);
+    const transaction = this.database!.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    for (const key of toDelete) {
+      store.delete(key);
+    }
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () =>
+        reject(transaction.error ?? new Error('Failed to prune old backups'));
+      transaction.onabort = () =>
+        reject(transaction.error ?? new Error('Prune transaction was aborted'));
+    });
+  }
+
+  private async listBackupKeys(): Promise<string[]> {
+    const transaction = this.database!.transaction(STORE_NAME, 'readonly');
+    const allKeys = await new Promise<IDBValidKey[]>((resolve, reject) => {
+      const request = transaction.objectStore(STORE_NAME).getAllKeys();
+      request.onsuccess = () => resolve(request.result as IDBValidKey[]);
+      request.onerror = () => reject(request.error ?? new Error('Failed to list backup keys'));
+      transaction.onabort = () =>
+        reject(transaction.error ?? new Error('List keys transaction aborted'));
+    });
+    return allKeys
+      .filter((k): k is string => typeof k === 'string' && k.startsWith(BACKUP_PREFIX))
+      .sort(
+        (a, b) => Number(b.slice(BACKUP_PREFIX.length)) - Number(a.slice(BACKUP_PREFIX.length)),
+      );
   }
 
   private openDatabase(): Promise<IDBDatabase> {

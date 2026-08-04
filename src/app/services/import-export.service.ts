@@ -11,8 +11,12 @@ export class ImportExportService {
     this.downloadJson(this.storageService.getData(), 'watch-list-export');
   }
 
-  async exportRecoveryBackup(): Promise<void> {
-    const backup = await this.storageService.getRecoveryBackup();
+  async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
+    return this.storageService.getRecoveryBackups();
+  }
+
+  async exportRecoveryBackup(key: string): Promise<void> {
+    const backup = await this.storageService.getRecoveryBackupByKey(key);
     this.downloadJson(backup, 'watch-list-recovery-backup');
   }
 
