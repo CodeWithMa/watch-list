@@ -279,6 +279,7 @@ describe('SettingsComponent', () => {
     const exportService = TestBed.inject(ImportExportService);
     vi.spyOn(exportService, 'getRecoveryBackups').mockRejectedValue(new Error('Storage busy'));
     const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.componentInstance.recoveryBackups.set([{ key: 'backup1', timestamp: new Date() }]);
 
     fixture.detectChanges();
     await fixture.whenStable();
