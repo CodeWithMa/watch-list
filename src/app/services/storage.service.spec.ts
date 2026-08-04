@@ -31,6 +31,7 @@ describe('StorageService', () => {
       openDatabase: () => Promise<IDBDatabase>;
     };
     vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     await expect(service.initialize()).resolves.toBeUndefined();
 
@@ -128,6 +129,7 @@ describe('StorageService', () => {
     const database = (firstService as unknown as { database: IDBDatabase }).database;
     const corruptData = { invalid: true };
     await writeRecord(database, corruptData);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const secondService = new StorageService();
     await secondService.initialize();
@@ -167,6 +169,7 @@ describe('StorageService', () => {
       await writeRecord(database, { index: i }, `watch-list-data-backup-${1000000000000 + i}`);
     }
     await writeRecord(database, { invalid: true });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const secondService = new StorageService();
     await secondService.initialize();

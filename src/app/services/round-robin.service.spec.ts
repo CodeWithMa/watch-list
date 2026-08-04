@@ -3,6 +3,7 @@ import { RoundRobinService } from './round-robin.service';
 import { StorageService } from './storage.service';
 import { IDBFactory } from 'fake-indexeddb';
 import { Item } from '../models/item.model';
+import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 
 describe('RoundRobinService', () => {
   let storageService: StorageService;
@@ -83,7 +84,7 @@ describe('RoundRobinService', () => {
 
   function saveItems(items: Item[]): void {
     storageService.saveData({
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       lastModifiedAt: '2026-04-01T10:00:00.000Z',
       groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
       items: Object.fromEntries(items.map((item) => [item.id, item])),
