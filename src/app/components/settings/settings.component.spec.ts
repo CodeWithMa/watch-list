@@ -6,6 +6,7 @@ import { vi, afterEach } from 'vitest';
 
 describe('SettingsComponent', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -182,6 +183,7 @@ describe('SettingsComponent', () => {
   });
 
   it('shows success feedback when exporting data', () => {
+    vi.useFakeTimers();
     configure({ token: '', key: '', credential: null });
     const fixture = TestBed.createComponent(SettingsComponent);
 
@@ -192,6 +194,7 @@ describe('SettingsComponent', () => {
   });
 
   it('shows an error when exporting data fails', () => {
+    vi.useFakeTimers();
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
     vi.spyOn(exportService, 'exportData').mockImplementation(() => {

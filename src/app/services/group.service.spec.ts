@@ -23,7 +23,7 @@ describe('GroupService', () => {
   });
 
   describe('groups', () => {
-    it('is empty when there are no groups beside ungrouped', () => {
+    it('returns only the ungrouped group by default', () => {
       expect(service.groups()).toEqual([{ id: 'ungrouped', name: 'Ungrouped', order: 0 }]);
     });
 
@@ -31,12 +31,12 @@ describe('GroupService', () => {
       saveData({
         groups: {
           a: { id: 'a', name: 'A', order: 2 },
-          b: { id: 'b', name: 'B', order: 0 },
+          b: { id: 'b', name: 'B', order: 3 },
           c: { id: 'c', name: 'C', order: 1 },
         },
       });
 
-      expect(service.groups().map((g) => g.name)).toEqual(['Ungrouped', 'B', 'C', 'A']);
+      expect(service.groups().map((g) => g.name)).toEqual(['Ungrouped', 'C', 'A', 'B']);
     });
   });
 
