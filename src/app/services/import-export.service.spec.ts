@@ -12,17 +12,13 @@ describe('ImportExportService', () => {
     importData: ReturnType<typeof vi.fn>;
   };
 
-  beforeAll(() => {
-    if (!Blob.prototype.text) {
-      Blob.prototype.text = function () {
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsText(this);
-        });
-      };
-    }
-  });
+  function readBlobText(blob: Blob): Promise<string> {
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsText(blob);
+    });
+  }
 
   beforeEach(() => {
     storageService = {
@@ -60,7 +56,7 @@ describe('ImportExportService', () => {
       expect(revokeObjectURL).toHaveBeenCalledOnce();
 
       const blob = createObjectURL.mock.calls[0][0] as Blob;
-      const text = await blob.text();
+      const text = await readBlobText(blob);
       expect(JSON.parse(text)).toEqual(exportPayload);
     });
   });
@@ -90,7 +86,7 @@ describe('ImportExportService', () => {
       expect(anchor.click).toHaveBeenCalledOnce();
 
       const blob = createObjectURL.mock.calls[0][0] as Blob;
-      const text = await blob.text();
+      const text = await readBlobText(blob);
       expect(JSON.parse(text)).toEqual(backupData);
     });
   });

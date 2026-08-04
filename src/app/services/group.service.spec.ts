@@ -58,9 +58,16 @@ describe('GroupService', () => {
     });
 
     it('uses the next order when groups exist', () => {
+      saveData({
+        groups: {
+          [DEFAULT_GROUP_ID]: { id: 'ungrouped', name: 'Ungrouped', order: 0 },
+          existing: { id: 'existing', name: 'Existing', order: 3 },
+        },
+      });
+
       const created = service.createGroup('Solo');
 
-      expect(created.order).toBe(1);
+      expect(created.order).toBe(4);
     });
   });
 

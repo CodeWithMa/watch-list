@@ -4,6 +4,7 @@ import { StorageService } from './storage.service';
 import { Item, SeriesProgress } from '../models/item.model';
 import { CURRENT_SCHEMA_VERSION, DeletedItemHistory } from '../models/storage.model';
 import { IDBFactory } from 'fake-indexeddb';
+import { vi } from 'vitest';
 
 describe('WatchListService', () => {
   let storageService: StorageService;
@@ -74,11 +75,11 @@ describe('WatchListService', () => {
 
     it('does nothing when the item does not exist', () => {
       saveData({ items: {} });
-      const data = storageService.getData();
+      const saveSpy = vi.spyOn(storageService, 'saveData');
 
       service.deleteItem('missing');
 
-      expect(storageService.getData()).toEqual(data);
+      expect(saveSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -238,13 +239,13 @@ describe('WatchListService', () => {
       saveData({
         items: { i1: createItem({ id: 'i1', status: 'in-progress' }) },
       });
-      const data = storageService.getData();
+      const saveSpy = vi.spyOn(storageService, 'saveData');
 
       service.markCompleted('missing');
       service.markDropped('missing');
       service.markStarted('missing');
 
-      expect(storageService.getData()).toEqual(data);
+      expect(saveSpy).not.toHaveBeenCalled();
     });
   });
 
