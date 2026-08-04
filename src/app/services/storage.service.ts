@@ -55,19 +55,21 @@ export class StorageService {
 
   private persistData(data: StorageData): Promise<void> {
     const updated: StorageData = {
-      ...data,
+      ...cloneStorageData(data),
       lastModifiedAt: new Date().toISOString(),
     };
+    const writeSnapshot = cloneStorageData(updated);
+    this.saveError.set(null);
     this.data.set(updated);
-    const write = this.writeQueue.then(() => this.writeData(updated));
+    const write = this.writeQueue.then(() => this.writeData(writeSnapshot));
     this.writeQueue = write.then(
       () => {
-        this.lastPersistedData = updated;
+        this.lastPersistedData = cloneStorageData(updated);
         this.saveError.set(null);
       },
       (error: unknown) => {
         if (this.data() === updated) {
-          this.data.set(this.lastPersistedData);
+          this.data.set(this.lastPersistedData && cloneStorageData(this.lastPersistedData));
         }
         const message = error instanceof Error ? error.message : String(error);
         this.saveError.set(message);
@@ -78,7 +80,7 @@ export class StorageService {
   }
 
   getData(): StorageData {
-    return this.data()!;
+    return cloneStorageData(this.data()!);
   }
 
   getDataSignal() {
@@ -110,23 +112,23 @@ export class StorageService {
         await this.backupRawData(stored);
         const defaults = createDefaultStorageData();
         await this.writeData(defaults);
-        this.lastPersistedData = defaults;
-        this.data.set(defaults);
+        this.lastPersistedData = cloneStorageData(defaults);
+        this.data.set(cloneStorageData(defaults));
         return;
       }
 
       if (!storageDataEqual(normalized, storedSnapshot)) {
         await this.writeData(normalized);
       }
-      this.lastPersistedData = normalized;
-      this.data.set(normalized);
+      this.lastPersistedData = cloneStorageData(normalized);
+      this.data.set(cloneStorageData(normalized));
       return;
     }
 
     const defaults = createDefaultStorageData();
     await this.writeData(defaults);
-    this.lastPersistedData = defaults;
-    this.data.set(defaults);
+    this.lastPersistedData = cloneStorageData(defaults);
+    this.data.set(cloneStorageData(defaults));
   }
 
   private async backupRawData(raw: unknown): Promise<void> {
@@ -134,7 +136,8 @@ export class StorageService {
     transaction.objectStore(STORE_NAME).put(raw, BACKUP_KEY);
     await new Promise<void>((resolve, reject) => {
       transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error('Failed to back up corrupted data'));
+      transaction.onerror = () =>
+        reject(transaction.error ?? new Error('Failed to back up corrupted data'));
       transaction.onabort = () =>
         reject(transaction.error ?? new Error('Backup transaction was aborted'));
     });
@@ -143,6 +146,7 @@ export class StorageService {
   private openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+      let abandoned = false;
 
       request.onupgradeneeded = () => {
         const database = request.result;
@@ -150,9 +154,16 @@ export class StorageService {
           database.createObjectStore(STORE_NAME);
         }
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        if (abandoned) {
+          request.result.close();
+          return;
+        }
+        resolve(request.result);
+      };
       request.onerror = () => reject(request.error ?? new Error('Failed to open IndexedDB'));
       request.onblocked = () => {
+        abandoned = true;
         reject(new Error('IndexedDB open request is blocked by another open connection'));
       };
     });
@@ -194,7 +205,15 @@ export class StorageService {
   }
 }
 
-function storageDataEqual(left: unknown, right: unknown, seen = new WeakMap<object, object>()): boolean {
+function cloneStorageData(data: StorageData): StorageData {
+  return structuredClone(data);
+}
+
+function storageDataEqual(
+  left: unknown,
+  right: unknown,
+  seen = new WeakMap<object, object>(),
+): boolean {
   if (Object.is(left, right)) {
     return true;
   }
@@ -220,6 +239,8 @@ function storageDataEqual(left: unknown, right: unknown, seen = new WeakMap<obje
   }
 
   return leftKeys.every(
-    (key) => Object.prototype.hasOwnProperty.call(rightRecord, key) && storageDataEqual(leftRecord[key], rightRecord[key], seen),
+    (key) =>
+      Object.prototype.hasOwnProperty.call(rightRecord, key) &&
+      storageDataEqual(leftRecord[key], rightRecord[key], seen),
   );
 }

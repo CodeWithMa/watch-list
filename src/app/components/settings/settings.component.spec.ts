@@ -20,7 +20,7 @@ describe('SettingsComponent', () => {
           provide: ImportExportService,
           useValue: {
             exportData: vi.fn(),
-            exportRecoveryBackup: vi.fn(),
+            exportRecoveryBackup: vi.fn().mockResolvedValue(undefined),
             importData: vi.fn(),
           },
         },
@@ -101,5 +101,31 @@ describe('SettingsComponent', () => {
 
     expect(tmdbSettingsService.clearCredentials).toHaveBeenCalled();
     expect(fixture.componentInstance.tmdbSettingsMessage()).toBe('TMDB credentials cleared.');
+  });
+
+  it('shows recovery backup export feedback on success', async () => {
+    configure({ token: '', key: '', credential: null });
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    await fixture.componentInstance.exportRecoveryBackup();
+
+    expect(fixture.componentInstance.successMessage()).toBe(
+      'Recovery backup exported successfully',
+    );
+    expect(fixture.componentInstance.errorMessage()).toBeNull();
+  });
+
+  it('shows recovery backup export feedback on failure', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    vi.spyOn(exportService, 'exportRecoveryBackup').mockRejectedValue(
+      new Error('No recovery backup'),
+    );
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    await fixture.componentInstance.exportRecoveryBackup();
+
+    expect(fixture.componentInstance.errorMessage()).toBe('No recovery backup');
+    expect(fixture.componentInstance.successMessage()).toBeNull();
   });
 });

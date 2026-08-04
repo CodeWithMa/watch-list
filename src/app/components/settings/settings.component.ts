@@ -200,6 +200,9 @@ export class SettingsComponent {
   }
 
   async exportRecoveryBackup(): Promise<void> {
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+
     try {
       await this.importExportService.exportRecoveryBackup();
       this.successMessage.set('Recovery backup exported successfully');

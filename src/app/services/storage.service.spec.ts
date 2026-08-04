@@ -57,21 +57,32 @@ describe('StorageService', () => {
 
   it('rejects a blocked open request without reading its unavailable result', async () => {
     const service = new StorageService();
+    const database = { close: vi.fn() } as unknown as IDBDatabase;
+    let resultAvailable = false;
     const request = {
       onupgradeneeded: null,
       onsuccess: null,
       onerror: null,
       onblocked: null,
-      get result(): never {
-        throw new DOMException('The request is still pending', 'InvalidStateError');
+      get result(): IDBDatabase {
+        if (!resultAvailable) {
+          throw new DOMException('The request is still pending', 'InvalidStateError');
+        }
+        return database;
       },
     } as unknown as IDBOpenDBRequest;
     vi.spyOn(indexedDB, 'open').mockReturnValue(request);
 
-    const opening = (service as unknown as { openDatabase: () => Promise<IDBDatabase> }).openDatabase();
+    const opening = (
+      service as unknown as { openDatabase: () => Promise<IDBDatabase> }
+    ).openDatabase();
     request.onblocked!({} as IDBVersionChangeEvent);
 
     await expect(opening).rejects.toThrowError('IndexedDB open request is blocked');
+    resultAvailable = true;
+    request.onsuccess!(new Event('success'));
+
+    expect(database.close).toHaveBeenCalledOnce();
   });
 
   it('loads data persisted by an earlier service instance', async () => {
@@ -313,8 +324,24 @@ describe('StorageService', () => {
       }),
     ).rejects.toThrowError('Disk full');
 
-    expect(service.getData()).toBe(persistedData);
+    expect(service.getData()).toEqual(persistedData);
     expect(error).toHaveBeenCalledWith('Failed to save watch-list data:', expect.any(Error));
+  });
+
+  it('restores an unmodified nested snapshot when a mutated update cannot be written', async () => {
+    const service = new StorageService();
+    await service.initialize();
+    const storage = service as unknown as {
+      writeData: (data: unknown) => Promise<void>;
+    };
+    vi.spyOn(storage, 'writeData').mockRejectedValueOnce(new Error('Disk full'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const changed = service.getData();
+    changed.groups['ungrouped'].name = 'Renamed';
+
+    await expect(service.importData(changed)).rejects.toThrowError('Disk full');
+
+    expect(service.getData().groups['ungrouped'].name).toBe('Ungrouped');
   });
 
   it('keeps a newer queued update when an earlier write fails', async () => {
