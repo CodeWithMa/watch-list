@@ -42,15 +42,17 @@ describe('SeasonEditorComponent', () => {
     });
 
     it('handles non-contiguous season numbers by using the maximum plus one', () => {
-      setSeasons([{ seasonNumber: 1, totalEpisodes: 5 }]);
-
-      component.addSeason();
-      component.addSeason();
-
-      expect(emitted[1]).toEqual([
+      setSeasons([
         { seasonNumber: 1, totalEpisodes: 5 },
-        { seasonNumber: 2, totalEpisodes: undefined },
-        { seasonNumber: 3, totalEpisodes: undefined },
+        { seasonNumber: 3, totalEpisodes: 8 },
+      ]);
+
+      component.addSeason();
+
+      expect(emitted[0]).toEqual([
+        { seasonNumber: 1, totalEpisodes: 5 },
+        { seasonNumber: 3, totalEpisodes: 8 },
+        { seasonNumber: 4, totalEpisodes: undefined },
       ]);
     });
   });

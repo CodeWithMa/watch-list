@@ -86,10 +86,12 @@ describe('GroupService', () => {
         groups: {
           [DEFAULT_GROUP_ID]: { id: 'ungrouped', name: 'Ungrouped', order: 0 },
           films: { id: 'films', name: 'Films', order: 1 },
+          series: { id: 'series', name: 'Series', order: 2 },
         },
         items: {
           inFilms: createItem({ id: 'inFilms', groupId: 'films' }),
           untouched: createItem({ id: 'untouched', groupId: 'ungrouped' }),
+          inSeries: createItem({ id: 'inSeries', groupId: 'series' }),
         },
       });
 
@@ -97,8 +99,11 @@ describe('GroupService', () => {
 
       const data = storageService.getData();
       expect(data.groups['films']).toBeUndefined();
+      expect(data.groups['series']).toBeDefined();
+      expect(data.groups['series'].name).toBe('Series');
       expect(data.items['inFilms'].groupId).toBe(DEFAULT_GROUP_ID);
       expect(data.items['untouched'].groupId).toBe(DEFAULT_GROUP_ID);
+      expect(data.items['inSeries'].groupId).toBe('series');
     });
   });
 

@@ -12,6 +12,18 @@ describe('ImportExportService', () => {
     importData: ReturnType<typeof vi.fn>;
   };
 
+  beforeAll(() => {
+    if (!Blob.prototype.text) {
+      Blob.prototype.text = function () {
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsText(this);
+        });
+      };
+    }
+  });
+
   beforeEach(() => {
     storageService = {
       getData: vi.fn(),
@@ -31,12 +43,14 @@ describe('ImportExportService', () => {
   });
 
   describe('exportData', () => {
-    it('downloads the current data as JSON', () => {
-      storageService.getData.mockReturnValue({ items: [], groups: {} });
+    it('downloads the current data as JSON', async () => {
+      const exportPayload = { items: [], groups: {} };
+      storageService.getData.mockReturnValue(exportPayload);
       const { anchor, createObjectURL, appendChild, removeChild, revokeObjectURL } = mockDownload();
 
       importExportService.exportData();
 
+      expect(storageService.getData).toHaveBeenCalledOnce();
       expect(anchor.download).toMatch(/^watch-list-export-\d{4}-\d{2}-\d{2}\.json$/);
       expect(anchor.href).toBe('blob:mock');
       expect(createObjectURL).toHaveBeenCalledOnce();
@@ -44,6 +58,10 @@ describe('ImportExportService', () => {
       expect(anchor.click).toHaveBeenCalledOnce();
       expect(removeChild).toHaveBeenCalledOnce();
       expect(revokeObjectURL).toHaveBeenCalledOnce();
+
+      const blob = createObjectURL.mock.calls[0][0] as Blob;
+      const text = await blob.text();
+      expect(JSON.parse(text)).toEqual(exportPayload);
     });
   });
 
@@ -59,8 +77,9 @@ describe('ImportExportService', () => {
 
   describe('exportRecoveryBackup', () => {
     it('downloads the requested backup as JSON', async () => {
-      storageService.getRecoveryBackupByKey.mockResolvedValue({ schemaVersion: 1 });
-      const { anchor } = mockDownload();
+      const backupData = { schemaVersion: 1, data: 'test' };
+      storageService.getRecoveryBackupByKey.mockResolvedValue(backupData);
+      const { anchor, createObjectURL } = mockDownload();
 
       await importExportService.exportRecoveryBackup('watch-list-data-backup-123');
 
@@ -69,6 +88,10 @@ describe('ImportExportService', () => {
       );
       expect(anchor.download).toMatch(/^watch-list-recovery-backup-\d{4}-\d{2}-\d{2}\.json$/);
       expect(anchor.click).toHaveBeenCalledOnce();
+
+      const blob = createObjectURL.mock.calls[0][0] as Blob;
+      const text = await blob.text();
+      expect(JSON.parse(text)).toEqual(backupData);
     });
   });
 

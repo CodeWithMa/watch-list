@@ -235,11 +235,16 @@ describe('WatchListService', () => {
     });
 
     it('does nothing when the item does not exist', () => {
-      saveData({ items: {} });
+      saveData({
+        items: { i1: createItem({ id: 'i1', status: 'in-progress' }) },
+      });
+      const data = storageService.getData();
 
       service.markCompleted('missing');
       service.markDropped('missing');
       service.markStarted('missing');
+
+      expect(storageService.getData()).toEqual(data);
     });
   });
 

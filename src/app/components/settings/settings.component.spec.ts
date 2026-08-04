@@ -224,7 +224,7 @@ describe('SettingsComponent', () => {
       files: [
         new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
       ] as unknown as FileList,
-      value: '',
+      value: 'previous-file.json',
     };
 
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
@@ -281,5 +281,6 @@ describe('SettingsComponent', () => {
     await fixture.whenStable();
 
     expect(fixture.componentInstance.recoveryBackups()).toEqual([]);
+    expect(fixture.componentInstance.errorMessage()).toBeNull();
   });
 });

@@ -16,7 +16,7 @@ describe('toPositiveNumber', () => {
     expect(toPositiveNumber('-3', 5)).toBe(5);
   });
 
-  it('parses numeric strings and numbers as positive integers', () => {
+  it('parses numeric strings and numbers as positive numbers', () => {
     expect(toPositiveNumber('12', 5)).toBe(12);
     expect(toPositiveNumber(7, 5)).toBe(7);
     expect(toPositiveNumber('3.5', 5)).toBe(3.5);
@@ -39,7 +39,7 @@ describe('toOptionalPositiveNumber', () => {
     expect(toOptionalPositiveNumber('-3')).toBeUndefined();
   });
 
-  it('parses numeric strings and numbers as positive integers', () => {
+  it('parses numeric strings and numbers as positive numbers', () => {
     expect(toOptionalPositiveNumber('8')).toBe(8);
     expect(toOptionalPositiveNumber(9)).toBe(9);
   });
