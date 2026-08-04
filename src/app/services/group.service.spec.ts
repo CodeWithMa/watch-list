@@ -4,6 +4,7 @@ import { StorageService } from './storage.service';
 import { IDBFactory } from 'fake-indexeddb';
 import { Group } from '../models/group.model';
 import { Item } from '../models/item.model';
+import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { DEFAULT_GROUP_ID } from '../domain/item.constants';
 
 describe('GroupService', () => {
@@ -155,7 +156,7 @@ describe('GroupService', () => {
 
   function saveData(data?: Partial<ReturnType<StorageService['getData']>>): void {
     storageService.saveData({
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       lastModifiedAt: '2026-04-01T10:00:00.000Z',
       groups: {
         [DEFAULT_GROUP_ID]: { id: 'ungrouped', name: 'Ungrouped', order: 0 },

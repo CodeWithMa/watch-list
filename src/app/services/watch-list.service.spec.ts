@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { WatchListService } from './watch-list.service';
 import { StorageService } from './storage.service';
 import { Item, SeriesProgress } from '../models/item.model';
-import { DeletedItemHistory } from '../models/storage.model';
+import { CURRENT_SCHEMA_VERSION, DeletedItemHistory } from '../models/storage.model';
 import { IDBFactory } from 'fake-indexeddb';
 
 describe('WatchListService', () => {
@@ -124,7 +124,7 @@ describe('WatchListService', () => {
       };
 
       storageService.saveData({
-        schemaVersion: 3,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
         items: { 'series-1': item },
@@ -158,7 +158,7 @@ describe('WatchListService', () => {
       };
 
       storageService.saveData({
-        schemaVersion: 3,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
         items: { 'series-2': item },
@@ -193,7 +193,7 @@ describe('WatchListService', () => {
       };
 
       storageService.saveData({
-        schemaVersion: 3,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
         items: { 'series-3': item },
