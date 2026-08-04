@@ -106,10 +106,12 @@ describe('SettingsComponent', () => {
 
   it('shows recovery backup export feedback on success', async () => {
     configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
     const fixture = TestBed.createComponent(SettingsComponent);
 
     await fixture.componentInstance.exportRecoveryBackup('watch-list-data-backup-123');
 
+    expect(exportService.exportRecoveryBackup).toHaveBeenCalledWith('watch-list-data-backup-123');
     expect(fixture.componentInstance.successMessage()).toBe(
       'Recovery backup exported successfully',
     );
@@ -126,6 +128,7 @@ describe('SettingsComponent', () => {
 
     await fixture.componentInstance.exportRecoveryBackup('watch-list-data-backup-123');
 
+    expect(exportService.exportRecoveryBackup).toHaveBeenCalledWith('watch-list-data-backup-123');
     expect(fixture.componentInstance.errorMessage()).toBe('No recovery backup');
     expect(fixture.componentInstance.successMessage()).toBeNull();
   });
