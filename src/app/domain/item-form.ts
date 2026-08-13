@@ -10,7 +10,7 @@ export interface ItemFormValue {
   episode: number;
   seasons: SeasonInfo[];
   startImmediately: boolean;
-  posterPath?: string;
+  posterId?: string;
 }
 
 export type ItemMutationInput = Omit<Item, 'id' | 'createdAt' | 'watchHistory'>;
@@ -25,7 +25,7 @@ export function createDefaultItemFormValue(): ItemFormValue {
     episode: 1,
     seasons: [],
     startImmediately: false,
-    posterPath: undefined,
+    posterId: undefined,
   };
 }
 
@@ -39,7 +39,7 @@ export function createItemFormValue(item: Item): ItemFormValue {
     episode: item.progress?.episode ?? 1,
     seasons: item.progress?.seasons ?? [],
     startImmediately: item.status === 'in-progress',
-    posterPath: item.posterPath,
+    posterId: item.posterId,
   };
 }
 
@@ -58,7 +58,7 @@ export function buildItemMutationInput(formValue: ItemFormValue): ItemMutationIn
             seasons: sortedSeasons,
           }
         : undefined,
-    posterPath: formValue.posterPath,
+    posterId: formValue.posterId,
   };
 }
 

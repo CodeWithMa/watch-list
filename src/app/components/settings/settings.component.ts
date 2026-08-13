@@ -96,7 +96,7 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
             Export Data
           </button>
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Download all your watch list data as a JSON file
+            Download your watch list and locally stored poster images as a JSON file
           </p>
         </div>
         <div class="mb-4 last:mb-0">
@@ -208,9 +208,9 @@ export class SettingsComponent implements OnInit {
       : 'TMDB API key saved and will be used as fallback.';
   }
 
-  exportData(): void {
+  async exportData(): Promise<void> {
     try {
-      this.importExportService.exportData();
+      await this.importExportService.exportData();
       this.successMessage.set('Data exported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch {

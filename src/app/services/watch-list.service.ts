@@ -2,6 +2,7 @@ import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Item, SeriesProgress } from '../models/item.model';
 import { HistoryEntry } from '../models/storage.model';
+import { ImageStorageService } from './image-storage.service';
 
 function advanceSeriesProgress(progress: SeriesProgress): {
   progress: SeriesProgress;
@@ -27,6 +28,7 @@ function advanceSeriesProgress(progress: SeriesProgress): {
 })
 export class WatchListService {
   private storageService = inject(StorageService);
+  private imageStorage = inject(ImageStorageService);
 
   addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): void {
     const data = this.storageService.getData();
@@ -51,6 +53,7 @@ export class WatchListService {
 
   updateItem(item: Item): void {
     const data = this.storageService.getData();
+    const previousPosterId = data.items[item.id]?.posterId;
     this.storageService.saveData({
       ...data,
       items: {
@@ -58,6 +61,9 @@ export class WatchListService {
         [item.id]: item,
       },
     });
+    if (previousPosterId && previousPosterId !== item.posterId) {
+      void this.imageStorage.delete(previousPosterId);
+    }
   }
 
   deleteItem(itemId: string): void {
@@ -84,6 +90,7 @@ export class WatchListService {
       items,
       deletedItems,
     });
+    void this.imageStorage.delete(removed.posterId);
   }
 
   markWatched(itemId: string): void {

@@ -148,7 +148,6 @@ describe('AddItemComponent', () => {
             firstEpisodeAirDate: '2008-01-20',
           },
         ],
-        posterPath: '/breaking-bad.jpg',
       },
     });
   });
@@ -166,8 +165,7 @@ describe('AddItemComponent', () => {
     });
 
     expect(tmdbSuggestionService.getSeriesDetails).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.autofillPatch()).not.toBeNull();
-    expect(fixture.componentInstance.autofillPatch()?.value.posterPath).toBe('/star-wars.jpg');
+    expect(fixture.componentInstance.autofillPatch()).toBeNull();
   });
 
   it('does not apply stale TMDB details after the title changes', () => {
@@ -250,7 +248,7 @@ describe('AddItemComponent', () => {
       ],
     });
 
-    expect(fixture.componentInstance.autofillPatch()?.value.posterPath).toBe('/star-wars.jpg');
+    expect(fixture.componentInstance.autofillPatch()).toBeNull();
   });
 
   it('cancels the previous TMDB details request when another series is selected', () => {

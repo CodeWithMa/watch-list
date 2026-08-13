@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ImportExportService } from './import-export.service';
 import { StorageService } from './storage.service';
+import { ImageStorageService } from './image-storage.service';
 import { vi, afterEach } from 'vitest';
 
 describe('ImportExportService', () => {
@@ -10,6 +11,10 @@ describe('ImportExportService', () => {
     getRecoveryBackups: ReturnType<typeof vi.fn>;
     getRecoveryBackupByKey: ReturnType<typeof vi.fn>;
     importData: ReturnType<typeof vi.fn>;
+  };
+  let imageStorage: {
+    exportImages: ReturnType<typeof vi.fn>;
+    replaceImages: ReturnType<typeof vi.fn>;
   };
 
   function readBlobText(blob: Blob): Promise<string> {
@@ -27,9 +32,16 @@ describe('ImportExportService', () => {
       getRecoveryBackupByKey: vi.fn(),
       importData: vi.fn(),
     };
+    imageStorage = {
+      exportImages: vi.fn().mockResolvedValue([]),
+      replaceImages: vi.fn().mockResolvedValue(undefined),
+    };
 
     TestBed.configureTestingModule({
-      providers: [{ provide: StorageService, useValue: storageService }],
+      providers: [
+        { provide: StorageService, useValue: storageService },
+        { provide: ImageStorageService, useValue: imageStorage },
+      ],
     });
     importExportService = TestBed.inject(ImportExportService);
   });
@@ -44,7 +56,7 @@ describe('ImportExportService', () => {
       storageService.getData.mockReturnValue(exportPayload);
       const { anchor, createObjectURL, appendChild, removeChild, revokeObjectURL } = mockDownload();
 
-      importExportService.exportData();
+      await importExportService.exportData();
 
       expect(storageService.getData).toHaveBeenCalledOnce();
       expect(anchor.download).toMatch(/^watch-list-export-\d{4}-\d{2}-\d{2}\.json$/);
@@ -57,7 +69,7 @@ describe('ImportExportService', () => {
 
       const blob = createObjectURL.mock.calls[0][0] as Blob;
       const text = await readBlobText(blob);
-      expect(JSON.parse(text)).toEqual(exportPayload);
+      expect(JSON.parse(text)).toEqual({ data: exportPayload, images: [] });
     });
   });
 

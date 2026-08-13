@@ -52,7 +52,7 @@ const ItemSchema = z.object({
   progress: SeriesProgressSchema.optional(),
   watchHistory: z.array(WatchHistoryEntrySchema),
   createdAt: z.string(),
-  posterPath: z.string().optional(),
+  posterId: z.string().optional(),
 });
 
 const GroupSchema = z.object({
@@ -178,6 +178,15 @@ function migrateStorageData(data: StorageData): StorageData {
       }
     }
     migrated.schemaVersion = 5;
+  }
+
+  if (migrated.schemaVersion < 6) {
+    for (const item of Object.values(migrated.items)) {
+      // Remote URLs must never survive the offline-image migration. Existing
+      // posters are deliberately cleared instead of being fetched at startup.
+      delete (item as unknown as Record<string, unknown>)['posterPath'];
+    }
+    migrated.schemaVersion = 6;
   }
 
   return migrated;

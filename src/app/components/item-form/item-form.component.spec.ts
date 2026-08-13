@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Group } from '../../models/group.model';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
+import { ImageStorageService } from '../../services/image-storage.service';
 import { ItemFormComponent } from './item-form.component';
 import { vi } from 'vitest';
 import { of, throwError } from 'rxjs';
@@ -21,6 +22,14 @@ describe('ItemFormComponent', () => {
           provide: TmdbSuggestionService,
           useValue: {
             search: vi.fn(() => of([])),
+          },
+        },
+        {
+          provide: ImageStorageService,
+          useValue: {
+            getUrl: vi.fn(() => Promise.resolve(null)),
+            storeUrl: vi.fn(() => Promise.resolve('image-1')),
+            storeFile: vi.fn(() => Promise.resolve('image-1')),
           },
         },
       ],
@@ -343,7 +352,9 @@ describe('ItemFormComponent', () => {
         posterPath: '/new-poster.jpg',
       });
 
-      expect(fixture.componentInstance.formValue().posterPath).toBe('/new-poster.jpg');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(fixture.componentInstance.formValue().posterId).toBe('image-1');
       expect(fixture.componentInstance.posterSearchQuery()).toBe('');
       expect(fixture.componentInstance.posterSuggestions()).toEqual([]);
       expect(fixture.componentInstance.showPosterSearch()).toBe(false);

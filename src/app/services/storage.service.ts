@@ -5,8 +5,9 @@ import { Group } from '../models/group.model';
 import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
 
 const DATABASE_NAME = 'watch-list';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const STORE_NAME = 'storage';
+const IMAGE_STORE_NAME = 'images';
 const DATA_KEY = 'watch-list-data';
 const BACKUP_PREFIX = 'watch-list-data-backup-';
 const BACKUP_LIMIT = 10;
@@ -230,6 +231,9 @@ export class StorageService {
         const database = request.result;
         if (!database.objectStoreNames.contains(STORE_NAME)) {
           database.createObjectStore(STORE_NAME);
+        }
+        if (!database.objectStoreNames.contains(IMAGE_STORE_NAME)) {
+          database.createObjectStore(IMAGE_STORE_NAME, { keyPath: 'id' });
         }
       };
       request.onsuccess = () => {

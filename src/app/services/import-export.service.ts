@@ -1,14 +1,19 @@
 import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
+import { ImageStorageService } from './image-storage.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ImportExportService {
   private storageService = inject(StorageService);
+  private imageStorage = inject(ImageStorageService);
 
-  exportData(): void {
-    this.downloadJson(this.storageService.getData(), 'watch-list-export');
+  async exportData(): Promise<void> {
+    this.downloadJson(
+      { data: this.storageService.getData(), images: await this.imageStorage.exportImages() },
+      'watch-list-export',
+    );
   }
 
   async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
@@ -36,7 +41,14 @@ export class ImportExportService {
   async importData(file: File): Promise<void> {
     try {
       const text = await file.text();
-      await this.storageService.importData(JSON.parse(text));
+      const payload: unknown = JSON.parse(text);
+      if (isPortableExport(payload)) {
+        await this.imageStorage.replaceImages(payload.images);
+        await this.storageService.importData(payload.data);
+      } else {
+        await this.storageService.importData(payload);
+        await this.imageStorage.replaceImages([]);
+      }
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file', { cause: error });
@@ -44,4 +56,8 @@ export class ImportExportService {
       throw error;
     }
   }
+}
+
+function isPortableExport(value: unknown): value is { data: unknown; images: unknown } {
+  return !!value && typeof value === 'object' && 'data' in value && 'images' in value;
 }

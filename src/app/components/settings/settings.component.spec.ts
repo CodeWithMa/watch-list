@@ -182,12 +182,12 @@ describe('SettingsComponent', () => {
     );
   });
 
-  it('shows success feedback when exporting data', () => {
+  it('shows success feedback when exporting data', async () => {
     vi.useFakeTimers();
     configure({ token: '', key: '', credential: null });
     const fixture = TestBed.createComponent(SettingsComponent);
 
-    fixture.componentInstance.exportData();
+    await fixture.componentInstance.exportData();
 
     expect(fixture.componentInstance.successMessage()).toBe('Data exported successfully');
     expect(fixture.componentInstance.errorMessage()).toBeNull();

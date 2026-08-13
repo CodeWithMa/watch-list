@@ -1,11 +1,12 @@
-import { Component, input, computed } from '@angular/core';
+import { Component, input, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Item } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { calculateProgress, getMostRecentWatchDate } from '../../utils/progress.utils';
 import { statusLineColor } from '../../utils/status.utils';
-import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
+import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
+import { ImageStorageService } from '../../services/image-storage.service';
 
 @Component({
   selector: 'app-item-card',
@@ -62,9 +63,10 @@ import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
   `,
 })
 export class ItemCardComponent {
+  private imageStorage = inject(ImageStorageService);
   item = input.required<Item>();
 
-  posterUrl = computed(() => getPosterUrl(this.item().posterPath));
+  posterUrl = signal<string | null>(null);
   placeholderUrl = computed(() => getPlaceholderUrl());
   statusColorClass = computed(() => statusLineColor(this.item().status));
 
@@ -75,4 +77,19 @@ export class ItemCardComponent {
   lastWatchedDate = computed(() => {
     return getMostRecentWatchDate(this.item());
   });
+
+  constructor() {
+    effect(() => void this.loadPoster(this.item().posterId));
+  }
+
+  private async loadPoster(id: string | undefined): Promise<void> {
+    const url = await this.imageStorage.getUrl(id);
+    if (id !== this.item().posterId) {
+      if (url) URL.revokeObjectURL(url);
+      return;
+    }
+    const previous = this.posterUrl();
+    if (previous) URL.revokeObjectURL(previous);
+    this.posterUrl.set(url);
+  }
 }
