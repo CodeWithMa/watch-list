@@ -42,13 +42,11 @@ export class ImportExportService {
     try {
       const text = await file.text();
       const payload: unknown = JSON.parse(text);
-      if (isPortableExport(payload)) {
-        await this.imageStorage.replaceImages(payload.images);
-        await this.storageService.importData(payload.data);
-      } else {
-        await this.storageService.importData(payload);
-        await this.imageStorage.replaceImages([]);
-      }
+      const data = isPortableExport(payload) ? payload.data : payload;
+      const images = await this.imageStorage.parseExportedImages(
+        isPortableExport(payload) ? payload.images : [],
+      );
+      await this.storageService.importDataWithImages(data, images);
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file', { cause: error });

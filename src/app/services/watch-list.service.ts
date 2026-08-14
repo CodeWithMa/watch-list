@@ -30,7 +30,7 @@ export class WatchListService {
   private storageService = inject(StorageService);
   private imageStorage = inject(ImageStorageService);
 
-  addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): void {
+  async addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): Promise<void> {
     const data = this.storageService.getData();
     const id = this.generateId();
     const now = new Date().toISOString();
@@ -42,7 +42,7 @@ export class WatchListService {
       watchHistory: [],
     };
 
-    this.storageService.saveData({
+    await this.storageService.saveData({
       ...data,
       items: {
         ...data.items,
@@ -51,10 +51,10 @@ export class WatchListService {
     });
   }
 
-  updateItem(item: Item): void {
+  async updateItem(item: Item): Promise<void> {
     const data = this.storageService.getData();
     const previousPosterId = data.items[item.id]?.posterId;
-    this.storageService.saveData({
+    await this.storageService.saveData({
       ...data,
       items: {
         ...data.items,
@@ -62,11 +62,11 @@ export class WatchListService {
       },
     });
     if (previousPosterId && previousPosterId !== item.posterId) {
-      void this.imageStorage.delete(previousPosterId);
+      await this.imageStorage.delete(previousPosterId);
     }
   }
 
-  deleteItem(itemId: string): void {
+  async deleteItem(itemId: string): Promise<void> {
     const data = this.storageService.getData();
     const { [itemId]: removed, ...items } = data.items;
 
@@ -85,12 +85,12 @@ export class WatchListService {
       },
     };
 
-    this.storageService.saveData({
+    await this.storageService.saveData({
       ...data,
       items,
       deletedItems,
     });
-    void this.imageStorage.delete(removed.posterId);
+    await this.imageStorage.delete(removed.posterId);
   }
 
   markWatched(itemId: string): void {
@@ -100,7 +100,7 @@ export class WatchListService {
     const now = new Date().toISOString();
 
     if (item.type === 'movie') {
-      this.updateItem({
+      void this.updateItem({
         ...item,
         status: 'completed',
         watchHistory: [...item.watchHistory, { date: now }],
@@ -111,7 +111,7 @@ export class WatchListService {
     const progress = item.progress || { season: 1, episode: 1, seasons: [] };
     const { progress: newProgress, completed } = advanceSeriesProgress(progress);
 
-    this.updateItem({
+    void this.updateItem({
       ...item,
       status: completed ? 'completed' : 'in-progress',
       progress: newProgress,
@@ -126,7 +126,7 @@ export class WatchListService {
     const item = this.getItemById(itemId);
     if (!item) return;
 
-    this.updateItem({
+    void this.updateItem({
       ...item,
       status: 'completed',
     });
@@ -136,7 +136,7 @@ export class WatchListService {
     const item = this.getItemById(itemId);
     if (!item) return;
 
-    this.updateItem({
+    void this.updateItem({
       ...item,
       status: 'dropped',
     });
@@ -146,7 +146,7 @@ export class WatchListService {
     const item = this.getItemById(itemId);
     if (!item) return;
 
-    this.updateItem({
+    void this.updateItem({
       ...item,
       status: 'in-progress',
     });

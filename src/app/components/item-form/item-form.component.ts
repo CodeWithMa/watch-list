@@ -183,33 +183,15 @@ export interface ItemFormAutofillPatch {
                 }
               </div>
             }
-            <div class="flex gap-2">
-              <input
-                type="text"
-                [ngModel]="posterUrlInput()"
-                (ngModelChange)="posterUrlInput.set($event)"
-                name="posterUrl"
-                placeholder="Or enter poster URL"
-                class="flex-1 p-2 border border-light-border dark:border-dark-border rounded text-sm box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary min-w-0"
-              />
+            @if (formValue().posterId) {
               <button
                 type="button"
-                (click)="importPosterUrl()"
-                [disabled]="!posterUrlInput().trim() || posterLoading()"
-                class="px-3 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover text-sm shrink-0 disabled:opacity-50"
+                (click)="clearPoster()"
+                class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
               >
-                Use URL
+                Clear poster
               </button>
-              @if (formValue().posterId) {
-                <button
-                  type="button"
-                  (click)="clearPoster()"
-                  class="px-3 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm shrink-0"
-                >
-                  Clear
-                </button>
-              }
-            </div>
+            }
             <label
               class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover text-sm"
             >
@@ -404,11 +386,14 @@ export class ItemFormComponent {
   readonly posterSuggestionsLoading = signal(false);
   readonly posterSuggestionsError = signal('');
   readonly showPosterSearch = signal(false);
-  readonly posterUrlInput = signal('');
   readonly posterLoading = signal(false);
   readonly posterError = signal('');
   readonly posterPreviewUrl = signal<string | null>(null);
   private previewObjectUrl: string | null = null;
+  private posterRequestId = 0;
+  private readonly draftPosterIds = new Set<string>();
+  private destroyed = false;
+  private submissionStarted = false;
 
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
 
@@ -439,6 +424,12 @@ export class ItemFormComponent {
   private lastAppliedAutofillPatchId: number | null = null;
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
+      this.posterRequestId++;
+      if (this.previewObjectUrl) URL.revokeObjectURL(this.previewObjectUrl);
+      if (!this.submissionStarted) this.deleteDraftPosters();
+    });
     effect(() => {
       const posterId = this.formValue().posterId;
       void this.loadPosterPreview(posterId);
@@ -497,6 +488,7 @@ export class ItemFormComponent {
     }
 
     const submittedValue = prepareSubmittedItemFormValue(value, this.showStartImmediately());
+    this.submissionStarted = true;
 
     this.submitted.emit({
       ...submittedValue,
@@ -505,6 +497,8 @@ export class ItemFormComponent {
   }
 
   handleCancel(): void {
+    this.posterRequestId++;
+    this.deleteDraftPosters();
     if (this.resetOnCancel()) {
       this.formValue.set(normalizeFormValueForType(this.initialValue()));
     }
@@ -562,7 +556,7 @@ export class ItemFormComponent {
 
   selectPosterFromTmdb(suggestion: TmdbSuggestion): void {
     if (suggestion.posterPath) {
-      void this.importPosterUrl(getPosterUrl(suggestion.posterPath) ?? '');
+      void this.storePoster(this.imageStorage.storeUrl(getPosterUrl(suggestion.posterPath) ?? ''));
     }
     this.posterSearchQuery.set('');
     this.posterSearchChanges.next('');
@@ -570,18 +564,25 @@ export class ItemFormComponent {
     this.showPosterSearch.set(false);
   }
 
-  async importPosterUrl(url = this.posterUrlInput()): Promise<void> {
-    if (!url.trim()) return;
+  private async storePoster(request: Promise<string>): Promise<void> {
+    const requestId = ++this.posterRequestId;
     this.posterLoading.set(true);
     this.posterError.set('');
     try {
-      const posterId = await this.imageStorage.storeUrl(url.trim());
+      const posterId = await request;
+      if (this.destroyed || requestId !== this.posterRequestId) {
+        void this.imageStorage.delete(posterId);
+        return;
+      }
+      const previousPosterId = this.formValue().posterId;
+      this.draftPosterIds.add(posterId);
       this.updateFormValue({ posterId });
-      this.posterUrlInput.set('');
+      this.deleteDraftPoster(previousPosterId);
     } catch (error) {
-      this.posterError.set(error instanceof Error ? error.message : 'Unable to save poster.');
+      if (!this.destroyed && requestId === this.posterRequestId)
+        this.posterError.set(error instanceof Error ? error.message : 'Unable to save poster.');
     } finally {
-      this.posterLoading.set(false);
+      if (!this.destroyed && requestId === this.posterRequestId) this.posterLoading.set(false);
     }
   }
 
@@ -590,30 +591,33 @@ export class ItemFormComponent {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    this.posterLoading.set(true);
-    this.posterError.set('');
-    try {
-      this.updateFormValue({ posterId: await this.imageStorage.storeFile(file) });
-    } catch (error) {
-      this.posterError.set(error instanceof Error ? error.message : 'Unable to save poster.');
-    } finally {
-      this.posterLoading.set(false);
-    }
+    await this.storePoster(this.imageStorage.storeFile(file));
   }
 
   clearPoster(): void {
+    this.posterRequestId++;
+    this.deleteDraftPoster(this.formValue().posterId);
     this.updateFormValue({ posterId: undefined });
   }
 
   private async loadPosterPreview(posterId: string | undefined): Promise<void> {
     const url = await this.imageStorage.getUrl(posterId);
-    if (posterId !== this.formValue().posterId) {
+    if (this.destroyed || posterId !== this.formValue().posterId) {
       if (url) URL.revokeObjectURL(url);
       return;
     }
     if (this.previewObjectUrl) URL.revokeObjectURL(this.previewObjectUrl);
     this.previewObjectUrl = url;
     this.posterPreviewUrl.set(url);
+  }
+
+  private deleteDraftPoster(posterId: string | undefined): void {
+    if (posterId && this.draftPosterIds.delete(posterId)) void this.imageStorage.delete(posterId);
+  }
+
+  private deleteDraftPosters(): void {
+    for (const posterId of this.draftPosterIds) void this.imageStorage.delete(posterId);
+    this.draftPosterIds.clear();
   }
 
   private updateFormValue(patch: Partial<ItemFormValue>): void {

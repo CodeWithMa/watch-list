@@ -157,9 +157,8 @@ export class AddItemComponent {
     this.selectedTmdbSeriesIds.next(suggestion.tmdbId);
   }
 
-  onSubmit(formValue: ItemFormValue): void {
-    this.watchListService.addItem(buildItemMutationInput(formValue));
-
+  async onSubmit(formValue: ItemFormValue): Promise<void> {
+    await this.watchListService.addItem(buildItemMutationInput(formValue));
     this.router.navigate(['/items']);
   }
 

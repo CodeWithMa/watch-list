@@ -3,6 +3,7 @@ import { StorageData } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
+import { StoredImage } from './image-storage.service';
 
 const DATABASE_NAME = 'watch-list';
 const DATABASE_VERSION = 2;
@@ -42,8 +43,39 @@ export class StorageService {
     return this.getData();
   }
 
-  saveData(data: StorageData): void {
-    void this.persistData(data);
+  saveData(data: StorageData): Promise<void> {
+    return this.persistData(data);
+  }
+
+  async importDataWithImages(data: unknown, images: StoredImage[]): Promise<StorageData> {
+    const normalized = normalizeStorageData(data);
+    const updated: StorageData = {
+      ...cloneStorageData(normalized),
+      lastModifiedAt: new Date().toISOString(),
+    };
+    const snapshot = cloneStorageData(updated);
+    const write = this.writeQueue.then(async () => {
+      const transaction = this.database!.transaction([STORE_NAME, IMAGE_STORE_NAME], 'readwrite');
+      transaction.objectStore(STORE_NAME).put(snapshot, DATA_KEY);
+      const imageStore = transaction.objectStore(IMAGE_STORE_NAME);
+      imageStore.clear();
+      for (const image of images) imageStore.put(image);
+      await this.completeTransaction(transaction, 'Failed to import watch-list data');
+    });
+    this.writeQueue = write.then(
+      () => {
+        this.lastPersistedData = cloneStorageData(snapshot);
+        this.saveError.set(null);
+      },
+      (error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.saveError.set(message);
+        console.error('Failed to import watch-list data:', error);
+      },
+    );
+    await write;
+    this.data.set(snapshot);
+    return this.getData();
   }
 
   getSaveErrorSignal() {
@@ -275,6 +307,14 @@ export class StorageService {
         reject(transaction.error ?? new Error('Failed to write to IndexedDB'));
       transaction.onabort = () =>
         reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+    });
+  }
+
+  private completeTransaction(transaction: IDBTransaction, message: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error(message));
+      transaction.onabort = () => reject(transaction.error ?? new Error(message));
     });
   }
 }

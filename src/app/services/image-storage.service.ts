@@ -61,14 +61,18 @@ export class ImageStorageService {
   }
 
   async replaceImages(images: unknown): Promise<void> {
-    if (!Array.isArray(images)) throw new Error('Invalid image data');
-    const parsed = await Promise.all(images.map((image) => this.parseExportedImage(image)));
+    const parsed = await this.parseExportedImages(images);
     const db = await this.openDatabase();
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     store.clear();
     for (const image of parsed) store.put(image);
     await this.transaction(transaction);
+  }
+
+  async parseExportedImages(images: unknown): Promise<StoredImage[]> {
+    if (!Array.isArray(images)) throw new Error('Invalid image data');
+    return Promise.all(images.map((image) => this.parseExportedImage(image)));
   }
 
   private async parseExportedImage(value: unknown): Promise<StoredImage> {

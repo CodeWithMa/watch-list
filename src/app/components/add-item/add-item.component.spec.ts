@@ -69,7 +69,7 @@ describe('AddItemComponent', () => {
     );
   });
 
-  it('does not block submitting an item with a duplicate title', () => {
+  it('does not block submitting an item with a duplicate title', async () => {
     const fixture = TestBed.createComponent(AddItemComponent);
     const watchListService = TestBed.inject(WatchListService);
     const router = TestBed.inject(Router);
@@ -85,6 +85,8 @@ describe('AddItemComponent', () => {
       seasons: [],
       startImmediately: false,
     });
+
+    await Promise.resolve();
 
     expect(watchListService.addItem).toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/items']);

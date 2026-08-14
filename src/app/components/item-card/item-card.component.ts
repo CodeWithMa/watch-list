@@ -1,4 +1,4 @@
-import { Component, input, computed, effect, inject, signal } from '@angular/core';
+import { Component, input, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Item } from '../../models/item.model';
@@ -64,6 +64,8 @@ import { ImageStorageService } from '../../services/image-storage.service';
 })
 export class ItemCardComponent {
   private imageStorage = inject(ImageStorageService);
+  private destroyRef = inject(DestroyRef);
+  private destroyed = false;
   item = input.required<Item>();
 
   posterUrl = signal<string | null>(null);
@@ -79,12 +81,17 @@ export class ItemCardComponent {
   });
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
+      const url = this.posterUrl();
+      if (url) URL.revokeObjectURL(url);
+    });
     effect(() => void this.loadPoster(this.item().posterId));
   }
 
   private async loadPoster(id: string | undefined): Promise<void> {
     const url = await this.imageStorage.getUrl(id);
-    if (id !== this.item().posterId) {
+    if (this.destroyed || id !== this.item().posterId) {
       if (url) URL.revokeObjectURL(url);
       return;
     }

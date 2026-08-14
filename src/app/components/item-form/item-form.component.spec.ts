@@ -30,6 +30,7 @@ describe('ItemFormComponent', () => {
             getUrl: vi.fn(() => Promise.resolve(null)),
             storeUrl: vi.fn(() => Promise.resolve('image-1')),
             storeFile: vi.fn(() => Promise.resolve('image-1')),
+            delete: vi.fn(() => Promise.resolve()),
           },
         },
       ],
@@ -361,6 +362,42 @@ describe('ItemFormComponent', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('does not render a manual poster URL import control', () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('input[name="posterUrl"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Use URL');
+  });
+
+  it('deletes a poster that finishes importing after it was cleared', async () => {
+    let resolvePoster!: (id: string) => void;
+    const imageStorage = TestBed.inject(ImageStorageService);
+    vi.mocked(imageStorage.storeUrl).mockReturnValue(
+      new Promise<string>((resolve) => {
+        resolvePoster = resolve;
+      }),
+    );
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.detectChanges();
+
+    fixture.componentInstance.selectPosterFromTmdb({
+      tmdbId: 1,
+      title: 'Test Movie',
+      type: 'movie',
+      posterPath: '/poster.jpg',
+    });
+    fixture.componentInstance.clearPoster();
+    resolvePoster('late-poster');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(imageStorage.delete).toHaveBeenCalledWith('late-poster');
+    expect(fixture.componentInstance.formValue().posterId).toBeUndefined();
   });
 
   it('re-triggers poster search when re-typing the same query after selection', async () => {
