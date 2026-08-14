@@ -373,6 +373,20 @@ describe('ItemFormComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Use URL');
   });
 
+  it('blocks submission while a poster is being saved', () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.componentInstance.updateTitle('Test Movie');
+    const submitted = vi.fn();
+    fixture.componentInstance.submitted.subscribe(submitted);
+    fixture.componentInstance.posterLoading.set(true);
+
+    fixture.componentInstance.submit();
+
+    expect(fixture.componentInstance.isSubmitDisabled()).toBe(true);
+    expect(submitted).not.toHaveBeenCalled();
+  });
+
   it('deletes a poster that finishes importing after it was cleared', async () => {
     let resolvePoster!: (id: string) => void;
     const imageStorage = TestBed.inject(ImageStorageService);

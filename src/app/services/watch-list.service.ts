@@ -100,7 +100,7 @@ export class WatchListService {
     const now = new Date().toISOString();
 
     if (item.type === 'movie') {
-      void this.updateItem({
+      this.persistItemUpdate({
         ...item,
         status: 'completed',
         watchHistory: [...item.watchHistory, { date: now }],
@@ -111,7 +111,7 @@ export class WatchListService {
     const progress = item.progress || { season: 1, episode: 1, seasons: [] };
     const { progress: newProgress, completed } = advanceSeriesProgress(progress);
 
-    void this.updateItem({
+    this.persistItemUpdate({
       ...item,
       status: completed ? 'completed' : 'in-progress',
       progress: newProgress,
@@ -126,7 +126,7 @@ export class WatchListService {
     const item = this.getItemById(itemId);
     if (!item) return;
 
-    void this.updateItem({
+    this.persistItemUpdate({
       ...item,
       status: 'completed',
     });
@@ -136,7 +136,7 @@ export class WatchListService {
     const item = this.getItemById(itemId);
     if (!item) return;
 
-    void this.updateItem({
+    this.persistItemUpdate({
       ...item,
       status: 'dropped',
     });
@@ -146,7 +146,7 @@ export class WatchListService {
     const item = this.getItemById(itemId);
     if (!item) return;
 
-    void this.updateItem({
+    this.persistItemUpdate({
       ...item,
       status: 'in-progress',
     });
@@ -163,6 +163,12 @@ export class WatchListService {
 
   private generateId(): string {
     return `item-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  }
+
+  private persistItemUpdate(item: Item): void {
+    void this.updateItem(item).catch((error: unknown) => {
+      console.error('Failed to update watch-list item:', error);
+    });
   }
 
   items = computed(() => {

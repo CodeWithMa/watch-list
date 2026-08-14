@@ -131,6 +131,20 @@ describe('ImportExportService', () => {
       expect(storageService.importDataWithImages).toHaveBeenCalledWith({ a: 1 }, []);
     });
 
+    it('imports portable data together with its parsed images', async () => {
+      const exportedImages = [{ id: 'poster-1', type: 'image/png', data: 'base64-data' }];
+      const parsedImages = [{ id: 'poster-1', blob: new Blob(['image'], { type: 'image/png' }) }];
+      imageStorage.parseExportedImages.mockResolvedValue(parsedImages);
+      storageService.importDataWithImages.mockResolvedValue(undefined);
+
+      await importExportService.importData(
+        mockFile(JSON.stringify({ data: { items: [] }, images: exportedImages })),
+      );
+
+      expect(imageStorage.parseExportedImages).toHaveBeenCalledWith(exportedImages);
+      expect(storageService.importDataWithImages).toHaveBeenCalledWith({ items: [] }, parsedImages);
+    });
+
     it('throws a friendly error for invalid JSON', async () => {
       const file = mockFile('not json');
 

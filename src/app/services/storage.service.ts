@@ -54,6 +54,9 @@ export class StorageService {
       lastModifiedAt: new Date().toISOString(),
     };
     const snapshot = cloneStorageData(updated);
+    const previousData = this.data();
+    this.saveError.set(null);
+    this.data.set(snapshot);
     const write = this.writeQueue.then(async () => {
       const transaction = this.database!.transaction([STORE_NAME, IMAGE_STORE_NAME], 'readwrite');
       transaction.objectStore(STORE_NAME).put(snapshot, DATA_KEY);
@@ -68,13 +71,15 @@ export class StorageService {
         this.saveError.set(null);
       },
       (error: unknown) => {
+        if (this.data() === snapshot) {
+          this.data.set(previousData && cloneStorageData(previousData));
+        }
         const message = error instanceof Error ? error.message : String(error);
         this.saveError.set(message);
         console.error('Failed to import watch-list data:', error);
       },
     );
     await write;
-    this.data.set(snapshot);
     return this.getData();
   }
 

@@ -410,7 +410,7 @@ export class ItemFormComponent {
   });
 
   readonly isSubmitDisabled = computed(() => {
-    if (!this.formValue().title.trim()) {
+    if (!this.formValue().title.trim() || this.posterLoading()) {
       return true;
     }
 
@@ -483,7 +483,7 @@ export class ItemFormComponent {
 
   submit(): void {
     const value = this.formValue();
-    if (!value.title.trim()) {
+    if (!value.title.trim() || this.posterLoading()) {
       return;
     }
 
