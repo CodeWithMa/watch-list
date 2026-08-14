@@ -193,7 +193,7 @@ export interface ItemFormAutofillPatch {
               </button>
             }
             <label
-              class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover text-sm"
+              class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
             >
               Upload image
               <input type="file" accept="image/*" class="hidden" (change)="uploadPoster($event)" />
@@ -518,6 +518,9 @@ export class ItemFormComponent {
         type: suggestion.type,
       }),
     );
+    if (suggestion.posterPath) {
+      void this.storePoster(this.imageStorage.storeUrl(getPosterUrl(suggestion.posterPath) ?? ''));
+    }
     this.suggestionSelected.emit(suggestion);
   }
 

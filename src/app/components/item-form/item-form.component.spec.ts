@@ -373,6 +373,23 @@ describe('ItemFormComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Use URL');
   });
 
+  it('stores the poster when selecting an item suggestion', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.detectChanges();
+
+    fixture.componentInstance.selectSuggestion({
+      tmdbId: 1,
+      title: 'Test Movie',
+      type: 'movie',
+      posterPath: '/poster.jpg',
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fixture.componentInstance.formValue().posterId).toBe('image-1');
+  });
+
   it('blocks submission while a poster is being saved', () => {
     const fixture = TestBed.createComponent(ItemFormComponent);
     fixture.componentRef.setInput('groups', groups);
