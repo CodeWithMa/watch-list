@@ -28,5 +28,5 @@ export interface Item {
   progress?: SeriesProgress;
   watchHistory: WatchHistoryEntry[];
   createdAt: string;
-  posterPath?: string;
+  posterId?: string;
 }

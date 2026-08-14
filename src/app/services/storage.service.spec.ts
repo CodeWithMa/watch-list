@@ -286,6 +286,33 @@ describe('StorageService', () => {
     ]);
   });
 
+  it('clears legacy remote poster URLs during the offline-image migration', async () => {
+    const service = new StorageService();
+    await service.initialize();
+
+    await service.importData({
+      schemaVersion: 5,
+      lastModifiedAt: '2026-04-01T10:00:00.000Z',
+      groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
+      items: {
+        movie1: {
+          id: 'movie1',
+          title: 'Old Poster',
+          type: 'movie',
+          groupId: 'ungrouped',
+          status: 'not-started',
+          createdAt: '2026-03-01T10:00:00.000Z',
+          watchHistory: [],
+          posterPath: 'https://example.test/poster.jpg',
+        },
+      },
+    });
+
+    const item = service.getData().items['movie1'];
+    expect(item.posterId).toBeUndefined();
+    expect('posterPath' in item).toBe(false);
+  });
+
   it('rejects invalid imports', async () => {
     const service = new StorageService();
     await service.initialize();

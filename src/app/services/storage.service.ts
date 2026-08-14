@@ -3,10 +3,12 @@ import { StorageData } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
+import { StoredImage } from './image-storage.service';
 
 const DATABASE_NAME = 'watch-list';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const STORE_NAME = 'storage';
+const IMAGE_STORE_NAME = 'images';
 const DATA_KEY = 'watch-list-data';
 const BACKUP_PREFIX = 'watch-list-data-backup-';
 const BACKUP_LIMIT = 10;
@@ -41,8 +43,44 @@ export class StorageService {
     return this.getData();
   }
 
-  saveData(data: StorageData): void {
-    void this.persistData(data);
+  saveData(data: StorageData): Promise<void> {
+    return this.persistData(data);
+  }
+
+  async importDataWithImages(data: unknown, images: StoredImage[]): Promise<StorageData> {
+    const normalized = normalizeStorageData(data);
+    const updated: StorageData = {
+      ...cloneStorageData(normalized),
+      lastModifiedAt: new Date().toISOString(),
+    };
+    const snapshot = cloneStorageData(updated);
+    const previousData = this.data();
+    this.saveError.set(null);
+    this.data.set(snapshot);
+    const write = this.writeQueue.then(async () => {
+      const transaction = this.database!.transaction([STORE_NAME, IMAGE_STORE_NAME], 'readwrite');
+      transaction.objectStore(STORE_NAME).put(snapshot, DATA_KEY);
+      const imageStore = transaction.objectStore(IMAGE_STORE_NAME);
+      imageStore.clear();
+      for (const image of images) imageStore.put(image);
+      await this.completeTransaction(transaction, 'Failed to import watch-list data');
+    });
+    this.writeQueue = write.then(
+      () => {
+        this.lastPersistedData = cloneStorageData(snapshot);
+        this.saveError.set(null);
+      },
+      (error: unknown) => {
+        if (this.data() === snapshot) {
+          this.data.set(previousData && cloneStorageData(previousData));
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        this.saveError.set(message);
+        console.error('Failed to import watch-list data:', error);
+      },
+    );
+    await write;
+    return this.getData();
   }
 
   getSaveErrorSignal() {
@@ -231,6 +269,9 @@ export class StorageService {
         if (!database.objectStoreNames.contains(STORE_NAME)) {
           database.createObjectStore(STORE_NAME);
         }
+        if (!database.objectStoreNames.contains(IMAGE_STORE_NAME)) {
+          database.createObjectStore(IMAGE_STORE_NAME, { keyPath: 'id' });
+        }
       };
       request.onsuccess = () => {
         if (abandoned) {
@@ -271,6 +312,14 @@ export class StorageService {
         reject(transaction.error ?? new Error('Failed to write to IndexedDB'));
       transaction.onabort = () =>
         reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+    });
+  }
+
+  private completeTransaction(transaction: IDBTransaction, message: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error(message));
+      transaction.onabort = () => reject(transaction.error ?? new Error(message));
     });
   }
 }

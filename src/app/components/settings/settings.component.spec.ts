@@ -182,12 +182,23 @@ describe('SettingsComponent', () => {
     );
   });
 
-  it('shows success feedback when exporting data', () => {
+  it('shows success feedback when exporting data', async () => {
     vi.useFakeTimers();
     configure({ token: '', key: '', credential: null });
+    let resolveExport!: () => void;
+    const exportService = TestBed.inject(ImportExportService);
+    vi.spyOn(exportService, 'exportData').mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveExport = resolve;
+      }),
+    );
     const fixture = TestBed.createComponent(SettingsComponent);
 
-    fixture.componentInstance.exportData();
+    const exporting = fixture.componentInstance.exportData();
+
+    expect(fixture.componentInstance.successMessage()).toBeNull();
+    resolveExport();
+    await exporting;
 
     expect(fixture.componentInstance.successMessage()).toBe('Data exported successfully');
     expect(fixture.componentInstance.errorMessage()).toBeNull();

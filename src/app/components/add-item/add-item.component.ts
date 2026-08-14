@@ -48,7 +48,6 @@ export class AddItemComponent {
   private titleChanges = new Subject<string>();
   private selectedTmdbSeriesIds = new Subject<number | null>();
   private skipNextSearch = false;
-  private pendingSeriesPosterPath: string | undefined;
 
   readonly groups = this.groupService.groups;
   readonly initialValue = createDefaultItemFormValue();
@@ -122,18 +121,14 @@ export class AddItemComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((details) => {
-        const posterPath = this.pendingSeriesPosterPath;
-        this.pendingSeriesPosterPath = undefined;
-
-        if (!details && !posterPath) {
+        if (!details) {
           return;
         }
 
         this.autofillPatch.set({
           id: ++this.autofillPatchId,
           value: {
-            ...(details ? { seasons: details.seasons } : {}),
-            posterPath,
+            seasons: details.seasons,
           },
         });
       });
@@ -142,7 +137,6 @@ export class AddItemComponent {
   onTitleChanged(title: string): void {
     this.title.set(title);
     this.autofillPatch.set(null);
-    this.pendingSeriesPosterPath = undefined;
     this.selectedTmdbSeriesIds.next(null);
     this.titleChanges.next(title);
   }
@@ -156,24 +150,15 @@ export class AddItemComponent {
     this.suggestionsError.set('');
 
     if (suggestion.type !== 'series') {
-      this.autofillPatch.set({
-        id: ++this.autofillPatchId,
-        value: {
-          posterPath: suggestion.posterPath,
-        },
-      });
-      this.pendingSeriesPosterPath = undefined;
       this.selectedTmdbSeriesIds.next(null);
       return;
     }
 
-    this.pendingSeriesPosterPath = suggestion.posterPath;
     this.selectedTmdbSeriesIds.next(suggestion.tmdbId);
   }
 
-  onSubmit(formValue: ItemFormValue): void {
-    this.watchListService.addItem(buildItemMutationInput(formValue));
-
+  async onSubmit(formValue: ItemFormValue): Promise<void> {
+    await this.watchListService.addItem(buildItemMutationInput(formValue));
     this.router.navigate(['/items']);
   }
 

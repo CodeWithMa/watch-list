@@ -84,7 +84,7 @@ export class ItemDetailComponent {
   });
   confirmDelete = signal(false);
 
-  saveChanges(formValue: ItemFormValue): void {
+  async saveChanges(formValue: ItemFormValue): Promise<void> {
     const currentItem = this.item();
     if (!currentItem) return;
 
@@ -93,7 +93,7 @@ export class ItemDetailComponent {
       ...buildItemMutationInput(formValue),
     };
 
-    this.watchListService.updateItem(updated);
+    await this.watchListService.updateItem(updated);
     this.router.navigate(['/items']);
   }
 
@@ -101,10 +101,10 @@ export class ItemDetailComponent {
     this.confirmDelete.set(false);
   }
 
-  deleteItem(): void {
+  async deleteItem(): Promise<void> {
     const currentItem = this.item();
     if (currentItem) {
-      this.watchListService.deleteItem(currentItem.id);
+      await this.watchListService.deleteItem(currentItem.id);
       this.router.navigate(['/items']);
     }
   }

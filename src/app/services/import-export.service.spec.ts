@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { ImportExportService } from './import-export.service';
 import { StorageService } from './storage.service';
+import { ImageStorageService } from './image-storage.service';
 import { vi, afterEach } from 'vitest';
 
 describe('ImportExportService', () => {
@@ -9,7 +10,11 @@ describe('ImportExportService', () => {
     getData: ReturnType<typeof vi.fn>;
     getRecoveryBackups: ReturnType<typeof vi.fn>;
     getRecoveryBackupByKey: ReturnType<typeof vi.fn>;
-    importData: ReturnType<typeof vi.fn>;
+    importDataWithImages: ReturnType<typeof vi.fn>;
+  };
+  let imageStorage: {
+    exportImages: ReturnType<typeof vi.fn>;
+    parseExportedImages: ReturnType<typeof vi.fn>;
   };
 
   function readBlobText(blob: Blob): Promise<string> {
@@ -25,11 +30,20 @@ describe('ImportExportService', () => {
       getData: vi.fn(),
       getRecoveryBackups: vi.fn(),
       getRecoveryBackupByKey: vi.fn(),
-      importData: vi.fn(),
+      importDataWithImages: vi.fn(),
+    };
+    imageStorage = {
+      exportImages: vi
+        .fn()
+        .mockResolvedValue([{ id: 'poster-1', type: 'image/png', data: 'base64-data' }]),
+      parseExportedImages: vi.fn().mockResolvedValue([]),
     };
 
     TestBed.configureTestingModule({
-      providers: [{ provide: StorageService, useValue: storageService }],
+      providers: [
+        { provide: StorageService, useValue: storageService },
+        { provide: ImageStorageService, useValue: imageStorage },
+      ],
     });
     importExportService = TestBed.inject(ImportExportService);
   });
@@ -44,7 +58,7 @@ describe('ImportExportService', () => {
       storageService.getData.mockReturnValue(exportPayload);
       const { anchor, createObjectURL, appendChild, removeChild, revokeObjectURL } = mockDownload();
 
-      importExportService.exportData();
+      await importExportService.exportData();
 
       expect(storageService.getData).toHaveBeenCalledOnce();
       expect(anchor.download).toMatch(/^watch-list-export-\d{4}-\d{2}-\d{2}\.json$/);
@@ -57,7 +71,10 @@ describe('ImportExportService', () => {
 
       const blob = createObjectURL.mock.calls[0][0] as Blob;
       const text = await readBlobText(blob);
-      expect(JSON.parse(text)).toEqual(exportPayload);
+      expect(JSON.parse(text)).toEqual({
+        data: exportPayload,
+        images: [{ id: 'poster-1', type: 'image/png', data: 'base64-data' }],
+      });
     });
   });
 
@@ -105,23 +122,40 @@ describe('ImportExportService', () => {
 
     it('parses valid JSON and imports it', async () => {
       const file = mockFile('{"a":1}');
-      storageService.importData.mockResolvedValue(undefined);
+      imageStorage.parseExportedImages.mockResolvedValue([]);
+      storageService.importDataWithImages.mockResolvedValue(undefined);
 
       await importExportService.importData(file);
 
-      expect(storageService.importData).toHaveBeenCalledWith({ a: 1 });
+      expect(imageStorage.parseExportedImages).toHaveBeenCalledWith([]);
+      expect(storageService.importDataWithImages).toHaveBeenCalledWith({ a: 1 }, []);
+    });
+
+    it('imports portable data together with its parsed images', async () => {
+      const exportedImages = [{ id: 'poster-1', type: 'image/png', data: 'base64-data' }];
+      const parsedImages = [{ id: 'poster-1', blob: new Blob(['image'], { type: 'image/png' }) }];
+      imageStorage.parseExportedImages.mockResolvedValue(parsedImages);
+      storageService.importDataWithImages.mockResolvedValue(undefined);
+
+      await importExportService.importData(
+        mockFile(JSON.stringify({ data: { items: [] }, images: exportedImages })),
+      );
+
+      expect(imageStorage.parseExportedImages).toHaveBeenCalledWith(exportedImages);
+      expect(storageService.importDataWithImages).toHaveBeenCalledWith({ items: [] }, parsedImages);
     });
 
     it('throws a friendly error for invalid JSON', async () => {
       const file = mockFile('not json');
 
       await expect(importExportService.importData(file)).rejects.toThrow('Invalid JSON file');
-      expect(storageService.importData).not.toHaveBeenCalled();
+      expect(storageService.importDataWithImages).not.toHaveBeenCalled();
     });
 
     it('rethrows non-syntax errors from the storage service', async () => {
       const file = mockFile('{"a":1}');
-      storageService.importData.mockRejectedValue(new Error('Storage busy'));
+      imageStorage.parseExportedImages.mockResolvedValue([]);
+      storageService.importDataWithImages.mockRejectedValue(new Error('Storage busy'));
 
       await expect(importExportService.importData(file)).rejects.toThrow('Storage busy');
     });

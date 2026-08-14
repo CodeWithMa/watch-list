@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Group } from '../../models/group.model';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
+import { ImageStorageService } from '../../services/image-storage.service';
 import { ItemFormComponent } from './item-form.component';
 import { vi } from 'vitest';
 import { of, throwError } from 'rxjs';
@@ -21,6 +22,15 @@ describe('ItemFormComponent', () => {
           provide: TmdbSuggestionService,
           useValue: {
             search: vi.fn(() => of([])),
+          },
+        },
+        {
+          provide: ImageStorageService,
+          useValue: {
+            getUrl: vi.fn(() => Promise.resolve(null)),
+            storeUrl: vi.fn(() => Promise.resolve('image-1')),
+            storeFile: vi.fn(() => Promise.resolve('image-1')),
+            delete: vi.fn(() => Promise.resolve()),
           },
         },
       ],
@@ -343,13 +353,82 @@ describe('ItemFormComponent', () => {
         posterPath: '/new-poster.jpg',
       });
 
-      expect(fixture.componentInstance.formValue().posterPath).toBe('/new-poster.jpg');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(fixture.componentInstance.formValue().posterId).toBe('image-1');
       expect(fixture.componentInstance.posterSearchQuery()).toBe('');
       expect(fixture.componentInstance.posterSuggestions()).toEqual([]);
       expect(fixture.componentInstance.showPosterSearch()).toBe(false);
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('does not render a manual poster URL import control', () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('input[name="posterUrl"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Use URL');
+  });
+
+  it('stores the poster when selecting an item suggestion', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.detectChanges();
+
+    fixture.componentInstance.selectSuggestion({
+      tmdbId: 1,
+      title: 'Test Movie',
+      type: 'movie',
+      posterPath: '/poster.jpg',
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fixture.componentInstance.formValue().posterId).toBe('image-1');
+  });
+
+  it('blocks submission while a poster is being saved', () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.componentInstance.updateTitle('Test Movie');
+    const submitted = vi.fn();
+    fixture.componentInstance.submitted.subscribe(submitted);
+    fixture.componentInstance.posterLoading.set(true);
+
+    fixture.componentInstance.submit();
+
+    expect(fixture.componentInstance.isSubmitDisabled()).toBe(true);
+    expect(submitted).not.toHaveBeenCalled();
+  });
+
+  it('deletes a poster that finishes importing after it was cleared', async () => {
+    let resolvePoster!: (id: string) => void;
+    const imageStorage = TestBed.inject(ImageStorageService);
+    vi.mocked(imageStorage.storeUrl).mockReturnValue(
+      new Promise<string>((resolve) => {
+        resolvePoster = resolve;
+      }),
+    );
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.detectChanges();
+
+    fixture.componentInstance.selectPosterFromTmdb({
+      tmdbId: 1,
+      title: 'Test Movie',
+      type: 'movie',
+      posterPath: '/poster.jpg',
+    });
+    fixture.componentInstance.clearPoster();
+    resolvePoster('late-poster');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(imageStorage.delete).toHaveBeenCalledWith('late-poster');
+    expect(fixture.componentInstance.formValue().posterId).toBeUndefined();
   });
 
   it('re-triggers poster search when re-typing the same query after selection', async () => {
