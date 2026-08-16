@@ -152,6 +152,16 @@ export class WatchListService {
     });
   }
 
+  markPaused(itemId: string): void {
+    const item = this.getItemById(itemId);
+    if (!item) return;
+
+    this.updateItem({
+      ...item,
+      status: 'not-started',
+    });
+  }
+
   getItemById(itemId: string): Item | undefined {
     const data = this.storageService.getData();
     return data.items[itemId];
