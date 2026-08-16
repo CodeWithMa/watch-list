@@ -214,6 +214,7 @@ export class PosterPickerComponent {
   clearDrafts(): void {
     this.posterRequestId++;
     this.deleteDraftPosters();
+    this.posterIdChange.emit(undefined);
     this.setLoading(false);
   }
 
