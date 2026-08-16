@@ -204,6 +204,7 @@ export class PosterPickerComponent {
     this.posterRequestId++;
     this.deleteDraftPoster(this.posterId());
     this.posterIdChange.emit(undefined);
+    this.setLoading(false);
   }
 
   commitDrafts(): void {
@@ -213,6 +214,7 @@ export class PosterPickerComponent {
   clearDrafts(): void {
     this.posterRequestId++;
     this.deleteDraftPosters();
+    this.setLoading(false);
   }
 
   private async storePoster(request: Promise<string>): Promise<void> {
