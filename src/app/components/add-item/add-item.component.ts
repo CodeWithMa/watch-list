@@ -63,6 +63,7 @@ export class AddItemComponent {
   );
   private selectedTmdbSeriesIds = new Subject<number | null>();
   private skipNextSearch = false;
+  private lastPushedQuery = '';
 
   readonly groups = this.groupService.groups;
   readonly initialValue = createDefaultItemFormValue();
@@ -118,7 +119,18 @@ export class AddItemComponent {
   }
 
   private requestTitleSearch(title: string): void {
-    this.tmdb.query.next(title);
+    const trimmed = title.trim();
+    const isDuplicate = trimmed === this.lastPushedQuery;
+    if (!isDuplicate) {
+      this.lastPushedQuery = trimmed;
+      this.tmdb.query.next(title);
+    }
+    if (this.skipNextSearch && isDuplicate) {
+      this.skipNextSearch = false;
+      this.suggestions.set([]);
+      this.suggestionsLoading.set(false);
+      this.suggestionsError.set('');
+    }
   }
 
   onTitleChanged(title: string): void {
