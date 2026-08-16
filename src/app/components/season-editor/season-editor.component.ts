@@ -26,7 +26,7 @@ import {
                 (ngModelChange)="updateSeasonNumber(i, $event)"
                 name="seasonNumber{{ i }}"
                 min="1"
-                class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
+                class="form-control-sm"
               />
             </div>
             <div class="flex-1">
@@ -38,7 +38,7 @@ import {
                 (ngModelChange)="updateSeasonEpisodes(i, $event)"
                 name="seasonEpisodes{{ i }}"
                 min="1"
-                class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
+                class="form-control-sm"
               />
             </div>
             <div class="flex-1">
@@ -51,7 +51,7 @@ import {
                 [ngModel]="season.firstEpisodeAirDate"
                 (ngModelChange)="updateSeasonFirstAirDate(i, $event)"
                 name="seasonFirstAirDate{{ i }}"
-                class="w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
+                class="form-control-sm"
               />
             </div>
             <button

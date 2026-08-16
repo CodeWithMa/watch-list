@@ -1,18 +1,15 @@
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  ViewChild,
   computed,
-  DestroyRef,
   effect,
-  inject,
   input,
   linkedSignal,
   output,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Subject, catchError, debounceTime, of, switchMap } from 'rxjs';
 import { Group } from '../../models/group.model';
 import { SeasonInfo } from '../../models/item.model';
 import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
@@ -28,12 +25,10 @@ import {
   ITEM_TYPES,
   ITEM_TYPE_LABELS,
 } from '../../domain/item.constants';
-import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { SeasonEditorComponent } from '../season-editor/season-editor.component';
+import { PosterPickerComponent } from '../poster-picker/poster-picker.component';
 import { statusButtonClass } from '../../utils/status.utils';
 import { toPositiveNumber } from '../../utils/form.utils';
-import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
-import { ImageStorageService } from '../../services/image-storage.service';
 
 export interface ItemFormAutofillPatch {
   id: number;
@@ -42,7 +37,7 @@ export interface ItemFormAutofillPatch {
 
 @Component({
   selector: 'app-item-form',
-  imports: [CommonModule, FormsModule, SeasonEditorComponent],
+  imports: [CommonModule, FormsModule, SeasonEditorComponent, PosterPickerComponent],
   template: `
     <form
       (ngSubmit)="submit()"
@@ -60,7 +55,7 @@ export interface ItemFormAutofillPatch {
           (ngModelChange)="updateTitle($event)"
           name="title"
           required
-          class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+          class="form-control"
         />
         @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
           <div class="text-accent-danger text-sm mt-1">Title is required</div>
@@ -114,109 +109,12 @@ export interface ItemFormAutofillPatch {
 
       <div class="mb-6">
         <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Poster</span>
-        <div class="flex gap-4">
-          <div class="shrink-0">
-            @if (posterPreviewUrl()) {
-              <img
-                [src]="posterPreviewUrl()"
-                alt="Poster preview"
-                class="w-32 aspect-[2/3] object-cover rounded border border-light-border dark:border-dark-border"
-              />
-            } @else {
-              <img
-                [src]="posterPlaceholderUrl()"
-                alt="No poster"
-                class="w-32 aspect-[2/3] object-cover rounded border border-light-border dark:border-dark-border"
-              />
-            }
-          </div>
-          <div class="flex-1 flex flex-col gap-3 min-w-0">
-            @if (showPosterSearch()) {
-              <div>
-                <input
-                  type="text"
-                  [ngModel]="posterSearchQuery()"
-                  (ngModelChange)="onPosterSearchChanged($event)"
-                  name="posterSearch"
-                  placeholder="Search TMDB for a poster..."
-                  class="w-full p-2 border border-light-border dark:border-dark-border rounded text-sm box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary"
-                />
-                @if (posterSuggestionsLoading()) {
-                  <div class="mt-1 text-xs text-light-font-secondary dark:text-dark-font-secondary">
-                    Searching...
-                  </div>
-                } @else if (posterSuggestionsError()) {
-                  <div class="mt-1 text-xs text-accent-secondary">
-                    {{ posterSuggestionsError() }}
-                  </div>
-                } @else if (posterSuggestions().length > 0) {
-                  <div
-                    class="mt-1 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary max-h-48 overflow-y-auto"
-                  >
-                    @for (
-                      suggestion of posterSuggestions();
-                      track suggestion.type + '-' + suggestion.tmdbId
-                    ) {
-                      <button
-                        type="button"
-                        (click)="selectPosterFromTmdb(suggestion)"
-                        class="w-full text-left px-2 py-1.5 border-0 border-b border-light-border dark:border-dark-border last:border-b-0 bg-transparent hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer flex items-center gap-2"
-                      >
-                        @if (suggestion.posterPath) {
-                          <img
-                            [src]="getPosterThumbUrl(suggestion.posterPath)"
-                            alt=""
-                            class="w-8 aspect-[2/3] object-cover rounded shrink-0"
-                          />
-                        }
-                        <span class="text-xs text-light-font dark:text-dark-font truncate">
-                          {{ suggestion.title }}
-                          @if (suggestion.year) {
-                            <span class="text-light-font-muted dark:text-dark-font-muted"
-                              >({{ suggestion.year }})</span
-                            >
-                          }
-                        </span>
-                      </button>
-                    }
-                  </div>
-                }
-              </div>
-            }
-            @if (formValue().posterId) {
-              <button
-                type="button"
-                (click)="clearPoster()"
-                class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
-              >
-                Clear poster
-              </button>
-            }
-            <label
-              class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
-            >
-              Upload image
-              <input type="file" accept="image/*" class="hidden" (change)="uploadPoster($event)" />
-            </label>
-            @if (posterLoading()) {
-              <div class="text-xs text-light-font-secondary dark:text-dark-font-secondary">
-                Saving poster...
-              </div>
-            }
-            @if (posterError()) {
-              <div class="text-xs text-accent-danger">{{ posterError() }}</div>
-            }
-            @if (!showPosterSearch()) {
-              <button
-                type="button"
-                (click)="showPosterSearch.set(true)"
-                class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
-              >
-                Search TMDB
-              </button>
-            }
-          </div>
-        </div>
+        <app-poster-picker
+          [posterId]="formValue().posterId"
+          (posterIdChange)="updatePosterId($event)"
+          (loadingChange)="posterLoading.set($event)"
+          #posterPicker
+        />
       </div>
 
       <div class="mb-6">
@@ -228,7 +126,7 @@ export interface ItemFormAutofillPatch {
           [ngModel]="formValue().type"
           (ngModelChange)="setType($event)"
           name="type"
-          class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+          class="form-control"
         >
           @for (itemType of itemTypes; track itemType) {
             <option [value]="itemType">{{ itemTypeLabels[itemType] }}</option>
@@ -246,7 +144,7 @@ export interface ItemFormAutofillPatch {
           (ngModelChange)="updateGroupId($event)"
           name="groupId"
           required
-          class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+          class="form-control"
         >
           @for (group of groups(); track group.id) {
             <option [value]="group.id">{{ group.name }}</option>
@@ -299,7 +197,7 @@ export interface ItemFormAutofillPatch {
               (ngModelChange)="updateSeason($event)"
               name="season"
               min="1"
-              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+              class="form-control"
             />
           </div>
           <div class="mb-6">
@@ -313,7 +211,7 @@ export interface ItemFormAutofillPatch {
               (ngModelChange)="updateEpisode($event)"
               name="episode"
               min="1"
-              class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+              class="form-control"
             />
           </div>
           <app-season-editor
@@ -351,10 +249,7 @@ export interface ItemFormAutofillPatch {
   `,
 })
 export class ItemFormComponent {
-  private tmdbSuggestionService = inject(TmdbSuggestionService);
-  private imageStorage = inject(ImageStorageService);
-  private destroyRef = inject(DestroyRef);
-  private posterSearchChanges = new Subject<string>();
+  @ViewChild('posterPicker') private posterPicker?: PosterPickerComponent;
 
   readonly groups = input.required<Group[]>();
   readonly initialValue = input<ItemFormValue>(createDefaultItemFormValue());
@@ -381,23 +276,9 @@ export class ItemFormComponent {
   readonly itemTypeLabels = ITEM_TYPE_LABELS;
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
-  readonly posterSearchQuery = signal('');
-  readonly posterSuggestions = signal<TmdbSuggestion[]>([]);
-  readonly posterSuggestionsLoading = signal(false);
-  readonly posterSuggestionsError = signal('');
-  readonly showPosterSearch = signal(false);
   readonly posterLoading = signal(false);
-  readonly posterError = signal('');
-  readonly posterPreviewUrl = signal<string | null>(null);
-  private previewObjectUrl: string | null = null;
-  private posterRequestId = 0;
-  private readonly draftPosterIds = new Set<string>();
-  private destroyed = false;
-  private submissionStarted = false;
 
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
-
-  readonly posterPlaceholderUrl = computed(() => getPlaceholderUrl());
 
   updateSeasons(value: SeasonInfo[]): void {
     this.formValue.update((v) => ({ ...v, seasons: value }));
@@ -424,16 +305,6 @@ export class ItemFormComponent {
   private lastAppliedAutofillPatchId: number | null = null;
 
   constructor() {
-    this.destroyRef.onDestroy(() => {
-      this.destroyed = true;
-      this.posterRequestId++;
-      if (this.previewObjectUrl) URL.revokeObjectURL(this.previewObjectUrl);
-      if (!this.submissionStarted) this.deleteDraftPosters();
-    });
-    effect(() => {
-      const posterId = this.formValue().posterId;
-      void this.loadPosterPreview(posterId);
-    });
     effect(() => {
       const patch = this.autofillPatch();
       if (!patch || patch.id === this.lastAppliedAutofillPatchId) {
@@ -443,33 +314,6 @@ export class ItemFormComponent {
       this.lastAppliedAutofillPatchId = patch.id;
       this.updateFormValue(patch.value);
     });
-
-    this.posterSearchChanges
-      .pipe(
-        debounceTime(300),
-        switchMap((query) => {
-          const trimmed = query.trim();
-          this.posterSuggestionsError.set('');
-
-          if (trimmed.length < 2) {
-            this.posterSuggestionsLoading.set(false);
-            return of([]);
-          }
-
-          this.posterSuggestionsLoading.set(true);
-          return this.tmdbSuggestionService.search(trimmed).pipe(
-            catchError(() => {
-              this.posterSuggestionsError.set('TMDB search unavailable.');
-              return of([]);
-            }),
-          );
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((results) => {
-        this.posterSuggestions.set(results.filter((s) => s.posterPath));
-        this.posterSuggestionsLoading.set(false);
-      });
   }
 
   setType(type: ItemFormValue['type']): void {
@@ -488,7 +332,7 @@ export class ItemFormComponent {
     }
 
     const submittedValue = prepareSubmittedItemFormValue(value, this.showStartImmediately());
-    this.submissionStarted = true;
+    this.posterPicker?.commitDrafts();
 
     this.submitted.emit({
       ...submittedValue,
@@ -497,8 +341,7 @@ export class ItemFormComponent {
   }
 
   handleCancel(): void {
-    this.posterRequestId++;
-    this.deleteDraftPosters();
+    this.posterPicker?.clearDrafts();
     if (this.resetOnCancel()) {
       this.formValue.set(normalizeFormValueForType(this.initialValue()));
     }
@@ -518,10 +361,12 @@ export class ItemFormComponent {
         type: suggestion.type,
       }),
     );
-    if (suggestion.posterPath) {
-      void this.storePoster(this.imageStorage.storeUrl(getPosterUrl(suggestion.posterPath) ?? ''));
-    }
+    this.posterPicker?.storeFromTmdbPath(suggestion.posterPath);
     this.suggestionSelected.emit(suggestion);
+  }
+
+  updatePosterId(posterId: string | undefined): void {
+    this.updateFormValue({ posterId });
   }
 
   updateGroupId(groupId: string): void {
@@ -546,81 +391,6 @@ export class ItemFormComponent {
 
   statusButtonClass(status: ItemFormValue['status']): string {
     return statusButtonClass(this.formValue().status === status, status);
-  }
-
-  getPosterThumbUrl(posterPath: string): string | null {
-    return getPosterUrl(posterPath);
-  }
-
-  onPosterSearchChanged(query: string): void {
-    this.posterSearchQuery.set(query);
-    this.posterSearchChanges.next(query);
-  }
-
-  selectPosterFromTmdb(suggestion: TmdbSuggestion): void {
-    if (suggestion.posterPath) {
-      void this.storePoster(this.imageStorage.storeUrl(getPosterUrl(suggestion.posterPath) ?? ''));
-    }
-    this.posterSearchQuery.set('');
-    this.posterSearchChanges.next('');
-    this.posterSuggestions.set([]);
-    this.showPosterSearch.set(false);
-  }
-
-  private async storePoster(request: Promise<string>): Promise<void> {
-    const requestId = ++this.posterRequestId;
-    this.posterLoading.set(true);
-    this.posterError.set('');
-    try {
-      const posterId = await request;
-      if (this.destroyed || requestId !== this.posterRequestId) {
-        void this.imageStorage.delete(posterId);
-        return;
-      }
-      const previousPosterId = this.formValue().posterId;
-      this.draftPosterIds.add(posterId);
-      this.updateFormValue({ posterId });
-      this.deleteDraftPoster(previousPosterId);
-    } catch (error) {
-      if (!this.destroyed && requestId === this.posterRequestId)
-        this.posterError.set(error instanceof Error ? error.message : 'Unable to save poster.');
-    } finally {
-      if (!this.destroyed && requestId === this.posterRequestId) this.posterLoading.set(false);
-    }
-  }
-
-  async uploadPoster(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-    await this.storePoster(this.imageStorage.storeFile(file));
-  }
-
-  clearPoster(): void {
-    this.posterRequestId++;
-    this.deleteDraftPoster(this.formValue().posterId);
-    this.updateFormValue({ posterId: undefined });
-  }
-
-  private async loadPosterPreview(posterId: string | undefined): Promise<void> {
-    const url = await this.imageStorage.getUrl(posterId);
-    if (this.destroyed || posterId !== this.formValue().posterId) {
-      if (url) URL.revokeObjectURL(url);
-      return;
-    }
-    if (this.previewObjectUrl) URL.revokeObjectURL(this.previewObjectUrl);
-    this.previewObjectUrl = url;
-    this.posterPreviewUrl.set(url);
-  }
-
-  private deleteDraftPoster(posterId: string | undefined): void {
-    if (posterId && this.draftPosterIds.delete(posterId)) void this.imageStorage.delete(posterId);
-  }
-
-  private deleteDraftPosters(): void {
-    for (const posterId of this.draftPosterIds) void this.imageStorage.delete(posterId);
-    this.draftPosterIds.clear();
   }
 
   private updateFormValue(patch: Partial<ItemFormValue>): void {
