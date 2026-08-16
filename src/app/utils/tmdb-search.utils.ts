@@ -6,6 +6,7 @@ import {
   switchMap,
   catchError,
   of,
+  finalize,
 } from 'rxjs';
 import { TmdbSuggestion } from '../models/tmdb-suggestion.model';
 
@@ -59,6 +60,9 @@ export function createTmdbSearchStream(
         catchError(() => {
           options.onError?.(errorMessage);
           return of([]);
+        }),
+        finalize(() => {
+          options.onLoadingChange?.(false);
         }),
       );
     }),

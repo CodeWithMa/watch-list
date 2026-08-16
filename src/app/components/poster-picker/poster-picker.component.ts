@@ -21,7 +21,7 @@ import { createTmdbSearchStream } from '../../utils/tmdb-search.utils';
           />
         } @else {
           <img
-            [src]="posterPlaceholderUrl"
+            [src]="posterPlaceholderUrl()"
             alt="No poster"
             class="w-32 aspect-[2/3] object-cover rounded border border-light-border dark:border-dark-border"
           />
@@ -131,13 +131,13 @@ export class PosterPickerComponent {
   readonly posterLoading = signal(false);
   readonly posterError = signal('');
   readonly posterPreviewUrl = signal<string | null>(null);
-  readonly posterPlaceholderUrl = getPlaceholderUrl();
+  readonly posterPlaceholderUrl = signal(getPlaceholderUrl());
 
   private previewObjectUrl: string | null = null;
   private posterRequestId = 0;
   private readonly draftPosterIds = new Set<string>();
   private destroyed = false;
-  private committed = false;
+  private skipDraftCleanup = false;
 
   private readonly tmdb = createTmdbSearchStream(
     (query) => this.tmdbSuggestionService.search(query),
@@ -154,7 +154,7 @@ export class PosterPickerComponent {
       this.destroyed = true;
       this.posterRequestId++;
       if (this.previewObjectUrl) URL.revokeObjectURL(this.previewObjectUrl);
-      if (!this.committed) this.deleteDraftPosters();
+      if (!this.skipDraftCleanup) this.deleteDraftPosters();
     });
 
     effect(() => {
@@ -164,7 +164,6 @@ export class PosterPickerComponent {
 
     this.tmdb.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((results) => {
       this.posterSuggestions.set(results.filter((suggestion) => suggestion.posterPath));
-      this.posterSuggestionsLoading.set(false);
     });
   }
 
@@ -208,13 +207,13 @@ export class PosterPickerComponent {
   }
 
   commitDrafts(): void {
-    this.committed = true;
+    this.skipDraftCleanup = true;
   }
 
   clearDrafts(): void {
     this.posterRequestId++;
     this.deleteDraftPosters();
-    this.committed = true;
+    this.skipDraftCleanup = true;
   }
 
   private async storePoster(request: Promise<string>): Promise<void> {
