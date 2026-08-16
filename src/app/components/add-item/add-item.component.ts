@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { catchError, of, Subject, switchMap } from 'rxjs';
@@ -41,6 +41,7 @@ import { createTmdbSearchStream } from '../../utils/tmdb-search.utils';
   `,
 })
 export class AddItemComponent {
+  @ViewChild(ItemFormComponent) private form?: ItemFormComponent;
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
   private tmdbSuggestionService = inject(TmdbSuggestionService);
@@ -157,8 +158,13 @@ export class AddItemComponent {
   }
 
   async onSubmit(formValue: ItemFormValue): Promise<void> {
-    await this.watchListService.addItem(buildItemMutationInput(formValue));
-    this.router.navigate(['/items']);
+    try {
+      await this.watchListService.addItem(buildItemMutationInput(formValue));
+      this.form?.commitDrafts();
+      this.router.navigate(['/items']);
+    } catch {
+      this.form?.clearDrafts();
+    }
   }
 
   cancel(): void {

@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ViewChild } from '@angular/core';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
@@ -67,6 +67,7 @@ import {
   `,
 })
 export class ItemDetailComponent {
+  @ViewChild(ItemFormComponent) private form?: ItemFormComponent;
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private watchListService = inject(WatchListService);
@@ -93,8 +94,13 @@ export class ItemDetailComponent {
       ...buildItemMutationInput(formValue),
     };
 
-    await this.watchListService.updateItem(updated);
-    this.router.navigate(['/items']);
+    try {
+      await this.watchListService.updateItem(updated);
+      this.form?.commitDrafts();
+      this.router.navigate(['/items']);
+    } catch {
+      this.form?.clearDrafts();
+    }
   }
 
   cancelDelete(): void {

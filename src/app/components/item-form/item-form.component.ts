@@ -332,12 +332,19 @@ export class ItemFormComponent {
     }
 
     const submittedValue = prepareSubmittedItemFormValue(value, this.showStartImmediately());
-    this.posterPicker?.commitDrafts();
 
     this.submitted.emit({
       ...submittedValue,
       title: submittedValue.title.trim(),
     });
+  }
+
+  commitDrafts(): void {
+    this.posterPicker?.commitDrafts();
+  }
+
+  clearDrafts(): void {
+    this.posterPicker?.clearDrafts();
   }
 
   handleCancel(): void {
