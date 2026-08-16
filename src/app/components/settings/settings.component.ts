@@ -43,7 +43,7 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
             [ngModel]="tmdbToken()"
             (ngModelChange)="tmdbToken.set($event)"
             autocomplete="off"
-            class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+            class="form-control"
           />
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
             Preferred for fetching movie and series suggestions while adding items.
@@ -59,7 +59,7 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
             [ngModel]="tmdbApiKey()"
             (ngModelChange)="tmdbApiKey.set($event)"
             autocomplete="off"
-            class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)]"
+            class="form-control"
           />
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
             Used as a fallback when no read access token is saved.
