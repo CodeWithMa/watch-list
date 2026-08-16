@@ -213,7 +213,6 @@ export class PosterPickerComponent {
   clearDrafts(): void {
     this.posterRequestId++;
     this.deleteDraftPosters();
-    this.skipDraftCleanup = true;
   }
 
   private async storePoster(request: Promise<string>): Promise<void> {
