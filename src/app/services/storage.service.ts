@@ -234,7 +234,11 @@ export class StorageService {
   private async listBackupKeys(): Promise<string[]> {
     const transaction = this.database!.transaction(STORE_NAME, 'readonly');
     const request = transaction.objectStore(STORE_NAME).getAllKeys();
-    const allKeys = await this.promisifyRequest(request as IDBRequest<IDBValidKey[]>);
+    const allKeys = await this.promisifyRequest(
+      request as IDBRequest<IDBValidKey[]>,
+      transaction,
+      'Failed to list backup keys',
+    );
     return allKeys
       .filter((k): k is string => typeof k === 'string' && k.startsWith(BACKUP_PREFIX))
       .sort(
@@ -278,7 +282,7 @@ export class StorageService {
   private readRecord(key: string): Promise<unknown | undefined> {
     const transaction = this.database!.transaction(STORE_NAME, 'readonly');
     const request = transaction.objectStore(STORE_NAME).get(key) as IDBRequest<unknown | undefined>;
-    return this.promisifyRequest(request);
+    return this.promisifyRequest(request, transaction, 'IndexedDB read transaction aborted');
   }
 
   private writeData(data: StorageData): Promise<void> {
@@ -287,10 +291,15 @@ export class StorageService {
     return this.completeTransaction(transaction, 'Failed to write to IndexedDB');
   }
 
-  private promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
+  private promisifyRequest<T>(
+    request: IDBRequest<T>,
+    transaction: IDBTransaction,
+    abortMessage: string,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
+      transaction.onabort = () => reject(transaction.error ?? new Error(abortMessage));
     });
   }
 
