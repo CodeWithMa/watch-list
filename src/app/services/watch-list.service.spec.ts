@@ -252,6 +252,7 @@ describe('WatchListService', () => {
       service.markCompleted('missing');
       service.markDropped('missing');
       service.markStarted('missing');
+      service.markPaused('missing');
 
       expect(saveSpy).not.toHaveBeenCalled();
     });
