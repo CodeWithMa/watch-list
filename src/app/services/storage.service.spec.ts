@@ -448,6 +448,28 @@ describe('StorageService', () => {
 
     expect(service.getData().groups['succeeding']).toMatchObject({ name: 'succeeding' });
   });
+
+  it('rejects when a read transaction is aborted', async () => {
+    const service = new StorageService();
+    await service.initialize();
+
+    const database = (service as unknown as { database: IDBDatabase }).database;
+    const fakeTransaction = {
+      objectStore: () => ({ getAllKeys: () => ({}) }),
+      oncomplete: null,
+      onerror: null,
+      onabort: null,
+    } as unknown as IDBTransaction;
+
+    const spy = vi.spyOn(database, 'transaction').mockReturnValue(fakeTransaction);
+
+    const promise = service.getRecoveryBackups();
+    fakeTransaction.onabort!({} as Event);
+
+    await expect(promise).rejects.toThrowError('Failed to list backup keys');
+
+    spy.mockRestore();
+  });
 });
 
 function withGroup(data: ReturnType<StorageService['getData']>, id: string) {

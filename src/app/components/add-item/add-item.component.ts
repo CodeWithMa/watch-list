@@ -88,7 +88,6 @@ export class AddItemComponent {
   constructor() {
     this.tmdb.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((suggestions) => {
       this.suggestions.set(suggestions);
-      this.suggestionsLoading.set(false);
     });
 
     this.selectedTmdbSeriesIds
