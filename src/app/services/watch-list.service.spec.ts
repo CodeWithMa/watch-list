@@ -235,6 +235,14 @@ describe('WatchListService', () => {
       expect(storageService.getData().items['i1'].status).toBe('in-progress');
     });
 
+    it('marks an item as paused', () => {
+      saveData({ items: { i1: createItem({ id: 'i1', status: 'in-progress' }) } });
+
+      service.markPaused('i1');
+
+      expect(storageService.getData().items['i1'].status).toBe('not-started');
+    });
+
     it('does nothing when the item does not exist', () => {
       saveData({
         items: { i1: createItem({ id: 'i1', status: 'in-progress' }) },

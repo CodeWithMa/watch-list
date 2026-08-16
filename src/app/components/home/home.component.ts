@@ -35,6 +35,12 @@ import { Item, ItemType } from '../../models/item.model';
                   Mark Completed
                 </button>
                 <button
+                  (click)="markItem(nextSeries, 'paused')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Pause
+                </button>
+                <button
                   (click)="markItem(nextSeries, 'dropped')"
                   class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
@@ -78,6 +84,12 @@ import { Item, ItemType } from '../../models/item.model';
                   class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
                   Mark Completed
+                </button>
+                <button
+                  (click)="markItem(nextMovie, 'paused')"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Pause
                 </button>
                 <button
                   (click)="markItem(nextMovie, 'dropped')"
@@ -173,13 +185,14 @@ export class HomeComponent {
 
   markItem(
     getter: () => Item | null | undefined,
-    action: 'watched' | 'completed' | 'dropped',
+    action: 'watched' | 'completed' | 'dropped' | 'paused',
   ): void {
     const item = getter();
     if (!item) return;
     if (action === 'watched') this.watchListService.markWatched(item.id);
     else if (action === 'completed') this.watchListService.markCompleted(item.id);
-    else this.watchListService.markDropped(item.id);
+    else if (action === 'dropped') this.watchListService.markDropped(item.id);
+    else this.watchListService.markPaused(item.id);
   }
 
   startBacklogItem(itemId: string): void {
