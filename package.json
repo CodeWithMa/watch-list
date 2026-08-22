@@ -28,7 +28,7 @@
   },
   "main": "dist-electron/main.js",
   "description": "Watch List - Track your movies and series",
-  "author": "watch-list <placeholder@example.com>",
+  "author": "watch-list <101021254+CodeWithMa@users.noreply.github.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/CodeWithMa/watch-list.git"
