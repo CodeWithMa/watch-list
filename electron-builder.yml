@@ -25,5 +25,7 @@ linux:
     - AppImage
     - deb
   icon: build/icons/icon.png
+  maintainer: placeholder@example.com
+  category: Utility
 publish:
   provider: github
