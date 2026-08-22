@@ -9,11 +9,17 @@ This is my tool to suggest me what to watch next.
 # Install dependencies
 bun install
 
-# Start development server
+# Start web development server
 bun run start
 
-# Build for production
+# Build for web (PWA)
 bun run build
+
+# Start desktop app in development (requires Electron)
+bun run electron:dev
+
+# Build desktop app installers
+bun run electron:build
 
 ```
 

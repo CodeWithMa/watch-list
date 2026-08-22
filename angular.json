@@ -48,11 +48,11 @@
               ],
               "outputHashing": "all"
             },
-            "tauri": {
+            "electron": {
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.tauri.ts"
+                  "with": "src/environments/environment.electron.ts"
                 }
               ]
             },
@@ -70,14 +70,14 @@
               "extractLicenses": false,
               "sourceMap": true
             },
-            "development-tauri": {
+            "development-electron": {
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true,
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.tauri.ts"
+                  "with": "src/environments/environment.electron.ts"
                 }
               ]
             }
@@ -90,8 +90,8 @@
             "production": {
               "buildTarget": "watch-list:build:production,web"
             },
-            "tauri": {
-              "buildTarget": "watch-list:build:development-tauri"
+            "electron": {
+              "buildTarget": "watch-list:build:development-electron"
             },
             "development": {
               "buildTarget": "watch-list:build:development"

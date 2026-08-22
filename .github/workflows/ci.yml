@@ -16,8 +16,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - uses: j178/prek-action@v2
-        env:
-          SKIP: cargo-clippy,cargo-check,cargo-fmt
 
   test:
     runs-on: ubuntu-latest

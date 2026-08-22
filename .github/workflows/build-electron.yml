@@ -1,4 +1,4 @@
-name: Build Tauri App
+name: Build Electron App
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - dev
 
 concurrency:
-  group: tauri-build-${{ github.ref }}
+  group: electron-build-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -26,21 +26,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/dev-release" || true
 
-  checks:
-    uses: ./.github/workflows/rust-checks.yml
-
   build:
-    needs: [cleanup, checks]
+    needs: [cleanup]
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
           - platform: macos-latest
-            target: aarch64-apple-darwin
           - platform: windows-latest
-            target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.platform }}
 
@@ -54,19 +48,19 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          target: ${{ matrix.target }}
+      - name: Build Electron app
+        run: bun run electron:build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev-release
+          name: Dev Build
+          body: Latest dev build
+          draft: false
+          prerelease: true
+          files: release/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: dev-release
-          releaseName: Dev Build
-          releaseBody: Latest dev build
-          releaseDraft: false
-          prerelease: true
-          args: --target ${{ matrix.target }}

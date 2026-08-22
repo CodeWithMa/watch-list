@@ -1,0 +1,26 @@
+appId: com.watchlist.app
+productName: watch-list
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/watch-list/browser/**/*
+  - dist-electron/**/*
+  - package.json
+mac:
+  target:
+    - dmg
+    - zip
+  icon: build/icons/icon.icns
+win:
+  target:
+    - nsis
+    - zip
+  icon: build/icons/icon.ico
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: build/icons/icon.png
+publish:
+  provider: github
