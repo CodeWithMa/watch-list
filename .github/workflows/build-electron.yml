@@ -78,6 +78,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: dev-release
+          target_commitish: ${{ github.sha }}
           name: Dev Build
           body: Latest dev build
           draft: false
