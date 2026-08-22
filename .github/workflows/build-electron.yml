@@ -53,7 +53,7 @@ jobs:
 
       - name: Build Electron app
         run: |
-          bun run build:electron -- --define "import.meta.env.APP_COMMIT_HASH=\"${{ github.sha }}\"" --define "import.meta.env.APP_VERSION=\"$(bun -e "console.log(require('./package.json').version)")\""
+          bun run build:electron
           bunx tsc -p electron/tsconfig.json
           bunx electron-builder --publish never
 
