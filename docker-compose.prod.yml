@@ -12,6 +12,8 @@ services:
       dockerfile: ./Dockerfile
       target: prod
       network: host
+      args:
+        COMMIT_HASH: ${COMMIT_HASH:-unknown}
     ports:
       - 4200:80
     networks:

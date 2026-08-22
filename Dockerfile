@@ -13,7 +13,9 @@ COPY ngsw-config.json .
 COPY tsconfig.json .
 COPY tsconfig.app.json .
 COPY tsconfig.spec.json .
+COPY scripts ./scripts
 
+ARG COMMIT_HASH=unknown
 RUN bun run build
 
 FROM nginx:alpine-slim AS prod
