@@ -61,7 +61,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: release/**/*
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/latest*.yml
+            release/latest*.yaml
+            release/*.blockmap
           if-no-files-found: error
 
   release:
@@ -83,6 +91,14 @@ jobs:
           body: Latest dev build
           draft: false
           prerelease: true
-          files: release/**/*
+          files: |
+            release/*.AppImage
+            release/*.deb
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/latest*.yml
+            release/latest*.yaml
+            release/*.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
