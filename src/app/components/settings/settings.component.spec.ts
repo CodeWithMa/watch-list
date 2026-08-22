@@ -1,11 +1,22 @@
 import { TestBed } from '@angular/core/testing';
+import { environment } from '../../../environments/environment';
 import { ImportExportService } from '../../services/import-export.service';
 import { TmdbCredential, TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { SettingsComponent } from './settings.component';
-import { vi, afterEach } from 'vitest';
+import { vi, afterEach, beforeEach } from 'vitest';
 
 describe('SettingsComponent', () => {
+  let origHash: string;
+  let origVersion: string;
+
+  beforeEach(() => {
+    origHash = environment.commitHash;
+    origVersion = environment.appVersion;
+  });
+
   afterEach(() => {
+    environment.commitHash = origHash;
+    environment.appVersion = origVersion;
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -297,5 +308,65 @@ describe('SettingsComponent', () => {
 
     expect(fixture.componentInstance.recoveryBackups()).toEqual([]);
     expect(fixture.componentInstance.errorMessage()).toBeNull();
+  });
+
+  it('renders About section with version and linked commit hash', () => {
+    environment.commitHash = 'abc123456789';
+    environment.appVersion = '1.2.3';
+
+    configure({
+      token: '',
+      key: '',
+      credential: null,
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Watch List v1.2.3');
+    expect(fixture.nativeElement.textContent).toContain('abc1234');
+    const link = fixture.nativeElement.querySelector(
+      'a[href="https://github.com/CodeWithMa/watch-list/commit/abc123456789"]',
+    ) as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.textContent).toContain('abc1234');
+  });
+
+  it('renders About section without link when commit is unknown', () => {
+    environment.commitHash = 'unknown';
+    environment.appVersion = 'unknown';
+
+    configure({
+      token: '',
+      key: '',
+      credential: null,
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Watch List vunknown');
+    expect(fixture.nativeElement.textContent).toContain('unknown');
+    const link = fixture.nativeElement.querySelector(
+      'a[href*="github.com/CodeWithMa/watch-list/commit"]',
+    );
+    expect(link).toBeNull();
+  });
+
+  it('places About section at the bottom of the page', () => {
+    environment.commitHash = 'abc123456789';
+    environment.appVersion = '1.2.3';
+
+    configure({
+      token: '',
+      key: '',
+      credential: null,
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text.lastIndexOf('About')).toBeGreaterThan(text.lastIndexOf('Data Management'));
   });
 });

@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
 import { TmdbSettingsService } from '../../services/tmdb-settings.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-settings',
@@ -165,12 +166,42 @@ import { TmdbSettingsService } from '../../services/tmdb-settings.service';
           }
         </div>
       }
+
+      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg">
+        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+          About
+        </h2>
+        <p class="text-sm text-light-font-secondary dark:text-dark-font-secondary">
+          Watch List v{{ environment.appVersion }}
+          @if (isHashLinkable) {
+            (<a
+              [href]="'https://github.com/CodeWithMa/watch-list/commit/' + environment.commitHash"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline hover:no-underline"
+              >{{ shortHash }}</a
+            >)
+          } @else {
+            ({{ shortHash }})
+          }
+        </p>
+      </div>
     </div>
   `,
 })
 export class SettingsComponent implements OnInit {
   private importExportService = inject(ImportExportService);
   private tmdbSettingsService = inject(TmdbSettingsService);
+
+  protected readonly environment = environment;
+
+  get shortHash(): string {
+    return environment.commitHash?.substring(0, 7) ?? 'unknown';
+  }
+
+  get isHashLinkable(): boolean {
+    return !!environment.commitHash && environment.commitHash !== 'unknown';
+  }
 
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);

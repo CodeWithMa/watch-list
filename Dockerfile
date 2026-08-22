@@ -14,7 +14,8 @@ COPY tsconfig.json .
 COPY tsconfig.app.json .
 COPY tsconfig.spec.json .
 
-RUN bun run build
+ARG COMMIT_HASH=unknown
+RUN bun run build -- --define "import.meta.env.APP_COMMIT_HASH=\"$COMMIT_HASH\"" --define "import.meta.env.APP_VERSION=\"$(grep '"version"' package.json | sed 's/.*\"\(.*\)\".*/\1/')\""
 
 FROM nginx:alpine-slim AS prod
 

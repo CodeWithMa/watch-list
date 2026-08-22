@@ -28,7 +28,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build application
-        run: bun run build -- --base-href /watch-list/
+        run: bun run build -- --base-href /watch-list/ --define "import.meta.env.APP_COMMIT_HASH=\"${{ github.sha }}\"" --define "import.meta.env.APP_VERSION=\"$(bun -e "console.log(require('./package.json').version)")\""
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
