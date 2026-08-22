@@ -7,6 +7,9 @@ files:
   - dist/watch-list/browser/**/*
   - dist-electron/**/*
   - package.json
+extraResources:
+  - from: build/icons/icon.png
+    to: icons/icon.png
 mac:
   target:
     - dmg

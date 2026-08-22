@@ -49,6 +49,7 @@
               "outputHashing": "all"
             },
             "electron": {
+              "baseHref": "./",
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",

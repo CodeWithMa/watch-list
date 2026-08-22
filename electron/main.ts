@@ -4,6 +4,10 @@ import path from 'node:path';
 const isDev = !app.isPackaged;
 
 function createWindow(): BrowserWindow {
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'icons/icon.png')
+    : path.join(__dirname, '../build/icons/icon.png');
+
   const win = new BrowserWindow({
     width: 800,
     height: 600,
@@ -13,7 +17,7 @@ function createWindow(): BrowserWindow {
     title: 'Watch List',
     show: false,
     backgroundColor: '#ffffff',
-    icon: path.join(__dirname, '../build/icons/icon.png'),
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
