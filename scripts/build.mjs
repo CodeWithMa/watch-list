@@ -38,5 +38,5 @@ const defines = [
 
 const ngArgs = ['build', ...defines, ...extraArgs];
 
-const result = spawnSync('npx', ['ng', ...ngArgs], { stdio: 'inherit' });
+const result = spawnSync('bunx', ['ng', ...ngArgs], { stdio: 'inherit' });
 process.exit(result.status ?? 1);
