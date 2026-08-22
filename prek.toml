@@ -45,6 +45,15 @@ hooks = [
     stages = ["pre-commit"],
   },
   {
+    id = "tsc-electron",
+    name = "TypeScript (electron)",
+    language = "system",
+    entry = "bunx tsc --noEmit -p electron/tsconfig.json",
+    files = "\\.ts$",
+    pass_filenames = false,
+    stages = ["pre-commit"],
+  },
+  {
     id = "knip",
     name = "Knip (dead code)",
     language = "system",

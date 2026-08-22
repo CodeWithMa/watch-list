@@ -16,6 +16,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - uses: j178/prek-action@v2
+      - run: bunx tsc --noEmit -p electron/tsconfig.json
 
   test:
     runs-on: ubuntu-latest
