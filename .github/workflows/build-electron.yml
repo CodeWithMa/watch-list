@@ -1,0 +1,104 @@
+name: Build Electron App
+
+on:
+  push:
+    branches:
+      - dev
+
+concurrency:
+  group: electron-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete dev-release --yes || true
+
+      - name: Delete old release tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/dev-release" || true
+
+  build:
+    needs: [cleanup]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            artifact: release-linux
+          - platform: macos-latest
+            artifact: release-macos
+          - platform: windows-latest
+            artifact: release-windows
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Electron app
+        run: |
+          bun run build:electron
+          bunx tsc -p electron/tsconfig.json
+          bunx electron-builder --publish never
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/latest*.yml
+            release/latest*.yaml
+            release/*.blockmap
+          if-no-files-found: error
+
+  release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: dev-release
+          target_commitish: ${{ github.sha }}
+          name: Dev Build
+          body: Latest dev build
+          draft: false
+          prerelease: true
+          files: |
+            release/*.AppImage
+            release/*.deb
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/latest*.yml
+            release/latest*.yaml
+            release/*.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

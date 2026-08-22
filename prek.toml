@@ -1,4 +1,4 @@
-exclude = { glob = ["dist/**", "node_modules/**", ".angular/**", "src-tauri/target/**", "tsconfig*.json"] }
+exclude = { glob = ["dist/**", "dist-electron/**", "release/**", "node_modules/**", ".angular/**", "tsconfig*.json"] }
 
 [[repos]]
 repo = "builtin"
@@ -45,33 +45,14 @@ hooks = [
     stages = ["pre-commit"],
   },
   {
-    id = "cargo-fmt",
-    name = "cargo fmt",
+    id = "tsc-electron",
+    name = "TypeScript (electron)",
     language = "system",
-    entry = "bash -c 'cd src-tauri && cargo fmt --check'",
-    files = "\\.rs$",
+    entry = "bunx tsc --noEmit -p electron/tsconfig.json",
+    files = "\\.ts$",
     pass_filenames = false,
     stages = ["pre-commit"],
   },
-  {
-    id = "cargo-clippy",
-    name = "cargo clippy",
-    language = "system",
-    entry = "bash -c 'cd src-tauri && cargo clippy -- -D warnings'",
-    files = "\\.rs$",
-    pass_filenames = false,
-    stages = ["pre-commit"],
-  },
-  {
-    id = "cargo-check",
-    name = "cargo check",
-    language = "system",
-    entry = "bash -c 'cd src-tauri && cargo check'",
-    files = "\\.rs$",
-    pass_filenames = false,
-    stages = ["pre-commit"],
-  },
-
   {
     id = "knip",
     name = "Knip (dead code)",
