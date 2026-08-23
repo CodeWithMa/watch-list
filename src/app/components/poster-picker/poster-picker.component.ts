@@ -104,7 +104,7 @@ import { createTmdbSearchStream } from '../../utils/tmdb-search.utils';
         @if (!showPosterSearch()) {
           <button
             type="button"
-            (click)="showPosterSearch.set(true)"
+            (click)="openPosterSearch()"
             class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
           >
             Search TMDB
@@ -120,6 +120,7 @@ export class PosterPickerComponent {
   private destroyRef = inject(DestroyRef);
 
   readonly posterId = input<string | undefined>(undefined);
+  readonly searchSeed = input('');
   readonly posterIdChange = output<string | undefined>();
   readonly loadingChange = output<boolean>();
 
@@ -168,6 +169,14 @@ export class PosterPickerComponent {
 
   getPosterThumbUrl(posterPath: string): string | null {
     return getPosterUrl(posterPath);
+  }
+
+  openPosterSearch(): void {
+    const query = this.searchSeed().trim();
+    if (query) {
+      this.onPosterSearchChanged(query);
+    }
+    this.showPosterSearch.set(true);
   }
 
   onPosterSearchChanged(query: string): void {

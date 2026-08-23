@@ -30,6 +30,27 @@ describe('PosterPickerComponent', () => {
     });
   });
 
+  it('seeds poster search with the item title when opened', async () => {
+    vi.useFakeTimers();
+    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const search = vi.mocked(tmdbSuggestionService.search);
+    try {
+      const fixture = TestBed.createComponent(PosterPickerComponent);
+      fixture.componentRef.setInput('searchSeed', ' Test Movie ');
+      fixture.detectChanges();
+
+      fixture.componentInstance.openPosterSearch();
+
+      expect(fixture.componentInstance.showPosterSearch()).toBe(true);
+      expect(fixture.componentInstance.posterSearchQuery()).toBe('Test Movie');
+
+      await vi.advanceTimersByTimeAsync(300);
+      expect(search).toHaveBeenCalledWith('Test Movie');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('searches TMDB for posters after debounce', async () => {
     vi.useFakeTimers();
     const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
