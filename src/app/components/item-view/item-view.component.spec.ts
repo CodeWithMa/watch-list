@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { DATE_PIPE_DEFAULT_OPTIONS } from '@angular/common';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { GroupService } from '../../services/group.service';
 import { ImageStorageService } from '../../services/image-storage.service';
@@ -31,6 +32,7 @@ describe('ItemViewComponent', () => {
   function configure(items: Item[]): void {
     TestBed.configureTestingModule({
       providers: [
+        { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { timezone: 'UTC' } },
         {
           provide: ActivatedRoute,
           useValue: { paramMap: of(convertToParamMap({ id: items[0]?.id ?? '' })) },
