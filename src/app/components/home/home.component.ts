@@ -89,7 +89,7 @@ import { Item, ItemType } from '../../models/item.model';
                   (click)="markItem(nextMovie, 'paused')"
                   class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
-                  Move to backlog
+                  Pause
                 </button>
                 <button
                   (click)="markItem(nextMovie, 'dropped')"
