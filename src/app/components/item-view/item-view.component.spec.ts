@@ -100,13 +100,11 @@ describe('ItemViewComponent', () => {
 
     const service = TestBed.inject(WatchListService);
     fixture.componentInstance.runAction('watched');
-    fixture.componentInstance.runAction('completed');
     fixture.componentInstance.runAction('started');
     fixture.componentInstance.runAction('paused');
     fixture.componentInstance.runAction('dropped');
 
     expect(service.markWatched).toHaveBeenCalledWith(item.id);
-    expect(service.markCompleted).toHaveBeenCalledWith(item.id);
     expect(service.markStarted).toHaveBeenCalledWith(item.id);
     expect(service.markPaused).toHaveBeenCalledWith(item.id);
     expect(service.markDropped).toHaveBeenCalledWith(item.id);
@@ -122,5 +120,18 @@ describe('ItemViewComponent', () => {
     const labels = buttons.map((button) => button.textContent?.trim());
 
     expect(labels).toEqual(['Start']);
+  });
+
+  it('does not show ineffective quick actions for a new item', async () => {
+    configure([{ ...item, type: 'movie', status: 'not-started', watchHistory: [] }]);
+    const fixture = TestBed.createComponent(ItemViewComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const labels = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll('section button'),
+    ].map((button) => button.textContent?.trim());
+
+    expect(labels).toEqual(['Mark Watched', 'Start', 'Drop']);
   });
 });
