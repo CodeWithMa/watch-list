@@ -94,7 +94,6 @@ export class ImageStorageService {
 
   invalidateAll(): void {
     imagesInvalidated.next();
-    this.refreshCache();
   }
 
   private refreshCache(): void {

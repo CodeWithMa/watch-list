@@ -66,7 +66,6 @@ export class ItemCardComponent {
   private imageStorage = inject(ImageStorageService);
   private destroyRef = inject(DestroyRef);
   private destroyed = false;
-  private loadedImageVersion = 0;
   item = input.required<Item>();
 
   posterUrl = signal<string | null>(null);
@@ -87,18 +86,17 @@ export class ItemCardComponent {
     });
 
     effect(() => {
-      this.loadedImageVersion = this.imageStorage.version();
-      void this.loadPoster(this.item().posterId);
+      const version = this.imageStorage.version();
+      void this.loadPoster(this.item().posterId, version);
     });
   }
 
-  private async loadPoster(id: string | undefined): Promise<void> {
+  private async loadPoster(id: string | undefined, loadedVersion: number): Promise<void> {
     const url = await this.imageStorage.getUrl(id);
-    const version = this.loadedImageVersion;
     if (this.destroyed || id !== this.item().posterId) {
       return;
     }
-    if (version !== this.imageStorage.version()) return;
+    if (loadedVersion !== this.imageStorage.version()) return;
     this.posterUrl.set(url);
   }
 }

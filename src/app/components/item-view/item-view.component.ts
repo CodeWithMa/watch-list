@@ -137,7 +137,6 @@ export class ItemViewComponent {
   private groupService = inject(GroupService);
   private destroyRef = inject(DestroyRef);
   private destroyed = false;
-  private loadedImageVersion = 0;
 
   private readonly quickActionsByStatus: Record<
     ItemStatus,
@@ -193,8 +192,8 @@ export class ItemViewComponent {
 
   constructor() {
     effect(() => {
-      this.loadedImageVersion = this.imageStorage.version();
-      void this.loadPoster(this.item()?.posterId);
+      const version = this.imageStorage.version();
+      void this.loadPoster(this.item()?.posterId, version);
     });
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
@@ -211,13 +210,12 @@ export class ItemViewComponent {
     else this.watchListService.markDropped(item.id);
   }
 
-  private async loadPoster(id: string | undefined): Promise<void> {
+  private async loadPoster(id: string | undefined, loadedVersion: number): Promise<void> {
     const url = await this.imageStorage.getUrl(id);
-    const version = this.loadedImageVersion;
     if (this.destroyed || id !== this.item()?.posterId) {
       return;
     }
-    if (version !== this.imageStorage.version()) return;
+    if (loadedVersion !== this.imageStorage.version()) return;
 
     this.posterUrl.set(url ?? getPlaceholderUrl());
   }

@@ -137,7 +137,6 @@ export class PosterPickerComponent {
   private readonly draftPosterIds = new Set<string>();
   private destroyed = false;
   private skipDraftCleanup = false;
-  private loadedImageVersion = 0;
 
   private readonly tmdb = createTmdbSearchStream(
     (query) => this.tmdbSuggestionService.search(query),
@@ -158,8 +157,8 @@ export class PosterPickerComponent {
 
     effect(() => {
       const posterId = this.posterId();
-      this.loadedImageVersion = this.imageStorage.version();
-      void this.loadPosterPreview(posterId);
+      const version = this.imageStorage.version();
+      void this.loadPosterPreview(posterId, version);
     });
 
     this.tmdb.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((results) => {
@@ -241,13 +240,15 @@ export class PosterPickerComponent {
     }
   }
 
-  private async loadPosterPreview(posterId: string | undefined): Promise<void> {
+  private async loadPosterPreview(
+    posterId: string | undefined,
+    loadedVersion: number,
+  ): Promise<void> {
     const url = await this.imageStorage.getUrl(posterId);
-    const version = this.loadedImageVersion;
     if (this.destroyed || posterId !== this.posterId()) {
       return;
     }
-    if (version !== this.imageStorage.version()) return;
+    if (loadedVersion !== this.imageStorage.version()) return;
     this.posterPreviewUrl.set(url);
   }
 
