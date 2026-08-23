@@ -16,7 +16,7 @@ export interface ExportedImage {
   data: string;
 }
 
-type PosterUrlCache = Map<string, Promise<string>>;
+type PosterUrlCache = Map<string, Promise<string | null>>;
 
 @Injectable({ providedIn: 'root' })
 export class ImageStorageService {
@@ -43,14 +43,17 @@ export class ImageStorageService {
 
   async getUrl(id: string | undefined): Promise<string | null> {
     if (!id) return null;
+
     const existing = this.posterUrls.get(id);
     if (existing) return existing;
 
     const urlPromise = this.get(id).then((image) => {
-      if (!image) throw new Error(`Poster image not found: ${id}`);
-      return URL.createObjectURL(image.blob);
+      return image ? URL.createObjectURL(image.blob) : null;
     });
     this.posterUrls.set(id, urlPromise);
+    void urlPromise.catch(() => {
+      if (this.posterUrls.get(id) === urlPromise) this.posterUrls.delete(id);
+    });
     return urlPromise;
   }
 
@@ -131,7 +134,8 @@ export class ImageStorageService {
 
     this.posterUrls.delete(id);
     try {
-      URL.revokeObjectURL(await urlPromise);
+      const url = await urlPromise;
+      if (url) URL.revokeObjectURL(url);
     } catch {
       return;
     }
