@@ -48,7 +48,7 @@ const ItemSchema = z.object({
   type: z.enum(['series', 'movie']),
   title: z.string(),
   groupId: z.string(),
-  status: z.enum(['not-started', 'in-progress', 'completed', 'dropped']),
+  status: z.enum(['not-started', 'in-progress', 'paused', 'completed', 'dropped']),
   progress: SeriesProgressSchema.optional(),
   watchHistory: z.array(WatchHistoryEntrySchema),
   createdAt: z.string(),
@@ -187,6 +187,12 @@ function migrateStorageData(data: StorageData): StorageData {
       delete (item as unknown as Record<string, unknown>)['posterPath'];
     }
     migrated.schemaVersion = 6;
+  }
+
+  if (migrated.schemaVersion < 7) {
+    // Introduce 'paused' status. No auto-migration: existing 'not-started' items
+    // remain in backlog even if they were previously paused via the lie.
+    migrated.schemaVersion = 7;
   }
 
   return migrated;

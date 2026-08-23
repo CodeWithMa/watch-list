@@ -57,6 +57,11 @@
   --color-status-dropped-bg-dark: #721c24;
   --color-status-dropped-text-dark: #f8d7da;
 
+  --color-status-paused-bg-light: #e0d4f5;
+  --color-status-paused-text-light: #5b21b6;
+  --color-status-paused-bg-dark: #5b21b6;
+  --color-status-paused-text-dark: #e0d4f5;
+
   --color-error-bg-light: #f8d7da;
   --color-error-text-light: #721c24;
   --color-error-border-light: #f5c6cb;

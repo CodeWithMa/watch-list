@@ -1,7 +1,13 @@
 import { ItemStatus, ItemType } from '../models/item.model';
 
 export const ITEM_TYPES: ItemType[] = ['series', 'movie'];
-export const ITEM_STATUSES: ItemStatus[] = ['not-started', 'in-progress', 'completed', 'dropped'];
+export const ITEM_STATUSES: ItemStatus[] = [
+  'not-started',
+  'in-progress',
+  'paused',
+  'completed',
+  'dropped',
+];
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   series: 'Series',
@@ -11,6 +17,7 @@ export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
 export const ITEM_STATUS_LABELS: Record<ItemStatus, string> = {
   'not-started': 'Not Started',
   'in-progress': 'In Progress',
+  paused: 'Paused',
   completed: 'Completed',
   dropped: 'Dropped',
 };

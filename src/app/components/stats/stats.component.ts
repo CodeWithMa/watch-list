@@ -191,6 +191,12 @@ import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
+                    <span class="text-light-font-muted dark:text-dark-font-muted">Paused</span>
+                    <span class="font-medium text-light-font dark:text-dark-font">{{
+                      seriesCountByStatus()['paused']
+                    }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
                     <span class="text-light-font-muted dark:text-dark-font-muted">Completed</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
                       seriesCountByStatus()['completed']
@@ -233,6 +239,12 @@ import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
                     <span class="text-light-font-muted dark:text-dark-font-muted">In Progress</span>
                     <span class="font-medium text-light-font dark:text-dark-font">{{
                       moviesCountByStatus()['in-progress']
+                    }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-light-font-muted dark:text-dark-font-muted">Paused</span>
+                    <span class="font-medium text-light-font dark:text-dark-font">{{
+                      moviesCountByStatus()['paused']
                     }}</span>
                   </div>
                   <div class="flex justify-between text-sm">
