@@ -4,6 +4,7 @@ import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
 import { StoredImage } from './image-storage.service';
+import { imagesInvalidated } from './image-invalidation';
 
 const DATABASE_NAME = 'watch-list';
 const DATABASE_VERSION = 2;
@@ -69,6 +70,7 @@ export class StorageService {
       () => {
         this.lastPersistedData = cloneStorageData(snapshot);
         this.saveError.set(null);
+        imagesInvalidated.next();
       },
       (error: unknown) => {
         if (this.data() === snapshot) {

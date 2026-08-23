@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { ImageStorageService } from '../../services/image-storage.service';
@@ -22,6 +23,7 @@ describe('PosterPickerComponent', () => {
             storeUrl: vi.fn(() => Promise.resolve('image-1')),
             storeFile: vi.fn(() => Promise.resolve('image-1')),
             delete: vi.fn(() => Promise.resolve()),
+            version: signal(0).asReadonly(),
           },
         },
       ],

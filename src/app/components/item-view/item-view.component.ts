@@ -137,6 +137,7 @@ export class ItemViewComponent {
   private groupService = inject(GroupService);
   private destroyRef = inject(DestroyRef);
   private destroyed = false;
+  private loadedImageVersion = 0;
 
   private readonly quickActionsByStatus: Record<
     ItemStatus,
@@ -191,7 +192,10 @@ export class ItemViewComponent {
   });
 
   constructor() {
-    effect(() => void this.loadPoster(this.item()?.posterId));
+    effect(() => {
+      this.loadedImageVersion = this.imageStorage.version();
+      void this.loadPoster(this.item()?.posterId);
+    });
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
     });
@@ -209,9 +213,11 @@ export class ItemViewComponent {
 
   private async loadPoster(id: string | undefined): Promise<void> {
     const url = await this.imageStorage.getUrl(id);
+    const version = this.loadedImageVersion;
     if (this.destroyed || id !== this.item()?.posterId) {
       return;
     }
+    if (version !== this.imageStorage.version()) return;
 
     this.posterUrl.set(url ?? getPlaceholderUrl());
   }

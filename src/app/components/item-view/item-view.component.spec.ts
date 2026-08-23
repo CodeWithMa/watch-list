@@ -52,7 +52,10 @@ describe('ItemViewComponent', () => {
           provide: GroupService,
           useValue: { groups: signal([{ id: 'group-1', name: 'Favourites', order: 0 }]) },
         },
-        { provide: ImageStorageService, useValue: { getUrl: vi.fn(async () => null) } },
+        {
+          provide: ImageStorageService,
+          useValue: { getUrl: vi.fn(async () => null), version: signal(0).asReadonly() },
+        },
       ],
     });
   }

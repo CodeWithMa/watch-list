@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { imageVersion, imagesInvalidated } from './image-invalidation';
 
 const DATABASE_NAME = 'watch-list';
 const DATABASE_VERSION = 2;
@@ -22,6 +23,7 @@ type PosterUrlCache = Map<string, Promise<string | null>>;
 export class ImageStorageService {
   private database: Promise<IDBDatabase> | null = null;
   private readonly posterUrls: PosterUrlCache = new Map();
+  readonly version = imageVersion.asReadonly();
 
   async storeFile(file: Blob): Promise<string> {
     await this.validateImage(file);
@@ -83,6 +85,13 @@ export class ImageStorageService {
     store.clear();
     for (const image of parsed) store.put(image);
     await this.transaction(transaction);
+    this.invalidateAll();
+  }
+
+  invalidateAll(): void {
+    for (const id of [...this.posterUrls.keys()]) void this.revokeUrl(id);
+    imagesInvalidated.next();
+    imageVersion.update((version) => version + 1);
   }
 
   async parseExportedImages(images: unknown): Promise<StoredImage[]> {
