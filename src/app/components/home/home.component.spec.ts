@@ -76,4 +76,21 @@ describe('HomeComponent', () => {
     expect(watchListService.markStarted).toHaveBeenCalledWith('paused-movie');
     expect(watchListService.markDropped).toHaveBeenCalledWith('paused-movie');
   });
+
+  it('shows an empty state when no items are paused', async () => {
+    TestBed.overrideProvider(WatchListService, {
+      useValue: {
+        items: signal([]),
+        inProgressSeries: signal([]),
+        markStarted: vi.fn(),
+        markDropped: vi.fn(),
+      },
+    });
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No items paused');
+  });
 });

@@ -200,6 +200,12 @@ import { Item, ItemType } from '../../models/item.model';
               </div>
             }
           </div>
+        } @else {
+          <p
+            class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg"
+          >
+            No items paused
+          </p>
         }
       </div>
     </div>
