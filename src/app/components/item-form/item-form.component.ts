@@ -111,6 +111,7 @@ export interface ItemFormAutofillPatch {
         <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Poster</span>
         <app-poster-picker
           [posterId]="formValue().posterId"
+          [searchSeed]="formValue().title"
           (posterIdChange)="updatePosterId($event)"
           (loadingChange)="posterLoading.set($event)"
           #posterPicker
