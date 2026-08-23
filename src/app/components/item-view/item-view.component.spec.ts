@@ -111,4 +111,16 @@ describe('ItemViewComponent', () => {
     expect(service.markPaused).toHaveBeenCalledWith(item.id);
     expect(service.markDropped).toHaveBeenCalledWith(item.id);
   });
+
+  it('shows only status-appropriate quick actions', async () => {
+    configure([{ ...item, type: 'series', status: 'dropped' }]);
+    const fixture = TestBed.createComponent(ItemViewComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')];
+    const labels = buttons.map((button) => button.textContent?.trim());
+
+    expect(labels).toEqual(['Start']);
+  });
 });

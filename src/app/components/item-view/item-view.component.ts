@@ -10,7 +10,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { getMostRecentWatchDate } from '../../utils/progress.utils';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 
-type QuickAction = 'watched' | 'completed' | 'started' | 'paused' | 'dropped';
+type QuickAction = 'watched' | 'completed' | 'started' | 'paused' | 'dropped' | 'resume';
 
 @Component({
   selector: 'app-item-view',
@@ -83,7 +83,7 @@ type QuickAction = 'watched' | 'completed' | 'started' | 'paused' | 'dropped';
         <section class="mb-6">
           <h2 class="text-xl mb-3">Quick Actions</h2>
           <div class="flex flex-wrap gap-2">
-            @for (action of quickActions; track action.label) {
+            @for (action of quickActions(); track action.label) {
               <button
                 type="button"
                 (click)="runAction(action.action)"
@@ -138,11 +138,11 @@ export class ItemViewComponent {
   private destroyRef = inject(DestroyRef);
   private destroyed = false;
 
-  readonly quickActions: readonly { label: string; action: QuickAction }[] = [
+  readonly allQuickActions: readonly { label: string; action: QuickAction }[] = [
     { label: 'Mark Watched', action: 'watched' },
-    { label: 'Mark Completed', action: 'completed' },
     { label: 'Start', action: 'started' },
     { label: 'Pause', action: 'paused' },
+    { label: 'Resume', action: 'resume' },
     { label: 'Drop', action: 'dropped' },
   ];
 
@@ -169,13 +169,28 @@ export class ItemViewComponent {
       (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime(),
     ),
   );
+  readonly quickActions = computed(() => {
+    const item = this.item();
+    if (!item) return [];
+
+    switch (item.status) {
+      case 'not-started':
+        return this.allQuickActions.filter(({ action }) => action !== 'started');
+      case 'in-progress':
+        return this.allQuickActions.filter(
+          ({ action }) => action !== 'resume' && (item.type === 'movie' || action !== 'paused'),
+        );
+      case 'paused':
+        return this.allQuickActions.filter(({ action }) => action !== 'resume');
+      default:
+        return this.allQuickActions.filter(({ action }) => action === 'started');
+    }
+  });
 
   constructor() {
     effect(() => void this.loadPoster(this.item()?.posterId));
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
-      const finalUrl = this.posterUrl();
-      if (finalUrl.startsWith('blob:')) URL.revokeObjectURL(finalUrl);
     });
   }
 
@@ -187,18 +202,16 @@ export class ItemViewComponent {
     else if (action === 'completed') this.watchListService.markCompleted(item.id);
     else if (action === 'started') this.watchListService.markStarted(item.id);
     else if (action === 'paused') this.watchListService.markPaused(item.id);
+    else if (action === 'resume') this.watchListService.markStarted(item.id);
     else this.watchListService.markDropped(item.id);
   }
 
   private async loadPoster(id: string | undefined): Promise<void> {
     const url = await this.imageStorage.getUrl(id);
     if (this.destroyed || id !== this.item()?.posterId) {
-      if (url) URL.revokeObjectURL(url);
       return;
     }
 
-    const previous = this.posterUrl();
-    if (previous.startsWith('blob:')) URL.revokeObjectURL(previous);
     this.posterUrl.set(url ?? getPlaceholderUrl());
   }
 }

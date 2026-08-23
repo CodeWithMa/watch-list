@@ -83,8 +83,6 @@ export class ItemCardComponent {
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
-      const url = this.posterUrl();
-      if (url) URL.revokeObjectURL(url);
     });
     effect(() => void this.loadPoster(this.item().posterId));
   }
@@ -92,11 +90,8 @@ export class ItemCardComponent {
   private async loadPoster(id: string | undefined): Promise<void> {
     const url = await this.imageStorage.getUrl(id);
     if (this.destroyed || id !== this.item().posterId) {
-      if (url) URL.revokeObjectURL(url);
       return;
     }
-    const previous = this.posterUrl();
-    if (previous) URL.revokeObjectURL(previous);
     this.posterUrl.set(url);
   }
 }
