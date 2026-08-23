@@ -25,6 +25,10 @@ export class ImageStorageService {
   private readonly posterUrls: PosterUrlCache = new Map();
   readonly version = imageVersion.asReadonly();
 
+  constructor() {
+    imagesInvalidated.subscribe(() => this.refreshCache());
+  }
+
   async storeFile(file: Blob): Promise<string> {
     await this.validateImage(file);
     const id = `image-${crypto.randomUUID()}`;
@@ -89,8 +93,12 @@ export class ImageStorageService {
   }
 
   invalidateAll(): void {
-    for (const id of [...this.posterUrls.keys()]) void this.revokeUrl(id);
     imagesInvalidated.next();
+    this.refreshCache();
+  }
+
+  private refreshCache(): void {
+    for (const id of [...this.posterUrls.keys()]) void this.revokeUrl(id);
     imageVersion.update((version) => version + 1);
   }
 
