@@ -186,6 +186,34 @@ describe('ItemFormComponent', () => {
     expect(fixture.componentInstance.formValue().seasons[0].firstEpisodeAirDate).toBe('2026-05-01');
   });
 
+  it('allows a movie to remain paused', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.componentRef.setInput('initialValue', {
+      title: 'Paused Movie',
+      type: 'series',
+      groupId: 'ungrouped',
+      status: 'paused',
+      season: 2,
+      episode: 3,
+      seasons: [{ seasonNumber: 2, totalEpisodes: 10 }],
+      startImmediately: false,
+    });
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    fixture.componentInstance.setType('movie');
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.formValue()).toMatchObject({
+      title: 'Paused Movie',
+      type: 'movie',
+      status: 'paused',
+    });
+    expect(fixture.componentInstance.itemStatuses).toContain('paused');
+  });
+
   it('applies an autofill patch once when the patch id changes', async () => {
     const fixture = TestBed.createComponent(ItemFormComponent);
     fixture.componentRef.setInput('groups', groups);
