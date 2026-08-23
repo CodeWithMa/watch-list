@@ -156,10 +156,9 @@ export class WatchListService {
     const item = this.getItemById(itemId);
     if (!item) return;
 
-    const nextStatus = item.type === 'movie' ? 'not-started' : 'paused';
     this.persistItemUpdate({
       ...item,
-      status: nextStatus,
+      status: 'paused',
     });
   }
 

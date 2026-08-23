@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
-import { SeasonInfo } from '../../models/item.model';
+import { ItemStatus, SeasonInfo } from '../../models/item.model';
 import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
 import {
   createDefaultItemFormValue,
@@ -156,7 +156,7 @@ export interface ItemFormAutofillPatch {
         <div class="mb-6">
           <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Status:</span>
           <div class="flex flex-wrap gap-3">
-            @for (status of itemStatuses(); track status) {
+            @for (status of itemStatuses; track status) {
               <button
                 type="button"
                 (click)="updateStatus(status)"
@@ -272,13 +272,7 @@ export class ItemFormComponent {
   readonly suggestionSelected = output<TmdbSuggestion>();
 
   readonly itemTypes = ITEM_TYPES;
-  readonly itemStatuses = computed(() => {
-    const type = this.formValue().type;
-    if (type === 'movie') {
-      return ITEM_STATUSES.filter((s) => s !== 'paused');
-    }
-    return ITEM_STATUSES;
-  });
+  readonly itemStatuses: readonly ItemStatus[] = ITEM_STATUSES;
   readonly itemTypeLabels = ITEM_TYPE_LABELS;
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
@@ -328,9 +322,6 @@ export class ItemFormComponent {
         ...value,
         type,
       });
-      if (next.type === 'movie' && next.status === 'paused') {
-        return { ...next, status: 'not-started' };
-      }
       return next;
     });
   }
@@ -416,9 +407,6 @@ export class ItemFormComponent {
         ...value,
         ...patch,
       });
-      if (next.type === 'movie' && next.status === 'paused') {
-        return { ...next, status: 'not-started' };
-      }
       return next;
     });
   }

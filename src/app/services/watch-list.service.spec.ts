@@ -245,14 +245,14 @@ describe('WatchListService', () => {
       expect(storageService.getData().items['i1'].status).toBe('paused');
     });
 
-    it('moves a movie to backlog when paused', () => {
+    it('marks a movie as paused', () => {
       saveData({
         items: { i1: createItem({ id: 'i1', type: 'movie', status: 'in-progress' }) },
       });
 
       service.markPaused('i1');
 
-      expect(storageService.getData().items['i1'].status).toBe('not-started');
+      expect(storageService.getData().items['i1'].status).toBe('paused');
     });
 
     it('does nothing when the item does not exist', () => {

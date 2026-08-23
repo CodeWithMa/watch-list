@@ -89,7 +89,7 @@ import { Item, ItemType } from '../../models/item.model';
                   (click)="markItem(nextMovie, 'paused')"
                   class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
-                  Move to backlog
+                  Pause
                 </button>
                 <button
                   (click)="markItem(nextMovie, 'dropped')"
@@ -161,6 +161,53 @@ import { Item, ItemType } from '../../models/item.model';
           </p>
         }
       </div>
+
+      <div class="border-t border-light-border dark:border-dark-border pt-8 mt-8">
+        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Paused</h2>
+        @if (pausedItems().length > 0) {
+          <div
+            class="overflow-hidden rounded-lg border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark"
+          >
+            @for (item of pausedItems(); track item.id) {
+              <div
+                class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-light-border dark:border-dark-border last:border-b-0"
+              >
+                <div class="min-w-0 flex items-center gap-3">
+                  <a
+                    [routerLink]="['/items', item.id]"
+                    class="truncate no-underline text-base font-medium text-light-font dark:text-dark-font hover:text-accent-primary"
+                    >{{ item.title }}</a
+                  >
+                  <span
+                    class="shrink-0 rounded-full bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-1 text-xs capitalize text-light-font-secondary dark:text-dark-font-secondary"
+                    >{{ item.type }}</span
+                  >
+                </div>
+                <div class="flex shrink-0 gap-2">
+                  <button
+                    (click)="resumePausedItem(item.id)"
+                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  >
+                    Resume
+                  </button>
+                  <button
+                    (click)="dropPausedItem(item.id)"
+                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  >
+                    Drop
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p
+            class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg"
+          >
+            No items paused
+          </p>
+        }
+      </div>
     </div>
   `,
 })
@@ -174,6 +221,13 @@ export class HomeComponent {
     this.watchListService
       .items()
       .filter((item) => item.status === 'not-started')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+  );
+
+  pausedItems = computed(() =>
+    this.watchListService
+      .items()
+      .filter((item) => item.status === 'paused')
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   );
 
@@ -200,6 +254,14 @@ export class HomeComponent {
   }
 
   dropBacklogItem(itemId: string): void {
+    this.watchListService.markDropped(itemId);
+  }
+
+  resumePausedItem(itemId: string): void {
+    this.watchListService.markStarted(itemId);
+  }
+
+  dropPausedItem(itemId: string): void {
     this.watchListService.markDropped(itemId);
   }
 

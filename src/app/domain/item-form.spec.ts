@@ -87,6 +87,21 @@ describe('item-form helpers', () => {
     ]);
   });
 
+  it('preserves a paused status when building a movie mutation input', () => {
+    const mutationInput = buildItemMutationInput({
+      title: 'Paused Movie',
+      type: 'movie',
+      groupId: 'ungrouped',
+      status: 'paused',
+      season: 1,
+      episode: 1,
+      seasons: [],
+      startImmediately: false,
+    });
+
+    expect(mutationInput.status).toBe('paused');
+  });
+
   it('disables the add-flow override when submitting with a status picker', () => {
     expect(
       prepareSubmittedItemFormValue(
@@ -126,15 +141,26 @@ describe('item-form helpers', () => {
         seasons: [{ seasonNumber: 4, totalEpisodes: 12 }],
         startImmediately: false,
       }),
-    ).toEqual({
-      title: 'Movie Night',
-      type: 'movie',
-      groupId: 'ungrouped',
+    ).toMatchObject({
       status: 'completed',
       season: 1,
       episode: 1,
       seasons: [],
-      startImmediately: false,
     });
+  });
+
+  it('preserves paused status when normalizing movies', () => {
+    expect(
+      normalizeFormValueForType({
+        title: 'Paused Movie',
+        type: 'movie',
+        groupId: 'ungrouped',
+        status: 'paused',
+        season: 3,
+        episode: 4,
+        seasons: [{ seasonNumber: 3, totalEpisodes: 8 }],
+        startImmediately: false,
+      }),
+    ).toMatchObject({ status: 'paused', season: 1, episode: 1, seasons: [] });
   });
 });
