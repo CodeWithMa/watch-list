@@ -18,6 +18,11 @@ export const routes: Routes = [
   {
     path: 'items/:id',
     loadComponent: () =>
+      import('./components/item-view/item-view.component').then((m) => m.ItemViewComponent),
+  },
+  {
+    path: 'items/:id/edit',
+    loadComponent: () =>
       import('./components/item-detail/item-detail.component').then((m) => m.ItemDetailComponent),
   },
   {
