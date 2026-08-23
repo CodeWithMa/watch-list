@@ -5,12 +5,12 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { ImageStorageService } from '../../services/image-storage.service';
-import { Item } from '../../models/item.model';
+import { Item, ItemStatus } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { getMostRecentWatchDate } from '../../utils/progress.utils';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 
-type QuickAction = 'watched' | 'completed' | 'started' | 'paused' | 'dropped';
+type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
 
 @Component({
   selector: 'app-item-view',
@@ -83,7 +83,7 @@ type QuickAction = 'watched' | 'completed' | 'started' | 'paused' | 'dropped';
         <section class="mb-6">
           <h2 class="text-xl mb-3">Quick Actions</h2>
           <div class="flex flex-wrap gap-2">
-            @for (action of quickActions; track action.label) {
+            @for (action of quickActions(); track action.label) {
               <button
                 type="button"
                 (click)="runAction(action.action)"
@@ -138,13 +138,27 @@ export class ItemViewComponent {
   private destroyRef = inject(DestroyRef);
   private destroyed = false;
 
-  readonly quickActions: readonly { label: string; action: QuickAction }[] = [
-    { label: 'Mark Watched', action: 'watched' },
-    { label: 'Mark Completed', action: 'completed' },
-    { label: 'Start', action: 'started' },
-    { label: 'Pause', action: 'paused' },
-    { label: 'Drop', action: 'dropped' },
-  ];
+  private readonly quickActionsByStatus: Record<
+    ItemStatus,
+    readonly { label: string; action: QuickAction }[]
+  > = {
+    'not-started': [
+      { label: 'Mark Watched', action: 'watched' },
+      { label: 'Start', action: 'started' },
+      { label: 'Drop', action: 'dropped' },
+    ],
+    'in-progress': [
+      { label: 'Mark Watched', action: 'watched' },
+      { label: 'Pause', action: 'paused' },
+      { label: 'Drop', action: 'dropped' },
+    ],
+    paused: [
+      { label: 'Resume', action: 'started' },
+      { label: 'Drop', action: 'dropped' },
+    ],
+    completed: [{ label: 'Start', action: 'started' }],
+    dropped: [{ label: 'Start', action: 'started' }],
+  };
 
   readonly paramMap = toSignal(this.route.paramMap);
 
@@ -169,13 +183,20 @@ export class ItemViewComponent {
       (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime(),
     ),
   );
+  readonly quickActions = computed(() => {
+    const item = this.item();
+    if (!item) return [];
+
+    return this.quickActionsByStatus[item.status];
+  });
 
   constructor() {
-    effect(() => void this.loadPoster(this.item()?.posterId));
+    effect(() => {
+      const version = this.imageStorage.version();
+      void this.loadPoster(this.item()?.posterId, version);
+    });
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
-      const finalUrl = this.posterUrl();
-      if (finalUrl.startsWith('blob:')) URL.revokeObjectURL(finalUrl);
     });
   }
 
@@ -184,21 +205,18 @@ export class ItemViewComponent {
     if (!item) return;
 
     if (action === 'watched') this.watchListService.markWatched(item.id);
-    else if (action === 'completed') this.watchListService.markCompleted(item.id);
     else if (action === 'started') this.watchListService.markStarted(item.id);
     else if (action === 'paused') this.watchListService.markPaused(item.id);
     else this.watchListService.markDropped(item.id);
   }
 
-  private async loadPoster(id: string | undefined): Promise<void> {
+  private async loadPoster(id: string | undefined, loadedVersion: number): Promise<void> {
     const url = await this.imageStorage.getUrl(id);
     if (this.destroyed || id !== this.item()?.posterId) {
-      if (url) URL.revokeObjectURL(url);
       return;
     }
+    if (loadedVersion !== this.imageStorage.version()) return;
 
-    const previous = this.posterUrl();
-    if (previous.startsWith('blob:')) URL.revokeObjectURL(previous);
     this.posterUrl.set(url ?? getPlaceholderUrl());
   }
 }

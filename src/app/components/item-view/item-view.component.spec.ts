@@ -52,7 +52,10 @@ describe('ItemViewComponent', () => {
           provide: GroupService,
           useValue: { groups: signal([{ id: 'group-1', name: 'Favourites', order: 0 }]) },
         },
-        { provide: ImageStorageService, useValue: { getUrl: vi.fn(async () => null) } },
+        {
+          provide: ImageStorageService,
+          useValue: { getUrl: vi.fn(async () => null), version: signal(0).asReadonly() },
+        },
       ],
     });
   }
@@ -100,15 +103,38 @@ describe('ItemViewComponent', () => {
 
     const service = TestBed.inject(WatchListService);
     fixture.componentInstance.runAction('watched');
-    fixture.componentInstance.runAction('completed');
     fixture.componentInstance.runAction('started');
     fixture.componentInstance.runAction('paused');
     fixture.componentInstance.runAction('dropped');
 
     expect(service.markWatched).toHaveBeenCalledWith(item.id);
-    expect(service.markCompleted).toHaveBeenCalledWith(item.id);
     expect(service.markStarted).toHaveBeenCalledWith(item.id);
     expect(service.markPaused).toHaveBeenCalledWith(item.id);
     expect(service.markDropped).toHaveBeenCalledWith(item.id);
+  });
+
+  it('shows only status-appropriate quick actions', async () => {
+    configure([{ ...item, type: 'series', status: 'dropped' }]);
+    const fixture = TestBed.createComponent(ItemViewComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')];
+    const labels = buttons.map((button) => button.textContent?.trim());
+
+    expect(labels).toEqual(['Start']);
+  });
+
+  it('does not show ineffective quick actions for a new item', async () => {
+    configure([{ ...item, type: 'movie', status: 'not-started', watchHistory: [] }]);
+    const fixture = TestBed.createComponent(ItemViewComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const labels = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll('section button'),
+    ].map((button) => button.textContent?.trim());
+
+    expect(labels).toEqual(['Mark Watched', 'Start', 'Drop']);
   });
 });

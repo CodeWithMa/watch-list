@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { imageVersion, imagesInvalidated } from './image-invalidation';
 
 const DATABASE_NAME = 'watch-list';
 const DATABASE_VERSION = 2;
@@ -16,9 +17,17 @@ export interface ExportedImage {
   data: string;
 }
 
+type PosterUrlCache = Map<string, Promise<string | null>>;
+
 @Injectable({ providedIn: 'root' })
 export class ImageStorageService {
   private database: Promise<IDBDatabase> | null = null;
+  private readonly posterUrls: PosterUrlCache = new Map();
+  readonly version = imageVersion.asReadonly();
+
+  constructor() {
+    imagesInvalidated.subscribe(() => this.refreshCache());
+  }
 
   async storeFile(file: Blob): Promise<string> {
     await this.validateImage(file);
@@ -40,12 +49,23 @@ export class ImageStorageService {
 
   async getUrl(id: string | undefined): Promise<string | null> {
     if (!id) return null;
-    const image = await this.get(id);
-    return image ? URL.createObjectURL(image.blob) : null;
+
+    const existing = this.posterUrls.get(id);
+    if (existing) return existing;
+
+    const urlPromise = this.get(id).then((image) => {
+      return image ? URL.createObjectURL(image.blob) : null;
+    });
+    this.posterUrls.set(id, urlPromise);
+    void urlPromise.catch(() => {
+      if (this.posterUrls.get(id) === urlPromise) this.posterUrls.delete(id);
+    });
+    return urlPromise;
   }
 
   async delete(id: string | undefined): Promise<void> {
     if (!id) return;
+    await this.revokeUrl(id);
     const db = await this.openDatabase();
     await this.request(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(id));
   }
@@ -62,12 +82,23 @@ export class ImageStorageService {
 
   async replaceImages(images: unknown): Promise<void> {
     const parsed = await this.parseExportedImages(images);
+    for (const id of [...this.posterUrls.keys()]) await this.revokeUrl(id);
     const db = await this.openDatabase();
     const transaction = db.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     store.clear();
     for (const image of parsed) store.put(image);
     await this.transaction(transaction);
+    this.invalidateAll();
+  }
+
+  invalidateAll(): void {
+    imagesInvalidated.next();
+  }
+
+  private refreshCache(): void {
+    for (const id of [...this.posterUrls.keys()]) void this.revokeUrl(id);
+    imageVersion.update((version) => version + 1);
   }
 
   async parseExportedImages(images: unknown): Promise<StoredImage[]> {
@@ -109,7 +140,21 @@ export class ImageStorageService {
 
   private async put(image: StoredImage): Promise<void> {
     const db = await this.openDatabase();
+    await this.revokeUrl(image.id);
     await this.request(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(image));
+  }
+
+  private async revokeUrl(id: string): Promise<void> {
+    const urlPromise = this.posterUrls.get(id);
+    if (!urlPromise) return;
+
+    this.posterUrls.delete(id);
+    try {
+      const url = await urlPromise;
+      if (url) URL.revokeObjectURL(url);
+    } catch {
+      return;
+    }
   }
 
   private openDatabase(): Promise<IDBDatabase> {

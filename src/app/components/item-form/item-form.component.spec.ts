@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Group } from '../../models/group.model';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
@@ -31,6 +32,7 @@ describe('ItemFormComponent', () => {
             storeUrl: vi.fn(() => Promise.resolve('image-1')),
             storeFile: vi.fn(() => Promise.resolve('image-1')),
             delete: vi.fn(() => Promise.resolve()),
+            version: signal(0).asReadonly(),
           },
         },
       ],

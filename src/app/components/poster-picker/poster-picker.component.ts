@@ -133,7 +133,6 @@ export class PosterPickerComponent {
   readonly posterPreviewUrl = signal<string | null>(null);
   readonly posterPlaceholderUrl = signal(getPlaceholderUrl());
 
-  private previewObjectUrl: string | null = null;
   private posterRequestId = 0;
   private readonly draftPosterIds = new Set<string>();
   private destroyed = false;
@@ -153,13 +152,13 @@ export class PosterPickerComponent {
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
       this.posterRequestId++;
-      if (this.previewObjectUrl) URL.revokeObjectURL(this.previewObjectUrl);
       if (!this.skipDraftCleanup) this.deleteDraftPosters();
     });
 
     effect(() => {
       const posterId = this.posterId();
-      void this.loadPosterPreview(posterId);
+      const version = this.imageStorage.version();
+      void this.loadPosterPreview(posterId, version);
     });
 
     this.tmdb.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((results) => {
@@ -241,14 +240,15 @@ export class PosterPickerComponent {
     }
   }
 
-  private async loadPosterPreview(posterId: string | undefined): Promise<void> {
+  private async loadPosterPreview(
+    posterId: string | undefined,
+    loadedVersion: number,
+  ): Promise<void> {
     const url = await this.imageStorage.getUrl(posterId);
     if (this.destroyed || posterId !== this.posterId()) {
-      if (url) URL.revokeObjectURL(url);
       return;
     }
-    if (this.previewObjectUrl) URL.revokeObjectURL(this.previewObjectUrl);
-    this.previewObjectUrl = url;
+    if (loadedVersion !== this.imageStorage.version()) return;
     this.posterPreviewUrl.set(url);
   }
 
