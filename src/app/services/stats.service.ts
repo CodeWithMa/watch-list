@@ -29,6 +29,7 @@ export class StatsService {
     const counts: Record<string, number> = {
       'not-started': 0,
       'in-progress': 0,
+      paused: 0,
       completed: 0,
       dropped: 0,
     };
@@ -44,6 +45,7 @@ export class StatsService {
     const counts: Record<string, number> = {
       'not-started': 0,
       'in-progress': 0,
+      paused: 0,
       completed: 0,
       dropped: 0,
     };

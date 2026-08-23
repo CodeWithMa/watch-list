@@ -235,8 +235,20 @@ describe('WatchListService', () => {
       expect(storageService.getData().items['i1'].status).toBe('in-progress');
     });
 
-    it('marks an item as paused', () => {
-      saveData({ items: { i1: createItem({ id: 'i1', status: 'in-progress' }) } });
+    it('marks a series as paused', () => {
+      saveData({
+        items: { i1: createItem({ id: 'i1', type: 'series', status: 'in-progress' }) },
+      });
+
+      service.markPaused('i1');
+
+      expect(storageService.getData().items['i1'].status).toBe('paused');
+    });
+
+    it('moves a movie to backlog when paused', () => {
+      saveData({
+        items: { i1: createItem({ id: 'i1', type: 'movie', status: 'in-progress' }) },
+      });
 
       service.markPaused('i1');
 
