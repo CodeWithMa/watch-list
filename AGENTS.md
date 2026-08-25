@@ -1,2 +1,4 @@
 - **No Amending:** Never use `git commit --amend`. Always create new, discrete commits for every set of changes.
 - This project uses bun. Examples: `bun run lint`, `bun run build`, `bun run test --no-watch`.
+- Run a single spec file: `bun run test -- --include="src/app/utils/form.utils.spec.ts" --no-watch`
+- Run a single test by name (regex): `bun run test -- --filter="toPositiveNumber" --no-watch`
