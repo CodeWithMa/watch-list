@@ -3,8 +3,18 @@ import { TestBed } from '@angular/core/testing';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { PosterPickerComponent } from './poster-picker.component';
+import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { vi } from 'vitest';
 import { of, throwError } from 'rxjs';
+
+function createSuggestion(
+  overrides: Partial<Suggestion> & Pick<Suggestion, 'id' | 'title' | 'type'>,
+): Suggestion {
+  return {
+    source: 'tmdb' as SuggestionSource,
+    ...overrides,
+  };
+}
 
 describe('PosterPickerComponent', () => {
   beforeEach(() => {
@@ -58,12 +68,12 @@ describe('PosterPickerComponent', () => {
     try {
       search.mockReturnValue(
         of([
-          {
-            tmdbId: 1,
+          createSuggestion({
+            id: 1,
             title: 'Test Movie',
             type: 'movie',
-            posterPath: '/poster.jpg',
-          },
+            posterUrl: 'https://image.tmdb.org/t/p/w342/poster.jpg',
+          }),
         ]),
       );
 
@@ -75,12 +85,12 @@ describe('PosterPickerComponent', () => {
 
       expect(search).toHaveBeenCalledWith('test');
       expect(fixture.componentInstance.posterSuggestions()).toEqual([
-        {
-          tmdbId: 1,
+        createSuggestion({
+          id: 1,
           title: 'Test Movie',
           type: 'movie',
-          posterPath: '/poster.jpg',
-        },
+          posterUrl: 'https://image.tmdb.org/t/p/w342/poster.jpg',
+        }),
       ]);
       expect(fixture.componentInstance.posterSuggestionsLoading()).toBe(false);
     } finally {
@@ -88,24 +98,20 @@ describe('PosterPickerComponent', () => {
     }
   });
 
-  it('filters out poster suggestions without posterPath', async () => {
+  it('filters out poster suggestions without posterUrl', async () => {
     vi.useFakeTimers();
     const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
     const search = vi.mocked(tmdbSuggestionService.search);
     try {
       search.mockReturnValue(
         of([
-          {
-            tmdbId: 1,
+          createSuggestion({
+            id: 1,
             title: 'With Poster',
             type: 'movie',
-            posterPath: '/poster.jpg',
-          },
-          {
-            tmdbId: 2,
-            title: 'No Poster',
-            type: 'movie',
-          },
+            posterUrl: 'https://image.tmdb.org/t/p/w342/poster.jpg',
+          }),
+          createSuggestion({ id: 2, title: 'No Poster', type: 'movie' }),
         ]),
       );
 
@@ -116,12 +122,12 @@ describe('PosterPickerComponent', () => {
       await vi.advanceTimersByTimeAsync(300);
 
       expect(fixture.componentInstance.posterSuggestions()).toEqual([
-        {
-          tmdbId: 1,
+        createSuggestion({
+          id: 1,
           title: 'With Poster',
           type: 'movie',
-          posterPath: '/poster.jpg',
-        },
+          posterUrl: 'https://image.tmdb.org/t/p/w342/poster.jpg',
+        }),
       ]);
     } finally {
       vi.useRealTimers();
@@ -146,19 +152,19 @@ describe('PosterPickerComponent', () => {
     }
   });
 
-  it('sets poster path on the form when selecting a TMDB poster suggestion', async () => {
+  it('stores the poster when selecting a poster suggestion', async () => {
     vi.useFakeTimers();
     const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
     const search = vi.mocked(tmdbSuggestionService.search);
     try {
       search.mockReturnValue(
         of([
-          {
-            tmdbId: 1,
+          createSuggestion({
+            id: 1,
             title: 'Test Movie',
             type: 'movie',
-            posterPath: '/new-poster.jpg',
-          },
+            posterUrl: 'https://image.tmdb.org/t/p/w342/new-poster.jpg',
+          }),
         ]),
       );
 
@@ -171,12 +177,14 @@ describe('PosterPickerComponent', () => {
       const emitted: (string | undefined)[] = [];
       fixture.componentInstance.posterIdChange.subscribe((posterId) => emitted.push(posterId));
 
-      fixture.componentInstance.selectPosterFromTmdb({
-        tmdbId: 1,
-        title: 'Test Movie',
-        type: 'movie',
-        posterPath: '/new-poster.jpg',
-      });
+      fixture.componentInstance.selectPosterSuggestion(
+        createSuggestion({
+          id: 1,
+          title: 'Test Movie',
+          type: 'movie',
+          posterUrl: 'https://image.tmdb.org/t/p/w342/new-poster.jpg',
+        }),
+      );
 
       await Promise.resolve();
       await Promise.resolve();
@@ -197,14 +205,14 @@ describe('PosterPickerComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Use URL');
   });
 
-  it('stores the poster when selecting an item suggestion', async () => {
+  it('stores the poster from a suggestion URL', async () => {
     const fixture = TestBed.createComponent(PosterPickerComponent);
     fixture.detectChanges();
 
     const emitted: (string | undefined)[] = [];
     fixture.componentInstance.posterIdChange.subscribe((posterId) => emitted.push(posterId));
 
-    fixture.componentInstance.storeFromTmdbPath('/poster.jpg');
+    fixture.componentInstance.storeFromUrl('https://image.tmdb.org/t/p/w342/poster.jpg');
     await Promise.resolve();
     await Promise.resolve();
 
@@ -225,7 +233,7 @@ describe('PosterPickerComponent', () => {
     const loading: boolean[] = [];
     fixture.componentInstance.loadingChange.subscribe((value) => loading.push(value));
 
-    fixture.componentInstance.storeFromTmdbPath('/poster.jpg');
+    fixture.componentInstance.storeFromUrl('https://image.tmdb.org/t/p/w342/poster.jpg');
     await Promise.resolve();
 
     expect(fixture.componentInstance.posterLoading()).toBe(true);
@@ -250,12 +258,14 @@ describe('PosterPickerComponent', () => {
     const fixture = TestBed.createComponent(PosterPickerComponent);
     fixture.detectChanges();
 
-    fixture.componentInstance.selectPosterFromTmdb({
-      tmdbId: 1,
-      title: 'Test Movie',
-      type: 'movie',
-      posterPath: '/poster.jpg',
-    });
+    fixture.componentInstance.selectPosterSuggestion(
+      createSuggestion({
+        id: 1,
+        title: 'Test Movie',
+        type: 'movie',
+        posterUrl: 'https://image.tmdb.org/t/p/w342/poster.jpg',
+      }),
+    );
     fixture.componentInstance.clearPoster();
     resolvePoster('late-poster');
     await Promise.resolve();
@@ -271,12 +281,12 @@ describe('PosterPickerComponent', () => {
     try {
       search.mockReturnValue(
         of([
-          {
-            tmdbId: 1,
+          createSuggestion({
+            id: 1,
             title: 'Test Movie',
             type: 'movie',
-            posterPath: '/poster.jpg',
-          },
+            posterUrl: 'https://image.tmdb.org/t/p/w342/poster.jpg',
+          }),
         ]),
       );
 
@@ -287,12 +297,14 @@ describe('PosterPickerComponent', () => {
       await vi.advanceTimersByTimeAsync(300);
       expect(search).toHaveBeenCalledTimes(1);
 
-      fixture.componentInstance.selectPosterFromTmdb({
-        tmdbId: 1,
-        title: 'Test Movie',
-        type: 'movie',
-        posterPath: '/poster.jpg',
-      });
+      fixture.componentInstance.selectPosterSuggestion(
+        createSuggestion({
+          id: 1,
+          title: 'Test Movie',
+          type: 'movie',
+          posterUrl: 'https://image.tmdb.org/t/p/w342/poster.jpg',
+        }),
+      );
 
       fixture.componentInstance.onPosterSearchChanged('batman');
       await vi.advanceTimersByTimeAsync(300);

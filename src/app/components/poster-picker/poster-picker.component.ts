@@ -1,11 +1,11 @@
 import { Component, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
+import { Suggestion } from '../../models/suggestion.model';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { ImageStorageService } from '../../services/image-storage.service';
-import { getPosterUrl, getPlaceholderUrl } from '../../utils/tmdb-image.utils';
-import { createTmdbSearchStream } from '../../utils/tmdb-search.utils';
+import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
+import { createSearchStream } from '../../utils/search-stream.utils';
 
 @Component({
   selector: 'app-poster-picker',
@@ -50,16 +50,16 @@ import { createTmdbSearchStream } from '../../utils/tmdb-search.utils';
               >
                 @for (
                   suggestion of posterSuggestions();
-                  track suggestion.type + '-' + suggestion.tmdbId
+                  track suggestion.source + '-' + suggestion.id
                 ) {
                   <button
                     type="button"
-                    (click)="selectPosterFromTmdb(suggestion)"
+                    (click)="selectPosterSuggestion(suggestion)"
                     class="w-full text-left px-2 py-1.5 border-0 border-b border-light-border dark:border-dark-border last:border-b-0 bg-transparent hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer flex items-center gap-2"
                   >
-                    @if (suggestion.posterPath) {
+                    @if (suggestion.posterUrl) {
                       <img
-                        [src]="getPosterThumbUrl(suggestion.posterPath)"
+                        [src]="suggestion.posterUrl"
                         alt=""
                         class="w-8 aspect-[2/3] object-cover rounded shrink-0"
                       />
@@ -125,7 +125,7 @@ export class PosterPickerComponent {
   readonly loadingChange = output<boolean>();
 
   readonly posterSearchQuery = signal('');
-  readonly posterSuggestions = signal<TmdbSuggestion[]>([]);
+  readonly posterSuggestions = signal<Suggestion[]>([]);
   readonly posterSuggestionsLoading = signal(false);
   readonly posterSuggestionsError = signal('');
   readonly showPosterSearch = signal(false);
@@ -139,7 +139,7 @@ export class PosterPickerComponent {
   private destroyed = false;
   private skipDraftCleanup = false;
 
-  private readonly tmdb = createTmdbSearchStream(
+  private readonly tmdb = createSearchStream(
     (query) => this.tmdbSuggestionService.search(query),
     'TMDB search unavailable.',
     {
@@ -163,12 +163,8 @@ export class PosterPickerComponent {
     });
 
     this.tmdb.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((results) => {
-      this.posterSuggestions.set(results.filter((suggestion) => suggestion.posterPath));
+      this.posterSuggestions.set(results.filter((suggestion) => suggestion.posterUrl));
     });
-  }
-
-  getPosterThumbUrl(posterPath: string): string | null {
-    return getPosterUrl(posterPath);
   }
 
   openPosterSearch(): void {
@@ -184,9 +180,9 @@ export class PosterPickerComponent {
     this.tmdb.query.next(query);
   }
 
-  selectPosterFromTmdb(suggestion: TmdbSuggestion): void {
-    if (suggestion.posterPath) {
-      void this.storePoster(this.imageStorage.storeUrl(getPosterUrl(suggestion.posterPath) ?? ''));
+  selectPosterSuggestion(suggestion: Suggestion): void {
+    if (suggestion.posterUrl) {
+      void this.storePoster(this.imageStorage.storeUrl(suggestion.posterUrl));
     }
     this.posterSearchQuery.set('');
     this.tmdb.query.next('');
@@ -194,9 +190,9 @@ export class PosterPickerComponent {
     this.showPosterSearch.set(false);
   }
 
-  storeFromTmdbPath(posterPath: string | null | undefined): void {
-    if (posterPath) {
-      void this.storePoster(this.imageStorage.storeUrl(getPosterUrl(posterPath) ?? ''));
+  storeFromUrl(posterUrl: string | null | undefined): void {
+    if (posterUrl) {
+      void this.storePoster(this.imageStorage.storeUrl(posterUrl));
     }
   }
 

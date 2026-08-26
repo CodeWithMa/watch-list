@@ -11,8 +11,8 @@ import {
   createDefaultItemFormValue,
   ItemFormValue,
 } from '../../domain/item-form';
-import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
-import { createTmdbSearchStream } from '../../utils/tmdb-search.utils';
+import { Suggestion } from '../../models/suggestion.model';
+import { createSearchStream } from '../../utils/search-stream.utils';
 
 @Component({
   selector: 'app-add-item',
@@ -47,7 +47,7 @@ export class AddItemComponent {
   private tmdbSuggestionService = inject(TmdbSuggestionService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
-  private readonly tmdb = createTmdbSearchStream(
+  private readonly tmdb = createSearchStream(
     (query) => this.tmdbSuggestionService.search(query),
     'TMDB suggestions are unavailable.',
     {
@@ -69,7 +69,7 @@ export class AddItemComponent {
   readonly groups = this.groupService.groups;
   readonly initialValue = createDefaultItemFormValue();
   readonly title = signal('');
-  readonly suggestions = signal<TmdbSuggestion[]>([]);
+  readonly suggestions = signal<Suggestion[]>([]);
   readonly suggestionsLoading = signal(false);
   readonly suggestionsError = signal('');
   readonly autofillPatch = signal<{ id: number; value: Partial<ItemFormValue> } | null>(null);
@@ -141,7 +141,7 @@ export class AddItemComponent {
     this.requestTitleSearch(title);
   }
 
-  onSuggestionSelected(suggestion: TmdbSuggestion): void {
+  onSuggestionSelected(suggestion: Suggestion): void {
     this.title.set(suggestion.title);
     this.skipNextSearch = true;
     this.requestTitleSearch(suggestion.title);
@@ -154,7 +154,7 @@ export class AddItemComponent {
       return;
     }
 
-    this.selectedTmdbSeriesIds.next(suggestion.tmdbId);
+    this.selectedTmdbSeriesIds.next(suggestion.id);
   }
 
   async onSubmit(formValue: ItemFormValue): Promise<void> {

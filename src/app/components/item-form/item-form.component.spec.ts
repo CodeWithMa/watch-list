@@ -125,7 +125,8 @@ describe('ItemFormComponent', () => {
     fixture.componentRef.setInput('groups', groups);
     fixture.componentRef.setInput('suggestions', [
       {
-        tmdbId: 11,
+        id: 11,
+        source: 'tmdb',
         title: 'Star Wars',
         type: 'movie',
         year: '1977',
@@ -153,7 +154,8 @@ describe('ItemFormComponent', () => {
     expect(fixture.componentInstance.formValue().type).toBe('movie');
     expect(selected).toEqual([
       {
-        tmdbId: 11,
+        id: 11,
+        source: 'tmdb',
         title: 'Star Wars',
         type: 'movie',
         year: '1977',

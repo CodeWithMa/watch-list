@@ -12,7 +12,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
 import { ItemStatus, SeasonInfo } from '../../models/item.model';
-import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
+import { Suggestion } from '../../models/suggestion.model';
 import {
   createDefaultItemFormValue,
   ItemFormValue,
@@ -76,7 +76,7 @@ export interface ItemFormAutofillPatch {
             } @else if (suggestionsError()) {
               <div class="px-3 py-2 text-sm text-accent-secondary">{{ suggestionsError() }}</div>
             } @else if (suggestions().length > 0) {
-              @for (suggestion of suggestions(); track suggestion.type + '-' + suggestion.tmdbId) {
+              @for (suggestion of suggestions(); track suggestion.source + '-' + suggestion.id) {
                 <button
                   type="button"
                   (click)="selectSuggestion(suggestion)"
@@ -262,7 +262,7 @@ export class ItemFormComponent {
   readonly resetOnCancel = input(false);
   readonly disableSubmitWhenPristine = input(false);
   readonly duplicateTitleHint = input('');
-  readonly suggestions = input<TmdbSuggestion[]>([]);
+  readonly suggestions = input<Suggestion[]>([]);
   readonly suggestionsLoading = input(false);
   readonly suggestionsError = input('');
   readonly autofillPatch = input<ItemFormAutofillPatch | null>(null);
@@ -270,7 +270,7 @@ export class ItemFormComponent {
   readonly submitted = output<ItemFormValue>();
   readonly cancelled = output<void>();
   readonly titleChanged = output<string>();
-  readonly suggestionSelected = output<TmdbSuggestion>();
+  readonly suggestionSelected = output<Suggestion>();
 
   readonly itemTypes = ITEM_TYPES;
   readonly itemStatuses: readonly ItemStatus[] = ITEM_STATUSES;
@@ -362,7 +362,7 @@ export class ItemFormComponent {
     this.titleChanged.emit(title);
   }
 
-  selectSuggestion(suggestion: TmdbSuggestion): void {
+  selectSuggestion(suggestion: Suggestion): void {
     this.formValue.update((value) =>
       normalizeFormValueForType({
         ...value,
@@ -370,7 +370,7 @@ export class ItemFormComponent {
         type: suggestion.type,
       }),
     );
-    this.posterPicker?.storeFromTmdbPath(suggestion.posterPath);
+    this.posterPicker?.storeFromUrl(suggestion.posterUrl);
     this.suggestionSelected.emit(suggestion);
   }
 

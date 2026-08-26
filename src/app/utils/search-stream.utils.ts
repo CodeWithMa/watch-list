@@ -8,9 +8,9 @@ import {
   of,
   finalize,
 } from 'rxjs';
-import { TmdbSuggestion } from '../models/tmdb-suggestion.model';
+import { Suggestion } from '../models/suggestion.model';
 
-export interface TmdbSearchOptions {
+export interface SearchStreamOptions {
   debounceMs?: number;
   minLength?: number;
   distinct?: boolean;
@@ -19,16 +19,16 @@ export interface TmdbSearchOptions {
   onError?: (message: string) => void;
 }
 
-export interface TmdbSearch {
+export interface SearchStream {
   query: Subject<string>;
-  results: Observable<TmdbSuggestion[]>;
+  results: Observable<Suggestion[]>;
 }
 
-export function createTmdbSearchStream(
-  searchFn: (query: string) => Observable<TmdbSuggestion[]>,
+export function createSearchStream(
+  searchFn: (query: string) => Observable<Suggestion[]>,
   errorMessage: string,
-  options: TmdbSearchOptions = {},
-): TmdbSearch {
+  options: SearchStreamOptions = {},
+): SearchStream {
   const debounceMs = options.debounceMs ?? 300;
   const minLength = options.minLength ?? 2;
   const query = new Subject<string>();
