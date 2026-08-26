@@ -29,6 +29,7 @@ import { SeasonEditorComponent } from '../season-editor/season-editor.component'
 import { PosterPickerComponent } from '../poster-picker/poster-picker.component';
 import { statusButtonClass } from '../../utils/status.utils';
 import { toPositiveNumber } from '../../utils/form.utils';
+import { isEpisodicType } from '../../domain/item.constants';
 
 export interface ItemFormAutofillPatch {
   id: number;
@@ -71,7 +72,7 @@ export interface ItemFormAutofillPatch {
               <div
                 class="px-3 py-2 text-sm text-light-font-secondary dark:text-dark-font-secondary"
               >
-                Searching TMDB...
+                Searching...
               </div>
             } @else if (suggestionsError()) {
               <div class="px-3 py-2 text-sm text-accent-secondary">{{ suggestionsError() }}</div>
@@ -92,7 +93,8 @@ export interface ItemFormAutofillPatch {
                   </span>
                   <span
                     class="block text-sm text-light-font-secondary dark:text-dark-font-secondary"
-                    >{{ itemTypeLabels[suggestion.type] }}</span
+                    >{{ itemTypeLabels[suggestion.type] }} ·
+                    {{ suggestion.source === 'mal' ? 'MAL' : 'TMDB' }}</span
                   >
                   @if (suggestion.overview) {
                     <span
@@ -185,7 +187,7 @@ export interface ItemFormAutofillPatch {
         </div>
       }
 
-      @if (formValue().type === 'series') {
+      @if (isEpisodic(formValue().type)) {
         <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
           <div class="mb-6">
             <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font"
@@ -278,6 +280,7 @@ export class ItemFormComponent {
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
   readonly posterLoading = signal(false);
+  readonly isEpisodic = isEpisodicType;
 
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
 

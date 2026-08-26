@@ -5,6 +5,7 @@ import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { ItemCardComponent } from '../item-card/item-card.component';
 import { Item, ItemType } from '../../models/item.model';
+import { isEpisodicType } from '../../domain/item.constants';
 
 @Component({
   selector: 'app-home',
@@ -231,7 +232,9 @@ export class HomeComponent {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
   );
 
-  protected hasSeries = computed(() => this.hasItemType('series'));
+  protected hasSeries = computed(() =>
+    this.watchListService.items().some((item) => isEpisodicType(item.type)),
+  );
   protected hasMovies = computed(() => this.hasItemType('movie'));
   protected hasInProgressSeries = computed(
     () => this.watchListService.inProgressSeries().length > 0,

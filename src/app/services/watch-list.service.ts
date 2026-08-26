@@ -3,6 +3,7 @@ import { StorageService } from './storage.service';
 import { Item, SeriesProgress } from '../models/item.model';
 import { HistoryEntry } from '../models/storage.model';
 import { ImageStorageService } from './image-storage.service';
+import { isEpisodicType } from '../domain/item.constants';
 
 function advanceSeriesProgress(progress: SeriesProgress): {
   progress: SeriesProgress;
@@ -99,7 +100,7 @@ export class WatchListService {
 
     const now = new Date().toISOString();
 
-    if (item.type === 'movie') {
+    if (!isEpisodicType(item.type)) {
       this.persistItemUpdate({
         ...item,
         status: 'completed',
@@ -187,7 +188,7 @@ export class WatchListService {
   });
 
   inProgressSeries = computed(() =>
-    this.items().filter((i) => i.type === 'series' && i.status === 'in-progress'),
+    this.items().filter((i) => isEpisodicType(i.type) && i.status === 'in-progress'),
   );
 
   inProgressMovies = computed(() =>

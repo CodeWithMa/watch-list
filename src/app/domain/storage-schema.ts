@@ -45,7 +45,7 @@ const WatchHistoryEntrySchema = z.object({
 
 const ItemSchema = z.object({
   id: z.string(),
-  type: z.enum(['series', 'movie']),
+  type: z.enum(['series', 'movie', 'ova', 'ona']),
   title: z.string(),
   groupId: z.string(),
   status: z.enum(['not-started', 'in-progress', 'paused', 'completed', 'dropped']),
@@ -64,7 +64,7 @@ const GroupSchema = z.object({
 const DeletedItemHistorySchema = z.object({
   itemId: z.string(),
   itemTitle: z.string(),
-  itemType: z.enum(['series', 'movie']),
+  itemType: z.enum(['series', 'movie', 'ova', 'ona']),
   watchHistory: z.array(WatchHistoryEntrySchema),
   deletedAt: z.string(),
 });
@@ -193,6 +193,12 @@ function migrateStorageData(data: StorageData): StorageData {
     // Introduce 'paused' status. No auto-migration: existing 'not-started' items
     // remain in backlog even if they were previously paused via the lie.
     migrated.schemaVersion = 7;
+  }
+
+  if (migrated.schemaVersion < 8) {
+    // Widen ItemType to include 'ova' and 'ona'. No data migration needed;
+    // existing 'series'|'movie' values remain valid under the expanded enum.
+    migrated.schemaVersion = 8;
   }
 
   return migrated;

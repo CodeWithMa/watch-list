@@ -2,7 +2,7 @@ import { Component, DestroyRef, effect, inject, input, output, signal } from '@a
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Suggestion } from '../../models/suggestion.model';
-import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
+import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { createSearchStream } from '../../utils/search-stream.utils';
@@ -115,7 +115,7 @@ import { createSearchStream } from '../../utils/search-stream.utils';
   `,
 })
 export class PosterPickerComponent {
-  private tmdbSuggestionService = inject(TmdbSuggestionService);
+  private suggestionSearchService = inject(SuggestionSearchService);
   private imageStorage = inject(ImageStorageService);
   private destroyRef = inject(DestroyRef);
 
@@ -140,10 +140,10 @@ export class PosterPickerComponent {
   private skipDraftCleanup = false;
 
   private readonly tmdb = createSearchStream(
-    (query) => this.tmdbSuggestionService.search(query),
-    'TMDB search unavailable.',
+    (query) => this.suggestionSearchService.search(query),
+    'Search unavailable.',
     {
-      debounceMs: 300,
+      debounceMs: 400,
       onLoadingChange: (loading) => this.posterSuggestionsLoading.set(loading),
       onError: (message) => this.posterSuggestionsError.set(message),
     },

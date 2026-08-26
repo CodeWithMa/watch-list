@@ -3,6 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { GroupService } from '../../services/group.service';
 import { WatchListService } from '../../services/watch-list.service';
+import { JikanSuggestionService } from '../../services/jikan-suggestion.service';
+import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { Item } from '../../models/item.model';
 import { Suggestion } from '../../models/suggestion.model';
@@ -55,10 +57,23 @@ describe('AddItemComponent', () => {
           },
         },
         {
+          provide: SuggestionSearchService,
+          useValue: {
+            search: vi.fn(() => of([])),
+          },
+        },
+        {
           provide: TmdbSuggestionService,
           useValue: {
             search: vi.fn(() => of([])),
             getSeriesDetails: vi.fn(() => of(null)),
+          },
+        },
+        {
+          provide: JikanSuggestionService,
+          useValue: {
+            search: vi.fn(() => of([])),
+            getAnimeDetails: vi.fn(() => of(null)),
           },
         },
       ],
@@ -102,7 +117,7 @@ describe('AddItemComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/items']);
   });
 
-  it('clears suggestions after selecting a TMDB suggestion', () => {
+  it('clears suggestions after selecting a suggestion', () => {
     const fixture = TestBed.createComponent(AddItemComponent);
 
     fixture.componentInstance.suggestions.set([
@@ -158,8 +173,49 @@ describe('AddItemComponent', () => {
     });
   });
 
+  it('autofills seasons after selecting a MAL OVA suggestion', () => {
+    const jikanSuggestionService = TestBed.inject(JikanSuggestionService);
+    vi.mocked(jikanSuggestionService.getAnimeDetails).mockReturnValue(
+      of({
+        seasons: [
+          {
+            seasonNumber: 1,
+            totalEpisodes: 4,
+            firstEpisodeAirDate: '2020-01-01',
+          },
+        ],
+      }),
+    );
+    const fixture = TestBed.createComponent(AddItemComponent);
+
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({
+        id: 999,
+        source: 'mal',
+        title: 'OVA Title',
+        type: 'ova',
+        year: '2020',
+      }),
+    );
+
+    expect(jikanSuggestionService.getAnimeDetails).toHaveBeenCalledWith(999);
+    expect(fixture.componentInstance.autofillPatch()).toEqual({
+      id: 1,
+      value: {
+        seasons: [
+          {
+            seasonNumber: 1,
+            totalEpisodes: 4,
+            firstEpisodeAirDate: '2020-01-01',
+          },
+        ],
+      },
+    });
+  });
+
   it('does not fetch season details for movie suggestions', () => {
     const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const jikanSuggestionService = TestBed.inject(JikanSuggestionService);
     const fixture = TestBed.createComponent(AddItemComponent);
 
     fixture.componentInstance.onSuggestionSelected(
@@ -173,6 +229,7 @@ describe('AddItemComponent', () => {
     );
 
     expect(tmdbSuggestionService.getSeriesDetails).not.toHaveBeenCalled();
+    expect(jikanSuggestionService.getAnimeDetails).not.toHaveBeenCalled();
     expect(fixture.componentInstance.autofillPatch()).toBeNull();
   });
 
@@ -335,29 +392,27 @@ describe('AddItemComponent', () => {
     expect(fixture.componentInstance.autofillPatch()).toBeNull();
   });
 
-  it('shows a TMDB error and keeps searching after a failed request', async () => {
+  it('shows an error and keeps searching after a failed request', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       search
-        .mockReturnValueOnce(throwError(() => new Error('TMDB unavailable')))
+        .mockReturnValueOnce(throwError(() => new Error('unavailable')))
         .mockReturnValueOnce(
           of([createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' })]),
         );
       const fixture = TestBed.createComponent(AddItemComponent);
 
       fixture.componentInstance.onTitleChanged('bad query');
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(fixture.componentInstance.suggestions()).toEqual([]);
       expect(fixture.componentInstance.suggestionsLoading()).toBe(false);
-      expect(fixture.componentInstance.suggestionsError()).toBe(
-        'TMDB suggestions are unavailable.',
-      );
+      expect(fixture.componentInstance.suggestionsError()).toBe('Suggestions are unavailable.');
 
       fixture.componentInstance.onTitleChanged('good query');
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(fixture.componentInstance.suggestions()).toEqual([
         createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
@@ -370,15 +425,15 @@ describe('AddItemComponent', () => {
 
   it('does not search again for whitespace-only title changes', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(AddItemComponent);
 
       fixture.componentInstance.onTitleChanged('Breaking');
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(400);
       fixture.componentInstance.onTitleChanged('Breaking ');
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(search).toHaveBeenCalledTimes(1);
       expect(search).toHaveBeenCalledWith('Breaking');
@@ -389,8 +444,8 @@ describe('AddItemComponent', () => {
 
   it('does not run a pending debounced search after selecting a suggestion', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(AddItemComponent);
 
@@ -402,7 +457,7 @@ describe('AddItemComponent', () => {
       fixture.componentInstance.onSuggestionSelected(
         createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
       );
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(search).not.toHaveBeenCalled();
       expect(fixture.componentInstance.title()).toBe('Breaking Bad');

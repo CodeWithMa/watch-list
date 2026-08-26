@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
+import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { PosterPickerComponent } from './poster-picker.component';
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
@@ -21,7 +21,7 @@ describe('PosterPickerComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         {
-          provide: TmdbSuggestionService,
+          provide: SuggestionSearchService,
           useValue: {
             search: vi.fn(() => of([])),
           },
@@ -42,8 +42,8 @@ describe('PosterPickerComponent', () => {
 
   it('seeds poster search with the item title when opened', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(PosterPickerComponent);
       fixture.componentRef.setInput('searchSeed', ' Test Movie ');
@@ -54,17 +54,17 @@ describe('PosterPickerComponent', () => {
       expect(fixture.componentInstance.showPosterSearch()).toBe(true);
       expect(fixture.componentInstance.posterSearchQuery()).toBe('Test Movie');
 
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(400);
       expect(search).toHaveBeenCalledWith('Test Movie');
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('searches TMDB for posters after debounce', async () => {
+  it('searches for posters after debounce', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       search.mockReturnValue(
         of([
@@ -81,7 +81,7 @@ describe('PosterPickerComponent', () => {
       fixture.detectChanges();
 
       fixture.componentInstance.onPosterSearchChanged('test');
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(search).toHaveBeenCalledWith('test');
       expect(fixture.componentInstance.posterSuggestions()).toEqual([
@@ -100,8 +100,8 @@ describe('PosterPickerComponent', () => {
 
   it('filters out poster suggestions without posterUrl', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       search.mockReturnValue(
         of([
@@ -119,7 +119,7 @@ describe('PosterPickerComponent', () => {
       fixture.detectChanges();
 
       fixture.componentInstance.onPosterSearchChanged('test');
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(fixture.componentInstance.posterSuggestions()).toEqual([
         createSuggestion({
@@ -136,14 +136,14 @@ describe('PosterPickerComponent', () => {
 
   it('does not search for poster with query shorter than 2 characters', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(PosterPickerComponent);
       fixture.detectChanges();
 
       fixture.componentInstance.onPosterSearchChanged('a');
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(search).not.toHaveBeenCalled();
       expect(fixture.componentInstance.posterSuggestions()).toEqual([]);
@@ -154,8 +154,8 @@ describe('PosterPickerComponent', () => {
 
   it('stores the poster when selecting a poster suggestion', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       search.mockReturnValue(
         of([
@@ -172,7 +172,7 @@ describe('PosterPickerComponent', () => {
       fixture.detectChanges();
 
       fixture.componentInstance.onPosterSearchChanged('test');
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(400);
 
       const emitted: (string | undefined)[] = [];
       fixture.componentInstance.posterIdChange.subscribe((posterId) => emitted.push(posterId));
@@ -276,8 +276,8 @@ describe('PosterPickerComponent', () => {
 
   it('re-triggers poster search when re-typing the same query after selection', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       search.mockReturnValue(
         of([
@@ -294,7 +294,7 @@ describe('PosterPickerComponent', () => {
       fixture.detectChanges();
 
       fixture.componentInstance.onPosterSearchChanged('batman');
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(400);
       expect(search).toHaveBeenCalledTimes(1);
 
       fixture.componentInstance.selectPosterSuggestion(
@@ -307,27 +307,27 @@ describe('PosterPickerComponent', () => {
       );
 
       fixture.componentInstance.onPosterSearchChanged('batman');
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(400);
       expect(search).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('shows TMDB error when poster search fails', async () => {
+  it('shows error when poster search fails', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
-      search.mockReturnValue(throwError(() => new Error('TMDB unavailable')));
+      search.mockReturnValue(throwError(() => new Error('search unavailable')));
 
       const fixture = TestBed.createComponent(PosterPickerComponent);
       fixture.detectChanges();
 
       fixture.componentInstance.onPosterSearchChanged('test');
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(400);
 
-      expect(fixture.componentInstance.posterSuggestionsError()).toBe('TMDB search unavailable.');
+      expect(fixture.componentInstance.posterSuggestionsError()).toBe('Search unavailable.');
       expect(fixture.componentInstance.posterSuggestionsLoading()).toBe(false);
     } finally {
       vi.useRealTimers();
