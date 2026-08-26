@@ -87,6 +87,32 @@ import { environment } from '../../../environments/environment';
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+          AniList
+        </h2>
+        <div class="mb-4">
+          <a
+            href="https://anilist.co"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-block text-accent-primary hover:underline text-sm font-medium"
+          >
+            AniList.co
+          </a>
+          <p class="mt-3 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+            This product uses the AniList API (graphql.anilist.co) but is not endorsed or certified
+            by AniList.
+          </p>
+          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+            Anime suggestions (TV, Movie, OVA, ONA) are fetched from AniList’s public GraphQL API
+            with
+            <span class="font-mono">isAdult:false</span> filtering and no authentication required.
+            Rate limit: ~90 requests/min (currently 30/min degraded).
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
+        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
           Data Management
         </h2>
         <div class="mb-4 last:mb-0">

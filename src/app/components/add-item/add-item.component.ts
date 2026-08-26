@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, of, Subject, switchMap } from 'rxjs';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
+import { AnilistSuggestionService } from '../../services/anilist-suggestion.service';
 import { JikanSuggestionService } from '../../services/jikan-suggestion.service';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
@@ -54,6 +55,7 @@ export class AddItemComponent {
   private groupService = inject(GroupService);
   private tmdbSuggestionService = inject(TmdbSuggestionService);
   private jikanSuggestionService = inject(JikanSuggestionService);
+  private anilistSuggestionService = inject(AnilistSuggestionService);
   private suggestionSearchService = inject(SuggestionSearchService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
@@ -112,7 +114,9 @@ export class AddItemComponent {
           const details$ =
             ref.source === 'mal'
               ? this.jikanSuggestionService.getAnimeDetails(ref.id)
-              : this.tmdbSuggestionService.getSeriesDetails(ref.id);
+              : ref.source === 'anilist'
+                ? this.anilistSuggestionService.getAnimeDetails(ref.id)
+                : this.tmdbSuggestionService.getSeriesDetails(ref.id);
 
           return details$.pipe(catchError(() => of(null)));
         }),

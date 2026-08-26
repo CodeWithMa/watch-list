@@ -94,7 +94,13 @@ export interface ItemFormAutofillPatch {
                   <span
                     class="block text-sm text-light-font-secondary dark:text-dark-font-secondary"
                     >{{ itemTypeLabels[suggestion.type] }} ·
-                    {{ suggestion.source === 'mal' ? 'MAL' : 'TMDB' }}</span
+                    {{
+                      suggestion.source === 'mal'
+                        ? 'MAL'
+                        : suggestion.source === 'anilist'
+                          ? 'AniList'
+                          : 'TMDB'
+                    }}</span
                   >
                   @if (suggestion.overview) {
                     <span

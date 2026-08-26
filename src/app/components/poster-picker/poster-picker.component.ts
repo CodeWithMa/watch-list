@@ -35,7 +35,7 @@ import { createSearchStream } from '../../utils/search-stream.utils';
               [ngModel]="posterSearchQuery()"
               (ngModelChange)="onPosterSearchChanged($event)"
               name="posterSearch"
-              placeholder="Search TMDB for a poster..."
+              placeholder="Search for a poster..."
               class="form-control-sm"
             />
             @if (posterSuggestionsLoading()) {
@@ -107,7 +107,7 @@ import { createSearchStream } from '../../utils/search-stream.utils';
             (click)="openPosterSearch()"
             class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
           >
-            Search TMDB
+            Search for poster
           </button>
         }
       </div>
@@ -139,7 +139,7 @@ export class PosterPickerComponent {
   private destroyed = false;
   private skipDraftCleanup = false;
 
-  private readonly tmdb = createSearchStream(
+  private readonly searchStream = createSearchStream(
     (query) => this.suggestionSearchService.search(query),
     'Search unavailable.',
     {
@@ -162,7 +162,7 @@ export class PosterPickerComponent {
       void this.loadPosterPreview(posterId, version);
     });
 
-    this.tmdb.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((results) => {
+    this.searchStream.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((results) => {
       this.posterSuggestions.set(results.filter((suggestion) => suggestion.posterUrl));
     });
   }
@@ -177,7 +177,7 @@ export class PosterPickerComponent {
 
   onPosterSearchChanged(query: string): void {
     this.posterSearchQuery.set(query);
-    this.tmdb.query.next(query);
+    this.searchStream.query.next(query);
   }
 
   selectPosterSuggestion(suggestion: Suggestion): void {
@@ -185,7 +185,7 @@ export class PosterPickerComponent {
       void this.storePoster(this.imageStorage.storeUrl(suggestion.posterUrl));
     }
     this.posterSearchQuery.set('');
-    this.tmdb.query.next('');
+    this.searchStream.query.next('');
     this.posterSuggestions.set([]);
     this.showPosterSearch.set(false);
   }

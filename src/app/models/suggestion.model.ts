@@ -1,6 +1,6 @@
 import { ItemType, SeasonInfo } from './item.model';
 
-export type SuggestionSource = 'tmdb' | 'mal';
+export type SuggestionSource = 'tmdb' | 'mal' | 'anilist';
 
 export interface Suggestion {
   id: number;

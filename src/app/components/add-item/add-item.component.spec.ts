@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { GroupService } from '../../services/group.service';
 import { WatchListService } from '../../services/watch-list.service';
+import { AnilistSuggestionService } from '../../services/anilist-suggestion.service';
 import { JikanSuggestionService } from '../../services/jikan-suggestion.service';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
@@ -71,6 +72,13 @@ describe('AddItemComponent', () => {
         },
         {
           provide: JikanSuggestionService,
+          useValue: {
+            search: vi.fn(() => of([])),
+            getAnimeDetails: vi.fn(() => of(null)),
+          },
+        },
+        {
+          provide: AnilistSuggestionService,
           useValue: {
             search: vi.fn(() => of([])),
             getAnimeDetails: vi.fn(() => of(null)),
@@ -216,6 +224,7 @@ describe('AddItemComponent', () => {
   it('does not fetch season details for movie suggestions', () => {
     const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
     const jikanSuggestionService = TestBed.inject(JikanSuggestionService);
+    const anilistSuggestionService = TestBed.inject(AnilistSuggestionService);
     const fixture = TestBed.createComponent(AddItemComponent);
 
     fixture.componentInstance.onSuggestionSelected(
@@ -230,6 +239,7 @@ describe('AddItemComponent', () => {
 
     expect(tmdbSuggestionService.getSeriesDetails).not.toHaveBeenCalled();
     expect(jikanSuggestionService.getAnimeDetails).not.toHaveBeenCalled();
+    expect(anilistSuggestionService.getAnimeDetails).not.toHaveBeenCalled();
     expect(fixture.componentInstance.autofillPatch()).toBeNull();
   });
 
