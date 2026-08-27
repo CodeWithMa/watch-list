@@ -3,6 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { map, Observable, of } from 'rxjs';
 import { SeriesDetails, Suggestion } from '../models/suggestion.model';
 import { ItemType } from '../models/item.model';
+import {
+  SUGGESTION_MIN_QUERY_LENGTH,
+  SUGGESTION_PER_SOURCE_LIMIT,
+} from '../domain/suggestion.constants';
 
 interface AnilistSearchResponse {
   data?: {
@@ -55,7 +59,7 @@ const ANILIST_FORMAT_MAP: Record<string, ItemType> = {
 
 const ANILIST_SEARCH_QUERY = `
 query ($search: String) {
-  Page(page: 1, perPage: 8) {
+  Page(page: 1, perPage: ${SUGGESTION_PER_SOURCE_LIMIT}) {
     media(search: $search, type: ANIME, isAdult: false, sort: POPULARITY_DESC) {
       id
       title { romaji english native }
@@ -88,7 +92,7 @@ export class AnilistSuggestionService {
 
   search(query: string): Observable<Suggestion[]> {
     const trimmedQuery = query.trim();
-    if (trimmedQuery.length < 2) {
+    if (trimmedQuery.length < SUGGESTION_MIN_QUERY_LENGTH) {
       return of([]);
     }
 
@@ -135,7 +139,7 @@ export class AnilistSuggestionService {
     return results
       .map((result) => this.mapResult(result))
       .filter((s): s is Suggestion => s !== null)
-      .slice(0, 8);
+      .slice(0, SUGGESTION_PER_SOURCE_LIMIT);
   }
 
   private mapResult(result: unknown): Suggestion | null {

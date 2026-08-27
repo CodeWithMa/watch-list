@@ -6,6 +6,7 @@ import { SuggestionSearchService } from '../../services/suggestion-search.servic
 import { ImageStorageService } from '../../services/image-storage.service';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { createSearchStream } from '../../utils/search-stream.utils';
+import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
 
 @Component({
   selector: 'app-poster-picker',
@@ -143,7 +144,7 @@ export class PosterPickerComponent {
     (query) => this.suggestionSearchService.search(query),
     'Search unavailable.',
     {
-      debounceMs: 400,
+      debounceMs: SUGGESTION_DEBOUNCE_MS,
       onLoadingChange: (loading) => this.posterSuggestionsLoading.set(loading),
       onError: (message) => this.posterSuggestionsError.set(message),
     },

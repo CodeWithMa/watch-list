@@ -4,6 +4,10 @@ import { map, Observable, of } from 'rxjs';
 import { SeriesDetails, Suggestion } from '../models/suggestion.model';
 import { TmdbSettingsService } from './tmdb-settings.service';
 import { getPosterUrl } from '../utils/tmdb-image.utils';
+import {
+  SUGGESTION_MIN_QUERY_LENGTH,
+  SUGGESTION_PER_SOURCE_LIMIT,
+} from '../domain/suggestion.constants';
 
 interface TmdbSearchResponse {
   results?: unknown[];
@@ -42,7 +46,7 @@ export class TmdbSuggestionService {
     const trimmedQuery = query.trim();
     const requestOptions = this.createRequestOptions();
 
-    if (trimmedQuery.length < 2 || !requestOptions) {
+    if (trimmedQuery.length < SUGGESTION_MIN_QUERY_LENGTH || !requestOptions) {
       return of([]);
     }
 
@@ -112,7 +116,7 @@ export class TmdbSuggestionService {
     return results
       .map((result) => this.mapResult(result))
       .filter((suggestion): suggestion is Suggestion => suggestion !== null)
-      .slice(0, 8);
+      .slice(0, SUGGESTION_PER_SOURCE_LIMIT);
   }
 
   private mapResult(result: unknown): Suggestion | null {

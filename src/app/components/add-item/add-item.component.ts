@@ -1,12 +1,9 @@
 import { Component, DestroyRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { catchError, of, Subject, switchMap } from 'rxjs';
+import { of, Subject, switchMap } from 'rxjs';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
-import { AnilistSuggestionService } from '../../services/anilist-suggestion.service';
-import { JikanSuggestionService } from '../../services/jikan-suggestion.service';
-import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ItemFormComponent } from '../item-form/item-form.component';
 import {
@@ -17,6 +14,7 @@ import {
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { createSearchStream } from '../../utils/search-stream.utils';
 import { isEpisodicType } from '../../domain/item.constants';
+import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
 
 interface SelectedSuggestionRef {
   source: SuggestionSource;
@@ -53,9 +51,6 @@ export class AddItemComponent {
   @ViewChild(ItemFormComponent) private form?: ItemFormComponent;
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
-  private tmdbSuggestionService = inject(TmdbSuggestionService);
-  private jikanSuggestionService = inject(JikanSuggestionService);
-  private anilistSuggestionService = inject(AnilistSuggestionService);
   private suggestionSearchService = inject(SuggestionSearchService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
@@ -63,7 +58,7 @@ export class AddItemComponent {
     (query) => this.suggestionSearchService.search(query),
     'Suggestions are unavailable.',
     {
-      debounceMs: 400,
+      debounceMs: SUGGESTION_DEBOUNCE_MS,
       distinct: true,
       shouldSkip: () => {
         const skip = this.skipNextSearch;
@@ -111,14 +106,7 @@ export class AddItemComponent {
             return of(null);
           }
 
-          const details$ =
-            ref.source === 'mal'
-              ? this.jikanSuggestionService.getAnimeDetails(ref.id)
-              : ref.source === 'anilist'
-                ? this.anilistSuggestionService.getAnimeDetails(ref.id)
-                : this.tmdbSuggestionService.getSeriesDetails(ref.id);
-
-          return details$.pipe(catchError(() => of(null)));
+          return this.suggestionSearchService.getDetails(ref);
         }),
         takeUntilDestroyed(this.destroyRef),
       )

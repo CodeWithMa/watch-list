@@ -95,8 +95,8 @@ export interface ItemFormAutofillPatch {
                     class="block text-sm text-light-font-secondary dark:text-dark-font-secondary"
                     >{{ itemTypeLabels[suggestion.type] }} ·
                     {{
-                      suggestion.source === 'mal'
-                        ? 'MAL'
+                      suggestion.source === 'jikan'
+                        ? 'Jikan'
                         : suggestion.source === 'anilist'
                           ? 'AniList'
                           : 'TMDB'

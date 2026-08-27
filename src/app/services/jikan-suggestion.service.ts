@@ -3,6 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { map, Observable, of } from 'rxjs';
 import { SeriesDetails, Suggestion } from '../models/suggestion.model';
 import { ItemType } from '../models/item.model';
+import {
+  SUGGESTION_MIN_QUERY_LENGTH,
+  SUGGESTION_PER_SOURCE_LIMIT,
+} from '../domain/suggestion.constants';
 
 interface JikanSearchResponse {
   data?: unknown[];
@@ -51,13 +55,13 @@ export class JikanSuggestionService {
 
   search(query: string): Observable<Suggestion[]> {
     const trimmedQuery = query.trim();
-    if (trimmedQuery.length < 2) {
+    if (trimmedQuery.length < SUGGESTION_MIN_QUERY_LENGTH) {
       return of([]);
     }
 
     const params = new HttpParams()
       .set('q', trimmedQuery)
-      .set('limit', '8')
+      .set('limit', String(SUGGESTION_PER_SOURCE_LIMIT))
       .set('sfw', 'true')
       .set('order_by', 'popularity')
       .set('sort', 'asc');
@@ -81,7 +85,7 @@ export class JikanSuggestionService {
     return results
       .map((result) => this.mapResult(result))
       .filter((s): s is Suggestion => s !== null)
-      .slice(0, 8);
+      .slice(0, SUGGESTION_PER_SOURCE_LIMIT);
   }
 
   private mapResult(result: unknown): Suggestion | null {
@@ -106,7 +110,7 @@ export class JikanSuggestionService {
 
     return {
       id: candidate.mal_id,
-      source: 'mal',
+      source: 'jikan',
       title,
       type,
       year: this.extractYear(candidate.aired),

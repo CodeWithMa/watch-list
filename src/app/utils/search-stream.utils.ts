@@ -9,6 +9,10 @@ import {
   finalize,
 } from 'rxjs';
 import { Suggestion } from '../models/suggestion.model';
+import {
+  SUGGESTION_DEBOUNCE_MS,
+  SUGGESTION_MIN_QUERY_LENGTH,
+} from '../domain/suggestion.constants';
 
 export interface SearchStreamOptions {
   debounceMs?: number;
@@ -29,8 +33,8 @@ export function createSearchStream(
   errorMessage: string,
   options: SearchStreamOptions = {},
 ): SearchStream {
-  const debounceMs = options.debounceMs ?? 300;
-  const minLength = options.minLength ?? 2;
+  const debounceMs = options.debounceMs ?? SUGGESTION_DEBOUNCE_MS;
+  const minLength = options.minLength ?? SUGGESTION_MIN_QUERY_LENGTH;
   const query = new Subject<string>();
 
   let stream = query.pipe(debounceTime(debounceMs));

@@ -14,7 +14,7 @@ describe('JikanSuggestionService', () => {
     TestBed.inject(HttpTestingController).verify();
   });
 
-  it('searches MAL and maps TV, movie, OVA, and ONA results', () => {
+  it('searches Jikan and maps TV, movie, OVA, and ONA results', () => {
     const service = TestBed.inject(JikanSuggestionService);
     const http = TestBed.inject(HttpTestingController);
     let suggestions: unknown;
@@ -81,7 +81,7 @@ describe('JikanSuggestionService', () => {
     expect(suggestions).toEqual([
       {
         id: 1,
-        source: 'mal',
+        source: 'jikan',
         title: 'Cowboy Bebop',
         type: 'series',
         year: '1998',
@@ -90,7 +90,7 @@ describe('JikanSuggestionService', () => {
       },
       {
         id: 5,
-        source: 'mal',
+        source: 'jikan',
         title: 'Cowboy Bebop: The Movie',
         type: 'movie',
         year: '2001',
@@ -99,7 +99,7 @@ describe('JikanSuggestionService', () => {
       },
       {
         id: 6,
-        source: 'mal',
+        source: 'jikan',
         title: 'OVA Title',
         type: 'ova',
         year: '2020',
@@ -108,7 +108,7 @@ describe('JikanSuggestionService', () => {
       },
       {
         id: 7,
-        source: 'mal',
+        source: 'jikan',
         title: 'ONA Title',
         type: 'ona',
         year: '2021',

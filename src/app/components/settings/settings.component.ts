@@ -106,7 +106,64 @@ import { environment } from '../../../environments/environment';
             Anime suggestions (TV, Movie, OVA, ONA) are fetched from AniList’s public GraphQL API
             with
             <span class="font-mono">isAdult:false</span> filtering and no authentication required.
-            Rate limit: ~90 requests/min (currently 30/min degraded).
+            See
+            <a
+              href="https://anilist.gitbook.io/anilist-apiv2-docs/docs/guide/rate-limiting"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-accent-primary hover:underline"
+              >rate limiting docs</a
+            >
+            for limits.
+          </p>
+        </div>
+      </div>
+
+      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
+        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+          Jikan (MyAnimeList)
+        </h2>
+        <div class="mb-4">
+          <a
+            href="https://jikan.moe"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-block text-accent-primary hover:underline text-sm font-medium"
+          >
+            Jikan.moe
+          </a>
+          <span class="text-sm text-light-font-secondary dark:text-dark-font-secondary"> via </span>
+          <a
+            href="https://myanimelist.net"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-block text-accent-primary hover:underline text-sm font-medium"
+          >
+            MyAnimeList.net
+          </a>
+          <p class="mt-3 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+            This product uses the
+            <a
+              href="https://jikan.moe"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-accent-primary hover:underline"
+              >Jikan API</a
+            >
+            (api.jikan.moe) which provides data from MyAnimeList but is not endorsed or certified by
+            MyAnimeList or Jikan.
+          </p>
+          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+            Anime suggestions (TV, Movie, OVA, ONA) are fetched from Jikan’s public REST API with
+            <span class="font-mono">sfw:true</span> filtering and no authentication required. See
+            <a
+              href="https://docs.api.jikan.moe/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-accent-primary hover:underline"
+              >Jikan docs</a
+            >
+            for limits (3 requests/second).
           </p>
         </div>
       </div>

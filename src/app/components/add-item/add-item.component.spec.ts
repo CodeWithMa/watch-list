@@ -3,10 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { GroupService } from '../../services/group.service';
 import { WatchListService } from '../../services/watch-list.service';
-import { AnilistSuggestionService } from '../../services/anilist-suggestion.service';
-import { JikanSuggestionService } from '../../services/jikan-suggestion.service';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
-import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
 import { Item } from '../../models/item.model';
 import { Suggestion } from '../../models/suggestion.model';
 import { AddItemComponent } from './add-item.component';
@@ -61,27 +58,7 @@ describe('AddItemComponent', () => {
           provide: SuggestionSearchService,
           useValue: {
             search: vi.fn(() => of([])),
-          },
-        },
-        {
-          provide: TmdbSuggestionService,
-          useValue: {
-            search: vi.fn(() => of([])),
-            getSeriesDetails: vi.fn(() => of(null)),
-          },
-        },
-        {
-          provide: JikanSuggestionService,
-          useValue: {
-            search: vi.fn(() => of([])),
-            getAnimeDetails: vi.fn(() => of(null)),
-          },
-        },
-        {
-          provide: AnilistSuggestionService,
-          useValue: {
-            search: vi.fn(() => of([])),
-            getAnimeDetails: vi.fn(() => of(null)),
+            getDetails: vi.fn(() => of(null)),
           },
         },
       ],
@@ -142,8 +119,8 @@ describe('AddItemComponent', () => {
   });
 
   it('autofills seasons after selecting a TMDB series suggestion', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(
       of({
         seasons: [
           {
@@ -166,7 +143,7 @@ describe('AddItemComponent', () => {
       }),
     );
 
-    expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(1396);
+    expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'tmdb', id: 1396 });
     expect(fixture.componentInstance.autofillPatch()).toEqual({
       id: 1,
       value: {
@@ -181,9 +158,9 @@ describe('AddItemComponent', () => {
     });
   });
 
-  it('autofills seasons after selecting a MAL OVA suggestion', () => {
-    const jikanSuggestionService = TestBed.inject(JikanSuggestionService);
-    vi.mocked(jikanSuggestionService.getAnimeDetails).mockReturnValue(
+  it('autofills seasons after selecting a Jikan OVA suggestion', () => {
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(
       of({
         seasons: [
           {
@@ -199,14 +176,14 @@ describe('AddItemComponent', () => {
     fixture.componentInstance.onSuggestionSelected(
       createSuggestion({
         id: 999,
-        source: 'mal',
+        source: 'jikan',
         title: 'OVA Title',
         type: 'ova',
         year: '2020',
       }),
     );
 
-    expect(jikanSuggestionService.getAnimeDetails).toHaveBeenCalledWith(999);
+    expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'jikan', id: 999 });
     expect(fixture.componentInstance.autofillPatch()).toEqual({
       id: 1,
       value: {
@@ -222,9 +199,7 @@ describe('AddItemComponent', () => {
   });
 
   it('does not fetch season details for movie suggestions', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const jikanSuggestionService = TestBed.inject(JikanSuggestionService);
-    const anilistSuggestionService = TestBed.inject(AnilistSuggestionService);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const fixture = TestBed.createComponent(AddItemComponent);
 
     fixture.componentInstance.onSuggestionSelected(
@@ -237,16 +212,14 @@ describe('AddItemComponent', () => {
       }),
     );
 
-    expect(tmdbSuggestionService.getSeriesDetails).not.toHaveBeenCalled();
-    expect(jikanSuggestionService.getAnimeDetails).not.toHaveBeenCalled();
-    expect(anilistSuggestionService.getAnimeDetails).not.toHaveBeenCalled();
+    expect(suggestionSearchService.getDetails).not.toHaveBeenCalled();
     expect(fixture.componentInstance.autofillPatch()).toBeNull();
   });
 
   it('does not apply stale TMDB details after the title changes', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
-    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(details.asObservable());
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(details.asObservable());
     const fixture = TestBed.createComponent(AddItemComponent);
 
     fixture.componentInstance.onSuggestionSelected(
@@ -266,9 +239,9 @@ describe('AddItemComponent', () => {
   });
 
   it('does not apply stale poster from a series when the title changes before details resolve', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
-    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(details.asObservable());
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(details.asObservable());
     const fixture = TestBed.createComponent(AddItemComponent);
 
     fixture.componentInstance.onSuggestionSelected(
@@ -294,9 +267,9 @@ describe('AddItemComponent', () => {
   });
 
   it('does not apply stale poster from a series when a movie is selected before details resolve', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
-    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(details.asObservable());
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(details.asObservable());
     const fixture = TestBed.createComponent(AddItemComponent);
 
     fixture.componentInstance.onSuggestionSelected(
@@ -330,9 +303,9 @@ describe('AddItemComponent', () => {
   });
 
   it('cancels the previous TMDB details request when another series is selected', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     let firstRequestUnsubscribed = false;
-    vi.mocked(tmdbSuggestionService.getSeriesDetails)
+    vi.mocked(suggestionSearchService.getDetails)
       .mockReturnValueOnce(
         new Observable((subscriber) => {
           subscriber.next({
@@ -368,8 +341,8 @@ describe('AddItemComponent', () => {
     );
 
     expect(firstRequestUnsubscribed).toBe(true);
-    expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(1396);
-    expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(66732);
+    expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'tmdb', id: 1396 });
+    expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'tmdb', id: 66732 });
     expect(fixture.componentInstance.autofillPatch()).toEqual({
       id: 2,
       value: {
