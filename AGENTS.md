@@ -13,3 +13,4 @@ The main function is to show me what tv series or movie I should watch next.
 - This project uses bun. Examples: `bun run lint`, `bun run build`, `bun run test --no-watch`.
 - Run a single spec file: `bun run test -- --include="src/app/utils/form.utils.spec.ts" --no-watch`
 - Run a single test by name (regex): `bun run test -- --filter="toPositiveNumber" --no-watch`
+- To get test code coverage run: `bun run test -- --coverage --no-watch`
