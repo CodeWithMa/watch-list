@@ -17,19 +17,21 @@ import { ImageStorageService } from '../../services/image-storage.service';
     >
       <div [class]="'h-1 ' + statusColorClass()"></div>
       <div class="relative">
-        @if (posterUrl()) {
-          <img
-            [src]="posterUrl()"
-            [alt]="item().title + ' poster'"
-            class="w-full aspect-[2/3] object-cover"
-          />
-        } @else {
-          <img
-            [src]="placeholderUrl()"
-            [alt]="item().title + ' placeholder poster'"
-            class="w-full aspect-[2/3] object-cover"
-          />
-        }
+        <a [routerLink]="['/items', item().id]">
+          @if (posterUrl()) {
+            <img
+              [src]="posterUrl()"
+              [alt]="item().title + ' poster'"
+              class="w-full aspect-[2/3] object-cover"
+            />
+          } @else {
+            <img
+              [src]="placeholderUrl()"
+              [alt]="item().title + ' placeholder poster'"
+              class="w-full aspect-[2/3] object-cover"
+            />
+          }
+        </a>
         @if (item().progress) {
           <span
             class="absolute top-0 right-0 px-2 py-1 text-xs font-medium bg-black/60 text-white backdrop-blur-sm"
