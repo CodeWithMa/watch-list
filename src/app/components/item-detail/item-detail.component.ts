@@ -15,7 +15,7 @@ import {
   selector: 'app-item-detail',
   imports: [ItemFormComponent, RouterLink],
   template: `
-    <div class="max-w-[800px] mx-auto p-8">
+    <div>
       @if (item()) {
         <div class="border border-light-border dark:border-dark-border rounded-lg p-6">
           <div class="flex justify-between items-center mb-6">

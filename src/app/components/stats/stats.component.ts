@@ -7,7 +7,7 @@ import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
   selector: 'app-stats',
   imports: [RouterLink, StatsHeatmapComponent],
   template: `
-    <div class="max-w-[1000px] mx-auto p-8">
+    <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Stats</h1>
 
       @if (totalItems() === 0 && history().length === 0) {
