@@ -64,6 +64,10 @@ export class ProviderSettingsService {
   }
 
   private save(settings: ProviderSettings): void {
-    localStorage.setItem(PROVIDER_SETTINGS_KEY, JSON.stringify(settings));
+    try {
+      localStorage.setItem(PROVIDER_SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      // Retain in-memory state even if persistence fails (quota, private mode, etc.).
+    }
   }
 }
