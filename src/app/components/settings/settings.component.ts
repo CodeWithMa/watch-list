@@ -47,7 +47,7 @@ import { environment } from '../../../environments/environment';
             class="form-control"
           />
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Preferred for fetching movie and series suggestions while adding items.
+            Preferred for movie &amp; series suggestions.
           </p>
         </div>
         <div class="mb-4">
@@ -63,7 +63,7 @@ import { environment } from '../../../environments/environment';
             class="form-control"
           />
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Used as a fallback when no read access token is saved.
+            Fallback if no token is set.
           </p>
         </div>
         <div class="flex flex-wrap gap-3">
@@ -87,85 +87,54 @@ import { environment } from '../../../environments/environment';
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-          AniList
+          Anime Suggestions
         </h2>
-        <div class="mb-4">
+        <p class="text-sm text-light-font-secondary dark:text-dark-font-secondary">
           <a
             href="https://anilist.co"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-block text-accent-primary hover:underline text-sm font-medium"
+            class="text-accent-primary hover:underline font-medium"
+            >AniList</a
           >
-            AniList.co
-          </a>
-          <p class="mt-3 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            This product uses the AniList API (graphql.anilist.co) but is not endorsed or certified
-            by AniList.
-          </p>
-          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Anime suggestions (TV, Movie, OVA, ONA) are fetched from AniList’s public GraphQL API
-            with
-            <span class="font-mono">isAdult:false</span> filtering and no authentication required.
-            See
-            <a
-              href="https://anilist.gitbook.io/anilist-apiv2-docs/docs/guide/rate-limiting"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-accent-primary hover:underline"
-              >rate limiting docs</a
-            >
-            for limits.
-          </p>
-        </div>
-      </div>
-
-      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
-        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-          Jikan (MyAnimeList)
-        </h2>
-        <div class="mb-4">
+          &amp;
           <a
             href="https://jikan.moe"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-block text-accent-primary hover:underline text-sm font-medium"
+            class="text-accent-primary hover:underline font-medium"
+            >Jikan</a
           >
-            Jikan.moe
-          </a>
-          <span class="text-sm text-light-font-secondary dark:text-dark-font-secondary"> via </span>
-          <a
+          (<a
             href="https://myanimelist.net"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-block text-accent-primary hover:underline text-sm font-medium"
+            class="text-accent-primary hover:underline"
+            >MyAnimeList</a
+          >) — public APIs, no setup required.
+        </p>
+        <p class="mt-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+          TV / Movie / OVA / ONA · SFW-filtered ·
+          <a
+            href="https://anilist.gitbook.io/anilist-apiv2-docs/docs/guide/rate-limiting"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent-primary hover:underline"
+            >AniList limits</a
           >
-            MyAnimeList.net
-          </a>
-          <p class="mt-3 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            This product uses the
-            <a
-              href="https://jikan.moe"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-accent-primary hover:underline"
-              >Jikan API</a
-            >
-            (api.jikan.moe) which provides data from MyAnimeList but is not endorsed or certified by
-            MyAnimeList or Jikan.
-          </p>
-          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Anime suggestions (TV, Movie, OVA, ONA) are fetched from Jikan’s public REST API with
-            <span class="font-mono">sfw:true</span> filtering and no authentication required. See
-            <a
-              href="https://docs.api.jikan.moe/"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-accent-primary hover:underline"
-              >Jikan docs</a
-            >
-            for limits (3 requests/second).
-          </p>
-        </div>
+          ·
+          <a
+            href="https://docs.api.jikan.moe/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent-primary hover:underline"
+            >Jikan docs</a
+          >
+          (3 req/s)
+        </p>
+        <p class="mt-2 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+          Not endorsed by AniList or MyAnimeList / Jikan.
+        </p>
       </div>
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
