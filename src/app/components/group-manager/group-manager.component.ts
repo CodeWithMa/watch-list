@@ -8,7 +8,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
   selector: 'app-group-manager',
   imports: [FormsModule],
   template: `
-    <div class="max-w-[800px] mx-auto p-8">
+    <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Group Management</h1>
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-8">

@@ -13,7 +13,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
   selector: 'app-item-list',
   imports: [FormsModule, RouterLink, ItemCardComponent],
   template: `
-    <div class="max-w-[1200px] mx-auto p-8">
+    <div>
       <div class="flex justify-between items-center mb-8">
         <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">All Items</h1>
         <div class="flex gap-4">

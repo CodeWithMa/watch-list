@@ -25,7 +25,7 @@ interface SelectedSuggestionRef {
   selector: 'app-add-item',
   imports: [ItemFormComponent],
   template: `
-    <div class="max-w-[600px] mx-auto p-8">
+    <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Add New Item</h1>
 
       <app-item-form

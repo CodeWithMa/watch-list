@@ -1,9 +1,7 @@
 <nav
   class="bg-light-bg-secondary dark:bg-dark-bg-secondary border-b border-light-border dark:border-dark-border shadow-light dark:shadow-dark sticky top-0 z-100"
 >
-  <div
-    class="max-w-[1200px] mx-auto px-8 py-4 flex justify-between items-center max-md:flex-col max-md:gap-4"
-  >
+  <div class="page-container !py-4 flex justify-between items-center max-md:flex-col max-md:gap-4">
     <a
       routerLink="/"
       class="text-2xl font-bold text-accent-primary hover:text-accent-primary-hover no-underline"
@@ -62,5 +60,7 @@
 }
 
 <main class="min-h-[calc(100vh-80px)] bg-light-bg-primary dark:bg-dark-bg-primary">
-  <router-outlet />
+  <div class="page-container">
+    <router-outlet />
+  </div>
 </main>

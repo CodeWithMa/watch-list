@@ -16,7 +16,7 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
   selector: 'app-item-view',
   imports: [DatePipe, RouterLink, TimeAgoComponent],
   template: `
-    <div class="max-w-[800px] mx-auto p-8">
+    <div>
       @if (item(); as currentItem) {
         <div class="flex items-center justify-between mb-6">
           <h1 class="m-0">{{ currentItem.title }}</h1>

@@ -11,7 +11,7 @@ import { isEpisodicType } from '../../domain/item.constants';
   selector: 'app-home',
   imports: [ItemCardComponent, CommonModule, RouterLink],
   template: `
-    <div class="max-w-[1200px] mx-auto p-8">
+    <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">What should I watch now?</h1>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
