@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 import { SuggestionSearchService } from './suggestion-search.service';
 import { AnilistSuggestionService } from './anilist-suggestion.service';
 import { JikanSuggestionService } from './jikan-suggestion.service';
+import { ProviderSettingsService } from './provider-settings.service';
 import { TmdbSuggestionService } from './tmdb-suggestion.service';
 import { Suggestion } from '../models/suggestion.model';
 
@@ -19,6 +20,11 @@ describe('SuggestionSearchService', () => {
   let tmdb: { search: ReturnType<typeof vi.fn>; getSeriesDetails: ReturnType<typeof vi.fn> };
   let jikan: { search: ReturnType<typeof vi.fn>; getAnimeDetails: ReturnType<typeof vi.fn> };
   let anilist: { search: ReturnType<typeof vi.fn>; getAnimeDetails: ReturnType<typeof vi.fn> };
+  let provider: {
+    isEnabled: ReturnType<typeof vi.fn>;
+    isAnyEnabled: ReturnType<typeof vi.fn>;
+    getEnabledSources: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     tmdb = {
@@ -33,12 +39,18 @@ describe('SuggestionSearchService', () => {
       search: vi.fn(() => of([])),
       getAnimeDetails: vi.fn(() => of(null)),
     };
+    provider = {
+      isEnabled: vi.fn(() => true),
+      isAnyEnabled: vi.fn(() => true),
+      getEnabledSources: vi.fn(() => ['tmdb', 'jikan', 'anilist'] as never[]),
+    };
 
     TestBed.configureTestingModule({
       providers: [
         { provide: TmdbSuggestionService, useValue: tmdb },
         { provide: JikanSuggestionService, useValue: jikan },
         { provide: AnilistSuggestionService, useValue: anilist },
+        { provide: ProviderSettingsService, useValue: provider },
       ],
     });
   });

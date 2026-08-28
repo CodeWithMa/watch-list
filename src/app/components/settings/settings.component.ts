@@ -3,7 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { TmdbSettingsService } from '../../services/tmdb-settings.service';
+import { SuggestionSource } from '../../models/suggestion.model';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -83,6 +85,50 @@ import { environment } from '../../../environments/environment';
         @if (tmdbSettingsMessage()) {
           <div class="mt-4 text-sm text-accent-secondary">{{ tmdbSettingsMessage() }}</div>
         }
+      </div>
+
+      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
+        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+          Suggestion Providers
+        </h2>
+        <p class="text-sm text-light-font-secondary dark:text-dark-font-secondary">
+          Choose which sources are used for title and poster suggestions. Disabled providers are not
+          queried.
+        </p>
+        <div class="mt-4 flex flex-col gap-3">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input
+              id="providerToggleTmdb"
+              type="checkbox"
+              [checked]="tmdbEnabled()"
+              (change)="toggleProvider('tmdb', $event)"
+              class="w-5 h-5"
+            />
+            <span class="text-light-font dark:text-dark-font">TMDB — Movies &amp; Series</span>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input
+              id="providerToggleJikan"
+              type="checkbox"
+              [checked]="jikanEnabled()"
+              (change)="toggleProvider('jikan', $event)"
+              class="w-5 h-5"
+            />
+            <span class="text-light-font dark:text-dark-font"
+              >Jikan (MyAnimeList) — TV / Movie / OVA / ONA</span
+            >
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input
+              id="providerToggleAnilist"
+              type="checkbox"
+              [checked]="anilistEnabled()"
+              (change)="toggleProvider('anilist', $event)"
+              class="w-5 h-5"
+            />
+            <span class="text-light-font dark:text-dark-font">AniList — Anime</span>
+          </label>
+        </div>
       </div>
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
@@ -244,6 +290,7 @@ import { environment } from '../../../environments/environment';
 export class SettingsComponent implements OnInit {
   private importExportService = inject(ImportExportService);
   private tmdbSettingsService = inject(TmdbSettingsService);
+  private providerSettingsService = inject(ProviderSettingsService);
 
   protected readonly environment = environment;
 
@@ -260,6 +307,9 @@ export class SettingsComponent implements OnInit {
   tmdbToken = signal(this.tmdbSettingsService.token());
   tmdbApiKey = signal(this.tmdbSettingsService.key());
   tmdbSettingsMessage = signal<string | null>(null);
+  tmdbEnabled = signal(this.providerSettingsService.isEnabled('tmdb'));
+  jikanEnabled = signal(this.providerSettingsService.isEnabled('jikan'));
+  anilistEnabled = signal(this.providerSettingsService.isEnabled('anilist'));
   recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
 
   ngOnInit(): void {
@@ -278,6 +328,14 @@ export class SettingsComponent implements OnInit {
     this.tmdbToken.set('');
     this.tmdbApiKey.set('');
     this.tmdbSettingsMessage.set('TMDB credentials cleared.');
+  }
+
+  toggleProvider(source: SuggestionSource, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.providerSettingsService.setEnabled(source, checked);
+    this.tmdbEnabled.set(this.providerSettingsService.isEnabled('tmdb'));
+    this.jikanEnabled.set(this.providerSettingsService.isEnabled('jikan'));
+    this.anilistEnabled.set(this.providerSettingsService.isEnabled('anilist'));
   }
 
   private getTmdbSettingsMessage(): string {
