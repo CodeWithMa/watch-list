@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Group } from '../../models/group.model';
-import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
+import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { ItemFormComponent } from './item-form.component';
 import { vi } from 'vitest';
@@ -20,7 +20,7 @@ describe('ItemFormComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         {
-          provide: TmdbSuggestionService,
+          provide: SuggestionSearchService,
           useValue: {
             search: vi.fn(() => of([])),
           },
