@@ -2,6 +2,7 @@ import { Injectable, inject, computed } from '@angular/core';
 import { WatchListService } from './watch-list.service';
 import { Item } from '../models/item.model';
 import { getMostRecentWatchDate } from '../utils/progress.utils';
+import { isEpisodicType } from '../domain/item.constants';
 
 @Injectable({
   providedIn: 'root',
@@ -70,7 +71,7 @@ export class RoundRobinService {
   }
 
   hasAiredCurrentEpisode(series: Item, today = new Date()): boolean {
-    if (series.type !== 'series' || !series.progress) {
+    if (!isEpisodicType(series.type) || !series.progress) {
       return true;
     }
 

@@ -67,20 +67,22 @@ describe('TmdbSuggestionService', () => {
 
     expect(suggestions).toEqual([
       {
-        tmdbId: 1,
+        id: 1,
+        source: 'tmdb',
         title: 'Breaking Movie',
         type: 'movie',
         year: '2026',
         overview: 'Movie overview',
-        posterPath: '/movie.jpg',
+        posterUrl: 'https://image.tmdb.org/t/p/w342/movie.jpg',
       },
       {
-        tmdbId: 2,
+        id: 2,
+        source: 'tmdb',
         title: 'Breaking Show',
         type: 'series',
         year: '2025',
         overview: undefined,
-        posterPath: undefined,
+        posterUrl: undefined,
       },
     ]);
   });

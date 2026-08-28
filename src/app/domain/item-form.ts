@@ -1,5 +1,5 @@
 import { Item, ItemStatus, ItemType, SeasonInfo } from '../models/item.model';
-import { DEFAULT_GROUP_ID } from './item.constants';
+import { DEFAULT_GROUP_ID, isEpisodicType } from './item.constants';
 
 export interface ItemFormValue {
   title: string;
@@ -51,14 +51,13 @@ export function buildItemMutationInput(formValue: ItemFormValue): ItemMutationIn
     type: formValue.type,
     groupId: formValue.groupId,
     status: rawStatus,
-    progress:
-      formValue.type === 'series'
-        ? {
-            season: formValue.season,
-            episode: formValue.episode,
-            seasons: sortedSeasons,
-          }
-        : undefined,
+    progress: isEpisodicType(formValue.type)
+      ? {
+          season: formValue.season,
+          episode: formValue.episode,
+          seasons: sortedSeasons,
+        }
+      : undefined,
     posterId: formValue.posterId,
   };
 }
@@ -78,7 +77,7 @@ export function prepareSubmittedItemFormValue(
 }
 
 export function normalizeFormValueForType(formValue: ItemFormValue): ItemFormValue {
-  if (formValue.type === 'series') {
+  if (isEpisodicType(formValue.type)) {
     return formValue;
   }
 

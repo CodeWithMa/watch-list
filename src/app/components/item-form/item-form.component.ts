@@ -12,7 +12,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
 import { ItemStatus, SeasonInfo } from '../../models/item.model';
-import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
+import { Suggestion } from '../../models/suggestion.model';
 import {
   createDefaultItemFormValue,
   ItemFormValue,
@@ -29,6 +29,7 @@ import { SeasonEditorComponent } from '../season-editor/season-editor.component'
 import { PosterPickerComponent } from '../poster-picker/poster-picker.component';
 import { statusButtonClass } from '../../utils/status.utils';
 import { toPositiveNumber } from '../../utils/form.utils';
+import { isEpisodicType } from '../../domain/item.constants';
 
 export interface ItemFormAutofillPatch {
   id: number;
@@ -71,12 +72,12 @@ export interface ItemFormAutofillPatch {
               <div
                 class="px-3 py-2 text-sm text-light-font-secondary dark:text-dark-font-secondary"
               >
-                Searching TMDB...
+                Searching...
               </div>
             } @else if (suggestionsError()) {
               <div class="px-3 py-2 text-sm text-accent-secondary">{{ suggestionsError() }}</div>
             } @else if (suggestions().length > 0) {
-              @for (suggestion of suggestions(); track suggestion.type + '-' + suggestion.tmdbId) {
+              @for (suggestion of suggestions(); track suggestion.source + '-' + suggestion.id) {
                 <button
                   type="button"
                   (click)="selectSuggestion(suggestion)"
@@ -92,7 +93,14 @@ export interface ItemFormAutofillPatch {
                   </span>
                   <span
                     class="block text-sm text-light-font-secondary dark:text-dark-font-secondary"
-                    >{{ itemTypeLabels[suggestion.type] }}</span
+                    >{{ itemTypeLabels[suggestion.type] }} ·
+                    {{
+                      suggestion.source === 'jikan'
+                        ? 'Jikan'
+                        : suggestion.source === 'anilist'
+                          ? 'AniList'
+                          : 'TMDB'
+                    }}</span
                   >
                   @if (suggestion.overview) {
                     <span
@@ -185,7 +193,7 @@ export interface ItemFormAutofillPatch {
         </div>
       }
 
-      @if (formValue().type === 'series') {
+      @if (isEpisodic(formValue().type)) {
         <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
           <div class="mb-6">
             <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font"
@@ -262,7 +270,7 @@ export class ItemFormComponent {
   readonly resetOnCancel = input(false);
   readonly disableSubmitWhenPristine = input(false);
   readonly duplicateTitleHint = input('');
-  readonly suggestions = input<TmdbSuggestion[]>([]);
+  readonly suggestions = input<Suggestion[]>([]);
   readonly suggestionsLoading = input(false);
   readonly suggestionsError = input('');
   readonly autofillPatch = input<ItemFormAutofillPatch | null>(null);
@@ -270,7 +278,7 @@ export class ItemFormComponent {
   readonly submitted = output<ItemFormValue>();
   readonly cancelled = output<void>();
   readonly titleChanged = output<string>();
-  readonly suggestionSelected = output<TmdbSuggestion>();
+  readonly suggestionSelected = output<Suggestion>();
 
   readonly itemTypes = ITEM_TYPES;
   readonly itemStatuses: readonly ItemStatus[] = ITEM_STATUSES;
@@ -278,6 +286,7 @@ export class ItemFormComponent {
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
   readonly posterLoading = signal(false);
+  readonly isEpisodic = isEpisodicType;
 
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
 
@@ -362,7 +371,7 @@ export class ItemFormComponent {
     this.titleChanged.emit(title);
   }
 
-  selectSuggestion(suggestion: TmdbSuggestion): void {
+  selectSuggestion(suggestion: Suggestion): void {
     this.formValue.update((value) =>
       normalizeFormValueForType({
         ...value,
@@ -370,7 +379,7 @@ export class ItemFormComponent {
         type: suggestion.type,
       }),
     );
-    this.posterPicker?.storeFromTmdbPath(suggestion.posterPath);
+    this.posterPicker?.storeFromUrl(suggestion.posterUrl);
     this.suggestionSelected.emit(suggestion);
   }
 

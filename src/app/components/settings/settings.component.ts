@@ -47,7 +47,7 @@ import { environment } from '../../../environments/environment';
             class="form-control"
           />
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Preferred for fetching movie and series suggestions while adding items.
+            Preferred for movie &amp; series suggestions.
           </p>
         </div>
         <div class="mb-4">
@@ -63,7 +63,7 @@ import { environment } from '../../../environments/environment';
             class="form-control"
           />
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Used as a fallback when no read access token is saved.
+            Fallback if no token is set.
           </p>
         </div>
         <div class="flex flex-wrap gap-3">
@@ -83,6 +83,58 @@ import { environment } from '../../../environments/environment';
         @if (tmdbSettingsMessage()) {
           <div class="mt-4 text-sm text-accent-secondary">{{ tmdbSettingsMessage() }}</div>
         }
+      </div>
+
+      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
+        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+          Anime Suggestions
+        </h2>
+        <p class="text-sm text-light-font-secondary dark:text-dark-font-secondary">
+          <a
+            href="https://anilist.co"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent-primary hover:underline font-medium"
+            >AniList</a
+          >
+          &amp;
+          <a
+            href="https://jikan.moe"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent-primary hover:underline font-medium"
+            >Jikan</a
+          >
+          (<a
+            href="https://myanimelist.net"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent-primary hover:underline"
+            >MyAnimeList</a
+          >) — public APIs, no setup required.
+        </p>
+        <p class="mt-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+          TV / Movie / OVA / ONA · SFW-filtered ·
+          <a
+            href="https://anilist.gitbook.io/anilist-apiv2-docs/docs/guide/rate-limiting"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent-primary hover:underline"
+            >AniList limits</a
+          >
+          ·
+          <a
+            href="https://docs.api.jikan.moe/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-accent-primary hover:underline"
+            >Jikan docs</a
+          >
+          (3 req/s)
+        </p>
+        <p class="mt-2 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+          Not endorsed by AniList or MyAnimeList / Jikan.
+        </p>
       </div>
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">

@@ -1,6 +1,7 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { WatchListService } from './watch-list.service';
 import { daysBetween, toLocalDateKey, toLocalDateKeyFromISO } from '../utils/date.utils';
+import { isEpisodicType } from '../domain/item.constants';
 
 @Injectable({ providedIn: 'root' })
 export class StatsService {
@@ -18,7 +19,7 @@ export class StatsService {
   totalEpisodesWatched = computed(() => {
     let count = 0;
     for (const item of this.items()) {
-      if (item.type === 'series') {
+      if (isEpisodicType(item.type)) {
         count += item.watchHistory.length;
       }
     }
@@ -34,7 +35,7 @@ export class StatsService {
       dropped: 0,
     };
     for (const item of this.items()) {
-      if (item.type === 'series') {
+      if (isEpisodicType(item.type)) {
         counts[item.status]++;
       }
     }
@@ -66,7 +67,7 @@ export class StatsService {
 
   avgEpisodesPerActiveSeries = computed(() => {
     const activeSeries = this.items().filter(
-      (i) => i.type === 'series' && i.status === 'in-progress',
+      (i) => isEpisodicType(i.type) && i.status === 'in-progress',
     );
     if (activeSeries.length === 0) return '0';
     const totalEps = activeSeries.reduce((sum, s) => sum + s.watchHistory.length, 0);

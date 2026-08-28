@@ -146,6 +146,8 @@ import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
                       class="w-1.5 h-1.5 rounded-full shrink-0"
                       [class.bg-accent-primary]="item.type === 'series'"
                       [class.bg-accent-success]="item.type === 'movie'"
+                      [class.bg-accent-info]="item.type === 'ova'"
+                      [class.bg-accent-warning]="item.type === 'ona'"
                     ></div>
                     <a
                       [routerLink]="['/items', item.id]"

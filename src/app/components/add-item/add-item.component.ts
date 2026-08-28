@@ -1,18 +1,25 @@
 import { Component, DestroyRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { catchError, of, Subject, switchMap } from 'rxjs';
+import { of, Subject, switchMap } from 'rxjs';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
-import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
+import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ItemFormComponent } from '../item-form/item-form.component';
 import {
   buildItemMutationInput,
   createDefaultItemFormValue,
   ItemFormValue,
 } from '../../domain/item-form';
-import { TmdbSuggestion } from '../../models/tmdb-suggestion.model';
-import { createTmdbSearchStream } from '../../utils/tmdb-search.utils';
+import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
+import { createSearchStream } from '../../utils/search-stream.utils';
+import { isEpisodicType } from '../../domain/item.constants';
+import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
+
+interface SelectedSuggestionRef {
+  source: SuggestionSource;
+  id: number;
+}
 
 @Component({
   selector: 'app-add-item',
@@ -44,14 +51,14 @@ export class AddItemComponent {
   @ViewChild(ItemFormComponent) private form?: ItemFormComponent;
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
-  private tmdbSuggestionService = inject(TmdbSuggestionService);
+  private suggestionSearchService = inject(SuggestionSearchService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
-  private readonly tmdb = createTmdbSearchStream(
-    (query) => this.tmdbSuggestionService.search(query),
-    'TMDB suggestions are unavailable.',
+  private readonly search = createSearchStream(
+    (query) => this.suggestionSearchService.search(query),
+    'Suggestions are unavailable.',
     {
-      debounceMs: 250,
+      debounceMs: SUGGESTION_DEBOUNCE_MS,
       distinct: true,
       shouldSkip: () => {
         const skip = this.skipNextSearch;
@@ -62,14 +69,14 @@ export class AddItemComponent {
       onError: (message) => this.suggestionsError.set(message),
     },
   );
-  private selectedTmdbSeriesIds = new Subject<number | null>();
+  private selectedEpisodicRef = new Subject<SelectedSuggestionRef | null>();
   private skipNextSearch = false;
   private lastPushedQuery = '';
 
   readonly groups = this.groupService.groups;
   readonly initialValue = createDefaultItemFormValue();
   readonly title = signal('');
-  readonly suggestions = signal<TmdbSuggestion[]>([]);
+  readonly suggestions = signal<Suggestion[]>([]);
   readonly suggestionsLoading = signal(false);
   readonly suggestionsError = signal('');
   readonly autofillPatch = signal<{ id: number; value: Partial<ItemFormValue> } | null>(null);
@@ -88,20 +95,18 @@ export class AddItemComponent {
   });
 
   constructor() {
-    this.tmdb.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((suggestions) => {
+    this.search.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((suggestions) => {
       this.suggestions.set(suggestions);
     });
 
-    this.selectedTmdbSeriesIds
+    this.selectedEpisodicRef
       .pipe(
-        switchMap((tmdbId) => {
-          if (tmdbId === null) {
+        switchMap((ref) => {
+          if (ref === null) {
             return of(null);
           }
 
-          return this.tmdbSuggestionService
-            .getSeriesDetails(tmdbId)
-            .pipe(catchError(() => of(null)));
+          return this.suggestionSearchService.getDetails(ref);
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -124,7 +129,7 @@ export class AddItemComponent {
     const isDuplicate = trimmed === this.lastPushedQuery;
     if (!isDuplicate) {
       this.lastPushedQuery = trimmed;
-      this.tmdb.query.next(title);
+      this.search.query.next(title);
     }
     if (this.skipNextSearch && isDuplicate) {
       this.skipNextSearch = false;
@@ -137,11 +142,11 @@ export class AddItemComponent {
   onTitleChanged(title: string): void {
     this.title.set(title);
     this.autofillPatch.set(null);
-    this.selectedTmdbSeriesIds.next(null);
+    this.selectedEpisodicRef.next(null);
     this.requestTitleSearch(title);
   }
 
-  onSuggestionSelected(suggestion: TmdbSuggestion): void {
+  onSuggestionSelected(suggestion: Suggestion): void {
     this.title.set(suggestion.title);
     this.skipNextSearch = true;
     this.requestTitleSearch(suggestion.title);
@@ -149,12 +154,20 @@ export class AddItemComponent {
     this.suggestionsLoading.set(false);
     this.suggestionsError.set('');
 
-    if (suggestion.type !== 'series') {
-      this.selectedTmdbSeriesIds.next(null);
+    if (!isEpisodicType(suggestion.type)) {
+      this.autofillPatch.set({
+        id: ++this.autofillPatchId,
+        value: { season: 1, episode: 1, seasons: [] },
+      });
+      this.selectedEpisodicRef.next(null);
       return;
     }
 
-    this.selectedTmdbSeriesIds.next(suggestion.tmdbId);
+    this.autofillPatch.set({
+      id: ++this.autofillPatchId,
+      value: { season: 1, episode: 1, seasons: [] },
+    });
+    this.selectedEpisodicRef.next({ source: suggestion.source, id: suggestion.id });
   }
 
   async onSubmit(formValue: ItemFormValue): Promise<void> {

@@ -3,11 +3,21 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { GroupService } from '../../services/group.service';
 import { WatchListService } from '../../services/watch-list.service';
-import { TmdbSuggestionService } from '../../services/tmdb-suggestion.service';
+import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { Item } from '../../models/item.model';
+import { Suggestion } from '../../models/suggestion.model';
 import { AddItemComponent } from './add-item.component';
 import { vi } from 'vitest';
 import { Observable, Subject, of, throwError } from 'rxjs';
+
+function createSuggestion(
+  overrides: Partial<Suggestion> & Pick<Suggestion, 'id' | 'title' | 'type'>,
+): Suggestion {
+  return {
+    source: 'tmdb',
+    ...overrides,
+  };
+}
 
 describe('AddItemComponent', () => {
   const existingItems: Item[] = [
@@ -45,10 +55,10 @@ describe('AddItemComponent', () => {
           },
         },
         {
-          provide: TmdbSuggestionService,
+          provide: SuggestionSearchService,
           useValue: {
             search: vi.fn(() => of([])),
-            getSeriesDetails: vi.fn(() => of(null)),
+            getDetails: vi.fn(() => of(null)),
           },
         },
       ],
@@ -92,24 +102,16 @@ describe('AddItemComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/items']);
   });
 
-  it('clears suggestions after selecting a TMDB suggestion', () => {
+  it('clears suggestions after selecting a suggestion', () => {
     const fixture = TestBed.createComponent(AddItemComponent);
 
     fixture.componentInstance.suggestions.set([
-      {
-        tmdbId: 1396,
-        title: 'Breaking Bad',
-        type: 'series',
-        year: '2008',
-      },
+      createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
     ]);
 
-    fixture.componentInstance.onSuggestionSelected({
-      tmdbId: 1396,
-      title: 'Breaking Bad',
-      type: 'series',
-      year: '2008',
-    });
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
+    );
 
     expect(fixture.componentInstance.title()).toBe('Breaking Bad');
     expect(fixture.componentInstance.suggestions()).toEqual([]);
@@ -117,8 +119,8 @@ describe('AddItemComponent', () => {
   });
 
   it('autofills seasons after selecting a TMDB series suggestion', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(
       of({
         seasons: [
           {
@@ -131,17 +133,19 @@ describe('AddItemComponent', () => {
     );
     const fixture = TestBed.createComponent(AddItemComponent);
 
-    fixture.componentInstance.onSuggestionSelected({
-      tmdbId: 1396,
-      title: 'Breaking Bad',
-      type: 'series',
-      year: '2008',
-      posterPath: '/breaking-bad.jpg',
-    });
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({
+        id: 1396,
+        title: 'Breaking Bad',
+        type: 'series',
+        year: '2008',
+        posterUrl: 'https://image.tmdb.org/t/p/w342/breaking-bad.jpg',
+      }),
+    );
 
-    expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(1396);
+    expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'tmdb', id: 1396 });
     expect(fixture.componentInstance.autofillPatch()).toEqual({
-      id: 1,
+      id: 2,
       value: {
         seasons: [
           {
@@ -154,34 +158,76 @@ describe('AddItemComponent', () => {
     });
   });
 
-  it('does not fetch season details for movie suggestions', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+  it('autofills seasons after selecting a Jikan OVA suggestion', () => {
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(
+      of({
+        seasons: [
+          {
+            seasonNumber: 1,
+            totalEpisodes: 4,
+            firstEpisodeAirDate: '2020-01-01',
+          },
+        ],
+      }),
+    );
     const fixture = TestBed.createComponent(AddItemComponent);
 
-    fixture.componentInstance.onSuggestionSelected({
-      tmdbId: 11,
-      title: 'Star Wars',
-      type: 'movie',
-      year: '1977',
-      posterPath: '/star-wars.jpg',
-    });
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({
+        id: 999,
+        source: 'jikan',
+        title: 'OVA Title',
+        type: 'ova',
+        year: '2020',
+      }),
+    );
 
-    expect(tmdbSuggestionService.getSeriesDetails).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.autofillPatch()).toBeNull();
+    expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'jikan', id: 999 });
+    expect(fixture.componentInstance.autofillPatch()).toEqual({
+      id: 2,
+      value: {
+        seasons: [
+          {
+            seasonNumber: 1,
+            totalEpisodes: 4,
+            firstEpisodeAirDate: '2020-01-01',
+          },
+        ],
+      },
+    });
+  });
+
+  it('does not fetch season details for movie suggestions', () => {
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const fixture = TestBed.createComponent(AddItemComponent);
+
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({
+        id: 11,
+        title: 'Star Wars',
+        type: 'movie',
+        year: '1977',
+        posterUrl: 'https://image.tmdb.org/t/p/w342/star-wars.jpg',
+      }),
+    );
+
+    expect(suggestionSearchService.getDetails).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.autofillPatch()).toEqual({
+      id: 1,
+      value: { season: 1, episode: 1, seasons: [] },
+    });
   });
 
   it('does not apply stale TMDB details after the title changes', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
-    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(details.asObservable());
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(details.asObservable());
     const fixture = TestBed.createComponent(AddItemComponent);
 
-    fixture.componentInstance.onSuggestionSelected({
-      tmdbId: 1396,
-      title: 'Breaking Bad',
-      type: 'series',
-      year: '2008',
-    });
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
+    );
     fixture.componentInstance.onTitleChanged('Different show');
     details.next({
       seasons: [
@@ -196,18 +242,20 @@ describe('AddItemComponent', () => {
   });
 
   it('does not apply stale poster from a series when the title changes before details resolve', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
-    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(details.asObservable());
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(details.asObservable());
     const fixture = TestBed.createComponent(AddItemComponent);
 
-    fixture.componentInstance.onSuggestionSelected({
-      tmdbId: 1396,
-      title: 'Breaking Bad',
-      type: 'series',
-      year: '2008',
-      posterPath: '/breaking-bad.jpg',
-    });
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({
+        id: 1396,
+        title: 'Breaking Bad',
+        type: 'series',
+        year: '2008',
+        posterUrl: 'https://image.tmdb.org/t/p/w342/breaking-bad.jpg',
+      }),
+    );
     fixture.componentInstance.onTitleChanged('Different show');
     details.next({
       seasons: [
@@ -222,25 +270,29 @@ describe('AddItemComponent', () => {
   });
 
   it('does not apply stale poster from a series when a movie is selected before details resolve', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
-    vi.mocked(tmdbSuggestionService.getSeriesDetails).mockReturnValue(details.asObservable());
+    vi.mocked(suggestionSearchService.getDetails).mockReturnValue(details.asObservable());
     const fixture = TestBed.createComponent(AddItemComponent);
 
-    fixture.componentInstance.onSuggestionSelected({
-      tmdbId: 1396,
-      title: 'Breaking Bad',
-      type: 'series',
-      year: '2008',
-      posterPath: '/breaking-bad.jpg',
-    });
-    fixture.componentInstance.onSuggestionSelected({
-      tmdbId: 11,
-      title: 'Star Wars',
-      type: 'movie',
-      year: '1977',
-      posterPath: '/star-wars.jpg',
-    });
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({
+        id: 1396,
+        title: 'Breaking Bad',
+        type: 'series',
+        year: '2008',
+        posterUrl: 'https://image.tmdb.org/t/p/w342/breaking-bad.jpg',
+      }),
+    );
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({
+        id: 11,
+        title: 'Star Wars',
+        type: 'movie',
+        year: '1977',
+        posterUrl: 'https://image.tmdb.org/t/p/w342/star-wars.jpg',
+      }),
+    );
     details.next({
       seasons: [
         {
@@ -250,13 +302,16 @@ describe('AddItemComponent', () => {
       ],
     });
 
-    expect(fixture.componentInstance.autofillPatch()).toBeNull();
+    expect(fixture.componentInstance.autofillPatch()).toEqual({
+      id: 2,
+      value: { season: 1, episode: 1, seasons: [] },
+    });
   });
 
   it('cancels the previous TMDB details request when another series is selected', () => {
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     let firstRequestUnsubscribed = false;
-    vi.mocked(tmdbSuggestionService.getSeriesDetails)
+    vi.mocked(suggestionSearchService.getDetails)
       .mockReturnValueOnce(
         new Observable((subscriber) => {
           subscriber.next({
@@ -284,24 +339,18 @@ describe('AddItemComponent', () => {
       );
     const fixture = TestBed.createComponent(AddItemComponent);
 
-    fixture.componentInstance.onSuggestionSelected({
-      tmdbId: 1396,
-      title: 'Breaking Bad',
-      type: 'series',
-      year: '2008',
-    });
-    fixture.componentInstance.onSuggestionSelected({
-      tmdbId: 66732,
-      title: 'Stranger Things',
-      type: 'series',
-      year: '2016',
-    });
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
+    );
+    fixture.componentInstance.onSuggestionSelected(
+      createSuggestion({ id: 66732, title: 'Stranger Things', type: 'series', year: '2016' }),
+    );
 
     expect(firstRequestUnsubscribed).toBe(true);
-    expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(1396);
-    expect(tmdbSuggestionService.getSeriesDetails).toHaveBeenCalledWith(66732);
+    expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'tmdb', id: 1396 });
+    expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'tmdb', id: 66732 });
     expect(fixture.componentInstance.autofillPatch()).toEqual({
-      id: 2,
+      id: 4,
       value: {
         seasons: [
           {
@@ -332,44 +381,30 @@ describe('AddItemComponent', () => {
     expect(fixture.componentInstance.autofillPatch()).toBeNull();
   });
 
-  it('shows a TMDB error and keeps searching after a failed request', async () => {
+  it('shows an error and keeps searching after a failed request', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       search
-        .mockReturnValueOnce(throwError(() => new Error('TMDB unavailable')))
+        .mockReturnValueOnce(throwError(() => new Error('unavailable')))
         .mockReturnValueOnce(
-          of([
-            {
-              tmdbId: 1396,
-              title: 'Breaking Bad',
-              type: 'series',
-              year: '2008',
-            },
-          ]),
+          of([createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' })]),
         );
       const fixture = TestBed.createComponent(AddItemComponent);
 
       fixture.componentInstance.onTitleChanged('bad query');
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(fixture.componentInstance.suggestions()).toEqual([]);
       expect(fixture.componentInstance.suggestionsLoading()).toBe(false);
-      expect(fixture.componentInstance.suggestionsError()).toBe(
-        'TMDB suggestions are unavailable.',
-      );
+      expect(fixture.componentInstance.suggestionsError()).toBe('Suggestions are unavailable.');
 
       fixture.componentInstance.onTitleChanged('good query');
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(fixture.componentInstance.suggestions()).toEqual([
-        {
-          tmdbId: 1396,
-          title: 'Breaking Bad',
-          type: 'series',
-          year: '2008',
-        },
+        createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
       ]);
       expect(fixture.componentInstance.suggestionsError()).toBe('');
     } finally {
@@ -379,15 +414,15 @@ describe('AddItemComponent', () => {
 
   it('does not search again for whitespace-only title changes', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(AddItemComponent);
 
       fixture.componentInstance.onTitleChanged('Breaking');
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(400);
       fixture.componentInstance.onTitleChanged('Breaking ');
-      await vi.advanceTimersByTimeAsync(250);
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(search).toHaveBeenCalledTimes(1);
       expect(search).toHaveBeenCalledWith('Breaking');
@@ -398,28 +433,20 @@ describe('AddItemComponent', () => {
 
   it('does not run a pending debounced search after selecting a suggestion', async () => {
     vi.useFakeTimers();
-    const tmdbSuggestionService = TestBed.inject(TmdbSuggestionService);
-    const search = vi.mocked(tmdbSuggestionService.search);
+    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
+    const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(AddItemComponent);
 
       fixture.componentInstance.suggestions.set([
-        {
-          tmdbId: 1396,
-          title: 'Breaking Bad',
-          type: 'series',
-          year: '2008',
-        },
+        createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
       ]);
       fixture.componentInstance.onTitleChanged('Breakin');
       await vi.advanceTimersByTimeAsync(100);
-      fixture.componentInstance.onSuggestionSelected({
-        tmdbId: 1396,
-        title: 'Breaking Bad',
-        type: 'series',
-        year: '2008',
-      });
-      await vi.advanceTimersByTimeAsync(250);
+      fixture.componentInstance.onSuggestionSelected(
+        createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
+      );
+      await vi.advanceTimersByTimeAsync(400);
 
       expect(search).not.toHaveBeenCalled();
       expect(fixture.componentInstance.title()).toBe('Breaking Bad');

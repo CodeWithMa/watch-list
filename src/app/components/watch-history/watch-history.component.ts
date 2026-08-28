@@ -61,6 +61,8 @@ import { groupHistoryEntries } from '../../utils/watch-history.utils';
                     class="w-1.5 h-1.5 rounded-full shrink-0"
                     [class.bg-accent-primary]="entry.itemType === 'series'"
                     [class.bg-accent-success]="entry.itemType === 'movie'"
+                    [class.bg-accent-info]="entry.itemType === 'ova'"
+                    [class.bg-accent-warning]="entry.itemType === 'ona'"
                   ></div>
 
                   @if (entry.isDeleted) {
@@ -84,7 +86,7 @@ import { groupHistoryEntries } from '../../utils/watch-history.utils';
                     >{{ entry.itemType }}</span
                   >
 
-                  @if (entry.itemType === 'series') {
+                  @if (entry.itemType !== 'movie') {
                     <span
                       class="text-xs bg-accent-primary/10 text-accent-primary px-2 py-0.5 rounded font-medium shrink-0"
                     >

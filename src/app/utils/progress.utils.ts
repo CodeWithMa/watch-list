@@ -1,11 +1,12 @@
 import { Item } from '../models/item.model';
+import { isEpisodicType } from '../domain/item.constants';
 
 export function calculateProgress(item: Item): number | null {
   if (item.type === 'movie') {
     return item.status === 'completed' ? 100 : 0;
   }
 
-  if (item.type === 'series' && item.progress) {
+  if (isEpisodicType(item.type) && item.progress) {
     if (item.status === 'completed') return 100;
     const currentSeason = item.progress.seasons.find(
       (s) => s.seasonNumber === item.progress!.season,

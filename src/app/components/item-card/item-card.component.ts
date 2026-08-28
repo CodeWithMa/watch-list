@@ -30,7 +30,7 @@ import { ImageStorageService } from '../../services/image-storage.service';
             class="w-full aspect-[2/3] object-cover"
           />
         }
-        @if (item().type === 'series' && item().progress) {
+        @if (item().progress) {
           <span
             class="absolute top-0 right-0 px-2 py-1 text-xs font-medium bg-black/60 text-white backdrop-blur-sm"
           >

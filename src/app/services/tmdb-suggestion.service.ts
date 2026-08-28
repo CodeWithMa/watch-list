@@ -1,8 +1,13 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map, Observable, of } from 'rxjs';
-import { TmdbSeriesDetails, TmdbSuggestion } from '../models/tmdb-suggestion.model';
+import { SeriesDetails, Suggestion } from '../models/suggestion.model';
 import { TmdbSettingsService } from './tmdb-settings.service';
+import { getPosterUrl } from '../utils/tmdb-image.utils';
+import {
+  SUGGESTION_MIN_QUERY_LENGTH,
+  SUGGESTION_PER_SOURCE_LIMIT,
+} from '../domain/suggestion.constants';
 
 interface TmdbSearchResponse {
   results?: unknown[];
@@ -37,11 +42,11 @@ export class TmdbSuggestionService {
   private readonly http = inject(HttpClient);
   private readonly settings = inject(TmdbSettingsService);
 
-  search(query: string): Observable<TmdbSuggestion[]> {
+  search(query: string): Observable<Suggestion[]> {
     const trimmedQuery = query.trim();
     const requestOptions = this.createRequestOptions();
 
-    if (trimmedQuery.length < 2 || !requestOptions) {
+    if (trimmedQuery.length < SUGGESTION_MIN_QUERY_LENGTH || !requestOptions) {
       return of([]);
     }
 
@@ -63,7 +68,7 @@ export class TmdbSuggestionService {
       .pipe(map((response) => this.mapResults(response.results ?? [])));
   }
 
-  getSeriesDetails(tmdbId: number): Observable<TmdbSeriesDetails | null> {
+  getSeriesDetails(tmdbId: number): Observable<SeriesDetails | null> {
     const requestOptions = this.createRequestOptions();
 
     if (!Number.isInteger(tmdbId) || tmdbId < 1 || !requestOptions) {
@@ -107,14 +112,14 @@ export class TmdbSuggestionService {
     };
   }
 
-  private mapResults(results: unknown[]): TmdbSuggestion[] {
+  private mapResults(results: unknown[]): Suggestion[] {
     return results
       .map((result) => this.mapResult(result))
-      .filter((suggestion): suggestion is TmdbSuggestion => suggestion !== null)
-      .slice(0, 8);
+      .filter((suggestion): suggestion is Suggestion => suggestion !== null)
+      .slice(0, SUGGESTION_PER_SOURCE_LIMIT);
   }
 
-  private mapResult(result: unknown): TmdbSuggestion | null {
+  private mapResult(result: unknown): Suggestion | null {
     if (!result || typeof result !== 'object') {
       return null;
     }
@@ -137,21 +142,24 @@ export class TmdbSuggestionService {
 
   private createSuggestion(
     result: TmdbSearchResult,
-    type: TmdbSuggestion['type'],
+    type: Suggestion['type'],
     title: unknown,
     date: unknown,
-  ): TmdbSuggestion | null {
+  ): Suggestion | null {
     if (typeof title !== 'string' || !title.trim()) {
       return null;
     }
 
     return {
-      tmdbId: result.id as number,
+      id: result.id as number,
+      source: 'tmdb',
       title: title.trim(),
       type,
       year: typeof date === 'string' && date.length >= 4 ? date.slice(0, 4) : undefined,
       overview: typeof result.overview === 'string' ? result.overview : undefined,
-      posterPath: typeof result.poster_path === 'string' ? result.poster_path : undefined,
+      posterUrl:
+        getPosterUrl(typeof result.poster_path === 'string' ? result.poster_path : undefined) ??
+        undefined,
     };
   }
 
