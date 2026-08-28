@@ -155,10 +155,18 @@ export class AddItemComponent {
     this.suggestionsError.set('');
 
     if (!isEpisodicType(suggestion.type)) {
+      this.autofillPatch.set({
+        id: ++this.autofillPatchId,
+        value: { season: 1, episode: 1, seasons: [] },
+      });
       this.selectedEpisodicRef.next(null);
       return;
     }
 
+    this.autofillPatch.set({
+      id: ++this.autofillPatchId,
+      value: { season: 1, episode: 1, seasons: [] },
+    });
     this.selectedEpisodicRef.next({ source: suggestion.source, id: suggestion.id });
   }
 

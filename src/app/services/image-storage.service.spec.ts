@@ -316,6 +316,8 @@ describe('ImageStorageService', () => {
   });
 
   it('handles imageVersion subscription', async () => {
+    const uniqueUrl = 'blob:unique-image-version-test';
+    URL.createObjectURL = vi.fn(() => uniqueUrl) as unknown as typeof URL.createObjectURL;
     const service = new ImageStorageService();
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
@@ -324,6 +326,6 @@ describe('ImageStorageService', () => {
     imagesInvalidated.next();
     await new Promise((r) => setTimeout(r, 0));
     expect(imageVersion()).toBeGreaterThan(before);
-    expect(URL.revokeObjectURL).toHaveBeenCalled();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith(uniqueUrl);
   });
 });

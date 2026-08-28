@@ -29,7 +29,7 @@ export class SuggestionSearchService {
       anilist: this.anilist.search(trimmed).pipe(catchError(() => of([] as Suggestion[]))),
     }).pipe(
       map(({ tmdb, jikan, anilist }) => {
-        const merged: Suggestion[] = [...tmdb, ...jikan, ...anilist];
+        const merged = [...tmdb, ...jikan, ...anilist];
         return merged.slice(0, SUGGESTION_MERGED_LIMIT);
       }),
     );

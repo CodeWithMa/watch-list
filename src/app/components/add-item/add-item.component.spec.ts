@@ -145,7 +145,7 @@ describe('AddItemComponent', () => {
 
     expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'tmdb', id: 1396 });
     expect(fixture.componentInstance.autofillPatch()).toEqual({
-      id: 1,
+      id: 2,
       value: {
         seasons: [
           {
@@ -185,7 +185,7 @@ describe('AddItemComponent', () => {
 
     expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'jikan', id: 999 });
     expect(fixture.componentInstance.autofillPatch()).toEqual({
-      id: 1,
+      id: 2,
       value: {
         seasons: [
           {
@@ -213,7 +213,10 @@ describe('AddItemComponent', () => {
     );
 
     expect(suggestionSearchService.getDetails).not.toHaveBeenCalled();
-    expect(fixture.componentInstance.autofillPatch()).toBeNull();
+    expect(fixture.componentInstance.autofillPatch()).toEqual({
+      id: 1,
+      value: { season: 1, episode: 1, seasons: [] },
+    });
   });
 
   it('does not apply stale TMDB details after the title changes', () => {
@@ -299,7 +302,10 @@ describe('AddItemComponent', () => {
       ],
     });
 
-    expect(fixture.componentInstance.autofillPatch()).toBeNull();
+    expect(fixture.componentInstance.autofillPatch()).toEqual({
+      id: 2,
+      value: { season: 1, episode: 1, seasons: [] },
+    });
   });
 
   it('cancels the previous TMDB details request when another series is selected', () => {
@@ -344,7 +350,7 @@ describe('AddItemComponent', () => {
     expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'tmdb', id: 1396 });
     expect(suggestionSearchService.getDetails).toHaveBeenCalledWith({ source: 'tmdb', id: 66732 });
     expect(fixture.componentInstance.autofillPatch()).toEqual({
-      id: 2,
+      id: 4,
       value: {
         seasons: [
           {
