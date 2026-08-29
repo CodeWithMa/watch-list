@@ -79,7 +79,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
       </div>
 
       <div
-        class="flex flex-wrap gap-3 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded"
+        class="flex flex-wrap gap-2 mb-3 p-3 bg-light-bg-primary dark:bg-dark-bg-primary rounded"
       >
         <button
           type="button"
@@ -100,7 +100,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
       </div>
 
       <div
-        class="flex flex-wrap gap-3 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded"
+        class="flex flex-wrap gap-2 mb-3 p-3 bg-light-bg-primary dark:bg-dark-bg-primary rounded"
       >
         <button
           type="button"
