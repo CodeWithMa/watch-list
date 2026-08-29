@@ -78,46 +78,43 @@ import { ItemCardComponent } from '../item-card/item-card.component';
         </div>
       </div>
 
-      <div
-        class="flex flex-wrap gap-2 mb-3 p-3 bg-light-bg-primary dark:bg-dark-bg-primary rounded"
-      >
-        <button
-          type="button"
-          (click)="statusFilter.set('all')"
-          [class]="getFilterButtonClass('all')"
-        >
-          All
-        </button>
-        @for (status of itemStatuses; track status) {
+      <div class="flex flex-col gap-2 mb-4">
+        <div class="flex flex-wrap gap-2">
           <button
             type="button"
-            (click)="statusFilter.set(status)"
-            [class]="getFilterButtonClass(status)"
+            (click)="statusFilter.set('all')"
+            [class]="getFilterButtonClass('all')"
           >
-            {{ itemStatusLabels[status] }}
+            All
           </button>
-        }
-      </div>
-
-      <div
-        class="flex flex-wrap gap-2 mb-3 p-3 bg-light-bg-primary dark:bg-dark-bg-primary rounded"
-      >
-        <button
-          type="button"
-          (click)="typeFilter.set('all')"
-          [class]="getTypeFilterButtonClass('all')"
-        >
-          All
-        </button>
-        @for (type of itemTypes; track type) {
+          @for (status of itemStatuses; track status) {
+            <button
+              type="button"
+              (click)="statusFilter.set(status)"
+              [class]="getFilterButtonClass(status)"
+            >
+              {{ itemStatusLabels[status] }}
+            </button>
+          }
+        </div>
+        <div class="flex flex-wrap gap-2">
           <button
             type="button"
-            (click)="typeFilter.set(type)"
-            [class]="getTypeFilterButtonClass(type)"
+            (click)="typeFilter.set('all')"
+            [class]="getTypeFilterButtonClass('all')"
           >
-            {{ itemTypeLabels[type] }}
+            All
           </button>
-        }
+          @for (type of itemTypes; track type) {
+            <button
+              type="button"
+              (click)="typeFilter.set(type)"
+              [class]="getTypeFilterButtonClass(type)"
+            >
+              {{ itemTypeLabels[type] }}
+            </button>
+          }
+        </div>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
