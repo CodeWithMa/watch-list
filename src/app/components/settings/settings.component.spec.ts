@@ -8,15 +8,18 @@ import { vi, afterEach, beforeEach } from 'vitest';
 describe('SettingsComponent', () => {
   let origHash: string;
   let origVersion: string;
+  let origBuildDate: string;
 
   beforeEach(() => {
     origHash = environment.commitHash;
     origVersion = environment.appVersion;
+    origBuildDate = environment.buildDate;
   });
 
   afterEach(() => {
     environment.commitHash = origHash;
     environment.appVersion = origVersion;
+    environment.buildDate = origBuildDate;
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -313,6 +316,7 @@ describe('SettingsComponent', () => {
   it('renders About section with version and linked commit hash', () => {
     environment.commitHash = 'abc123456789';
     environment.appVersion = '1.2.3';
+    environment.buildDate = '2026-08-29T10:00:16.000Z';
 
     configure({
       token: '',
@@ -335,6 +339,7 @@ describe('SettingsComponent', () => {
   it('renders About section without link when commit is unknown', () => {
     environment.commitHash = 'unknown';
     environment.appVersion = 'unknown';
+    environment.buildDate = 'unknown';
 
     configure({
       token: '',
@@ -356,6 +361,7 @@ describe('SettingsComponent', () => {
   it('places About section at the bottom of the page', () => {
     environment.commitHash = 'abc123456789';
     environment.appVersion = '1.2.3';
+    environment.buildDate = '2026-08-29T10:00:16.000Z';
 
     configure({
       token: '',
@@ -368,5 +374,43 @@ describe('SettingsComponent', () => {
 
     const text = fixture.nativeElement.textContent as string;
     expect(text.lastIndexOf('About')).toBeGreaterThan(text.lastIndexOf('Data Management'));
+  });
+
+  it('renders About section with build date', () => {
+    environment.commitHash = 'abc123456789';
+    environment.appVersion = '1.2.3';
+    environment.buildDate = '2026-08-29T10:00:16.000Z';
+
+    configure({
+      token: '',
+      key: '',
+      credential: null,
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('— Built');
+    // DatePipe 'medium' formats ISO to locale string containing year and month
+    expect(fixture.nativeElement.textContent).toContain('2026');
+    expect(fixture.nativeElement.textContent).toContain('Aug');
+  });
+
+  it('renders About section with unknown build date', () => {
+    environment.commitHash = 'abc123456789';
+    environment.appVersion = '1.2.3';
+    environment.buildDate = 'unknown';
+
+    configure({
+      token: '',
+      key: '',
+      credential: null,
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('— Built');
+    expect(fixture.nativeElement.textContent).toContain('unknown');
   });
 });

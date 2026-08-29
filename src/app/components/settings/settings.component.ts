@@ -282,6 +282,12 @@ import { environment } from '../../../environments/environment';
           } @else {
             ({{ shortHash }})
           }
+          — Built
+          @if (environment.buildDate !== 'unknown') {
+            {{ environment.buildDate | date: 'medium' }}
+          } @else {
+            unknown
+          }
         </p>
       </div>
     </div>

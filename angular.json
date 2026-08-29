@@ -32,6 +32,7 @@
               "src/styles.css"
             ],
             "define": {
+              "import.meta.env.APP_BUILD_DATE": "\"unknown\"",
               "import.meta.env.APP_COMMIT_HASH": "\"unknown\"",
               "import.meta.env.APP_VERSION": "\"unknown\""
             }
