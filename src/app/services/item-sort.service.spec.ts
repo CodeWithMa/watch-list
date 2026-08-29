@@ -110,8 +110,8 @@ describe('ItemSortService', () => {
   });
 
   it('handles localStorage getItem throwing', () => {
-    const originalGetItem = Storage.prototype.getItem;
-    Storage.prototype.getItem = () => {
+    const originalGetItem = window.localStorage.getItem;
+    window.localStorage.getItem = () => {
       throw new Error('blocked');
     };
     try {
@@ -120,15 +120,15 @@ describe('ItemSortService', () => {
       expect(service.field()).toBe('createdAt');
       expect(service.direction()).toBe('desc');
     } finally {
-      Storage.prototype.getItem = originalGetItem;
+      window.localStorage.getItem = originalGetItem;
     }
   });
 
   it('handles localStorage setItem throwing', () => {
     TestBed.configureTestingModule({});
     const service = TestBed.inject(ItemSortService);
-    const originalSetItem = Storage.prototype.setItem;
-    Storage.prototype.setItem = () => {
+    const originalSetItem = window.localStorage.setItem;
+    window.localStorage.setItem = () => {
       throw new Error('quota exceeded');
     };
     try {
@@ -138,7 +138,7 @@ describe('ItemSortService', () => {
       expect(service.field()).toBe('title');
       expect(service.direction()).toBe('asc');
     } finally {
-      Storage.prototype.setItem = originalSetItem;
+      window.localStorage.setItem = originalSetItem;
     }
   });
 });
