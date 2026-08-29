@@ -23,9 +23,13 @@ export function calculateProgress(item: Item): number | null {
 
 export function getMostRecentWatchDate(item: Item): string {
   if (item.watchHistory && item.watchHistory.length > 0) {
-    const sorted = [...item.watchHistory].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
+    const sorted = [...item.watchHistory].sort((a, b) => {
+      const aTime = new Date(a.date).getTime();
+      const bTime = new Date(b.date).getTime();
+      const aVal = Number.isNaN(aTime) ? Number.NEGATIVE_INFINITY : aTime;
+      const bVal = Number.isNaN(bTime) ? Number.NEGATIVE_INFINITY : bTime;
+      return bVal - aVal;
+    });
     return sorted[0].date;
   }
   return item.createdAt;
