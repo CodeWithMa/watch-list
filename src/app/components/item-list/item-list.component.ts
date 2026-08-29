@@ -5,8 +5,14 @@ import { FormsModule } from '@angular/forms';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { ItemSortService } from '../../services/item-sort.service';
-import { ITEM_STATUSES, ITEM_STATUS_LABELS } from '../../domain/item.constants';
+import {
+  ITEM_STATUSES,
+  ITEM_STATUS_LABELS,
+  ITEM_TYPES,
+  ITEM_TYPE_LABELS,
+} from '../../domain/item.constants';
 import { statusButtonClass, FilterStatus } from '../../utils/status.utils';
+import { typeButtonClass, FilterType } from '../../utils/type.utils';
 import {
   SORT_DIRECTIONS,
   SORT_DIRECTION_LABELS,
@@ -93,6 +99,27 @@ import { ItemCardComponent } from '../item-card/item-card.component';
         }
       </div>
 
+      <div
+        class="flex flex-wrap gap-3 mb-8 p-4 bg-light-bg-primary dark:bg-dark-bg-primary rounded"
+      >
+        <button
+          type="button"
+          (click)="typeFilter.set('all')"
+          [class]="getTypeFilterButtonClass('all')"
+        >
+          All
+        </button>
+        @for (type of itemTypes; track type) {
+          <button
+            type="button"
+            (click)="typeFilter.set(type)"
+            [class]="getTypeFilterButtonClass(type)"
+          >
+            {{ itemTypeLabels[type] }}
+          </button>
+        }
+      </div>
+
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         @for (item of filteredItems(); track item.id) {
           <app-item-card [item]="item" />
@@ -113,6 +140,8 @@ export class ItemListComponent {
   readonly groups = this.groupService.groups;
   readonly itemStatuses = ITEM_STATUSES;
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
+  readonly itemTypes = ITEM_TYPES;
+  readonly itemTypeLabels = ITEM_TYPE_LABELS;
 
   readonly sortFields = SORT_FIELDS;
   readonly sortDirections = SORT_DIRECTIONS;
@@ -120,6 +149,7 @@ export class ItemListComponent {
   readonly sortDirectionLabels = SORT_DIRECTION_LABELS;
 
   statusFilter = signal<FilterStatus>('all');
+  typeFilter = signal<FilterType>('all');
   searchFilter = signal<string>('');
   groupFilter = signal<string>('');
 
@@ -130,6 +160,10 @@ export class ItemListComponent {
 
   getFilterButtonClass(status: FilterStatus): string {
     return statusButtonClass(this.statusFilter() === status, status);
+  }
+
+  getTypeFilterButtonClass(type: FilterType): string {
+    return typeButtonClass(this.typeFilter() === type, type);
   }
 
   setSortField(field: SortField): void {
@@ -143,6 +177,7 @@ export class ItemListComponent {
   filteredItems = computed(() => {
     let items = this.allItems();
     const statusFilter = this.statusFilter();
+    const typeFilter = this.typeFilter();
     const search = this.searchFilter().toLowerCase();
     const groupFilter = this.groupFilter();
     const sortField = this.sortField();
@@ -154,6 +189,10 @@ export class ItemListComponent {
 
     if (statusFilter !== 'all') {
       items = items.filter((item) => item.status === statusFilter);
+    }
+
+    if (typeFilter !== 'all') {
+      items = items.filter((item) => item.type === typeFilter);
     }
 
     if (groupFilter) {
