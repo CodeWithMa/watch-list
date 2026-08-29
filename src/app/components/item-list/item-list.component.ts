@@ -123,8 +123,8 @@ export class ItemListComponent {
   searchFilter = signal<string>('');
   groupFilter = signal<string>('');
 
-  sortField = signal<SortField>(this.itemSortService.field());
-  sortDirection = signal<SortDirection>(this.itemSortService.direction());
+  sortField = this.itemSortService.field;
+  sortDirection = this.itemSortService.direction;
 
   allItems = this.watchListService.items;
 
@@ -133,12 +133,10 @@ export class ItemListComponent {
   }
 
   setSortField(field: SortField): void {
-    this.sortField.set(field);
     this.itemSortService.setField(field);
   }
 
   setSortDirection(direction: SortDirection): void {
-    this.sortDirection.set(direction);
     this.itemSortService.setDirection(direction);
   }
 
