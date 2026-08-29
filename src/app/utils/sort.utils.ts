@@ -26,19 +26,23 @@ export function isSortDirection(value: unknown): value is SortDirection {
   return typeof value === 'string' && (SORT_DIRECTIONS as readonly string[]).includes(value);
 }
 
+function toTimestamp(date: string): number {
+  const t = new Date(date).getTime();
+  return Number.isNaN(t) ? Number.NEGATIVE_INFINITY : t;
+}
+
 export function compareItems(a: Item, b: Item, field: SortField, direction: SortDirection): number {
   let result: number;
 
   if (field === 'title') {
     result = a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
   } else if (field === 'createdAt') {
-    result = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    result = toTimestamp(a.createdAt) - toTimestamp(b.createdAt);
   } else {
-    result =
-      new Date(getMostRecentWatchDate(a)).getTime() - new Date(getMostRecentWatchDate(b)).getTime();
+    result = toTimestamp(getMostRecentWatchDate(a)) - toTimestamp(getMostRecentWatchDate(b));
   }
 
-  if (result === 0) {
+  if (result === 0 || Number.isNaN(result)) {
     return 0;
   }
 
