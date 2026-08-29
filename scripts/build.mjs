@@ -23,8 +23,13 @@ function getHash() {
   }
 }
 
+function getBuildDate() {
+  return new Date().toISOString();
+}
+
 const version = getVersion();
 const hash = getHash();
+const buildDate = getBuildDate();
 
 // All args after script name are forwarded to ng build (e.g. --configuration=..., --base-href ...)
 const extraArgs = process.argv.slice(2);
@@ -34,6 +39,8 @@ const defines = [
   `import.meta.env.APP_VERSION=${JSON.stringify(version)}`,
   '--define',
   `import.meta.env.APP_COMMIT_HASH=${JSON.stringify(hash)}`,
+  '--define',
+  `import.meta.env.APP_BUILD_DATE=${JSON.stringify(buildDate)}`,
 ];
 
 const ngArgs = ['build', ...defines, ...extraArgs];

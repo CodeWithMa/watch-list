@@ -1,4 +1,5 @@
 interface ImportMetaEnv {
+  APP_BUILD_DATE: string;
   APP_COMMIT_HASH: string;
   APP_VERSION: string;
 }
