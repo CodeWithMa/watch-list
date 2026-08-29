@@ -3,7 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
-import { ProviderSettingsService } from '../../services/provider-settings.service';
+import {
+  ProviderSettingsService,
+  TitleLanguage,
+  TitlePreference,
+} from '../../services/provider-settings.service';
 import { TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { SuggestionSource } from '../../models/suggestion.model';
 import { environment } from '../../../environments/environment';
@@ -129,6 +133,86 @@ import { environment } from '../../../environments/environment';
             <span class="text-light-font dark:text-dark-font">AniList — Anime</span>
           </label>
         </div>
+
+        <div class="mt-6 pt-6 border-t border-light-border dark:border-dark-border">
+          <h3 class="text-base font-medium mb-3 text-light-font dark:text-dark-font">
+            Adult content
+          </h3>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input
+              id="includeAdultToggle"
+              type="checkbox"
+              [checked]="includeAdult()"
+              (change)="toggleAdult($event)"
+              class="w-5 h-5"
+            />
+            <span class="text-light-font dark:text-dark-font"
+              >Include adult / NSFW results (TMDB, Jikan, AniList)</span
+            >
+          </label>
+          <p class="mt-2 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+            When enabled, adult results may appear in suggestions. Default is off (SFW only).
+          </p>
+        </div>
+
+        <div class="mt-6 pt-6 border-t border-light-border dark:border-dark-border">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-medium text-light-font dark:text-dark-font">
+              Anime title language order
+            </h3>
+            <button
+              type="button"
+              (click)="resetTitlePreference()"
+              class="text-xs text-accent-primary hover:underline bg-transparent border-none cursor-pointer p-0"
+              aria-label="Reset title language order to default"
+            >
+              Reset
+            </button>
+          </div>
+          <p class="text-xs mb-3 text-light-font-secondary dark:text-dark-font-secondary">
+            Top is tried first. Reorder with up/down. Applies to AniList &amp; Jikan suggestions.
+          </p>
+          <ol class="flex flex-col gap-2" aria-label="Title language preference order">
+            @for (lang of titleOrder(); track lang; let i = $index) {
+              <li
+                class="flex items-center justify-between p-3 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary"
+              >
+                <div class="flex items-center gap-3">
+                  <span
+                    class="text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary w-6"
+                    >{{ i + 1 }}.</span
+                  >
+                  <span class="text-sm text-light-font dark:text-dark-font">{{
+                    titleLanguageLabel(lang)
+                  }}</span>
+                  <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary"
+                    >({{ lang }})</span
+                  >
+                </div>
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    (click)="moveTitleUp(i)"
+                    [disabled]="i === 0"
+                    class="px-2 py-1 text-xs rounded border border-light-border dark:border-dark-border bg-light-bg-tertiary dark:bg-dark-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-light-bg-secondary dark:hover:bg-dark-bg-secondary"
+                    [attr.aria-label]="'Move ' + titleLanguageLabel(lang) + ' up'"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    (click)="moveTitleDown(i)"
+                    [disabled]="i === titleOrder().length - 1"
+                    class="px-2 py-1 text-xs rounded border border-light-border dark:border-dark-border bg-light-bg-tertiary dark:bg-dark-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-light-bg-secondary dark:hover:bg-dark-bg-secondary"
+                    [attr.aria-label]="'Move ' + titleLanguageLabel(lang) + ' down'"
+                  >
+                    ↓
+                  </button>
+                </div>
+              </li>
+            }
+          </ol>
+        </div>
       </div>
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
@@ -160,7 +244,7 @@ import { environment } from '../../../environments/environment';
           >) — public APIs, no setup required.
         </p>
         <p class="mt-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-          TV / Movie / OVA / ONA · SFW-filtered ·
+          TV / Movie / OVA / ONA · SFW by default (toggle in Suggestion Providers) ·
           <a
             href="https://anilist.gitbook.io/anilist-apiv2-docs/docs/guide/rate-limiting"
             target="_blank"
@@ -316,6 +400,8 @@ export class SettingsComponent implements OnInit {
   tmdbEnabled = signal(this.providerSettingsService.isEnabled('tmdb'));
   jikanEnabled = signal(this.providerSettingsService.isEnabled('jikan'));
   anilistEnabled = signal(this.providerSettingsService.isEnabled('anilist'));
+  includeAdult = signal(this.providerSettingsService.isAdultIncluded());
+  titleOrder = signal<TitlePreference>(this.providerSettingsService.getTitlePreference());
   recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
 
   ngOnInit(): void {
@@ -342,6 +428,52 @@ export class SettingsComponent implements OnInit {
     this.tmdbEnabled.set(this.providerSettingsService.isEnabled('tmdb'));
     this.jikanEnabled.set(this.providerSettingsService.isEnabled('jikan'));
     this.anilistEnabled.set(this.providerSettingsService.isEnabled('anilist'));
+  }
+
+  toggleAdult(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.providerSettingsService.setIncludeAdult(checked);
+    this.includeAdult.set(this.providerSettingsService.isAdultIncluded());
+  }
+
+  titleLanguageLabel(lang: TitleLanguage): string {
+    switch (lang) {
+      case 'romaji':
+        return 'Romaji';
+      case 'english':
+        return 'English';
+      case 'native':
+        return 'Native';
+      default:
+        return lang;
+    }
+  }
+
+  moveTitleUp(index: number): void {
+    if (index <= 0) return;
+    const current = [...this.titleOrder()];
+    const next: TitlePreference = [...current];
+    const tmp = next[index - 1];
+    next[index - 1] = next[index];
+    next[index] = tmp;
+    this.providerSettingsService.setTitlePreference(next);
+    this.titleOrder.set(this.providerSettingsService.getTitlePreference());
+  }
+
+  moveTitleDown(index: number): void {
+    const current = [...this.titleOrder()];
+    if (index >= current.length - 1) return;
+    const next: TitlePreference = [...current];
+    const tmp = next[index + 1];
+    next[index + 1] = next[index];
+    next[index] = tmp;
+    this.providerSettingsService.setTitlePreference(next);
+    this.titleOrder.set(this.providerSettingsService.getTitlePreference());
+  }
+
+  resetTitlePreference(): void {
+    this.providerSettingsService.setTitlePreference(['romaji', 'english', 'native']);
+    this.titleOrder.set(this.providerSettingsService.getTitlePreference());
   }
 
   private getTmdbSettingsMessage(): string {

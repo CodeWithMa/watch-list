@@ -2,6 +2,7 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map, Observable, of } from 'rxjs';
 import { SeriesDetails, Suggestion } from '../models/suggestion.model';
+import { ProviderSettingsService } from './provider-settings.service';
 import { TmdbSettingsService } from './tmdb-settings.service';
 import { getPosterUrl } from '../utils/tmdb-image.utils';
 import {
@@ -41,6 +42,7 @@ interface TmdbTvSeason {
 export class TmdbSuggestionService {
   private readonly http = inject(HttpClient);
   private readonly settings = inject(TmdbSettingsService);
+  private readonly providerSettings = inject(ProviderSettingsService);
 
   search(query: string): Observable<Suggestion[]> {
     const trimmedQuery = query.trim();
@@ -52,7 +54,7 @@ export class TmdbSuggestionService {
 
     let params = new HttpParams()
       .set('query', trimmedQuery)
-      .set('include_adult', 'false')
+      .set('include_adult', String(this.providerSettings.isAdultIncluded()))
       .set('language', 'en-US')
       .set('page', '1');
 
