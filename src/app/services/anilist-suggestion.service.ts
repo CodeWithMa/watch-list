@@ -58,10 +58,26 @@ const ANILIST_FORMAT_MAP: Record<string, ItemType> = {
   ONA: 'ona',
 };
 
-const ANILIST_SEARCH_QUERY_TEMPLATE = `
+const ANILIST_SEARCH_QUERY_SFW = `
 query ($search: String) {
   Page(page: 1, perPage: ${SUGGESTION_PER_SOURCE_LIMIT}) {
-    media(search: $search, type: ANIME, isAdult: __IS_ADULT__, sort: POPULARITY_DESC) {
+    media(search: $search, type: ANIME, isAdult: false, sort: POPULARITY_DESC) {
+      id
+      title { romaji english native }
+      format
+      episodes
+      startDate { year month day }
+      coverImage { extraLarge large }
+      description
+    }
+  }
+}
+`;
+
+const ANILIST_SEARCH_QUERY_ALL = `
+query ($search: String) {
+  Page(page: 1, perPage: ${SUGGESTION_PER_SOURCE_LIMIT}) {
+    media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
       id
       title { romaji english native }
       format
@@ -98,10 +114,9 @@ export class AnilistSuggestionService {
       return of([]);
     }
 
-    const gqlQuery = ANILIST_SEARCH_QUERY_TEMPLATE.replace(
-      '__IS_ADULT__',
-      String(this.providerSettings.isAdultIncluded()),
-    );
+    const gqlQuery = this.providerSettings.isAdultIncluded()
+      ? ANILIST_SEARCH_QUERY_ALL
+      : ANILIST_SEARCH_QUERY_SFW;
 
     return this.http
       .post<AnilistSearchResponse>(

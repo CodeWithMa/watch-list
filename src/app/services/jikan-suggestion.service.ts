@@ -17,6 +17,7 @@ interface JikanAnime {
   mal_id?: unknown;
   title?: unknown;
   title_english?: unknown;
+  title_japanese?: unknown;
   type?: unknown;
   episodes?: unknown;
   aired?: unknown;
@@ -171,7 +172,13 @@ export class JikanSuggestionService {
       ) {
         return candidate.title_english.trim();
       }
-      // Jikan has no native title field; native preference is skipped
+      if (
+        lang === 'native' &&
+        typeof candidate.title_japanese === 'string' &&
+        candidate.title_japanese.trim()
+      ) {
+        return candidate.title_japanese.trim();
+      }
     }
     return null;
   }
