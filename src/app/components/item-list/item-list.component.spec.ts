@@ -313,8 +313,8 @@ describe('ItemListComponent', () => {
     fixture.detectChanges();
 
     const selects = fixture.nativeElement.querySelectorAll('select');
-    // group + sortField + sortDirection = 3 selects
-    expect(selects.length).toBe(3);
+    // group + sortField = 2 selects, sort direction is now a toggle button
+    expect(selects.length).toBe(2);
 
     const sortBySelect = fixture.nativeElement.querySelector('select[aria-label="Sort by"]');
     expect(sortBySelect).not.toBeNull();
@@ -322,12 +322,11 @@ describe('ItemListComponent', () => {
     expect(sortBySelect.textContent).toContain('Added date');
     expect(sortBySelect.textContent).toContain('Last watched date');
 
-    const sortDirSelect = fixture.nativeElement.querySelector(
-      'select[aria-label="Sort direction"]',
-    );
-    expect(sortDirSelect).not.toBeNull();
-    expect(sortDirSelect.textContent).toContain('Ascending');
-    expect(sortDirSelect.textContent).toContain('Descending');
+    const sortToggle = fixture.nativeElement.querySelector('button[aria-label^="Sort direction"]');
+    expect(sortToggle).not.toBeNull();
+    expect(sortToggle.getAttribute('title')).toMatch(/Ascending|Descending/);
+    expect(sortToggle.getAttribute('aria-label')).toContain('Sort direction');
+    expect(sortToggle.querySelector('svg')).not.toBeNull();
   });
 
   it('returns empty when no items', () => {

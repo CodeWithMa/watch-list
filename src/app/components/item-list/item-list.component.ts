@@ -33,26 +33,59 @@ import { ItemCardComponent } from '../item-card/item-card.component';
       <div class="flex justify-between items-center mb-8 gap-4 flex-wrap">
         <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">All Items</h1>
         <div class="flex gap-4 flex-wrap items-center">
-          <select
-            [ngModel]="sortField()"
-            (ngModelChange)="setSortField($event)"
-            aria-label="Sort by"
-            class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
-          >
-            @for (field of sortFields; track field) {
-              <option [value]="field">{{ sortFieldLabels[field] }}</option>
-            }
-          </select>
-          <select
-            [ngModel]="sortDirection()"
-            (ngModelChange)="setSortDirection($event)"
-            aria-label="Sort direction"
-            class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
-          >
-            @for (direction of sortDirections; track direction) {
-              <option [value]="direction">{{ sortDirectionLabels[direction] }}</option>
-            }
-          </select>
+          <div class="flex items-center gap-2">
+            <select
+              [ngModel]="sortField()"
+              (ngModelChange)="setSortField($event)"
+              aria-label="Sort by"
+              class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
+            >
+              @for (field of sortFields; track field) {
+                <option [value]="field">{{ sortFieldLabels[field] }}</option>
+              }
+            </select>
+            <button
+              type="button"
+              (click)="toggleSortDirection()"
+              [attr.aria-label]="'Sort direction: ' + sortDirectionLabels[sortDirection()]"
+              [attr.title]="sortDirectionLabels[sortDirection()]"
+              class="px-3 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary flex items-center justify-center"
+            >
+              @if (sortDirection() === 'desc') {
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 19V5" />
+                  <path d="M5 12l7-7 7 7" />
+                </svg>
+              } @else {
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 5v14" />
+                  <path d="M19 12l-7 7-7-7" />
+                </svg>
+              }
+            </button>
+          </div>
           <select
             [ngModel]="groupFilter()"
             (ngModelChange)="groupFilter.set($event)"
@@ -169,6 +202,10 @@ export class ItemListComponent {
 
   setSortDirection(direction: SortDirection): void {
     this.itemSortService.setDirection(direction);
+  }
+
+  toggleSortDirection(): void {
+    this.itemSortService.toggleDirection();
   }
 
   filteredItems = computed(() => {
