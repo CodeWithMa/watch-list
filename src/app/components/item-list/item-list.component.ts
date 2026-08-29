@@ -4,8 +4,18 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
+import { ItemSortService } from '../../services/item-sort.service';
 import { ITEM_STATUSES, ITEM_STATUS_LABELS } from '../../domain/item.constants';
 import { statusButtonClass, FilterStatus } from '../../utils/status.utils';
+import {
+  SORT_DIRECTIONS,
+  SORT_DIRECTION_LABELS,
+  SORT_FIELDS,
+  SORT_FIELD_LABELS,
+  SortDirection,
+  SortField,
+  sortItems,
+} from '../../utils/sort.utils';
 
 import { ItemCardComponent } from '../item-card/item-card.component';
 
@@ -14,9 +24,29 @@ import { ItemCardComponent } from '../item-card/item-card.component';
   imports: [FormsModule, RouterLink, ItemCardComponent],
   template: `
     <div>
-      <div class="flex justify-between items-center mb-8">
+      <div class="flex justify-between items-center mb-8 gap-4 flex-wrap">
         <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">All Items</h1>
-        <div class="flex gap-4">
+        <div class="flex gap-4 flex-wrap items-center">
+          <select
+            [ngModel]="sortField()"
+            (ngModelChange)="setSortField($event)"
+            aria-label="Sort by"
+            class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
+          >
+            @for (field of sortFields; track field) {
+              <option [value]="field">{{ sortFieldLabels[field] }}</option>
+            }
+          </select>
+          <select
+            [ngModel]="sortDirection()"
+            (ngModelChange)="setSortDirection($event)"
+            aria-label="Sort direction"
+            class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
+          >
+            @for (direction of sortDirections; track direction) {
+              <option [value]="direction">{{ sortDirectionLabels[direction] }}</option>
+            }
+          </select>
           <select
             [ngModel]="groupFilter()"
             (ngModelChange)="groupFilter.set($event)"
@@ -78,14 +108,23 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 export class ItemListComponent {
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
+  private itemSortService = inject(ItemSortService);
 
   readonly groups = this.groupService.groups;
   readonly itemStatuses = ITEM_STATUSES;
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
+  readonly sortFields = SORT_FIELDS;
+  readonly sortDirections = SORT_DIRECTIONS;
+  readonly sortFieldLabels = SORT_FIELD_LABELS;
+  readonly sortDirectionLabels = SORT_DIRECTION_LABELS;
+
   statusFilter = signal<FilterStatus>('all');
   searchFilter = signal<string>('');
   groupFilter = signal<string>('');
+
+  sortField = signal<SortField>(this.itemSortService.field());
+  sortDirection = signal<SortDirection>(this.itemSortService.direction());
 
   allItems = this.watchListService.items;
 
@@ -93,11 +132,23 @@ export class ItemListComponent {
     return statusButtonClass(this.statusFilter() === status, status);
   }
 
+  setSortField(field: SortField): void {
+    this.sortField.set(field);
+    this.itemSortService.setField(field);
+  }
+
+  setSortDirection(direction: SortDirection): void {
+    this.sortDirection.set(direction);
+    this.itemSortService.setDirection(direction);
+  }
+
   filteredItems = computed(() => {
     let items = this.allItems();
     const statusFilter = this.statusFilter();
     const search = this.searchFilter().toLowerCase();
     const groupFilter = this.groupFilter();
+    const sortField = this.sortField();
+    const sortDirection = this.sortDirection();
 
     if (search) {
       items = items.filter((item) => item.title.toLowerCase().includes(search));
@@ -111,8 +162,6 @@ export class ItemListComponent {
       items = items.filter((item) => item.groupId === groupFilter);
     }
 
-    return [...items].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    return sortItems(items, sortField, sortDirection);
   });
 }
