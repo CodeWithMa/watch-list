@@ -27,6 +27,10 @@ export class ItemSortService {
     this.saveDirection(direction);
   }
 
+  toggleDirection(): void {
+    this.setDirection(this.directionSignal() === 'asc' ? 'desc' : 'asc');
+  }
+
   private loadField(): SortField {
     try {
       const raw = localStorage.getItem(SORT_FIELD_KEY);
