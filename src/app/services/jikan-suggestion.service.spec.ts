@@ -87,6 +87,7 @@ describe('JikanSuggestionService', () => {
         year: '1998',
         overview: 'Crime is timeless.',
         posterUrl: 'https://cdn.myanimelist.net/images/anime/4/19644l.jpg',
+        isAdult: false,
       },
       {
         id: 5,
@@ -96,6 +97,7 @@ describe('JikanSuggestionService', () => {
         year: '2001',
         overview: undefined,
         posterUrl: undefined,
+        isAdult: false,
       },
       {
         id: 6,
@@ -105,6 +107,7 @@ describe('JikanSuggestionService', () => {
         year: '2020',
         overview: undefined,
         posterUrl: 'https://cdn.myanimelist.net/images/anime/6/ova.jpg',
+        isAdult: false,
       },
       {
         id: 7,
@@ -114,6 +117,7 @@ describe('JikanSuggestionService', () => {
         year: '2021',
         overview: undefined,
         posterUrl: undefined,
+        isAdult: false,
       },
     ]);
   });

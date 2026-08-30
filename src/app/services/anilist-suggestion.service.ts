@@ -31,6 +31,7 @@ interface AnilistMedia {
   startDate?: unknown;
   coverImage?: unknown;
   description?: unknown;
+  isAdult?: unknown;
 }
 
 interface AnilistTitle {
@@ -64,6 +65,7 @@ query ($search: String) {
     media(search: $search, type: ANIME, isAdult: false, sort: POPULARITY_DESC) {
       id
       title { romaji english native }
+      isAdult
       format
       episodes
       startDate { year month day }
@@ -80,6 +82,7 @@ query ($search: String) {
     media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
       id
       title { romaji english native }
+      isAdult
       format
       episodes
       startDate { year month day }
@@ -192,6 +195,7 @@ export class AnilistSuggestionService {
       year: this.extractYear(candidate.startDate),
       overview: this.extractOverview(candidate.description),
       posterUrl: this.extractImageUrl(candidate.coverImage),
+      isAdult: candidate.isAdult === true,
     };
   }
 

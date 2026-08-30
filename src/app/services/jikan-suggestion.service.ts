@@ -23,6 +23,7 @@ interface JikanAnime {
   aired?: unknown;
   images?: unknown;
   synopsis?: unknown;
+  rating?: unknown;
 }
 
 interface JikanAired {
@@ -119,6 +120,7 @@ export class JikanSuggestionService {
       year: this.extractYear(candidate.aired),
       overview: typeof candidate.synopsis === 'string' ? candidate.synopsis : undefined,
       posterUrl: this.extractImageUrl(candidate.images),
+      isAdult: typeof candidate.rating === 'string' && candidate.rating.trim().startsWith('Rx'),
     };
   }
 

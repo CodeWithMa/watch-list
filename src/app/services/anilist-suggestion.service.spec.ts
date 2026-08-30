@@ -106,6 +106,7 @@ describe('AnilistSuggestionService', () => {
         year: '1998',
         overview: 'Crime is timeless. Space western.',
         posterUrl: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx1.jpg',
+        isAdult: false,
       },
       {
         id: 5,
@@ -115,6 +116,7 @@ describe('AnilistSuggestionService', () => {
         year: '2001',
         overview: undefined,
         posterUrl: undefined,
+        isAdult: false,
       },
       {
         id: 6,
@@ -124,6 +126,7 @@ describe('AnilistSuggestionService', () => {
         year: '2020',
         overview: undefined,
         posterUrl: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx6.jpg',
+        isAdult: false,
       },
       {
         id: 7,
@@ -133,6 +136,7 @@ describe('AnilistSuggestionService', () => {
         year: '2021',
         overview: undefined,
         posterUrl: undefined,
+        isAdult: false,
       },
       {
         id: 10,
@@ -142,6 +146,7 @@ describe('AnilistSuggestionService', () => {
         year: '2022',
         overview: undefined,
         posterUrl: undefined,
+        isAdult: false,
       },
     ]);
   });
@@ -196,6 +201,7 @@ describe('AnilistSuggestionService', () => {
         year: '2023',
         overview: undefined,
         posterUrl: undefined,
+        isAdult: false,
       },
       {
         id: 101,
@@ -205,6 +211,7 @@ describe('AnilistSuggestionService', () => {
         year: '2023',
         overview: undefined,
         posterUrl: undefined,
+        isAdult: false,
       },
     ]);
   });
@@ -348,6 +355,7 @@ describe('AnilistSuggestionService', () => {
         year: '2024',
         overview: 'Great anime & more Next line.',
         posterUrl: undefined,
+        isAdult: false,
       },
     ]);
   });

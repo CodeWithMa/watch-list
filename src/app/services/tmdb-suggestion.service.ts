@@ -24,6 +24,7 @@ interface TmdbSearchResult {
   overview?: unknown;
   poster_path?: unknown;
   popularity?: unknown;
+  adult?: unknown;
 }
 
 interface TmdbTvDetailsResponse {
@@ -162,6 +163,7 @@ export class TmdbSuggestionService {
       posterUrl:
         getPosterUrl(typeof result.poster_path === 'string' ? result.poster_path : undefined) ??
         undefined,
+      isAdult: result.adult === true,
     };
   }
 

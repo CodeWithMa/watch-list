@@ -377,6 +377,7 @@ export class ItemFormComponent {
         ...value,
         title: suggestion.title,
         type: suggestion.type,
+        isAdult: suggestion.isAdult,
       }),
     );
     this.posterPicker?.storeFromUrl(suggestion.posterUrl);
