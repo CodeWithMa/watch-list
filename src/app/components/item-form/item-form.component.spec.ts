@@ -131,7 +131,7 @@ describe('ItemFormComponent', () => {
         source: 'tmdb',
         title: 'Star Wars',
         type: 'movie',
-        isAdult: false,
+        isAdult: true,
         year: '1977',
         overview: 'A space opera.',
       },
@@ -155,13 +155,14 @@ describe('ItemFormComponent', () => {
 
     expect(fixture.componentInstance.formValue().title).toBe('Star Wars');
     expect(fixture.componentInstance.formValue().type).toBe('movie');
+    expect(fixture.componentInstance.formValue().isAdult).toBe(true);
     expect(selected).toEqual([
       {
         id: 11,
         source: 'tmdb',
         title: 'Star Wars',
         type: 'movie',
-        isAdult: false,
+        isAdult: true,
         year: '1977',
         overview: 'A space opera.',
       },
