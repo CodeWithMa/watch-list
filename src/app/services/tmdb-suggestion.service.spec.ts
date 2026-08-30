@@ -74,6 +74,7 @@ describe('TmdbSuggestionService', () => {
         year: '2026',
         overview: 'Movie overview',
         posterUrl: 'https://image.tmdb.org/t/p/w342/movie.jpg',
+        isAdult: false,
       },
       {
         id: 2,
@@ -83,6 +84,7 @@ describe('TmdbSuggestionService', () => {
         year: '2025',
         overview: undefined,
         posterUrl: undefined,
+        isAdult: false,
       },
     ]);
   });

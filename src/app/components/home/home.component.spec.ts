@@ -13,6 +13,7 @@ function createItem(overrides: Partial<Item> & Pick<Item, 'id' | 'title'>): Item
     type: 'series',
     groupId: 'ungrouped',
     status: 'not-started',
+    isAdult: false,
     watchHistory: [],
     createdAt: '2026-05-01T10:00:00.000Z',
     ...overrides,
@@ -27,6 +28,7 @@ describe('HomeComponent', () => {
       type: 'movie',
       groupId: 'ungrouped',
       status: 'paused',
+      isAdult: false,
       watchHistory: [],
       createdAt: '2026-05-02T10:00:00.000Z',
     },
@@ -36,6 +38,7 @@ describe('HomeComponent', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'not-started',
+      isAdult: false,
       watchHistory: [],
       createdAt: '2026-05-01T10:00:00.000Z',
     },
@@ -130,15 +133,23 @@ describe('HomeComponent', () => {
         id: 'a',
         title: 'A',
         status: 'not-started',
+        isAdult: false,
         createdAt: '2026-01-01T00:00:00.000Z',
       }),
       createItem({
         id: 'b',
         title: 'B',
         status: 'not-started',
+        isAdult: false,
         createdAt: '2026-03-01T00:00:00.000Z',
       }),
-      createItem({ id: 'c', title: 'C', status: 'paused', createdAt: '2026-02-01T00:00:00.000Z' }),
+      createItem({
+        id: 'c',
+        title: 'C',
+        status: 'paused',
+        isAdult: false,
+        createdAt: '2026-02-01T00:00:00.000Z',
+      }),
     ];
     setup({ watchItems: backlog });
     const fixture = TestBed.createComponent(HomeComponent);
@@ -152,12 +163,14 @@ describe('HomeComponent', () => {
         id: 'p1',
         title: 'P1',
         status: 'paused',
+        isAdult: false,
         createdAt: '2026-01-01T00:00:00.000Z',
       }),
       createItem({
         id: 'p2',
         title: 'P2',
         status: 'paused',
+        isAdult: false,
         createdAt: '2026-02-01T00:00:00.000Z',
       }),
     ];
@@ -195,7 +208,7 @@ describe('HomeComponent', () => {
       markDropped: ReturnType<typeof vi.fn>;
       markPaused: ReturnType<typeof vi.fn>;
     };
-    const item = createItem({ id: 'x', title: 'X', status: 'in-progress' });
+    const item = createItem({ id: 'x', title: 'X', status: 'in-progress', isAdult: false });
 
     fixture.componentInstance.markItem(() => item, 'watched');
     expect(svc.markWatched).toHaveBeenCalledWith('x');
@@ -226,9 +239,16 @@ describe('HomeComponent', () => {
       title: 'Series 1',
       type: 'series',
       status: 'in-progress',
+      isAdult: false,
       posterId: 'p1',
     });
-    const movie = createItem({ id: 'm1', title: 'Movie 1', type: 'movie', status: 'in-progress' });
+    const movie = createItem({
+      id: 'm1',
+      title: 'Movie 1',
+      type: 'movie',
+      status: 'in-progress',
+      isAdult: false,
+    });
     setup({
       nextSeries: series,
       nextMovie: movie,
@@ -257,6 +277,7 @@ describe('HomeComponent', () => {
       title: 'S',
       type: 'series',
       status: 'not-started',
+      isAdult: false,
     });
     setup({
       watchItems: [seriesNotStarted],
@@ -270,7 +291,13 @@ describe('HomeComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No series currently being watched');
 
     // Has in-progress but not watchable (all future)
-    const inProg = createItem({ id: 's2', title: 'S2', type: 'series', status: 'in-progress' });
+    const inProg = createItem({
+      id: 's2',
+      title: 'S2',
+      type: 'series',
+      status: 'in-progress',
+      isAdult: false,
+    });
     setup({ watchItems: [inProg], inProgressSeries: [inProg], nextSeries: null, nextMovie: null });
     fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
@@ -289,6 +316,7 @@ describe('HomeComponent', () => {
       title: 'M',
       type: 'movie',
       status: 'not-started',
+      isAdult: false,
     });
     setup({
       watchItems: [movieNotStarted],

@@ -15,6 +15,7 @@ function createSuggestion(
 ): Suggestion {
   return {
     source: 'tmdb',
+    isAdult: false,
     ...overrides,
   };
 }
@@ -27,6 +28,7 @@ describe('AddItemComponent', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'not-started',
+      isAdult: false,
       progress: {
         season: 1,
         episode: 1,
@@ -90,6 +92,7 @@ describe('AddItemComponent', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'not-started',
+      isAdult: false,
       season: 1,
       episode: 1,
       seasons: [],
@@ -179,6 +182,7 @@ describe('AddItemComponent', () => {
         source: 'jikan',
         title: 'OVA Title',
         type: 'ova',
+        isAdult: false,
         year: '2020',
       }),
     );

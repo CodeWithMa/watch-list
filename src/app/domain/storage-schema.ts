@@ -53,6 +53,7 @@ const ItemSchema = z.object({
   watchHistory: z.array(WatchHistoryEntrySchema),
   createdAt: z.string(),
   posterId: z.string().optional(),
+  isAdult: z.boolean(),
 });
 
 const GroupSchema = z.object({
@@ -199,6 +200,17 @@ function migrateStorageData(data: StorageData): StorageData {
     // Widen ItemType to include 'ova' and 'ona'. No data migration needed;
     // existing 'series'|'movie' values remain valid under the expanded enum.
     migrated.schemaVersion = 8;
+  }
+
+  if (migrated.schemaVersion < 9) {
+    // Introduce required isAdult. Existing items lack the field; default to false (SFW).
+    for (const item of Object.values(migrated.items)) {
+      const rec = item as unknown as Record<string, unknown>;
+      if (typeof rec['isAdult'] !== 'boolean') {
+        rec['isAdult'] = false;
+      }
+    }
+    migrated.schemaVersion = 9;
   }
 
   return migrated;

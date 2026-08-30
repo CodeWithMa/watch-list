@@ -12,6 +12,7 @@ function sug(overrides: Partial<Suggestion> & Pick<Suggestion, 'id' | 'title'>):
   return {
     source: 'tmdb',
     type: 'series',
+    isAdult: false,
     ...overrides,
   } as Suggestion;
 }

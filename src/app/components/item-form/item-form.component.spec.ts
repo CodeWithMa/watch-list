@@ -47,6 +47,7 @@ describe('ItemFormComponent', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'completed',
+      isAdult: false,
       season: 1,
       episode: 8,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
@@ -76,6 +77,7 @@ describe('ItemFormComponent', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'completed',
+      isAdult: false,
       season: 1,
       episode: 8,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
@@ -129,6 +131,7 @@ describe('ItemFormComponent', () => {
         source: 'tmdb',
         title: 'Star Wars',
         type: 'movie',
+        isAdult: true,
         year: '1977',
         overview: 'A space opera.',
       },
@@ -152,12 +155,14 @@ describe('ItemFormComponent', () => {
 
     expect(fixture.componentInstance.formValue().title).toBe('Star Wars');
     expect(fixture.componentInstance.formValue().type).toBe('movie');
+    expect(fixture.componentInstance.formValue().isAdult).toBe(true);
     expect(selected).toEqual([
       {
         id: 11,
         source: 'tmdb',
         title: 'Star Wars',
         type: 'movie',
+        isAdult: true,
         year: '1977',
         overview: 'A space opera.',
       },
@@ -172,6 +177,7 @@ describe('ItemFormComponent', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'in-progress',
+      isAdult: false,
       season: 1,
       episode: 1,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
@@ -196,6 +202,7 @@ describe('ItemFormComponent', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'paused',
+      isAdult: false,
       season: 2,
       episode: 3,
       seasons: [{ seasonNumber: 2, totalEpisodes: 10 }],
@@ -212,6 +219,7 @@ describe('ItemFormComponent', () => {
       title: 'Paused Movie',
       type: 'movie',
       status: 'paused',
+      isAdult: false,
     });
     expect(fixture.componentInstance.itemStatuses).toContain('paused');
   });
@@ -224,6 +232,7 @@ describe('ItemFormComponent', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'not-started',
+      isAdult: false,
       season: 1,
       episode: 1,
       seasons: [],

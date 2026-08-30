@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { map, Observable, of } from 'rxjs';
 import { SeriesDetails, Suggestion } from '../models/suggestion.model';
 import { ItemType } from '../models/item.model';
+import { ProviderSettingsService } from './provider-settings.service';
 import {
   SUGGESTION_MIN_QUERY_LENGTH,
   SUGGESTION_PER_SOURCE_LIMIT,
@@ -30,6 +31,7 @@ interface AnilistMedia {
   startDate?: unknown;
   coverImage?: unknown;
   description?: unknown;
+  isAdult?: unknown;
 }
 
 interface AnilistTitle {
@@ -57,12 +59,30 @@ const ANILIST_FORMAT_MAP: Record<string, ItemType> = {
   ONA: 'ona',
 };
 
-const ANILIST_SEARCH_QUERY = `
+const ANILIST_SEARCH_QUERY_SFW = `
 query ($search: String) {
   Page(page: 1, perPage: ${SUGGESTION_PER_SOURCE_LIMIT}) {
     media(search: $search, type: ANIME, isAdult: false, sort: POPULARITY_DESC) {
       id
       title { romaji english native }
+      isAdult
+      format
+      episodes
+      startDate { year month day }
+      coverImage { extraLarge large }
+      description
+    }
+  }
+}
+`;
+
+const ANILIST_SEARCH_QUERY_ALL = `
+query ($search: String) {
+  Page(page: 1, perPage: ${SUGGESTION_PER_SOURCE_LIMIT}) {
+    media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
+      id
+      title { romaji english native }
+      isAdult
       format
       episodes
       startDate { year month day }
@@ -89,6 +109,7 @@ query ($id: Int) {
 })
 export class AnilistSuggestionService {
   private readonly http = inject(HttpClient);
+  private readonly providerSettings = inject(ProviderSettingsService);
 
   search(query: string): Observable<Suggestion[]> {
     const trimmedQuery = query.trim();
@@ -96,11 +117,15 @@ export class AnilistSuggestionService {
       return of([]);
     }
 
+    const gqlQuery = this.providerSettings.isAdultIncluded()
+      ? ANILIST_SEARCH_QUERY_ALL
+      : ANILIST_SEARCH_QUERY_SFW;
+
     return this.http
       .post<AnilistSearchResponse>(
         'https://graphql.anilist.co',
         {
-          query: ANILIST_SEARCH_QUERY,
+          query: gqlQuery,
           variables: { search: trimmedQuery },
         },
         {
@@ -170,6 +195,7 @@ export class AnilistSuggestionService {
       year: this.extractYear(candidate.startDate),
       overview: this.extractOverview(candidate.description),
       posterUrl: this.extractImageUrl(candidate.coverImage),
+      isAdult: candidate.isAdult === true,
     };
   }
 
@@ -214,14 +240,17 @@ export class AnilistSuggestionService {
       return null;
     }
     const candidate = title as AnilistTitle;
-    if (typeof candidate.romaji === 'string' && candidate.romaji.trim()) {
-      return candidate.romaji.trim();
-    }
-    if (typeof candidate.english === 'string' && candidate.english.trim()) {
-      return candidate.english.trim();
-    }
-    if (typeof candidate.native === 'string' && candidate.native.trim()) {
-      return candidate.native.trim();
+    const pref = this.providerSettings.getTitlePreference();
+    for (const lang of pref) {
+      if (lang === 'romaji' && typeof candidate.romaji === 'string' && candidate.romaji.trim()) {
+        return candidate.romaji.trim();
+      }
+      if (lang === 'english' && typeof candidate.english === 'string' && candidate.english.trim()) {
+        return candidate.english.trim();
+      }
+      if (lang === 'native' && typeof candidate.native === 'string' && candidate.native.trim()) {
+        return candidate.native.trim();
+      }
     }
     return null;
   }

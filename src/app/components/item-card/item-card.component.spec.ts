@@ -13,6 +13,7 @@ function createItem(overrides: Partial<Item> = {}): Item {
     type: 'series',
     groupId: 'ungrouped',
     status: 'in-progress',
+    isAdult: false,
     watchHistory: [{ date: '2026-04-02T10:00:00.000Z', season: 1, episode: 1 }],
     createdAt: '2026-04-01T10:00:00.000Z',
     progress: { season: 1, episode: 2, seasons: [{ seasonNumber: 1, totalEpisodes: 10 }] },
@@ -44,7 +45,7 @@ describe('ItemCardComponent', () => {
 
   it('computes placeholder, status color, progress and last watched date', async () => {
     const fixture = TestBed.createComponent(ItemCardComponent);
-    fixture.componentRef.setInput('item', createItem({ status: 'completed' }));
+    fixture.componentRef.setInput('item', createItem({ status: 'completed', isAdult: false }));
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -180,7 +181,13 @@ describe('ItemCardComponent', () => {
     const fixture = TestBed.createComponent(ItemCardComponent);
     fixture.componentRef.setInput(
       'item',
-      createItem({ type: 'movie', status: 'not-started', progress: undefined, watchHistory: [] }),
+      createItem({
+        type: 'movie',
+        status: 'not-started',
+        isAdult: false,
+        progress: undefined,
+        watchHistory: [],
+      }),
     );
     fixture.detectChanges();
     expect(fixture.componentInstance.progressPercent()).toBe(0);

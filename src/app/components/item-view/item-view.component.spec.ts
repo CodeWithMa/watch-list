@@ -16,6 +16,7 @@ const item: Item = {
   type: 'series',
   groupId: 'group-1',
   status: 'in-progress',
+  isAdult: false,
   progress: {
     season: 2,
     episode: 3,
@@ -114,7 +115,7 @@ describe('ItemViewComponent', () => {
   });
 
   it('shows only status-appropriate quick actions', async () => {
-    configure([{ ...item, type: 'series', status: 'dropped' }]);
+    configure([{ ...item, type: 'series', status: 'dropped', isAdult: false }]);
     const fixture = TestBed.createComponent(ItemViewComponent);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -126,7 +127,9 @@ describe('ItemViewComponent', () => {
   });
 
   it('does not show ineffective quick actions for a new item', async () => {
-    configure([{ ...item, type: 'movie', status: 'not-started', watchHistory: [] }]);
+    configure([
+      { ...item, type: 'movie', status: 'not-started', isAdult: false, watchHistory: [] },
+    ]);
     const fixture = TestBed.createComponent(ItemViewComponent);
     fixture.detectChanges();
     await fixture.whenStable();

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { map, Observable, of } from 'rxjs';
 import { SeriesDetails, Suggestion } from '../models/suggestion.model';
 import { ItemType } from '../models/item.model';
+import { ProviderSettingsService } from './provider-settings.service';
 import {
   SUGGESTION_MIN_QUERY_LENGTH,
   SUGGESTION_PER_SOURCE_LIMIT,
@@ -16,11 +17,13 @@ interface JikanAnime {
   mal_id?: unknown;
   title?: unknown;
   title_english?: unknown;
+  title_japanese?: unknown;
   type?: unknown;
   episodes?: unknown;
   aired?: unknown;
   images?: unknown;
   synopsis?: unknown;
+  rating?: unknown;
 }
 
 interface JikanAired {
@@ -52,6 +55,7 @@ const JIKAN_TYPE_MAP: Record<string, ItemType> = {
 })
 export class JikanSuggestionService {
   private readonly http = inject(HttpClient);
+  private readonly providerSettings = inject(ProviderSettingsService);
 
   search(query: string): Observable<Suggestion[]> {
     const trimmedQuery = query.trim();
@@ -62,7 +66,7 @@ export class JikanSuggestionService {
     const params = new HttpParams()
       .set('q', trimmedQuery)
       .set('limit', String(SUGGESTION_PER_SOURCE_LIMIT))
-      .set('sfw', 'true')
+      .set('sfw', this.providerSettings.isAdultIncluded() ? 'false' : 'true')
       .set('order_by', 'popularity')
       .set('sort', 'asc');
 
@@ -116,6 +120,7 @@ export class JikanSuggestionService {
       year: this.extractYear(candidate.aired),
       overview: typeof candidate.synopsis === 'string' ? candidate.synopsis : undefined,
       posterUrl: this.extractImageUrl(candidate.images),
+      isAdult: typeof candidate.rating === 'string' && candidate.rating.trim().startsWith('Rx'),
     };
   }
 
@@ -157,11 +162,25 @@ export class JikanSuggestionService {
   }
 
   private resolveTitle(candidate: JikanAnime): string | null {
-    if (typeof candidate.title === 'string' && candidate.title.trim()) {
-      return candidate.title.trim();
-    }
-    if (typeof candidate.title_english === 'string' && candidate.title_english.trim()) {
-      return candidate.title_english.trim();
+    const pref = this.providerSettings.getTitlePreference();
+    for (const lang of pref) {
+      if (lang === 'romaji' && typeof candidate.title === 'string' && candidate.title.trim()) {
+        return candidate.title.trim();
+      }
+      if (
+        lang === 'english' &&
+        typeof candidate.title_english === 'string' &&
+        candidate.title_english.trim()
+      ) {
+        return candidate.title_english.trim();
+      }
+      if (
+        lang === 'native' &&
+        typeof candidate.title_japanese === 'string' &&
+        candidate.title_japanese.trim()
+      ) {
+        return candidate.title_japanese.trim();
+      }
     }
     return null;
   }

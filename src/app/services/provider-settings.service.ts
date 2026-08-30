@@ -3,12 +3,28 @@ import { SuggestionSource } from '../models/suggestion.model';
 
 const PROVIDER_SETTINGS_KEY = 'suggestionProviders';
 
-export type ProviderSettings = Record<SuggestionSource, boolean>;
+export type TitleLanguage = 'romaji' | 'english' | 'native';
+export type TitlePreference = TitleLanguage[];
+
+const VALID_TITLE_LANGS: readonly TitleLanguage[] = ['romaji', 'english', 'native'] as const;
+
+export const DEFAULT_TITLE_PREFERENCE: readonly TitleLanguage[] = Object.freeze([
+  'romaji',
+  'english',
+  'native',
+] as const);
 
 const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
   tmdb: true,
   jikan: true,
   anilist: true,
+  includeAdult: false,
+  titlePreference: [...DEFAULT_TITLE_PREFERENCE],
+};
+
+export type ProviderSettings = Record<SuggestionSource, boolean> & {
+  includeAdult: boolean;
+  titlePreference: TitlePreference;
 };
 
 const PROVIDER_SOURCES: readonly SuggestionSource[] = ['tmdb', 'jikan', 'anilist'] as const;
@@ -41,15 +57,43 @@ export class ProviderSettingsService {
     this.save(next);
   }
 
+  isAdultIncluded(): boolean {
+    return this.enabled().includeAdult;
+  }
+
+  getTitlePreference(): TitlePreference {
+    const pref = this.enabled().titlePreference;
+    return Array.isArray(pref) ? [...pref] : [...DEFAULT_TITLE_PREFERENCE];
+  }
+
+  setIncludeAdult(includeAdult: boolean): void {
+    const next = { ...this.enabled(), includeAdult };
+    this.enabled.set(next);
+    this.save(next);
+  }
+
+  setTitlePreference(preference: TitlePreference): void {
+    const normalized = this.normalizeTitlePreference(preference);
+    const next = { ...this.enabled(), titlePreference: normalized };
+    this.enabled.set(next);
+    this.save(next);
+  }
+
   private load(): ProviderSettings {
     try {
       const raw = localStorage.getItem(PROVIDER_SETTINGS_KEY);
       if (!raw) {
-        return { ...DEFAULT_PROVIDER_SETTINGS };
+        return {
+          ...DEFAULT_PROVIDER_SETTINGS,
+          titlePreference: [...DEFAULT_TITLE_PREFERENCE],
+        };
       }
       const parsed = JSON.parse(raw) as unknown;
       if (!parsed || typeof parsed !== 'object') {
-        return { ...DEFAULT_PROVIDER_SETTINGS };
+        return {
+          ...DEFAULT_PROVIDER_SETTINGS,
+          titlePreference: [...DEFAULT_TITLE_PREFERENCE],
+        };
       }
       const obj = parsed as Record<string, unknown>;
       return {
@@ -57,10 +101,40 @@ export class ProviderSettingsService {
         jikan: typeof obj['jikan'] === 'boolean' ? obj['jikan'] : DEFAULT_PROVIDER_SETTINGS.jikan,
         anilist:
           typeof obj['anilist'] === 'boolean' ? obj['anilist'] : DEFAULT_PROVIDER_SETTINGS.anilist,
+        includeAdult:
+          typeof obj['includeAdult'] === 'boolean'
+            ? obj['includeAdult']
+            : DEFAULT_PROVIDER_SETTINGS.includeAdult,
+        titlePreference: this.normalizeTitlePreference(obj['titlePreference']),
       };
     } catch {
-      return { ...DEFAULT_PROVIDER_SETTINGS };
+      return {
+        ...DEFAULT_PROVIDER_SETTINGS,
+        titlePreference: [...DEFAULT_TITLE_PREFERENCE],
+      };
     }
+  }
+
+  // Strict reset: any invalid entry (wrong length, duplicate, unknown lang) falls back to default.
+  // Alternative lenient dedup/filter was considered but we prefer explicit reset to avoid drift.
+  private normalizeTitlePreference(value: unknown): TitlePreference {
+    if (!Array.isArray(value) || value.length !== 3) {
+      return [...DEFAULT_TITLE_PREFERENCE];
+    }
+    const seen = new Set<string>();
+    const normalized: TitleLanguage[] = [];
+    for (const entry of value) {
+      if (typeof entry !== 'string') {
+        return [...DEFAULT_TITLE_PREFERENCE];
+      }
+      const lang = entry as TitleLanguage;
+      if (!VALID_TITLE_LANGS.includes(lang) || seen.has(lang)) {
+        return [...DEFAULT_TITLE_PREFERENCE];
+      }
+      seen.add(lang);
+      normalized.push(lang);
+    }
+    return normalized.length === 3 ? normalized : [...DEFAULT_TITLE_PREFERENCE];
   }
 
   private save(settings: ProviderSettings): void {

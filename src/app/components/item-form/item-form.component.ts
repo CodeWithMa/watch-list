@@ -161,6 +161,20 @@ export interface ItemFormAutofillPatch {
         </select>
       </div>
 
+      <div class="mb-6">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            id="isAdult"
+            [ngModel]="formValue().isAdult"
+            (ngModelChange)="updateIsAdult($event)"
+            name="isAdult"
+            class="w-5 h-5"
+          />
+          <span class="text-light-font dark:text-dark-font">Adult content</span>
+        </label>
+      </div>
+
       @if (showStatusPicker()) {
         <div class="mb-6">
           <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Status:</span>
@@ -377,6 +391,7 @@ export class ItemFormComponent {
         ...value,
         title: suggestion.title,
         type: suggestion.type,
+        isAdult: suggestion.isAdult,
       }),
     );
     this.posterPicker?.storeFromUrl(suggestion.posterUrl);
@@ -405,6 +420,10 @@ export class ItemFormComponent {
 
   updateStartImmediately(startImmediately: boolean): void {
     this.updateFormValue({ startImmediately });
+  }
+
+  updateIsAdult(isAdult: boolean): void {
+    this.updateFormValue({ isAdult: !!isAdult });
   }
 
   statusButtonClass(status: ItemFormValue['status']): string {

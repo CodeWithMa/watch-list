@@ -181,6 +181,7 @@ describe('GroupService', () => {
       type: 'movie',
       groupId: options.groupId,
       status: 'not-started',
+      isAdult: false,
       watchHistory: [],
       createdAt: '2026-04-01T10:00:00.000Z',
     };
