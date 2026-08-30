@@ -8,7 +8,7 @@ export type TitlePreference = TitleLanguage[];
 
 const VALID_TITLE_LANGS: readonly TitleLanguage[] = ['romaji', 'english', 'native'] as const;
 
-const DEFAULT_TITLE_PREFERENCE: TitlePreference = ['romaji', 'english', 'native'];
+export const DEFAULT_TITLE_PREFERENCE: TitlePreference = ['romaji', 'english', 'native'];
 
 const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
   tmdb: true,
@@ -54,7 +54,7 @@ export class ProviderSettingsService {
   }
 
   isAdultIncluded(): boolean {
-    return this.enabled().includeAdult ?? false;
+    return this.enabled().includeAdult;
   }
 
   getTitlePreference(): TitlePreference {
@@ -111,6 +111,8 @@ export class ProviderSettingsService {
     }
   }
 
+  // Strict reset: any invalid entry (wrong length, duplicate, unknown lang) falls back to default.
+  // Alternative lenient dedup/filter was considered but we prefer explicit reset to avoid drift.
   private normalizeTitlePreference(value: unknown): TitlePreference {
     if (!Array.isArray(value) || value.length !== 3) {
       return [...DEFAULT_TITLE_PREFERENCE];

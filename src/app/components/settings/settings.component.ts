@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
 import {
+  DEFAULT_TITLE_PREFERENCE,
   ProviderSettingsService,
   TitleLanguage,
   TitlePreference,
@@ -451,28 +452,25 @@ export class SettingsComponent implements OnInit {
 
   moveTitleUp(index: number): void {
     if (index <= 0) return;
-    const current = [...this.titleOrder()];
-    const next: TitlePreference = [...current];
-    const tmp = next[index - 1];
-    next[index - 1] = next[index];
-    next[index] = tmp;
-    this.providerSettingsService.setTitlePreference(next);
-    this.titleOrder.set(this.providerSettingsService.getTitlePreference());
+    this.swapTitleOrder(index, index - 1);
   }
 
   moveTitleDown(index: number): void {
-    const current = [...this.titleOrder()];
-    if (index >= current.length - 1) return;
-    const next: TitlePreference = [...current];
-    const tmp = next[index + 1];
-    next[index + 1] = next[index];
-    next[index] = tmp;
-    this.providerSettingsService.setTitlePreference(next);
-    this.titleOrder.set(this.providerSettingsService.getTitlePreference());
+    if (index >= this.titleOrder().length - 1) return;
+    this.swapTitleOrder(index, index + 1);
   }
 
   resetTitlePreference(): void {
-    this.providerSettingsService.setTitlePreference(['romaji', 'english', 'native']);
+    this.providerSettingsService.setTitlePreference([...DEFAULT_TITLE_PREFERENCE]);
+    this.titleOrder.set(this.providerSettingsService.getTitlePreference());
+  }
+
+  private swapTitleOrder(i: number, j: number): void {
+    const next: TitlePreference = [...this.titleOrder()];
+    const tmp = next[i];
+    next[i] = next[j];
+    next[j] = tmp;
+    this.providerSettingsService.setTitlePreference(next);
     this.titleOrder.set(this.providerSettingsService.getTitlePreference());
   }
 
