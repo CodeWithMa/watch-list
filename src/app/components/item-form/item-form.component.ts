@@ -173,9 +173,6 @@ export interface ItemFormAutofillPatch {
           />
           <span class="text-light-font dark:text-dark-font">Adult content</span>
         </label>
-        <p class="mt-1 text-xs text-light-font-secondary dark:text-dark-font-secondary">
-          Mark as adult / NSFW. Autofilled from suggestions but editable.
-        </p>
       </div>
 
       @if (showStatusPicker()) {
