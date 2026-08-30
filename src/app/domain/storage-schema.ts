@@ -53,7 +53,7 @@ const ItemSchema = z.object({
   watchHistory: z.array(WatchHistoryEntrySchema),
   createdAt: z.string(),
   posterId: z.string().optional(),
-  isAdult: z.boolean().optional(),
+  isAdult: z.boolean(),
 });
 
 const GroupSchema = z.object({
@@ -203,8 +203,13 @@ function migrateStorageData(data: StorageData): StorageData {
   }
 
   if (migrated.schemaVersion < 9) {
-    // Introduce isAdult. Existing items lack the field; leave undefined so
-    // they are treated as non-adult (SFW) until edited. No forced backfill.
+    // Introduce required isAdult. Existing items lack the field; default to false (SFW).
+    for (const item of Object.values(migrated.items)) {
+      const rec = item as unknown as Record<string, unknown>;
+      if (typeof rec['isAdult'] !== 'boolean') {
+        rec['isAdult'] = false;
+      }
+    }
     migrated.schemaVersion = 9;
   }
 

@@ -14,6 +14,7 @@ describe('item-form helpers', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'not-started',
+      isAdult: false,
       season: 1,
       episode: 1,
       seasons: [],
@@ -28,6 +29,7 @@ describe('item-form helpers', () => {
       type: 'series',
       groupId: 'favorites',
       status: 'in-progress',
+      isAdult: false,
       progress: {
         season: 2,
         episode: 4,
@@ -42,6 +44,7 @@ describe('item-form helpers', () => {
       type: 'series',
       groupId: 'favorites',
       status: 'in-progress',
+      isAdult: false,
       season: 2,
       episode: 4,
       seasons: [{ seasonNumber: 2, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }],
@@ -55,6 +58,7 @@ describe('item-form helpers', () => {
       type: 'movie',
       groupId: 'ungrouped',
       status: 'not-started',
+      isAdult: false,
       season: 1,
       episode: 1,
       seasons: [],
@@ -66,6 +70,7 @@ describe('item-form helpers', () => {
       type: 'movie',
       groupId: 'ungrouped',
       status: 'in-progress',
+      isAdult: false,
       progress: undefined,
     });
   });
@@ -76,6 +81,7 @@ describe('item-form helpers', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'in-progress',
+      isAdult: false,
       season: 1,
       episode: 3,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }],
@@ -93,6 +99,7 @@ describe('item-form helpers', () => {
       type: 'movie',
       groupId: 'ungrouped',
       status: 'paused',
+      isAdult: false,
       season: 1,
       episode: 1,
       seasons: [],
@@ -110,6 +117,7 @@ describe('item-form helpers', () => {
           type: 'series',
           groupId: 'ungrouped',
           status: 'completed',
+          isAdult: false,
           season: 1,
           episode: 5,
           seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
@@ -122,6 +130,7 @@ describe('item-form helpers', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'completed',
+      isAdult: false,
       season: 1,
       episode: 5,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
@@ -136,6 +145,7 @@ describe('item-form helpers', () => {
         type: 'movie',
         groupId: 'ungrouped',
         status: 'completed',
+        isAdult: false,
         season: 4,
         episode: 9,
         seasons: [{ seasonNumber: 4, totalEpisodes: 12 }],
@@ -143,6 +153,7 @@ describe('item-form helpers', () => {
       }),
     ).toMatchObject({
       status: 'completed',
+      isAdult: false,
       season: 1,
       episode: 1,
       seasons: [],
@@ -156,11 +167,12 @@ describe('item-form helpers', () => {
         type: 'movie',
         groupId: 'ungrouped',
         status: 'paused',
+        isAdult: false,
         season: 3,
         episode: 4,
         seasons: [{ seasonNumber: 3, totalEpisodes: 8 }],
         startImmediately: false,
       }),
-    ).toMatchObject({ status: 'paused', season: 1, episode: 1, seasons: [] });
+    ).toMatchObject({ status: 'paused', isAdult: false, season: 1, episode: 1, seasons: [] });
   });
 });

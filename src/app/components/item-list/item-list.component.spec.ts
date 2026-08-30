@@ -14,6 +14,7 @@ function createItem(overrides: Partial<Item> & Pick<Item, 'id' | 'title'>): Item
     type: 'series',
     groupId: 'ungrouped',
     status: 'not-started',
+    isAdult: false,
     watchHistory: [],
     createdAt: '2026-05-01T10:00:00.000Z',
     ...overrides,
@@ -234,9 +235,9 @@ describe('ItemListComponent', () => {
 
   it('applies filters before sorting', () => {
     const items = [
-      createItem({ id: 'a', title: 'Apple', status: 'completed' }),
-      createItem({ id: 'b', title: 'Banana', status: 'not-started' }),
-      createItem({ id: 'c', title: 'Cherry', status: 'not-started' }),
+      createItem({ id: 'a', title: 'Apple', status: 'completed', isAdult: false }),
+      createItem({ id: 'b', title: 'Banana', status: 'not-started', isAdult: false }),
+      createItem({ id: 'c', title: 'Cherry', status: 'not-started', isAdult: false }),
     ];
     setup({ watchItems: items, sortField: 'title', sortDirection: 'asc' });
     const fixture = TestBed.createComponent(ItemListComponent);

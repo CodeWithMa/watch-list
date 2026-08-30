@@ -10,7 +10,7 @@ export interface Suggestion {
   year?: string;
   overview?: string;
   posterUrl?: string;
-  isAdult?: boolean;
+  isAdult: boolean;
 }
 
 export interface SeriesDetails {

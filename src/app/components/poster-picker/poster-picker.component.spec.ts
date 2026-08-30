@@ -12,6 +12,7 @@ function createSuggestion(
 ): Suggestion {
   return {
     source: 'tmdb' as SuggestionSource,
+    isAdult: false,
     ...overrides,
   };
 }

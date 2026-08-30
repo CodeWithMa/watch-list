@@ -6,6 +6,7 @@ function item(overrides: Partial<Item> & Pick<Item, 'id' | 'title'>): Item {
     type: 'series',
     groupId: 'ungrouped',
     status: 'in-progress',
+    isAdult: false,
     watchHistory: [],
     createdAt: '2026-04-01T10:00:00.000Z',
     ...overrides,
@@ -15,14 +16,20 @@ function item(overrides: Partial<Item> & Pick<Item, 'id' | 'title'>): Item {
 describe('calculateProgress', () => {
   it('returns 100 for completed movie and 0 for not completed movie', () => {
     expect(
-      calculateProgress(item({ id: '1', title: 'm', type: 'movie', status: 'completed' })),
+      calculateProgress(
+        item({ id: '1', title: 'm', type: 'movie', status: 'completed', isAdult: false }),
+      ),
     ).toBe(100);
     expect(
-      calculateProgress(item({ id: '2', title: 'm', type: 'movie', status: 'in-progress' })),
+      calculateProgress(
+        item({ id: '2', title: 'm', type: 'movie', status: 'in-progress', isAdult: false }),
+      ),
     ).toBe(0);
-    expect(calculateProgress(item({ id: '3', title: 'm', type: 'movie', status: 'paused' }))).toBe(
-      0,
-    );
+    expect(
+      calculateProgress(
+        item({ id: '3', title: 'm', type: 'movie', status: 'paused', isAdult: false }),
+      ),
+    ).toBe(0);
   });
 
   it('returns 100 for completed episodic regardless of progress', () => {
@@ -32,6 +39,7 @@ describe('calculateProgress', () => {
           id: '1',
           title: 's',
           status: 'completed',
+          isAdult: false,
           progress: { season: 1, episode: 2, seasons: [{ seasonNumber: 1, totalEpisodes: 10 }] },
         }),
       ),

@@ -28,6 +28,7 @@ describe('WatchListService', () => {
         type: 'series',
         groupId: 'ungrouped',
         status: 'not-started',
+        isAdult: false,
       });
 
       const data = storageService.getData();
@@ -85,7 +86,13 @@ describe('WatchListService', () => {
 
   describe('markWatched', () => {
     it('marks a movie as completed with a watch history entry', () => {
-      const item = createItem({ id: 'm1', title: 'Movie', type: 'movie', status: 'in-progress' });
+      const item = createItem({
+        id: 'm1',
+        title: 'Movie',
+        type: 'movie',
+        status: 'in-progress',
+        isAdult: false,
+      });
       saveData({ items: { m1: item } });
 
       service.markWatched('m1');
@@ -97,7 +104,12 @@ describe('WatchListService', () => {
     });
 
     it('starts a series without progress at season 1 episode 2', () => {
-      const item = createItem({ id: 's1', title: 'Fresh Series', status: 'in-progress' });
+      const item = createItem({
+        id: 's1',
+        title: 'Fresh Series',
+        status: 'in-progress',
+        isAdult: false,
+      });
       saveData({ items: { s1: item } });
 
       service.markWatched('s1');
@@ -115,6 +127,7 @@ describe('WatchListService', () => {
         type: 'series',
         groupId: 'ungrouped',
         status: 'in-progress',
+        isAdult: false,
         progress: {
           season: 1,
           episode: 10,
@@ -146,6 +159,7 @@ describe('WatchListService', () => {
         type: 'series',
         groupId: 'ungrouped',
         status: 'in-progress',
+        isAdult: false,
         progress: {
           season: 1,
           episode: 10,
@@ -181,6 +195,7 @@ describe('WatchListService', () => {
         type: 'series',
         groupId: 'ungrouped',
         status: 'in-progress',
+        isAdult: false,
         progress: {
           season: 1,
           episode: 5,
@@ -212,7 +227,7 @@ describe('WatchListService', () => {
 
   describe('status transitions', () => {
     it('marks an item as completed', () => {
-      saveData({ items: { i1: createItem({ id: 'i1', status: 'in-progress' }) } });
+      saveData({ items: { i1: createItem({ id: 'i1', status: 'in-progress', isAdult: false }) } });
 
       service.markCompleted('i1');
 
@@ -220,7 +235,7 @@ describe('WatchListService', () => {
     });
 
     it('marks an item as dropped', () => {
-      saveData({ items: { i1: createItem({ id: 'i1', status: 'in-progress' }) } });
+      saveData({ items: { i1: createItem({ id: 'i1', status: 'in-progress', isAdult: false }) } });
 
       service.markDropped('i1');
 
@@ -228,7 +243,7 @@ describe('WatchListService', () => {
     });
 
     it('marks an item as started', () => {
-      saveData({ items: { i1: createItem({ id: 'i1', status: 'not-started' }) } });
+      saveData({ items: { i1: createItem({ id: 'i1', status: 'not-started', isAdult: false }) } });
 
       service.markStarted('i1');
 
@@ -237,7 +252,9 @@ describe('WatchListService', () => {
 
     it('marks a series as paused', () => {
       saveData({
-        items: { i1: createItem({ id: 'i1', type: 'series', status: 'in-progress' }) },
+        items: {
+          i1: createItem({ id: 'i1', type: 'series', status: 'in-progress', isAdult: false }),
+        },
       });
 
       service.markPaused('i1');
@@ -247,7 +264,9 @@ describe('WatchListService', () => {
 
     it('marks a movie as paused', () => {
       saveData({
-        items: { i1: createItem({ id: 'i1', type: 'movie', status: 'in-progress' }) },
+        items: {
+          i1: createItem({ id: 'i1', type: 'movie', status: 'in-progress', isAdult: false }),
+        },
       });
 
       service.markPaused('i1');
@@ -257,7 +276,7 @@ describe('WatchListService', () => {
 
     it('does nothing when the item does not exist', () => {
       saveData({
-        items: { i1: createItem({ id: 'i1', status: 'in-progress' }) },
+        items: { i1: createItem({ id: 'i1', status: 'in-progress', isAdult: false }) },
       });
       const saveSpy = vi.spyOn(storageService, 'saveData');
 
@@ -333,9 +352,14 @@ describe('WatchListService', () => {
     it('inProgressSeries only includes in-progress series', () => {
       saveData({
         items: {
-          series: createItem({ id: 'series', type: 'series', status: 'in-progress' }),
-          movie: createItem({ id: 'movie', type: 'movie', status: 'in-progress' }),
-          done: createItem({ id: 'done', type: 'series', status: 'completed' }),
+          series: createItem({
+            id: 'series',
+            type: 'series',
+            status: 'in-progress',
+            isAdult: false,
+          }),
+          movie: createItem({ id: 'movie', type: 'movie', status: 'in-progress', isAdult: false }),
+          done: createItem({ id: 'done', type: 'series', status: 'completed', isAdult: false }),
         },
       });
 
@@ -345,8 +369,13 @@ describe('WatchListService', () => {
     it('inProgressMovies only includes in-progress movies', () => {
       saveData({
         items: {
-          series: createItem({ id: 'series', type: 'series', status: 'in-progress' }),
-          movie: createItem({ id: 'movie', type: 'movie', status: 'in-progress' }),
+          series: createItem({
+            id: 'series',
+            type: 'series',
+            status: 'in-progress',
+            isAdult: false,
+          }),
+          movie: createItem({ id: 'movie', type: 'movie', status: 'in-progress', isAdult: false }),
         },
       });
 
@@ -375,6 +404,7 @@ describe('WatchListService', () => {
       groupId: options.groupId ?? 'ungrouped',
       status: options.status ?? 'not-started',
       watchHistory: options.watchHistory ?? [],
+      isAdult: options.isAdult ?? false,
       createdAt: options.createdAt ?? '2026-04-01T10:00:00.000Z',
       progress: options.progress,
     };

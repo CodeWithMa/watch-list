@@ -13,6 +13,7 @@ function item(overrides: Partial<Item> & Pick<Item, 'id' | 'title'>): Item {
     type: 'series',
     groupId: 'ungrouped',
     status: 'not-started',
+    isAdult: false,
     watchHistory: [],
     createdAt: '2026-04-01T10:00:00.000Z',
     ...overrides,

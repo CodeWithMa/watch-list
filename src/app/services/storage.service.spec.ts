@@ -252,6 +252,7 @@ describe('StorageService', () => {
           type: 'series',
           groupId: 'ungrouped',
           status: 'in-progress',
+          isAdult: false,
           createdAt: '2026-03-01T10:00:00.000Z',
           progress: {
             season: 2,
@@ -301,6 +302,7 @@ describe('StorageService', () => {
           type: 'movie',
           groupId: 'ungrouped',
           status: 'not-started',
+          isAdult: false,
           createdAt: '2026-03-01T10:00:00.000Z',
           watchHistory: [],
           posterPath: 'https://example.test/poster.jpg',
@@ -343,6 +345,7 @@ describe('StorageService', () => {
             type: 'series',
             groupId: 'ungrouped',
             status: 'in-progress',
+            isAdult: false,
             createdAt: '2026-03-01T10:00:00.000Z',
             progress: {
               season: 1,
@@ -374,6 +377,7 @@ describe('StorageService', () => {
           type: 'series',
           groupId: 'ungrouped',
           status: 'in-progress',
+          isAdult: false,
           createdAt: '2026-03-01T10:00:00.000Z',
           progress: {
             season: 1,

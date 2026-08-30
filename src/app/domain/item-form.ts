@@ -11,7 +11,7 @@ export interface ItemFormValue {
   seasons: SeasonInfo[];
   startImmediately: boolean;
   posterId?: string;
-  isAdult?: boolean;
+  isAdult: boolean;
 }
 
 export type ItemMutationInput = Omit<Item, 'id' | 'createdAt' | 'watchHistory'>;
@@ -27,7 +27,7 @@ export function createDefaultItemFormValue(): ItemFormValue {
     seasons: [],
     startImmediately: false,
     posterId: undefined,
-    isAdult: undefined,
+    isAdult: false,
   };
 }
 
@@ -42,7 +42,7 @@ export function createItemFormValue(item: Item): ItemFormValue {
     seasons: item.progress?.seasons ?? [],
     startImmediately: item.status === 'in-progress',
     posterId: item.posterId,
-    isAdult: item.isAdult,
+    isAdult: item.isAdult ?? false,
   };
 }
 

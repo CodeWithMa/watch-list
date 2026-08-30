@@ -181,6 +181,7 @@ describe('RoundRobinService', () => {
         type: 'movie',
         groupId: 'ungrouped',
         status: 'in-progress',
+        isAdult: false,
         watchHistory: [{ date: '2026-04-10T00:00:00.000Z' }],
         createdAt: '2026-01-01T00:00:00.000Z',
       },
@@ -190,6 +191,7 @@ describe('RoundRobinService', () => {
         type: 'movie',
         groupId: 'ungrouped',
         status: 'in-progress',
+        isAdult: false,
         watchHistory: [{ date: '2026-04-01T00:00:00.000Z' }],
         createdAt: '2026-01-02T00:00:00.000Z',
       },
@@ -204,6 +206,7 @@ describe('RoundRobinService', () => {
       type: 'movie',
       groupId: 'ungrouped',
       status: 'in-progress',
+      isAdult: false,
       watchHistory: [],
       createdAt: '2026-01-01T00:00:00.000Z',
       progress: {
@@ -220,6 +223,7 @@ describe('RoundRobinService', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'in-progress',
+      isAdult: false,
       watchHistory: [],
       createdAt: '2026-01-01T00:00:00.000Z',
     };
@@ -321,6 +325,7 @@ describe('RoundRobinService', () => {
       type: 'series',
       groupId: 'ungrouped',
       status: 'in-progress',
+      isAdult: false,
       progress: {
         season: 1,
         episode: options.episode ?? 1,

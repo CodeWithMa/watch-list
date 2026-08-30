@@ -29,5 +29,5 @@ export interface Item {
   watchHistory: WatchHistoryEntry[];
   createdAt: string;
   posterId?: string;
-  isAdult?: boolean;
+  isAdult: boolean;
 }
