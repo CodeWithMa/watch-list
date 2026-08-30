@@ -8,7 +8,11 @@ export type TitlePreference = TitleLanguage[];
 
 const VALID_TITLE_LANGS: readonly TitleLanguage[] = ['romaji', 'english', 'native'] as const;
 
-export const DEFAULT_TITLE_PREFERENCE: TitlePreference = ['romaji', 'english', 'native'];
+export const DEFAULT_TITLE_PREFERENCE: readonly TitleLanguage[] = Object.freeze([
+  'romaji',
+  'english',
+  'native',
+] as const);
 
 const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
   tmdb: true,
