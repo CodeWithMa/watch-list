@@ -152,9 +152,6 @@ import { environment } from '../../../environments/environment';
               >Include adult / NSFW results (TMDB, Jikan, AniList)</span
             >
           </label>
-          <p class="mt-2 text-xs text-light-font-secondary dark:text-dark-font-secondary">
-            When enabled, adult results may appear in suggestions. Default is off (SFW only).
-          </p>
 
           <fieldset class="mt-4">
             <legend class="text-sm font-medium text-light-font dark:text-dark-font mb-2">
@@ -184,7 +181,7 @@ import { environment } from '../../../environments/environment';
                   class="w-4 h-4"
                 />
                 <span class="text-sm text-light-font dark:text-dark-font"
-                  >Blur posters — click to reveal (default)</span
+                  >Blur posters — click to reveal</span
                 >
               </label>
               <label class="flex items-center gap-3 cursor-pointer">
@@ -201,11 +198,6 @@ import { environment } from '../../../environments/environment';
                 >
               </label>
             </div>
-            <p class="mt-2 text-xs text-light-font-secondary dark:text-dark-font-secondary">
-              Hide removes adult cards from All Items, Backlog and Paused (view only — stats still
-              count). Next Series/Movie stay visible but blurred even in Hide. Blur keeps all cards
-              but obscures adult posters until clicked.
-            </p>
           </fieldset>
         </div>
 
