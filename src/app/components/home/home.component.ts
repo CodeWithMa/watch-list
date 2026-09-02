@@ -6,6 +6,7 @@ import { WatchListService } from '../../services/watch-list.service';
 import { ItemCardComponent } from '../item-card/item-card.component';
 import { Item, ItemType } from '../../models/item.model';
 import { isEpisodicType } from '../../domain/item.constants';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
 
 @Component({
   selector: 'app-home',
@@ -215,22 +216,27 @@ import { isEpisodicType } from '../../domain/item.constants';
 export class HomeComponent {
   private roundRobinService = inject(RoundRobinService);
   private watchListService = inject(WatchListService);
+  private providerSettings = inject(ProviderSettingsService);
 
   nextSeries = this.roundRobinService.nextSeries;
   nextMovie = this.roundRobinService.nextMovie;
-  backlogItems = computed(() =>
-    this.watchListService
-      .items()
-      .filter((item) => item.status === 'not-started')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-  );
+  backlogItems = computed(() => {
+    const adultMode = this.providerSettings.settings().adultDisplayMode;
+    let items = this.watchListService.items().filter((item) => item.status === 'not-started');
+    if (adultMode === 'hide') {
+      items = items.filter((item) => !item.isAdult);
+    }
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  });
 
-  pausedItems = computed(() =>
-    this.watchListService
-      .items()
-      .filter((item) => item.status === 'paused')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-  );
+  pausedItems = computed(() => {
+    const adultMode = this.providerSettings.settings().adultDisplayMode;
+    let items = this.watchListService.items().filter((item) => item.status === 'paused');
+    if (adultMode === 'hide') {
+      items = items.filter((item) => !item.isAdult);
+    }
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  });
 
   protected hasSeries = computed(() =>
     this.watchListService.items().some((item) => isEpisodicType(item.type)),

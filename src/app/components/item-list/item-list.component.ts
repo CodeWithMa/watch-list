@@ -24,6 +24,7 @@ import {
 } from '../../utils/sort.utils';
 
 import { ItemCardComponent } from '../item-card/item-card.component';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
 
 @Component({
   selector: 'app-item-list',
@@ -166,6 +167,7 @@ export class ItemListComponent {
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
   private itemSortService = inject(ItemSortService);
+  private providerSettings = inject(ProviderSettingsService);
 
   readonly groups = this.groupService.groups;
   readonly itemStatuses = ITEM_STATUSES;
@@ -216,6 +218,11 @@ export class ItemListComponent {
     const groupFilter = this.groupFilter();
     const sortField = this.sortField();
     const sortDirection = this.sortDirection();
+    const adultMode = this.providerSettings.settings().adultDisplayMode;
+
+    if (adultMode === 'hide') {
+      items = items.filter((item) => !item.isAdult);
+    }
 
     if (search) {
       items = items.filter((item) => item.title.toLowerCase().includes(search));

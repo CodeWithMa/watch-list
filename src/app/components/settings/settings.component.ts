@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
 import {
+  AdultDisplayMode,
   DEFAULT_TITLE_PREFERENCE,
   ProviderSettingsService,
   TitleLanguage,
@@ -151,9 +152,53 @@ import { environment } from '../../../environments/environment';
               >Include adult / NSFW results (TMDB, Jikan, AniList)</span
             >
           </label>
-          <p class="mt-2 text-xs text-light-font-secondary dark:text-dark-font-secondary">
-            When enabled, adult results may appear in suggestions. Default is off (SFW only).
-          </p>
+
+          <fieldset class="mt-4">
+            <legend class="text-sm font-medium text-light-font dark:text-dark-font mb-2">
+              Display adult items in your collection
+            </legend>
+            <div class="flex flex-col gap-2">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="adultDisplayMode"
+                  value="show"
+                  [checked]="adultDisplayMode() === 'show'"
+                  (change)="setAdultDisplayMode('show')"
+                  class="w-4 h-4"
+                />
+                <span class="text-sm text-light-font dark:text-dark-font"
+                  >Show — no filtering or blur</span
+                >
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="adultDisplayMode"
+                  value="blur"
+                  [checked]="adultDisplayMode() === 'blur'"
+                  (change)="setAdultDisplayMode('blur')"
+                  class="w-4 h-4"
+                />
+                <span class="text-sm text-light-font dark:text-dark-font"
+                  >Blur posters — click to reveal</span
+                >
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="adultDisplayMode"
+                  value="hide"
+                  [checked]="adultDisplayMode() === 'hide'"
+                  (change)="setAdultDisplayMode('hide')"
+                  class="w-4 h-4"
+                />
+                <span class="text-sm text-light-font dark:text-dark-font"
+                  >Hide — remove adult items from lists</span
+                >
+              </label>
+            </div>
+          </fieldset>
         </div>
 
         <div class="mt-6 pt-6 border-t border-light-border dark:border-dark-border">
@@ -402,6 +447,7 @@ export class SettingsComponent implements OnInit {
   jikanEnabled = signal(this.providerSettingsService.isEnabled('jikan'));
   anilistEnabled = signal(this.providerSettingsService.isEnabled('anilist'));
   includeAdult = signal(this.providerSettingsService.isAdultIncluded());
+  adultDisplayMode = signal<AdultDisplayMode>(this.providerSettingsService.getAdultDisplayMode());
   titleOrder = signal<TitlePreference>(this.providerSettingsService.getTitlePreference());
   recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
 
@@ -435,6 +481,11 @@ export class SettingsComponent implements OnInit {
     const checked = (event.target as HTMLInputElement).checked;
     this.providerSettingsService.setIncludeAdult(checked);
     this.includeAdult.set(this.providerSettingsService.isAdultIncluded());
+  }
+
+  setAdultDisplayMode(mode: AdultDisplayMode): void {
+    this.providerSettingsService.setAdultDisplayMode(mode);
+    this.adultDisplayMode.set(this.providerSettingsService.getAdultDisplayMode());
   }
 
   titleLanguageLabel(lang: TitleLanguage): string {

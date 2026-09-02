@@ -14,17 +14,25 @@ export const DEFAULT_TITLE_PREFERENCE: readonly TitleLanguage[] = Object.freeze(
   'native',
 ] as const);
 
+export type AdultDisplayMode = 'show' | 'blur' | 'hide';
+
+const VALID_ADULT_DISPLAY_MODES: readonly AdultDisplayMode[] = ['show', 'blur', 'hide'] as const;
+
+const DEFAULT_ADULT_DISPLAY_MODE: AdultDisplayMode = 'blur';
+
 const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
   tmdb: true,
   jikan: true,
   anilist: true,
   includeAdult: false,
   titlePreference: [...DEFAULT_TITLE_PREFERENCE],
+  adultDisplayMode: DEFAULT_ADULT_DISPLAY_MODE,
 };
 
 export type ProviderSettings = Record<SuggestionSource, boolean> & {
   includeAdult: boolean;
   titlePreference: TitlePreference;
+  adultDisplayMode: AdultDisplayMode;
 };
 
 const PROVIDER_SOURCES: readonly SuggestionSource[] = ['tmdb', 'jikan', 'anilist'] as const;
@@ -79,6 +87,17 @@ export class ProviderSettingsService {
     this.save(next);
   }
 
+  getAdultDisplayMode(): AdultDisplayMode {
+    return this.normalizeAdultDisplayMode(this.enabled().adultDisplayMode);
+  }
+
+  setAdultDisplayMode(mode: AdultDisplayMode): void {
+    const normalized = this.normalizeAdultDisplayMode(mode);
+    const next = { ...this.enabled(), adultDisplayMode: normalized };
+    this.enabled.set(next);
+    this.save(next);
+  }
+
   private load(): ProviderSettings {
     try {
       const raw = localStorage.getItem(PROVIDER_SETTINGS_KEY);
@@ -106,6 +125,7 @@ export class ProviderSettingsService {
             ? obj['includeAdult']
             : DEFAULT_PROVIDER_SETTINGS.includeAdult,
         titlePreference: this.normalizeTitlePreference(obj['titlePreference']),
+        adultDisplayMode: this.normalizeAdultDisplayMode(obj['adultDisplayMode']),
       };
     } catch {
       return {
@@ -113,6 +133,16 @@ export class ProviderSettingsService {
         titlePreference: [...DEFAULT_TITLE_PREFERENCE],
       };
     }
+  }
+
+  private normalizeAdultDisplayMode(value: unknown): AdultDisplayMode {
+    if (
+      typeof value === 'string' &&
+      (VALID_ADULT_DISPLAY_MODES as readonly string[]).includes(value)
+    ) {
+      return value as AdultDisplayMode;
+    }
+    return DEFAULT_ADULT_DISPLAY_MODE;
   }
 
   // Strict reset: any invalid entry (wrong length, duplicate, unknown lang) falls back to default.

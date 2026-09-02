@@ -7,6 +7,7 @@ import { calculateProgress, getMostRecentWatchDate } from '../../utils/progress.
 import { statusLineColor } from '../../utils/status.utils';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { ImageStorageService } from '../../services/image-storage.service';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
 
 @Component({
   selector: 'app-item-card',
@@ -23,6 +24,7 @@ import { ImageStorageService } from '../../services/image-storage.service';
               [src]="posterUrl()"
               [alt]="item().title + ' poster'"
               class="w-full aspect-[2/3] object-cover"
+              [style.filter]="shouldBlur() ? 'blur(12px)' : null"
             />
           } @else {
             <img
@@ -32,6 +34,16 @@ import { ImageStorageService } from '../../services/image-storage.service';
             />
           }
         </a>
+        @if (shouldBlur()) {
+          <button
+            type="button"
+            (click)="revealed.set(true)"
+            class="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-sm font-medium backdrop-blur-[2px] cursor-pointer border-0"
+            aria-label="Reveal adult poster"
+          >
+            Adult — click to reveal
+          </button>
+        }
         @if (item().progress) {
           <span
             class="absolute top-0 right-0 px-2 py-1 text-xs font-medium bg-black/60 text-white backdrop-blur-sm"
@@ -66,6 +78,7 @@ import { ImageStorageService } from '../../services/image-storage.service';
 })
 export class ItemCardComponent {
   private imageStorage = inject(ImageStorageService);
+  private providerSettings = inject(ProviderSettingsService);
   private destroyRef = inject(DestroyRef);
   private destroyed = false;
   item = input.required<Item>();
@@ -73,6 +86,13 @@ export class ItemCardComponent {
   posterUrl = signal<string | null>(null);
   placeholderUrl = computed(() => getPlaceholderUrl());
   statusColorClass = computed(() => statusLineColor(this.item().status));
+  revealed = signal(false);
+  shouldBlur = computed(() => {
+    const mode = this.providerSettings.settings().adultDisplayMode;
+    // 'blur' blurs everywhere; 'hide' still blurs where card remains visible (next*), since next* is not filtered
+    // 'show' never blurs
+    return this.item().isAdult && mode !== 'show' && !!this.posterUrl() && !this.revealed();
+  });
 
   progressPercent = computed(() => {
     return calculateProgress(this.item());
@@ -90,6 +110,12 @@ export class ItemCardComponent {
     effect(() => {
       const version = this.imageStorage.version();
       void this.loadPoster(this.item().posterId, version);
+    });
+
+    effect(() => {
+      // Reset click-to-reveal when item identity changes
+      void this.item().id;
+      this.revealed.set(false);
     });
   }
 
