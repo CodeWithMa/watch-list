@@ -1,6 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { ImageStorageService } from './image-storage.service';
+import { ProviderSettings, ProviderSettingsService } from './provider-settings.service';
+
+export interface ExportPreferences {
+  providerSettings: ProviderSettings;
+}
+
+export interface PortableExport {
+  data: unknown;
+  images: unknown;
+  preferences?: ExportPreferences;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -8,12 +19,20 @@ import { ImageStorageService } from './image-storage.service';
 export class ImportExportService {
   private storageService = inject(StorageService);
   private imageStorage = inject(ImageStorageService);
+  private providerSettings = inject(ProviderSettingsService);
 
   async exportData(): Promise<void> {
-    this.downloadJson(
-      { data: this.storageService.getData(), images: await this.imageStorage.exportImages() },
-      'watch-list-export',
-    );
+    const payload: PortableExport = {
+      data: this.storageService.getData(),
+      images: await this.imageStorage.exportImages(),
+      preferences: {
+        providerSettings: this.providerSettings.exportSettings(),
+      },
+    };
+    // Only non-sensitive preferences are ever exported.
+    // providerSettings (tmdb/jikan/anilist, includeAdult, titlePreference, adultDisplayMode)
+    // is safe to share; tmdbReadAccessToken/apiKey from tmdb-settings.service.ts:3 are never read here.
+    this.downloadJson(payload, 'watch-list-export');
   }
 
   async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
@@ -47,6 +66,7 @@ export class ImportExportService {
         isPortableExport(payload) ? payload.images : [],
       );
       await this.storageService.importDataWithImages(data, images);
+      this.applyPreferencesIfPresent(payload);
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file', { cause: error });
@@ -54,8 +74,32 @@ export class ImportExportService {
       throw error;
     }
   }
+
+  private applyPreferencesIfPresent(payload: unknown): void {
+    if (!isPortableExport(payload) || !hasPreferences(payload)) {
+      return;
+    }
+    const raw = payload.preferences.providerSettings;
+    // Never import sensitive keys; ProviderSettingsService normalizes and ignores unknown fields.
+    try {
+      this.providerSettings.importSettings(raw);
+    } catch {
+      // Invalid preferences must never break the data import.
+    }
+  }
 }
 
-function isPortableExport(value: unknown): value is { data: unknown; images: unknown } {
+function isPortableExport(value: unknown): value is PortableExport {
   return !!value && typeof value === 'object' && 'data' in value && 'images' in value;
+}
+
+function hasPreferences(
+  value: object,
+): value is PortableExport & { preferences: ExportPreferences } {
+  return (
+    'preferences' in value &&
+    !!value.preferences &&
+    typeof value.preferences === 'object' &&
+    'providerSettings' in (value.preferences as Record<string, unknown>)
+  );
 }

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import { ImportExportService } from '../../services/import-export.service';
 import { TmdbCredential, TmdbSettingsService } from '../../services/tmdb-settings.service';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { SettingsComponent } from './settings.component';
 import { vi, afterEach, beforeEach } from 'vitest';
 
@@ -412,5 +413,62 @@ describe('SettingsComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('— Built');
     expect(fixture.nativeElement.textContent).toContain('unknown');
+  });
+
+  it('syncs provider signals after successful import', async () => {
+    const providerMock = {
+      isEnabled: vi.fn().mockReturnValue(false),
+      isAdultIncluded: vi.fn().mockReturnValue(false),
+      getAdultDisplayMode: vi.fn().mockReturnValue('blur' as const),
+      getTitlePreference: vi.fn().mockReturnValue(['romaji', 'english', 'native'] as const),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: ImportExportService,
+          useValue: {
+            exportData: vi.fn(),
+            getRecoveryBackups: vi.fn().mockResolvedValue([]),
+            exportRecoveryBackup: vi.fn().mockResolvedValue(undefined),
+            importData: vi.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: TmdbSettingsService,
+          useValue: {
+            token: vi.fn(() => ''),
+            key: vi.fn(() => ''),
+            getCredential: vi.fn(() => null),
+            saveCredentials: vi.fn(),
+            clearCredentials: vi.fn(),
+          },
+        },
+        { provide: ProviderSettingsService, useValue: providerMock },
+      ],
+    });
+    const exportService = TestBed.inject(ImportExportService);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const fixture = TestBed.createComponent(SettingsComponent);
+    expect(fixture.componentInstance.includeAdult()).toBe(false);
+
+    // Simulate import changing provider settings on disk
+    providerMock.isAdultIncluded.mockReturnValue(true);
+    providerMock.isEnabled.mockReturnValue(true);
+    providerMock.getAdultDisplayMode.mockReturnValue('hide' as const);
+    providerMock.getTitlePreference.mockReturnValue(['native', 'english', 'romaji'] as const);
+
+    const target = {
+      files: [
+        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
+      ] as unknown as FileList,
+      value: '',
+    };
+    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    expect(exportService.importData).toHaveBeenCalledOnce();
+    expect(fixture.componentInstance.includeAdult()).toBe(true);
+    expect(fixture.componentInstance.tmdbEnabled()).toBe(true);
+    expect(fixture.componentInstance.adultDisplayMode()).toBe('hide');
+    expect(fixture.componentInstance.titleOrder()).toEqual(['native', 'english', 'romaji']);
+    expect(fixture.componentInstance.successMessage()).toBe('Data imported successfully');
   });
 });

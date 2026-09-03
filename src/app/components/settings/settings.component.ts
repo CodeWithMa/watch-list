@@ -589,6 +589,7 @@ export class SettingsComponent implements OnInit {
 
     try {
       await this.importExportService.importData(file);
+      this.syncProviderSignals();
       this.successMessage.set('Data imported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
       input.value = '';
@@ -598,5 +599,14 @@ export class SettingsComponent implements OnInit {
       setTimeout(() => this.errorMessage.set(null), 5000);
       input.value = '';
     }
+  }
+
+  private syncProviderSignals(): void {
+    this.tmdbEnabled.set(this.providerSettingsService.isEnabled('tmdb'));
+    this.jikanEnabled.set(this.providerSettingsService.isEnabled('jikan'));
+    this.anilistEnabled.set(this.providerSettingsService.isEnabled('anilist'));
+    this.includeAdult.set(this.providerSettingsService.isAdultIncluded());
+    this.adultDisplayMode.set(this.providerSettingsService.getAdultDisplayMode());
+    this.titleOrder.set(this.providerSettingsService.getTitlePreference());
   }
 }
