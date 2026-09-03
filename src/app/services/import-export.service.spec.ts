@@ -91,23 +91,20 @@ describe('ImportExportService', () => {
       expect(JSON.parse(text)).toEqual({
         data: exportPayload,
         images: [{ id: 'poster-1', type: 'image/png', data: 'base64-data' }],
+        preferences: {
+          providerSettings: {
+            tmdb: false,
+            jikan: true,
+            anilist: false,
+            includeAdult: true,
+            titlePreference: ['native', 'english', 'romaji'],
+            adultDisplayMode: 'hide',
+          },
+        },
       });
     });
 
-    it('omits preferences by default', async () => {
-      storageService.getData.mockReturnValue({ items: [] });
-      const { createObjectURL } = mockDownload();
-
-      await importExportService.exportData();
-
-      const blob = createObjectURL.mock.calls[0][0] as Blob;
-      const text = await readBlobText(blob);
-      const parsed = JSON.parse(text) as Record<string, unknown>;
-      expect(parsed).not.toHaveProperty('preferences');
-      expect(providerSettings.exportSettings).not.toHaveBeenCalled();
-    });
-
-    it('includes non-sensitive preferences when requested and never leaks tokens', async () => {
+    it('always includes non-sensitive preferences and never leaks tokens', async () => {
       storageService.getData.mockReturnValue({ items: [] });
       // Simulate tokens in localStorage – service must not read them
       const store: Record<string, string> = {};
@@ -137,7 +134,7 @@ describe('ImportExportService', () => {
       window.localStorage.setItem('tmdbApiKey', 'secret-key');
       const { createObjectURL } = mockDownload();
 
-      await importExportService.exportData({ includePreferences: true });
+      await importExportService.exportData();
 
       const blob = createObjectURL.mock.calls[0][0] as Blob;
       const text = await readBlobText(blob);

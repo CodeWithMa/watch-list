@@ -414,46 +414,6 @@ describe('SettingsComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('unknown');
   });
 
-  it('renders include preferences checkbox checked by default', () => {
-    configure({ token: '', key: '', credential: null });
-    const fixture = TestBed.createComponent(SettingsComponent);
-    fixture.detectChanges();
-
-    const checkbox = fixture.nativeElement.querySelector(
-      '#includePreferencesToggle',
-    ) as HTMLInputElement;
-    expect(checkbox).not.toBeNull();
-    expect(checkbox.checked).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('Include preferences');
-    expect(fixture.nativeElement.textContent).toContain('TMDB tokens are never included');
-    expect(fixture.componentInstance.includePreferences()).toBe(true);
-  });
-
-  it('passes includePreferences flag to exportData', async () => {
-    configure({ token: '', key: '', credential: null });
-    const exportService = TestBed.inject(ImportExportService);
-    const fixture = TestBed.createComponent(SettingsComponent);
-    fixture.detectChanges();
-
-    const checkbox = fixture.nativeElement.querySelector(
-      '#includePreferencesToggle',
-    ) as HTMLInputElement;
-    checkbox.checked = false;
-    checkbox.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.includePreferences()).toBe(false);
-    await fixture.componentInstance.exportData();
-    expect(exportService.exportData).toHaveBeenCalledWith({ includePreferences: false });
-
-    checkbox.checked = true;
-    checkbox.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-
-    await fixture.componentInstance.exportData();
-    expect(exportService.exportData).toHaveBeenCalledWith({ includePreferences: true });
-  });
-
   it('syncs provider signals after successful import', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);

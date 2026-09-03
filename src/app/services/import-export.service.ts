@@ -21,19 +21,17 @@ export class ImportExportService {
   private imageStorage = inject(ImageStorageService);
   private providerSettings = inject(ProviderSettingsService);
 
-  async exportData(options?: { includePreferences?: boolean }): Promise<void> {
+  async exportData(): Promise<void> {
     const payload: PortableExport = {
       data: this.storageService.getData(),
       images: await this.imageStorage.exportImages(),
+      preferences: {
+        providerSettings: this.providerSettings.exportSettings(),
+      },
     };
     // Only non-sensitive preferences are ever exported.
     // providerSettings (tmdb/jikan/anilist, includeAdult, titlePreference, adultDisplayMode)
     // is safe to share; tmdbReadAccessToken/apiKey from tmdb-settings.service.ts:3 are never read here.
-    if (options?.includePreferences) {
-      payload.preferences = {
-        providerSettings: this.providerSettings.exportSettings(),
-      };
-    }
     this.downloadJson(payload, 'watch-list-export');
   }
 
