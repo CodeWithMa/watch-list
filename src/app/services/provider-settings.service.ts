@@ -98,6 +98,34 @@ export class ProviderSettingsService {
     this.save(next);
   }
 
+  exportSettings(): ProviderSettings {
+    return structuredClone(this.enabled());
+  }
+
+  importSettings(raw: unknown): void {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return;
+    }
+    const normalized = this.normalizeRawSettings(raw as Record<string, unknown>);
+    this.enabled.set(normalized);
+    this.save(normalized);
+  }
+
+  private normalizeRawSettings(obj: Record<string, unknown>): ProviderSettings {
+    return {
+      tmdb: typeof obj['tmdb'] === 'boolean' ? obj['tmdb'] : DEFAULT_PROVIDER_SETTINGS.tmdb,
+      jikan: typeof obj['jikan'] === 'boolean' ? obj['jikan'] : DEFAULT_PROVIDER_SETTINGS.jikan,
+      anilist:
+        typeof obj['anilist'] === 'boolean' ? obj['anilist'] : DEFAULT_PROVIDER_SETTINGS.anilist,
+      includeAdult:
+        typeof obj['includeAdult'] === 'boolean'
+          ? obj['includeAdult']
+          : DEFAULT_PROVIDER_SETTINGS.includeAdult,
+      titlePreference: this.normalizeTitlePreference(obj['titlePreference']),
+      adultDisplayMode: this.normalizeAdultDisplayMode(obj['adultDisplayMode']),
+    };
+  }
+
   private load(): ProviderSettings {
     try {
       const raw = localStorage.getItem(PROVIDER_SETTINGS_KEY);
@@ -108,25 +136,13 @@ export class ProviderSettingsService {
         };
       }
       const parsed = JSON.parse(raw) as unknown;
-      if (!parsed || typeof parsed !== 'object') {
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         return {
           ...DEFAULT_PROVIDER_SETTINGS,
           titlePreference: [...DEFAULT_TITLE_PREFERENCE],
         };
       }
-      const obj = parsed as Record<string, unknown>;
-      return {
-        tmdb: typeof obj['tmdb'] === 'boolean' ? obj['tmdb'] : DEFAULT_PROVIDER_SETTINGS.tmdb,
-        jikan: typeof obj['jikan'] === 'boolean' ? obj['jikan'] : DEFAULT_PROVIDER_SETTINGS.jikan,
-        anilist:
-          typeof obj['anilist'] === 'boolean' ? obj['anilist'] : DEFAULT_PROVIDER_SETTINGS.anilist,
-        includeAdult:
-          typeof obj['includeAdult'] === 'boolean'
-            ? obj['includeAdult']
-            : DEFAULT_PROVIDER_SETTINGS.includeAdult,
-        titlePreference: this.normalizeTitlePreference(obj['titlePreference']),
-        adultDisplayMode: this.normalizeAdultDisplayMode(obj['adultDisplayMode']),
-      };
+      return this.normalizeRawSettings(parsed as Record<string, unknown>);
     } catch {
       return {
         ...DEFAULT_PROVIDER_SETTINGS,

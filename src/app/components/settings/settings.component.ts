@@ -317,6 +317,23 @@ import { environment } from '../../../environments/environment';
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
           Data Management
         </h2>
+        <div class="mb-4">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input
+              id="includePreferencesToggle"
+              type="checkbox"
+              [checked]="includePreferences()"
+              (change)="includePreferences.set($any($event.target).checked)"
+              class="w-5 h-5"
+            />
+            <span class="text-sm text-light-font dark:text-dark-font"
+              >Include preferences (providers, adult filter &amp; display, title order)</span
+            >
+          </label>
+          <p class="mt-1 mb-0 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+            TMDB tokens are never included.
+          </p>
+        </div>
         <div class="mb-4 last:mb-0">
           <button
             (click)="exportData()"
@@ -449,6 +466,7 @@ export class SettingsComponent implements OnInit {
   includeAdult = signal(this.providerSettingsService.isAdultIncluded());
   adultDisplayMode = signal<AdultDisplayMode>(this.providerSettingsService.getAdultDisplayMode());
   titleOrder = signal<TitlePreference>(this.providerSettingsService.getTitlePreference());
+  includePreferences = signal(true);
   recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
 
   ngOnInit(): void {
@@ -538,7 +556,9 @@ export class SettingsComponent implements OnInit {
 
   async exportData(): Promise<void> {
     try {
-      await this.importExportService.exportData();
+      await this.importExportService.exportData({
+        includePreferences: this.includePreferences(),
+      });
       this.successMessage.set('Data exported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch {
@@ -589,6 +609,7 @@ export class SettingsComponent implements OnInit {
 
     try {
       await this.importExportService.importData(file);
+      this.syncProviderSignals();
       this.successMessage.set('Data imported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
       input.value = '';
@@ -598,5 +619,14 @@ export class SettingsComponent implements OnInit {
       setTimeout(() => this.errorMessage.set(null), 5000);
       input.value = '';
     }
+  }
+
+  private syncProviderSignals(): void {
+    this.tmdbEnabled.set(this.providerSettingsService.isEnabled('tmdb'));
+    this.jikanEnabled.set(this.providerSettingsService.isEnabled('jikan'));
+    this.anilistEnabled.set(this.providerSettingsService.isEnabled('anilist'));
+    this.includeAdult.set(this.providerSettingsService.isAdultIncluded());
+    this.adultDisplayMode.set(this.providerSettingsService.getAdultDisplayMode());
+    this.titleOrder.set(this.providerSettingsService.getTitlePreference());
   }
 }
