@@ -15,36 +15,43 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">What should I watch now?</h1>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        <div>
-          <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 justify-items-center">
+        <div class="w-full max-w-[360px] justify-self-center">
+          <h2
+            class="text-center text-sm font-semibold tracking-wide uppercase mb-3 text-light-font-secondary dark:text-dark-font-secondary"
+          >
             Next Series
           </h2>
           @if (nextSeries()) {
-            <div class="mb-4">
-              <app-item-card [item]="nextSeries()!" />
-              <div class="flex gap-2 mt-3">
+            <div class="w-full">
+              <!-- Contained poster: ItemCard img is w-full aspect-[2/3], clamp to 320px so actions stay above fold -->
+              <div
+                class="[&>app-item-card>div]:overflow-hidden [&_img]:!h-[320px] [&_img]:!aspect-auto [&_img]:object-cover"
+              >
+                <app-item-card [item]="nextSeries()!" />
+              </div>
+              <div class="flex flex-wrap justify-center gap-2 mt-3">
                 <button
                   (click)="markItem(nextSeries, 'watched')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  class="px-3 py-1.5 border border-transparent rounded bg-accent-primary text-white cursor-pointer text-xs font-medium hover:bg-accent-primary-hover"
                 >
                   Mark Watched
                 </button>
                 <button
                   (click)="markItem(nextSeries, 'completed')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
                   Mark Completed
                 </button>
                 <button
                   (click)="markItem(nextSeries, 'paused')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
                   Pause
                 </button>
                 <button
                   (click)="markItem(nextSeries, 'dropped')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
                   Drop
                 </button>
@@ -52,7 +59,7 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
             </div>
           } @else {
             <p
-              class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg"
+              class="w-full p-6 text-center text-sm rounded-lg border border-dashed border-light-border dark:border-dark-border text-light-font-muted dark:text-dark-font-muted"
             >
               @if (hasSeries()) {
                 @if (hasInProgressSeries()) {
@@ -67,35 +74,41 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
           }
         </div>
 
-        <div>
-          <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+        <div class="w-full max-w-[360px] justify-self-center">
+          <h2
+            class="text-center text-sm font-semibold tracking-wide uppercase mb-3 text-light-font-secondary dark:text-dark-font-secondary"
+          >
             Next Movie
           </h2>
           @if (nextMovie()) {
-            <div class="mb-4">
-              <app-item-card [item]="nextMovie()!" />
-              <div class="flex gap-2 mt-3">
+            <div class="w-full">
+              <div
+                class="[&>app-item-card>div]:overflow-hidden [&_img]:!h-[320px] [&_img]:!aspect-auto [&_img]:object-cover"
+              >
+                <app-item-card [item]="nextMovie()!" />
+              </div>
+              <div class="flex flex-wrap justify-center gap-2 mt-3">
                 <button
                   (click)="markItem(nextMovie, 'watched')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  class="px-3 py-1.5 border border-transparent rounded bg-accent-primary text-white cursor-pointer text-xs font-medium hover:bg-accent-primary-hover"
                 >
                   Mark Watched
                 </button>
                 <button
                   (click)="markItem(nextMovie, 'completed')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
                   Mark Completed
                 </button>
                 <button
                   (click)="markItem(nextMovie, 'paused')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
                   Pause
                 </button>
                 <button
                   (click)="markItem(nextMovie, 'dropped')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
                   Drop
                 </button>
@@ -103,7 +116,7 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
             </div>
           } @else {
             <p
-              class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg"
+              class="w-full p-6 text-center text-sm rounded-lg border border-dashed border-light-border dark:border-dark-border text-light-font-muted dark:text-dark-font-muted"
             >
               @if (hasMovies()) {
                 No movies currently being watched
