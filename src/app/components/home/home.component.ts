@@ -34,12 +34,6 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
                   Mark Watched
                 </button>
                 <button
-                  (click)="markItem(nextSeries, 'completed')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
-                >
-                  Mark Completed
-                </button>
-                <button
                   (click)="markItem(nextSeries, 'paused')"
                   class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                 >
@@ -85,12 +79,6 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
                   class="px-3 py-1.5 border border-transparent rounded bg-accent-primary text-white cursor-pointer text-xs font-medium hover:bg-accent-primary-hover"
                 >
                   Mark Watched
-                </button>
-                <button
-                  (click)="markItem(nextMovie, 'completed')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
-                >
-                  Mark Completed
                 </button>
                 <button
                   (click)="markItem(nextMovie, 'paused')"
