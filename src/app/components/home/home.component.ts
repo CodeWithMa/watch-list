@@ -16,7 +16,7 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">What should I watch now?</h1>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 justify-items-center">
-        <div class="w-full max-w-[360px] justify-self-center">
+        <div class="w-full max-w-[280px] justify-self-center">
           <h2
             class="text-center text-sm font-semibold tracking-wide uppercase mb-3 text-light-font-secondary dark:text-dark-font-secondary"
           >
@@ -24,12 +24,8 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
           </h2>
           @if (nextSeries()) {
             <div class="w-full">
-              <!-- Contained poster: ItemCard img is w-full aspect-[2/3], clamp to 320px so actions stay above fold -->
-              <div
-                class="[&>app-item-card>div]:overflow-hidden [&_img]:!h-[320px] [&_img]:!aspect-auto [&_img]:object-cover"
-              >
-                <app-item-card [item]="nextSeries()!" />
-              </div>
+              <!-- Narrow card (280px) keeps natural 2/3 poster (~420px tall) fully visible, no cropping -->
+              <app-item-card [item]="nextSeries()!" />
               <div class="flex flex-wrap justify-center gap-2 mt-3">
                 <button
                   (click)="markItem(nextSeries, 'watched')"
@@ -74,7 +70,7 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
           }
         </div>
 
-        <div class="w-full max-w-[360px] justify-self-center">
+        <div class="w-full max-w-[280px] justify-self-center">
           <h2
             class="text-center text-sm font-semibold tracking-wide uppercase mb-3 text-light-font-secondary dark:text-dark-font-secondary"
           >
@@ -82,11 +78,7 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
           </h2>
           @if (nextMovie()) {
             <div class="w-full">
-              <div
-                class="[&>app-item-card>div]:overflow-hidden [&_img]:!h-[320px] [&_img]:!aspect-auto [&_img]:object-cover"
-              >
-                <app-item-card [item]="nextMovie()!" />
-              </div>
+              <app-item-card [item]="nextMovie()!" />
               <div class="flex flex-wrap justify-center gap-2 mt-3">
                 <button
                   (click)="markItem(nextMovie, 'watched')"
