@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const isDev = !app.isPackaged;
 
@@ -36,10 +37,40 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' };
   });
 
+  const entryFile = path.normalize(path.join(__dirname, '../dist/watch-list/browser/index.html'));
+  const entryDir = path.dirname(entryFile);
+
   const isAllowedNavigation = (url: string): boolean => {
-    if (url.startsWith('file:')) return true;
-    if (isDev && url.startsWith('http://localhost:4200')) return true;
-    return false;
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return false;
+    }
+    if (parsed.username !== '' || parsed.password !== '') return false;
+    if (isDev) {
+      return (
+        parsed.protocol === 'http:' && parsed.hostname === 'localhost' && parsed.port === '4200'
+      );
+    }
+    if (parsed.protocol !== 'file:' || parsed.host !== '') return false;
+    let filePath: string;
+    try {
+      const fileUrl = new URL(url);
+      fileUrl.hash = '';
+      fileUrl.search = '';
+      filePath = path.normalize(fileURLToPath(fileUrl));
+    } catch {
+      return false;
+    }
+    if (filePath === entryFile) return true;
+    const relative = path.relative(entryDir, filePath);
+    return (
+      relative !== '' &&
+      relative !== '..' &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative)
+    );
   };
 
   win.webContents.on('will-navigate', (event, url) => {
@@ -53,7 +84,7 @@ function createWindow(): BrowserWindow {
     win.loadURL('http://localhost:4200');
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
-    win.loadFile(path.join(__dirname, '../dist/watch-list/browser/index.html'));
+    win.loadFile(entryFile);
   }
 
   win.once('ready-to-show', () => win.show());
