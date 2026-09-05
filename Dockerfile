@@ -20,6 +20,7 @@ RUN bun run build
 
 FROM nginx:alpine-slim AS prod
 
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/builder/dist/watch-list/browser /usr/share/nginx/html
 
 EXPOSE 80
