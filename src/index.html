@@ -2,6 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!-- Security headers fallback for hosts that cannot send HTTP headers (e.g. GitHub Pages).
+      The Docker/nginx image sends this same policy plus nosniff/DENY/no-referrer as real
+      headers (see nginx.conf). If the inline theme script below changes, recompute its sha256
+      and update script-src here and in nginx.conf. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'sha256-MEU5LmGgErYBNZ8qIkvEKZWSLfoRWEtbAbW+YA5ToCE='; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; connect-src 'self' https://api.themoviedb.org https://api.jikan.moe https://graphql.anilist.co https://image.tmdb.org https://cdn.myanimelist.net https://s4.anilist.co; font-src 'self' data:; manifest-src 'self'; worker-src 'self'"
+    />
+    <meta name="referrer" content="no-referrer" />
     <title>WatchList</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
