@@ -59,7 +59,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.0.0",
     "concurrently": "^9.0.0",
-    "electron": "^32.0.0",
+    "electron": "^44.0.0",
     "electron-builder": "^25.0.0",
     "wait-on": "^8.0.0",
     "@vitest/coverage-v8": "^4.1.10",

@@ -1,0 +1,9 @@
+version: 2
+updates:
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-name: electron
+    open-pull-requests-limit: 5
