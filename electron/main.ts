@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import path from 'node:path';
 
 const isDev = !app.isPackaged;
@@ -23,7 +23,30 @@ function createWindow(): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      allowRunningInsecureContent: false,
     },
+  });
+
+  win.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
+  });
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https:') || url.startsWith('http:')) void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  const isAllowedNavigation = (url: string): boolean => {
+    if (url.startsWith('file:')) return true;
+    if (isDev && url.startsWith('http://localhost:4200')) return true;
+    return false;
+  };
+
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!isAllowedNavigation(url)) event.preventDefault();
+  });
+  win.webContents.on('will-redirect', (event, url) => {
+    if (!isAllowedNavigation(url)) event.preventDefault();
   });
 
   if (isDev) {
