@@ -474,6 +474,70 @@ describe('StorageService', () => {
 
     spy.mockRestore();
   });
+
+  it('keeps saving in memory when IndexedDB is unavailable', async () => {
+    const service = new StorageService();
+    const storage = service as unknown as {
+      openDatabase: () => Promise<IDBDatabase>;
+    };
+    vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await service.initialize();
+
+    const updated = {
+      ...service.getData(),
+      groups: {
+        ...service.getData().groups,
+        test: { id: 'test', name: 'Test', order: 1 },
+      },
+    };
+    await expect(service.saveData(updated)).resolves.toBeUndefined();
+
+    expect(service.getData().groups['test']).toMatchObject({ name: 'Test' });
+    expect(service.getSaveErrorSignal()()).toBeNull();
+  });
+
+  it('imports data with images in memory when IndexedDB is unavailable', async () => {
+    const service = new StorageService();
+    const storage = service as unknown as {
+      openDatabase: () => Promise<IDBDatabase>;
+    };
+    vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await service.initialize();
+
+    const result = await service.importDataWithImages(
+      {
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        lastModifiedAt: '2026-04-01T10:00:00.000Z',
+        groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
+        items: {},
+        deletedItems: {},
+      },
+      [],
+    );
+
+    expect(result.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(service.getSaveErrorSignal()()).toBeNull();
+  });
+
+  it('returns no recovery backups when IndexedDB is unavailable', async () => {
+    const service = new StorageService();
+    const storage = service as unknown as {
+      openDatabase: () => Promise<IDBDatabase>;
+    };
+    vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await service.initialize();
+
+    await expect(service.getRecoveryBackups()).resolves.toEqual([]);
+    await expect(service.getRecoveryBackupByKey('watch-list-data-backup-123')).rejects.toThrow(
+      'Recovery backup not found',
+    );
+  });
 });
 
 function withGroup(data: ReturnType<StorageService['getData']>, id: string) {
