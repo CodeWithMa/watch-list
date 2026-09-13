@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { DEFAULT_GROUP_ID } from './item.constants';
-import { CURRENT_SCHEMA_VERSION, StorageData } from '../models/storage.model';
+import { CURRENT_SCHEMA_VERSION, DeletedItemHistory, StorageData } from '../models/storage.model';
+import { Group } from '../models/group.model';
+import { Item } from '../models/item.model';
 
 interface LegacyProgressV2 {
   season: number;
@@ -104,11 +106,82 @@ export function normalizeStorageData(data: unknown): StorageData {
   const normalized = applyStorageDefaults(migrated);
 
   const result = StorageDataSchema.safeParse(normalized);
-  if (!result.success) {
+  if (result.success) {
+    return result.data as StorageData;
+  }
+
+  const quarantined = quarantineInvalidRecords(normalized);
+  const retry = StorageDataSchema.safeParse(quarantined.data);
+  if (!retry.success) {
     throw new Error('Invalid migrated data');
   }
 
-  return result.data as StorageData;
+  return retry.data as StorageData;
+}
+
+function quarantineInvalidRecords(data: StorageData): { data: StorageData } {
+  const inputItemCount = Object.keys(data.items ?? {}).length;
+
+  const groups: Record<string, Group> = {};
+  let droppedGroups = 0;
+  for (const [id, group] of Object.entries(data.groups ?? {})) {
+    const parsed = GroupSchema.safeParse(group);
+    if (parsed.success) {
+      groups[id] = parsed.data;
+    } else {
+      droppedGroups++;
+    }
+  }
+
+  const items: Record<string, Item> = {};
+  let droppedItems = 0;
+  for (const [id, item] of Object.entries(data.items ?? {})) {
+    const parsed = ItemSchema.safeParse(item);
+    if (parsed.success) {
+      items[id] = parsed.data as Item;
+    } else {
+      droppedItems++;
+    }
+  }
+
+  const deletedItems: Record<string, DeletedItemHistory> = {};
+  let droppedDeleted = 0;
+  for (const [id, entry] of Object.entries(data.deletedItems ?? {})) {
+    const parsed = DeletedItemHistorySchema.safeParse(entry);
+    if (parsed.success) {
+      deletedItems[id] = parsed.data;
+    } else {
+      droppedDeleted++;
+    }
+  }
+
+  if (inputItemCount > 0 && Object.keys(items).length === 0) {
+    throw new Error('Invalid migrated data');
+  }
+
+  const withDefaults = applyStorageDefaults({
+    ...data,
+    groups,
+    items,
+    deletedItems,
+  });
+
+  // Items pointing at a dropped group fall back to the default group
+  // instead of keeping a dangling reference.
+  for (const item of Object.values(withDefaults.items)) {
+    if (!withDefaults.groups[item.groupId]) {
+      item.groupId = DEFAULT_GROUP_ID;
+    }
+  }
+
+  if (droppedGroups + droppedItems + droppedDeleted > 0) {
+    console.warn(
+      `Dropped ${droppedItems} invalid item(s), ${droppedGroups} invalid group(s), ` +
+        `${droppedDeleted} invalid deleted entr(ies) during storage normalization.`,
+    );
+  }
+
+  return { data: withDefaults };
 }
 
 function isStorageDataShape(data: unknown): data is StorageData {
@@ -140,10 +213,10 @@ function isStorageDataShape(data: unknown): data is StorageData {
 
 function migrateStorageData(data: StorageData): StorageData {
   if (data.schemaVersion >= CURRENT_SCHEMA_VERSION) {
-    return { ...data };
+    return structuredClone(data);
   }
 
-  const migrated = { ...data };
+  const migrated: StorageData = structuredClone(data);
 
   if (migrated.schemaVersion < 3) {
     for (const item of Object.values(migrated.items)) {
