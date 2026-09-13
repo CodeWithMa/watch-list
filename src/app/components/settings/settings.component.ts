@@ -347,6 +347,30 @@ import { environment } from '../../../environments/environment';
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
             Replace all data with imported JSON file
           </p>
+          @if (pendingImportFile()) {
+            <div
+              role="alert"
+              class="mt-4 p-4 rounded border border-error-border-light dark:border-error-border-dark bg-light-bg-secondary dark:bg-dark-bg-secondary"
+            >
+              <p class="mt-0 mb-3 text-sm text-light-font dark:text-dark-font">
+                Import "{{ pendingImportFile()?.name }}"? This will replace all existing data.
+              </p>
+              <div class="flex flex-wrap gap-3">
+                <button
+                  (click)="confirmImport()"
+                  class="px-6 py-2 border-none rounded cursor-pointer text-sm font-medium bg-accent-danger text-white hover:bg-accent-danger-hover"
+                >
+                  Confirm Import
+                </button>
+                <button
+                  (click)="cancelImport()"
+                  class="px-6 py-2 border border-light-border dark:border-dark-border rounded cursor-pointer text-sm font-medium bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </div>
 
@@ -450,6 +474,7 @@ export class SettingsComponent implements OnInit {
   adultDisplayMode = signal<AdultDisplayMode>(this.providerSettingsService.getAdultDisplayMode());
   titleOrder = signal<TitlePreference>(this.providerSettingsService.getTitlePreference());
   recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
+  pendingImportFile = signal<File | null>(null);
 
   ngOnInit(): void {
     this.loadRecoveryBackups();
@@ -579,8 +604,19 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
-    if (!confirm('Importing will replace all existing data. Are you sure?')) {
-      input.value = '';
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.pendingImportFile.set(file);
+    input.value = '';
+  }
+
+  cancelImport(): void {
+    this.pendingImportFile.set(null);
+  }
+
+  async confirmImport(): Promise<void> {
+    const file = this.pendingImportFile();
+    if (!file) {
       return;
     }
 
@@ -592,12 +628,12 @@ export class SettingsComponent implements OnInit {
       this.syncProviderSignals();
       this.successMessage.set('Data imported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
-      input.value = '';
+      this.pendingImportFile.set(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
       this.errorMessage.set(`Import failed: ${message}`);
       setTimeout(() => this.errorMessage.set(null), 5000);
-      input.value = '';
+      this.pendingImportFile.set(null);
     }
   }
 

@@ -244,10 +244,9 @@ describe('SettingsComponent', () => {
     expect(exportService.importData).not.toHaveBeenCalled();
   });
 
-  it('aborts the import when the user cancels the confirmation', async () => {
+  it('stages the import on file select and imports only after confirmation', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     const fixture = TestBed.createComponent(SettingsComponent);
     const target = {
       files: [
@@ -259,13 +258,39 @@ describe('SettingsComponent', () => {
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
 
     expect(exportService.importData).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.pendingImportFile()?.name).toBe('export.json');
+    expect(target.value).toBe('');
+
+    await fixture.componentInstance.confirmImport();
+
+    expect(exportService.importData).toHaveBeenCalledOnce();
+    expect(fixture.componentInstance.pendingImportFile()).toBeNull();
+    expect(fixture.componentInstance.successMessage()).toBe('Data imported successfully');
+  });
+
+  it('aborts the import when the user cancels the inline confirmation', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const target = {
+      files: [
+        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
+      ] as unknown as FileList,
+      value: 'previous-file.json',
+    };
+
+    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    fixture.componentInstance.cancelImport();
+    await fixture.componentInstance.confirmImport();
+
+    expect(exportService.importData).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.pendingImportFile()).toBeNull();
     expect(target.value).toBe('');
   });
 
   it('shows success feedback after a confirmed import', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fixture = TestBed.createComponent(SettingsComponent);
     const target = {
       files: [
@@ -275,6 +300,7 @@ describe('SettingsComponent', () => {
     };
 
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    await fixture.componentInstance.confirmImport();
 
     expect(exportService.importData).toHaveBeenCalledOnce();
     expect(fixture.componentInstance.successMessage()).toBe('Data imported successfully');
@@ -285,7 +311,6 @@ describe('SettingsComponent', () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
     vi.spyOn(exportService, 'importData').mockRejectedValue(new Error('Invalid JSON file'));
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fixture = TestBed.createComponent(SettingsComponent);
     const target = {
       files: [
@@ -295,6 +320,7 @@ describe('SettingsComponent', () => {
     };
 
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    await fixture.componentInstance.confirmImport();
 
     expect(fixture.componentInstance.errorMessage()).toBe('Import failed: Invalid JSON file');
     expect(fixture.componentInstance.successMessage()).toBeNull();
@@ -447,7 +473,6 @@ describe('SettingsComponent', () => {
       ],
     });
     const exportService = TestBed.inject(ImportExportService);
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fixture = TestBed.createComponent(SettingsComponent);
     expect(fixture.componentInstance.includeAdult()).toBe(false);
 
@@ -464,6 +489,7 @@ describe('SettingsComponent', () => {
       value: '',
     };
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    await fixture.componentInstance.confirmImport();
     expect(exportService.importData).toHaveBeenCalledOnce();
     expect(fixture.componentInstance.includeAdult()).toBe(true);
     expect(fixture.componentInstance.tmdbEnabled()).toBe(true);
