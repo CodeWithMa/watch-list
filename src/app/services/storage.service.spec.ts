@@ -329,7 +329,52 @@ describe('StorageService', () => {
     ).rejects.toThrowError('Invalid data format');
   });
 
-  it('rejects series with duplicate season numbers', async () => {
+  it('quarantines series with duplicate season numbers instead of rejecting the import', async () => {
+    const service = new StorageService();
+    await service.initialize();
+
+    await service.importData({
+      schemaVersion: 4,
+      lastModifiedAt: '2026-04-01T10:00:00.000Z',
+      groups: {},
+      items: {
+        bad: {
+          id: 'bad',
+          title: 'Bad Series',
+          type: 'series',
+          groupId: 'ungrouped',
+          status: 'in-progress',
+          isAdult: false,
+          createdAt: '2026-03-01T10:00:00.000Z',
+          progress: {
+            season: 1,
+            episode: 1,
+            seasons: [
+              { seasonNumber: 1, totalEpisodes: 10 },
+              { seasonNumber: 1, totalEpisodes: 8 },
+            ],
+          },
+          watchHistory: [],
+        },
+        good: {
+          id: 'good',
+          title: 'Good Series',
+          type: 'series',
+          groupId: 'ungrouped',
+          status: 'in-progress',
+          isAdult: false,
+          createdAt: '2026-03-01T10:00:00.000Z',
+          watchHistory: [],
+        },
+      },
+    });
+
+    const data = service.getData();
+    expect(data.items['bad']).toBeUndefined();
+    expect(data.items['good']).toMatchObject({ title: 'Good Series' });
+  });
+
+  it('rejects an import when every item is invalid', async () => {
     const service = new StorageService();
     await service.initialize();
 
@@ -360,6 +405,36 @@ describe('StorageService', () => {
         },
       }),
     ).rejects.toThrowError('Invalid migrated data');
+  });
+
+  it('remaps items of dropped groups to the default group', async () => {
+    const service = new StorageService();
+    await service.initialize();
+
+    await service.importData({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      lastModifiedAt: '2026-04-01T10:00:00.000Z',
+      groups: {
+        ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 },
+        bad: { id: 'bad' },
+      },
+      items: {
+        item1: {
+          id: 'item1',
+          title: 'Orphaned',
+          type: 'movie',
+          groupId: 'bad',
+          status: 'not-started',
+          isAdult: false,
+          createdAt: '2026-03-01T10:00:00.000Z',
+          watchHistory: [],
+        },
+      },
+    });
+
+    const data = service.getData();
+    expect(data.groups['bad']).toBeUndefined();
+    expect(data.items['item1'].groupId).toBe('ungrouped');
   });
 
   it('accepts v4 series seasons with a first episode air date', async () => {
