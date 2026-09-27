@@ -3,6 +3,7 @@ FROM docker.io/oven/bun:1.3.11-alpine AS builder
 WORKDIR /app/builder
 COPY package.json .
 COPY bun.lock .
+COPY bunfig.toml .
 RUN bun install --frozen-lockfile
 
 COPY src ./src
