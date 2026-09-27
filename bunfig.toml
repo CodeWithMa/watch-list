@@ -1,0 +1,3 @@
+[install]
+# Only resolve new package versions published at least 3 days ago (versions already pinned in bun.lock are unaffected)
+minimumReleaseAge = 259200
