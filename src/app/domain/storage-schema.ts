@@ -13,6 +13,7 @@ interface LegacyProgressV2 {
 const SeasonInfoSchema = z.object({
   seasonNumber: z.number(),
   totalEpisodes: z.number().optional(),
+  snoozeCount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
   firstEpisodeAirDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -211,6 +212,11 @@ function migrateStorageData(data: StorageData): StorageData {
       }
     }
     migrated.schemaVersion = 9;
+  }
+
+  if (migrated.schemaVersion < 10) {
+    // Optional per-season release delay: absent counts mean zero, with no baseline rewrite.
+    migrated.schemaVersion = 10;
   }
 
   return migrated;

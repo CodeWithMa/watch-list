@@ -5,6 +5,8 @@ import { Item, SeriesProgress } from '../models/item.model';
 import { CURRENT_SCHEMA_VERSION, DeletedItemHistory } from '../models/storage.model';
 import { IDBFactory } from 'fake-indexeddb';
 import { vi } from 'vitest';
+import { RoundRobinService } from './round-robin.service';
+import { getCurrentEpisodeAirDate } from '../domain/episode-release';
 
 describe('WatchListService', () => {
   let storageService: StorageService;
@@ -289,6 +291,160 @@ describe('WatchListService', () => {
     });
   });
 
+  describe('season release delay', () => {
+    function snoozable(overrides: Partial<Item> = {}) {
+      return createItem({
+        id: 'snoozed',
+        status: 'in-progress',
+        progress: {
+          season: 1,
+          episode: 3,
+          seasons: [{ seasonNumber: 1, totalEpisodes: 4, firstEpisodeAirDate: '2026-10-01' }],
+        },
+        ...overrides,
+      });
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    it('accumulates rapid clicks and reverses delay without changing unrelated item data', async () => {
+      const original = snoozable();
+      await saveData({ items: { snoozed: original } });
+      await Promise.all([service.snoozeOneWeek('snoozed'), service.snoozeOneWeek('snoozed')]);
+      const updated = service.getItemById('snoozed')!;
+      expect(updated).toEqual({
+        ...original,
+        progress: {
+          ...original.progress!,
+          seasons: [{ ...original.progress!.seasons[0], snoozeCount: 2 }],
+        },
+      });
+      expect(getCurrentEpisodeAirDate(updated)).toEqual(new Date(2026, 9, 29));
+      await service.removeOneWeekDelay('snoozed');
+      expect(getCurrentEpisodeAirDate(service.getItemById('snoozed')!)).toEqual(
+        new Date(2026, 9, 22),
+      );
+      await service.removeOneWeekDelay('snoozed');
+      await service.removeOneWeekDelay('snoozed');
+      expect(service.getItemById('snoozed')!.progress!.seasons[0].snoozeCount).toBe(0);
+    });
+
+    it('changes recommendations immediately, retains ordering, and never falls back to a delayed episode', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 20));
+      const recommendations = TestBed.inject(RoundRobinService);
+      await saveData({
+        items: {
+          snoozed: snoozable(),
+          other: createItem({ id: 'other', status: 'in-progress', createdAt: '2026-10-02' }),
+        },
+      });
+      expect(recommendations.nextSeries()?.id).toBe('snoozed');
+      await service.snoozeOneWeek('snoozed');
+      expect(recommendations.nextSeries()?.id).toBe('other');
+      await service.deleteItem('other');
+      expect(recommendations.nextSeries()).toBeNull();
+      await service.removeOneWeekDelay('snoozed');
+      expect(recommendations.nextSeries()?.id).toBe('snoozed');
+      vi.setSystemTime(new Date(2026, 10, 10));
+      window.dispatchEvent(new Event('focus'));
+      await service.snoozeOneWeek('snoozed');
+      expect(recommendations.nextSeries()?.id).toBe('snoozed');
+    });
+
+    it('rolls back a failed write and recommendation, and the next queued click starts from the saved count', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 9, 20));
+      const recommendations = TestBed.inject(RoundRobinService);
+      await saveData({ items: { snoozed: snoozable() } });
+      const original = service.getItemById('snoozed');
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const storage = storageService as unknown as { writeData: () => Promise<void> };
+      vi.spyOn(storage, 'writeData').mockRejectedValueOnce(new Error('Disk full'));
+      await expect(service.snoozeOneWeek('snoozed')).rejects.toThrow('Disk full');
+      expect(service.getItemById('snoozed')).toEqual(original);
+      expect(recommendations.nextSeries()?.id).toBe('snoozed');
+
+      vi.spyOn(storage, 'writeData').mockRejectedValueOnce(new Error('Disk full'));
+      const failed = service.snoozeOneWeek('snoozed');
+      const succeeded = service.snoozeOneWeek('snoozed');
+      await expect(failed).rejects.toThrow('Disk full');
+      await succeeded;
+      expect(service.getItemById('snoozed')!.progress!.seasons[0].snoozeCount).toBe(1);
+      expect(recommendations.nextSeries()).toBeNull();
+    });
+
+    it.each(['series', 'ova', 'ona'] as const)(
+      'allows %s to snooze and remove delay with a cleared baseline',
+      async (type) => {
+        await saveData({ items: { snoozed: snoozable({ type }) } });
+        await service.snoozeOneWeek('snoozed');
+        const item = service.getItemById('snoozed')!;
+        item.progress!.seasons[0].firstEpisodeAirDate = undefined;
+        await service.updateItem(item);
+        await service.removeOneWeekDelay('snoozed');
+        expect(service.getItemById('snoozed')!.progress!.seasons[0].snoozeCount).toBe(0);
+      },
+    );
+
+    it('does not write for invalid targets, unusable dates, or unsafe increments', async () => {
+      for (const item of [
+        snoozable({ type: 'movie' }),
+        snoozable({ status: 'paused' }),
+        snoozable({ status: 'completed' }),
+        snoozable({ progress: undefined }),
+        snoozable({ progress: { season: 2, episode: 1, seasons: [] } }),
+        ...[undefined, '2026-02-31', 'bad'].map((firstEpisodeAirDate) =>
+          snoozable({
+            progress: {
+              season: 1,
+              episode: 1,
+              seasons: [{ seasonNumber: 1, firstEpisodeAirDate }],
+            },
+          }),
+        ),
+        ...[-1, 0.5, Number.MAX_SAFE_INTEGER, 1e12].map((snoozeCount) =>
+          snoozable({
+            progress: {
+              season: 1,
+              episode: 1,
+              seasons: [{ seasonNumber: 1, firstEpisodeAirDate: '2026-10-01', snoozeCount }],
+            },
+          }),
+        ),
+      ]) {
+        await saveData({ items: { snoozed: item } });
+        const spy = vi.spyOn(storageService, 'saveData');
+        await service.snoozeOneWeek('snoozed');
+        await service.snoozeOneWeek('missing');
+        expect(spy).not.toHaveBeenCalled();
+        spy.mockRestore();
+      }
+    });
+
+    it('preserves each season count when watching episodes and advancing seasons', async () => {
+      const item = snoozable();
+      item.progress!.seasons[0].snoozeCount = 2;
+      item.progress!.seasons.push({
+        seasonNumber: 2,
+        firstEpisodeAirDate: '2027-01-07',
+        snoozeCount: 1,
+      });
+      await saveData({ items: { snoozed: item } });
+      service.markWatched('snoozed');
+      expect(service.getItemById('snoozed')!.progress!.episode).toBe(4);
+      expect(service.getItemById('snoozed')!.progress!.seasons).toEqual(item.progress!.seasons);
+      service.markWatched('snoozed');
+      const updated = service.getItemById('snoozed')!;
+      expect(updated.progress!.season).toBe(2);
+      expect(updated.progress!.seasons).toEqual(item.progress!.seasons);
+      expect(getCurrentEpisodeAirDate(updated)).toEqual(new Date(2027, 0, 14));
+    });
+  });
+
   describe('getItemById', () => {
     it('returns the matching item', () => {
       const item = createItem({ id: 'i1', title: 'Found' });
@@ -386,8 +542,8 @@ describe('WatchListService', () => {
   function saveData(data?: {
     items?: Record<string, Item>;
     deletedItems?: Record<string, DeletedItemHistory>;
-  }): void {
-    storageService.saveData({
+  }): Promise<void> {
+    return storageService.saveData({
       schemaVersion: 3,
       lastModifiedAt: '2026-04-01T10:00:00.000Z',
       groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },

@@ -9,6 +9,13 @@ import { Item, ItemStatus } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { getMostRecentWatchDate } from '../../utils/progress.utils';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
+import { isEpisodicType } from '../../domain/item.constants';
+import {
+  canSnoozeCurrentSeason,
+  getCurrentEpisodeAirDate,
+  getCurrentSeason,
+  isValidSnoozeCount,
+} from '../../domain/episode-release';
 
 type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
 
@@ -92,7 +99,60 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                 {{ action.label }}
               </button>
             }
+            @if (showReleaseDelayControls()) {
+              <button
+                type="button"
+                (click)="changeReleaseDelay(1)"
+                [disabled]="savingReleaseDelay() || !canSnooze()"
+                aria-describedby="release-delay-feedback"
+                class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary text-light-font dark:text-dark-font cursor-pointer hover:border-accent-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Snooze 1 week
+              </button>
+              @if (canRemoveDelay()) {
+                <button
+                  type="button"
+                  (click)="changeReleaseDelay(-1)"
+                  [disabled]="savingReleaseDelay()"
+                  class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary text-light-font dark:text-dark-font cursor-pointer hover:border-accent-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Remove 1 week delay
+                </button>
+              }
+            }
           </div>
+          @if (showReleaseDelayControls()) {
+            <div id="release-delay-feedback" class="mt-3 text-sm" aria-live="polite">
+              @if (currentSeason(); as season) {
+                <p>
+                  Season {{ season.seasonNumber }} release delay:
+                  @if (snoozeCount() === 0) {
+                    no added delay
+                  } @else {
+                    {{ snoozeCount() }} {{ snoozeCount() === 1 ? 'week' : 'weeks' }}
+                  }
+                </p>
+              }
+              @if (estimatedAirDate(); as airDate) {
+                <p>Pending episode air date (estimate): {{ airDate | date: 'mediumDate' }}</p>
+              }
+              @if (!canSnooze()) {
+                <p>
+                  @if (!estimatedAirDate()) {
+                    Set this season's first episode air date to snooze its release schedule.
+                    <a [routerLink]="['/items', currentItem.id, 'edit']" class="text-accent-primary"
+                      >Edit season details</a
+                    >
+                  } @else {
+                    This season's release delay cannot be increased further.
+                  }
+                </p>
+              }
+              @if (releaseDelayError()) {
+                <p role="alert" class="text-accent-danger">{{ releaseDelayError() }}</p>
+              }
+            </div>
+          }
         </section>
 
         <section>
@@ -189,6 +249,28 @@ export class ItemViewComponent {
 
     return this.quickActionsByStatus[item.status];
   });
+  readonly showReleaseDelayControls = computed(() => {
+    const item = this.item();
+    return !!item && isEpisodicType(item.type) && item.status === 'in-progress';
+  });
+  readonly currentSeason = computed(() => {
+    const item = this.item();
+    return item ? getCurrentSeason(item) : undefined;
+  });
+  readonly snoozeCount = computed(() => this.currentSeason()?.snoozeCount ?? 0);
+  readonly estimatedAirDate = computed(() => {
+    const item = this.item();
+    return item ? getCurrentEpisodeAirDate(item) : null;
+  });
+  readonly canSnooze = computed(() => {
+    const item = this.item();
+    return !!item && canSnoozeCurrentSeason(item);
+  });
+  readonly canRemoveDelay = computed(
+    () => isValidSnoozeCount(this.snoozeCount()) && this.snoozeCount() > 0,
+  );
+  readonly savingReleaseDelay = signal(false);
+  readonly releaseDelayError = signal<string | null>(null);
 
   constructor() {
     effect(() => {
@@ -208,6 +290,22 @@ export class ItemViewComponent {
     else if (action === 'started') this.watchListService.markStarted(item.id);
     else if (action === 'paused') this.watchListService.markPaused(item.id);
     else this.watchListService.markDropped(item.id);
+  }
+
+  async changeReleaseDelay(change: 1 | -1): Promise<void> {
+    const item = this.item();
+    if (!item || !this.showReleaseDelayControls() || this.savingReleaseDelay()) return;
+    if (change === 1 ? !this.canSnooze() : !this.canRemoveDelay()) return;
+    this.savingReleaseDelay.set(true);
+    this.releaseDelayError.set(null);
+    try {
+      if (change === 1) await this.watchListService.snoozeOneWeek(item.id);
+      else await this.watchListService.removeOneWeekDelay(item.id);
+    } catch {
+      this.releaseDelayError.set('Could not save the release delay. Please try again.');
+    } finally {
+      this.savingReleaseDelay.set(false);
+    }
   }
 
   private async loadPoster(id: string | undefined, loadedVersion: number): Promise<void> {

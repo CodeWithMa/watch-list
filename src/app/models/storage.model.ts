@@ -24,4 +24,4 @@ export interface StorageData {
   deletedItems?: Record<string, DeletedItemHistory>;
 }
 
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;

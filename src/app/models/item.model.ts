@@ -5,6 +5,7 @@ export interface SeasonInfo {
   seasonNumber: number;
   totalEpisodes?: number;
   firstEpisodeAirDate?: string;
+  snoozeCount?: number;
 }
 
 export interface SeriesProgress {

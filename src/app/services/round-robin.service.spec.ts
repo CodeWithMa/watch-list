@@ -4,6 +4,7 @@ import { StorageService } from './storage.service';
 import { IDBFactory } from 'fake-indexeddb';
 import { Item } from '../models/item.model';
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
+import { vi } from 'vitest';
 
 describe('RoundRobinService', () => {
   let storageService: StorageService;
@@ -282,7 +283,7 @@ describe('RoundRobinService', () => {
     expect(service.hasAiredCurrentEpisode(ep2, new Date(2026, 4, 8))).toBe(true);
   });
 
-  it('getEpisodeAirDate returns null for invalid year/month/day', () => {
+  it('treats invalid year/month/day as unknown release metadata', () => {
     const badYear = createSeries({
       id: 'bad',
       title: 'Bad',
@@ -299,6 +300,57 @@ describe('RoundRobinService', () => {
     });
     // year 2026 ok, month 0 -> falsy? 0 is falsy, so returns null
     expect(service.hasAiredCurrentEpisode(badMonth)).toBe(true);
+  });
+
+  describe('local-day refresh', () => {
+    afterEach(() => {
+      TestBed.resetTestingModule();
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    function waitingUntilTomorrow() {
+      vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+      vi.setSystemTime(new Date(2026, 9, 21, 23, 59, 59));
+      window.dispatchEvent(new Event('focus'));
+      const item = createSeries({
+        id: 'delayed',
+        title: 'Delayed',
+        createdAt: '2026-01-01',
+        firstEpisodeAirDate: '2026-10-01',
+        episode: 3,
+      });
+      item.progress!.seasons[0].snoozeCount = 1;
+      saveItems([item]);
+      expect(service.nextSeries()).toBeNull();
+    }
+
+    it('invalidates a cached recommendation at local midnight without a write', () => {
+      waitingUntilTomorrow();
+      vi.advanceTimersByTime(1000);
+      expect(service.nextSeries()?.id).toBe('delayed');
+    });
+
+    it.each(['focus', 'visibilitychange'])('refreshes when the app resumes via %s', (event) => {
+      waitingUntilTomorrow();
+      vi.setSystemTime(new Date(2026, 9, 23, 12));
+      if (event === 'focus') window.dispatchEvent(new Event(event));
+      else {
+        vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+        document.dispatchEvent(new Event(event));
+      }
+      expect(service.nextSeries()?.id).toBe('delayed');
+    });
+
+    it('cleans up its timer and foreground listeners when destroyed', () => {
+      waitingUntilTomorrow();
+      expect(vi.getTimerCount()).toBe(1);
+      TestBed.resetTestingModule();
+      expect(vi.getTimerCount()).toBe(0);
+      window.dispatchEvent(new Event('focus'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(vi.getTimerCount()).toBe(0);
+    });
   });
 
   function saveItems(items: Item[]): void {

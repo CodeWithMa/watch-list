@@ -71,7 +71,10 @@ describe('ImportExportService', () => {
 
   describe('exportData', () => {
     it('downloads the current data as JSON', async () => {
-      const exportPayload = { items: [], groups: {} };
+      const exportPayload = {
+        items: { delayed: { progress: { seasons: [{ seasonNumber: 1, snoozeCount: 2 }] } } },
+        groups: {},
+      };
       storageService.getData.mockReturnValue(exportPayload);
       const { anchor, createObjectURL, appendChild, removeChild, revokeObjectURL } = mockDownload();
 

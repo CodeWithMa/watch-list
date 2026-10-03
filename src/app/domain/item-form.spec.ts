@@ -93,6 +93,44 @@ describe('item-form helpers', () => {
     ]);
   });
 
+  it('round-trips season delays through episodic type, progress, date, and status edits', () => {
+    const item: Item = {
+      id: 'delayed',
+      title: 'Delayed',
+      type: 'series',
+      groupId: 'ungrouped',
+      status: 'in-progress',
+      isAdult: false,
+      createdAt: '2026-01-01',
+      watchHistory: [],
+      progress: {
+        season: 2,
+        episode: 4,
+        seasons: [
+          { seasonNumber: 1, firstEpisodeAirDate: '2026-01-01', snoozeCount: 2 },
+          { seasonNumber: 2, firstEpisodeAirDate: '2026-10-01', snoozeCount: 1 },
+        ],
+      },
+    };
+    for (const type of ['series', 'ova', 'ona'] as const) {
+      const form = normalizeFormValueForType({
+        ...createItemFormValue(item),
+        type,
+        season: 1,
+        episode: 2,
+        status: 'paused',
+        startImmediately: false,
+      });
+      const submitted = buildItemMutationInput(form);
+      expect(submitted.progress?.seasons).toEqual(item.progress?.seasons);
+      expect(submitted.progress?.season).toBe(1);
+      expect(submitted.status).toBe('paused');
+    }
+    const movie = normalizeFormValueForType({ ...createItemFormValue(item), type: 'movie' });
+    expect(movie.seasons).toEqual([]);
+    expect(buildItemMutationInput(movie).progress).toBeUndefined();
+  });
+
   it('preserves a paused status when building a movie mutation input', () => {
     const mutationInput = buildItemMutationInput({
       title: 'Paused Movie',

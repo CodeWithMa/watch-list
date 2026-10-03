@@ -4,6 +4,11 @@ import { Item, SeriesProgress } from '../models/item.model';
 import { HistoryEntry } from '../models/storage.model';
 import { ImageStorageService } from './image-storage.service';
 import { isEpisodicType } from '../domain/item.constants';
+import {
+  canSnoozeCurrentSeason,
+  getCurrentSeason,
+  isValidSnoozeCount,
+} from '../domain/episode-release';
 
 function advanceSeriesProgress(progress: SeriesProgress): {
   progress: SeriesProgress;
@@ -30,6 +35,7 @@ function advanceSeriesProgress(progress: SeriesProgress): {
 export class WatchListService {
   private storageService = inject(StorageService);
   private imageStorage = inject(ImageStorageService);
+  private releaseDelayQueue = Promise.resolve();
 
   async addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): Promise<void> {
     const data = this.storageService.getData();
@@ -121,6 +127,39 @@ export class WatchListService {
         { date: now, season: progress.season, episode: progress.episode },
       ],
     });
+  }
+
+  snoozeOneWeek(itemId: string): Promise<void> {
+    return this.queueReleaseDelayChange(itemId, 1);
+  }
+
+  removeOneWeekDelay(itemId: string): Promise<void> {
+    return this.queueReleaseDelayChange(itemId, -1);
+  }
+
+  private queueReleaseDelayChange(itemId: string, change: 1 | -1): Promise<void> {
+    // Read after the preceding write settles, so failed or rapid clicks cannot leak a delay.
+    const write = this.releaseDelayQueue.then(async () => {
+      const item = this.getItemById(itemId);
+      if (!item || item.status !== 'in-progress' || !item.progress) return;
+      const season = getCurrentSeason(item);
+      if (!season) return;
+      const count = season.snoozeCount ?? 0;
+      if (!isValidSnoozeCount(count)) return;
+      if (change === 1 ? !canSnoozeCurrentSeason(item) : count === 0) return;
+
+      await this.updateItem({
+        ...item,
+        progress: {
+          ...item.progress,
+          seasons: item.progress.seasons.map((entry) =>
+            entry === season ? { ...entry, snoozeCount: count + change } : entry,
+          ),
+        },
+      });
+    });
+    this.releaseDelayQueue = write.catch(() => undefined);
+    return write;
   }
 
   markCompleted(itemId: string): void {
