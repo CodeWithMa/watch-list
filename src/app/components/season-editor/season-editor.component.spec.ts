@@ -148,6 +148,23 @@ describe('SeasonEditorComponent', () => {
     });
   });
 
+  it('keeps delay with a season record across edits, but removes it with the record', () => {
+    setSeasons([
+      { seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-10-01', snoozeCount: 2 },
+    ]);
+    component.updateSeasonNumber(0, 3);
+    component.updateSeasonEpisodes(0, 12);
+    component.updateSeasonFirstAirDate(0, undefined);
+    expect(component.seasons()).toEqual([
+      { seasonNumber: 3, totalEpisodes: 12, firstEpisodeAirDate: undefined, snoozeCount: 2 },
+    ]);
+    component.updateSeasonFirstAirDate(0, '2026-10-15');
+    expect(component.seasons()[0].snoozeCount).toBe(2);
+    component.removeSeason(0);
+    component.addSeason();
+    expect(component.seasons()).toEqual([{ seasonNumber: 1, totalEpisodes: undefined }]);
+  });
+
   describe('removeSeason', () => {
     it('removes the season at the given index and emits', () => {
       setSeasons([

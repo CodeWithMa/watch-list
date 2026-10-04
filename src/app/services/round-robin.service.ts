@@ -1,14 +1,47 @@
-import { Injectable, inject, computed } from '@angular/core';
+import { DestroyRef, Injectable, NgZone, inject, computed, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { WatchListService } from './watch-list.service';
 import { Item } from '../models/item.model';
 import { getMostRecentWatchDate } from '../utils/progress.utils';
-import { isEpisodicType } from '../domain/item.constants';
+import { getCurrentEpisodeAirDate, startOfLocalDay } from '../domain/episode-release';
 
 @Injectable({
   providedIn: 'root',
 })
 export class RoundRobinService {
   private watchListService = inject(WatchListService);
+  private document = inject(DOCUMENT);
+  private zone = inject(NgZone);
+  private destroyRef = inject(DestroyRef);
+  private today = signal(startOfLocalDay(new Date()).getTime());
+
+  constructor() {
+    const window = this.document.defaultView;
+    if (!window) return;
+
+    let timer: number;
+    const refresh = () => {
+      const now = new Date();
+      this.today.set(startOfLocalDay(now).getTime());
+      window.clearTimeout(timer);
+      const midnight = startOfLocalDay(now);
+      midnight.setDate(midnight.getDate() + 1);
+      this.zone.runOutsideAngular(() => {
+        timer = window.setTimeout(refresh, midnight.getTime() - now.getTime());
+      });
+    };
+    const onVisibilityChange = () => {
+      if (this.document.visibilityState === 'visible') refresh();
+    };
+    refresh();
+    window.addEventListener('focus', refresh);
+    this.document.addEventListener('visibilitychange', onVisibilityChange);
+    this.destroyRef.onDestroy(() => {
+      window.clearTimeout(timer);
+      window.removeEventListener('focus', refresh);
+      this.document.removeEventListener('visibilitychange', onVisibilityChange);
+    });
+  }
 
   nextSeries = computed(() => {
     const series = this.watchListService.inProgressSeries();
@@ -23,7 +56,8 @@ export class RoundRobinService {
       return new Date(aDate).getTime() - new Date(bDate).getTime();
     });
 
-    const watchable = sorted.filter((s) => this.hasAiredCurrentEpisode(s));
+    const today = new Date(this.today());
+    const watchable = sorted.filter((s) => this.hasAiredCurrentEpisode(s, today));
     if (watchable.length === 0) {
       return null;
     }
@@ -71,40 +105,7 @@ export class RoundRobinService {
   }
 
   hasAiredCurrentEpisode(series: Item, today = new Date()): boolean {
-    if (!isEpisodicType(series.type) || !series.progress) {
-      return true;
-    }
-
-    const currentSeason = series.progress.seasons.find(
-      (s) => s.seasonNumber === series.progress!.season,
-    );
-    if (!currentSeason?.firstEpisodeAirDate) {
-      return true;
-    }
-
-    const airDate = this.getEpisodeAirDate(
-      currentSeason.firstEpisodeAirDate,
-      series.progress.episode,
-    );
-    if (!airDate) {
-      return true;
-    }
-
-    return airDate.getTime() <= this.startOfLocalDay(today).getTime();
-  }
-
-  private getEpisodeAirDate(firstEpisodeAirDate: string, episode: number): Date | null {
-    const [year, month, day] = firstEpisodeAirDate.split('-').map(Number);
-    if (!year || !month || !day) {
-      return null;
-    }
-
-    const airDate = new Date(year, month - 1, day);
-    airDate.setDate(airDate.getDate() + Math.max(0, episode - 1) * 7);
-    return airDate;
-  }
-
-  private startOfLocalDay(date: Date): Date {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const airDate = getCurrentEpisodeAirDate(series);
+    return !airDate || airDate.getTime() <= startOfLocalDay(today).getTime();
   }
 }

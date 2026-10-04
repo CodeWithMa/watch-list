@@ -2,6 +2,7 @@ import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { StorageService } from './storage.service';
 import { IDBFactory } from 'fake-indexeddb';
 import { vi, afterEach } from 'vitest';
+import { Item } from '../models/item.model';
 
 describe('StorageService', () => {
   beforeEach(() => {
@@ -101,6 +102,40 @@ describe('StorageService', () => {
 
     expect(secondService.getData().lastModifiedAt).not.toBe('2026-04-01T10:00:00.000Z');
     expect(secondService.getData().groups).toEqual(firstService.getData().groups);
+  });
+
+  it('retains season delay through reload and portable JSON import, including legacy imports', async () => {
+    const service = new StorageService();
+    await service.initialize();
+    const item: Item = {
+      id: 'delayed',
+      title: 'Delayed',
+      type: 'series',
+      groupId: 'ungrouped',
+      status: 'in-progress',
+      isAdult: false,
+      createdAt: '2026-01-01',
+      watchHistory: [],
+      progress: {
+        season: 1,
+        episode: 3,
+        seasons: [{ seasonNumber: 1, firstEpisodeAirDate: '2026-10-01', snoozeCount: 2 }],
+      },
+    };
+    await service.saveData({ ...service.getData(), items: { delayed: item } });
+    const reloaded = new StorageService();
+    await reloaded.initialize();
+    expect(reloaded.getData().items['delayed']).toEqual(item);
+    const portable: unknown = JSON.parse(JSON.stringify(reloaded.getData()));
+    await reloaded.importDataWithImages(portable, []);
+    expect(reloaded.getData().items['delayed']).toEqual(item);
+
+    const legacy = reloaded.getData();
+    legacy.schemaVersion = 9;
+    delete legacy.items['delayed'].progress!.seasons[0].snoozeCount;
+    await reloaded.importDataWithImages(legacy, []);
+    expect(reloaded.getData().schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(reloaded.getData().items['delayed'].progress!.seasons[0].snoozeCount).toBeUndefined();
   });
 
   it('replaces malformed persisted data with the default dataset', async () => {

@@ -30,7 +30,17 @@ const item: Item = {
 };
 
 describe('ItemViewComponent', () => {
-  function configure(items: Item[]): void {
+  function configure(items: Item[]) {
+    const watchList = {
+      items: signal(items),
+      markWatched: vi.fn(),
+      markCompleted: vi.fn(),
+      markStarted: vi.fn(),
+      markPaused: vi.fn(),
+      markDropped: vi.fn(),
+      snoozeOneWeek: vi.fn().mockResolvedValue(undefined),
+      removeOneWeekDelay: vi.fn().mockResolvedValue(undefined),
+    };
     TestBed.configureTestingModule({
       providers: [
         { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { timezone: 'UTC' } },
@@ -40,14 +50,7 @@ describe('ItemViewComponent', () => {
         },
         {
           provide: WatchListService,
-          useValue: {
-            items: signal(items),
-            markWatched: vi.fn(),
-            markCompleted: vi.fn(),
-            markStarted: vi.fn(),
-            markPaused: vi.fn(),
-            markDropped: vi.fn(),
-          },
+          useValue: watchList,
         },
         {
           provide: GroupService,
@@ -59,6 +62,7 @@ describe('ItemViewComponent', () => {
         },
       ],
     });
+    return watchList;
   }
 
   it('renders metadata and newest-first item history', async () => {
@@ -124,6 +128,136 @@ describe('ItemViewComponent', () => {
     const labels = buttons.map((button) => button.textContent?.trim());
 
     expect(labels).toEqual(['Start']);
+  });
+
+  it.each(['series', 'ova', 'ona'] as const)(
+    'shows %s snooze actions without explanatory text',
+    async (type) => {
+      const current: Item = {
+        ...item,
+        type,
+        progress: {
+          season: 2,
+          episode: 3,
+          seasons: [{ seasonNumber: 2, firstEpisodeAirDate: '2026-10-01', snoozeCount: 2 }],
+        },
+      };
+      const service = configure([current]);
+      TestBed.overrideProvider(DATE_PIPE_DEFAULT_OPTIONS, { useValue: {} });
+      const fixture = TestBed.createComponent(ItemViewComponent);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const element = fixture.nativeElement as HTMLElement;
+      const button = (label: string) =>
+        [...element.querySelectorAll('button')].find(
+          (button) => button.textContent?.trim() === label,
+        )!;
+      expect(element.textContent).not.toMatch(/release delay:/);
+      expect(element.textContent).not.toContain('Pending episode air date');
+      expect(element.textContent).not.toContain('no added delay');
+      expect(button('Snooze 1 week').disabled).toBe(false);
+      button('Snooze 1 week').click();
+      await fixture.whenStable();
+      expect(service.snoozeOneWeek).toHaveBeenCalledWith(item.id);
+      button('Remove 1 week delay').click();
+      await fixture.whenStable();
+      expect(service.removeOneWeekDelay).toHaveBeenCalledWith(item.id);
+
+      service.items.set([
+        {
+          ...current,
+          progress: {
+            ...current.progress!,
+            seasons: [{ ...current.progress!.seasons[0], snoozeCount: 0 }],
+          },
+        },
+      ]);
+      fixture.detectChanges();
+      expect(element.textContent).not.toContain('Remove 1 week delay');
+      expect(element.textContent).not.toMatch(/release delay:/);
+    },
+  );
+
+  it.each([undefined, '2026-02-31'])(
+    'disables snoozing for an unusable date %s, but still permits removing delay',
+    async (firstEpisodeAirDate) => {
+      const service = configure([
+        {
+          ...item,
+          progress: {
+            season: 2,
+            episode: 3,
+            seasons: [{ seasonNumber: 2, firstEpisodeAirDate, snoozeCount: 1 }],
+          },
+        },
+      ]);
+      const fixture = TestBed.createComponent(ItemViewComponent);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const element = fixture.nativeElement as HTMLElement;
+      const snooze = [...element.querySelectorAll('button')].find(
+        (button) => button.textContent?.trim() === 'Snooze 1 week',
+      )!;
+      expect(snooze.disabled).toBe(true);
+      expect(element.textContent).not.toContain('Set this season');
+      expect(element.textContent).not.toContain('Pending episode air date');
+      expect(element.textContent).not.toMatch(/release delay:/);
+      await fixture.componentInstance.changeReleaseDelay(-1);
+      expect(service.removeOneWeekDelay).toHaveBeenCalledWith(item.id);
+    },
+  );
+
+  it.each([undefined, { season: 2, episode: 3, seasons: [] }])(
+    'disables snoozing for missing progress or matching season',
+    async (progress) => {
+      configure([{ ...item, progress }]);
+      const fixture = TestBed.createComponent(ItemViewComponent);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')];
+      expect(
+        buttons.find((button) => button.textContent?.trim() === 'Snooze 1 week')?.disabled,
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    { type: 'movie', status: 'in-progress' },
+    { type: 'series', status: 'paused' },
+    { type: 'series', status: 'not-started' },
+    { type: 'series', status: 'completed' },
+    { type: 'series', status: 'dropped' },
+  ] as const)('hides delay controls for $status $type', async (overrides) => {
+    configure([{ ...item, ...overrides }]);
+    const fixture = TestBed.createComponent(ItemViewComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).not.toContain('Snooze 1 week');
+    expect(fixture.nativeElement.textContent).not.toContain('Remove 1 week delay');
+  });
+
+  it('reports failed saves and makes the controls usable again', async () => {
+    const service = configure([
+      {
+        ...item,
+        progress: {
+          season: 2,
+          episode: 3,
+          seasons: [{ seasonNumber: 2, firstEpisodeAirDate: '2026-10-01' }],
+        },
+      },
+    ]);
+    service.snoozeOneWeek.mockRejectedValueOnce(new Error('Disk full'));
+    const fixture = TestBed.createComponent(ItemViewComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await fixture.componentInstance.changeReleaseDelay(1);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Could not save the release delay. Please try again.',
+    );
+    expect(fixture.componentInstance.savingReleaseDelay()).toBe(false);
+    expect(fixture.componentInstance.snoozeCount()).toBe(0);
   });
 
   it('does not show ineffective quick actions for a new item', async () => {
