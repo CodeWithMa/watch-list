@@ -131,7 +131,7 @@ describe('ItemViewComponent', () => {
   });
 
   it.each(['series', 'ova', 'ona'] as const)(
-    'shows %s release delay, estimate, and reversible actions',
+    'shows %s snooze actions without explanatory text',
     async (type) => {
       const current: Item = {
         ...item,
@@ -152,8 +152,9 @@ describe('ItemViewComponent', () => {
         [...element.querySelectorAll('button')].find(
           (button) => button.textContent?.trim() === label,
         )!;
-      expect(element.textContent).toMatch(/Season 2 release delay:\s*2 weeks/);
-      expect(element.textContent).toContain('Pending episode air date (estimate): Oct 29, 2026');
+      expect(element.textContent).not.toMatch(/release delay:/);
+      expect(element.textContent).not.toContain('Pending episode air date');
+      expect(element.textContent).not.toContain('no added delay');
       expect(button('Snooze 1 week').disabled).toBe(false);
       button('Snooze 1 week').click();
       await fixture.whenStable();
@@ -167,24 +168,13 @@ describe('ItemViewComponent', () => {
           ...current,
           progress: {
             ...current.progress!,
-            seasons: [{ ...current.progress!.seasons[0], snoozeCount: 1 }],
-          },
-        },
-      ]);
-      fixture.detectChanges();
-      expect(element.textContent).toMatch(/Season 2 release delay:\s*1 week\s/);
-      service.items.set([
-        {
-          ...current,
-          progress: {
-            ...current.progress!,
             seasons: [{ ...current.progress!.seasons[0], snoozeCount: 0 }],
           },
         },
       ]);
       fixture.detectChanges();
-      expect(element.textContent).toContain('no added delay');
       expect(element.textContent).not.toContain('Remove 1 week delay');
+      expect(element.textContent).not.toMatch(/release delay:/);
     },
   );
 
@@ -209,13 +199,11 @@ describe('ItemViewComponent', () => {
         (button) => button.textContent?.trim() === 'Snooze 1 week',
       )!;
       expect(snooze.disabled).toBe(true);
-      expect(element.textContent).toContain(
-        "Set this season's first episode air date to snooze its release schedule.",
-      );
-      expect(element.querySelector('a[href="/items/series-1/edit"]')).not.toBeNull();
+      expect(element.textContent).not.toContain('Set this season');
+      expect(element.textContent).not.toContain('Pending episode air date');
+      expect(element.textContent).not.toMatch(/release delay:/);
       await fixture.componentInstance.changeReleaseDelay(-1);
       expect(service.removeOneWeekDelay).toHaveBeenCalledWith(item.id);
-      expect(element.textContent).not.toContain('Pending episode air date');
     },
   );
 

@@ -12,7 +12,6 @@ import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { isEpisodicType } from '../../domain/item.constants';
 import {
   canSnoozeCurrentSeason,
-  getCurrentEpisodeAirDate,
   getCurrentSeason,
   isValidSnoozeCount,
 } from '../../domain/episode-release';
@@ -104,7 +103,6 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                 type="button"
                 (click)="changeReleaseDelay(1)"
                 [disabled]="savingReleaseDelay() || !canSnooze()"
-                aria-describedby="release-delay-feedback"
                 class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary text-light-font dark:text-dark-font cursor-pointer hover:border-accent-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Snooze 1 week
@@ -121,37 +119,8 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
               }
             }
           </div>
-          @if (showReleaseDelayControls()) {
-            <div id="release-delay-feedback" class="mt-3 text-sm" aria-live="polite">
-              @if (currentSeason(); as season) {
-                <p>
-                  Season {{ season.seasonNumber }} release delay:
-                  @if (snoozeCount() === 0) {
-                    no added delay
-                  } @else {
-                    {{ snoozeCount() }} {{ snoozeCount() === 1 ? 'week' : 'weeks' }}
-                  }
-                </p>
-              }
-              @if (estimatedAirDate(); as airDate) {
-                <p>Pending episode air date (estimate): {{ airDate | date: 'mediumDate' }}</p>
-              }
-              @if (!canSnooze()) {
-                <p>
-                  @if (!estimatedAirDate()) {
-                    Set this season's first episode air date to snooze its release schedule.
-                    <a [routerLink]="['/items', currentItem.id, 'edit']" class="text-accent-primary"
-                      >Edit season details</a
-                    >
-                  } @else {
-                    This season's release delay cannot be increased further.
-                  }
-                </p>
-              }
-              @if (releaseDelayError()) {
-                <p role="alert" class="text-accent-danger">{{ releaseDelayError() }}</p>
-              }
-            </div>
+          @if (showReleaseDelayControls() && releaseDelayError()) {
+            <p role="alert" class="mt-3 text-sm text-accent-danger">{{ releaseDelayError() }}</p>
           }
         </section>
 
@@ -258,10 +227,6 @@ export class ItemViewComponent {
     return item ? getCurrentSeason(item) : undefined;
   });
   readonly snoozeCount = computed(() => this.currentSeason()?.snoozeCount ?? 0);
-  readonly estimatedAirDate = computed(() => {
-    const item = this.item();
-    return item ? getCurrentEpisodeAirDate(item) : null;
-  });
   readonly canSnooze = computed(() => {
     const item = this.item();
     return !!item && canSnoozeCurrentSeason(item);
