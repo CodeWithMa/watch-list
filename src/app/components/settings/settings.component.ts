@@ -329,20 +329,11 @@ import { environment } from '../../../environments/environment';
           </p>
         </div>
         <div class="mb-4 last:mb-0">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="file"
-              #fileInput
-              (change)="onFileSelected($event)"
-              accept=".json"
-              style="display: none"
-            />
-            <button
-              (click)="fileInput.click()"
-              class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-info text-white hover:bg-accent-info-hover"
-            >
-              Import Data
-            </button>
+          <label
+            class="inline-block px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-info text-white hover:bg-accent-info-hover"
+          >
+            Import Data
+            <input type="file" (change)="onFileSelected($event)" accept=".json" class="hidden" />
           </label>
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
             Replace all data with imported JSON file
@@ -608,6 +599,12 @@ export class SettingsComponent implements OnInit {
     this.successMessage.set(null);
     this.pendingImportFile.set(file);
     input.value = '';
+    // The native file picker can leave the Electron renderer without keyboard
+    // focus (see electron/electron#40212). Restoring focus here is a no-op on
+    // web but keeps inputs usable in the AppImage after a file is picked.
+    if (typeof window !== 'undefined' && typeof window.focus === 'function') {
+      window.focus();
+    }
   }
 
   cancelImport(): void {

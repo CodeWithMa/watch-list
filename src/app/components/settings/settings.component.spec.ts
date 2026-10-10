@@ -15,6 +15,8 @@ describe('SettingsComponent', () => {
     origHash = environment.commitHash;
     origVersion = environment.appVersion;
     origBuildDate = environment.buildDate;
+    // jsdom does not implement window.focus; stub it (restored in afterEach).
+    vi.spyOn(window, 'focus').mockReturnValue(undefined);
   });
 
   afterEach(() => {
@@ -242,6 +244,23 @@ describe('SettingsComponent', () => {
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
 
     expect(exportService.importData).not.toHaveBeenCalled();
+  });
+
+  it('restores window focus after the native file picker closes', async () => {
+    configure({ token: '', key: '', credential: null });
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const target = {
+      files: [
+        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
+      ] as unknown as FileList,
+      value: '',
+    };
+
+    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+
+    // Guards against the Electron focus-desync (electron/electron#40212) that
+    // left all inputs unfocusable after the native file dialog closed.
+    expect(window.focus).toHaveBeenCalled();
   });
 
   it('stages the import on file select and imports only after confirmation', async () => {
