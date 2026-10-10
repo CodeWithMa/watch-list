@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { DEFAULT_GROUP_ID } from './item.constants';
-import { CURRENT_SCHEMA_VERSION, StorageData } from '../models/storage.model';
+import { CURRENT_SCHEMA_VERSION, DeletedItemHistory, StorageData } from '../models/storage.model';
+import { Group } from '../models/group.model';
+import { Item } from '../models/item.model';
 
 interface LegacyProgressV2 {
   season: number;
@@ -105,11 +107,84 @@ export function normalizeStorageData(data: unknown): StorageData {
   const normalized = applyStorageDefaults(migrated);
 
   const result = StorageDataSchema.safeParse(normalized);
-  if (!result.success) {
+  if (result.success) {
+    return result.data as StorageData;
+  }
+
+  const quarantined = quarantineInvalidRecords(normalized);
+  const retry = StorageDataSchema.safeParse(quarantined.data);
+  if (!retry.success) {
     throw new Error('Invalid migrated data');
   }
 
-  return result.data as StorageData;
+  return retry.data as StorageData;
+}
+
+function quarantineInvalidRecords(data: StorageData): { data: StorageData } {
+  const inputItemCount = Object.keys(data.items ?? {}).length;
+
+  const groups: Record<string, Group> = {};
+  let droppedGroups = 0;
+  for (const [id, group] of Object.entries(data.groups ?? {})) {
+    const parsed = GroupSchema.safeParse(group);
+    if (parsed.success) {
+      groups[id] = parsed.data;
+    } else {
+      droppedGroups++;
+    }
+  }
+
+  const items: Record<string, Item> = {};
+  let droppedItems = 0;
+  for (const [id, item] of Object.entries(data.items ?? {})) {
+    const parsed = ItemSchema.safeParse(item);
+    if (parsed.success) {
+      items[id] = parsed.data as Item;
+    } else {
+      droppedItems++;
+    }
+  }
+
+  const deletedItems: Record<string, DeletedItemHistory> = {};
+  let droppedDeleted = 0;
+  for (const [id, entry] of Object.entries(data.deletedItems ?? {})) {
+    const parsed = DeletedItemHistorySchema.safeParse(entry);
+    if (parsed.success) {
+      deletedItems[id] = parsed.data;
+    } else {
+      droppedDeleted++;
+    }
+  }
+
+  if (inputItemCount > 0 && Object.keys(items).length === 0) {
+    throw new Error('Invalid migrated data');
+  }
+
+  const withDefaults = applyStorageDefaults({
+    ...data,
+    groups,
+    items,
+    deletedItems,
+  });
+
+  // Items pointing at a dropped group fall back to the default group
+  // instead of keeping a dangling reference. The own-key check matters:
+  // a plain lookup would find inherited Object.prototype members (e.g. an
+  // item with groupId 'toString') and keep the dangling reference.
+  for (const item of Object.values(withDefaults.items)) {
+    if (!Object.hasOwn(withDefaults.groups, item.groupId)) {
+      item.groupId = DEFAULT_GROUP_ID;
+    }
+  }
+
+  if (droppedGroups + droppedItems + droppedDeleted > 0) {
+    console.warn(
+      `Dropped ${droppedItems} invalid item(s), ${droppedGroups} invalid group(s), ` +
+        `${droppedDeleted} invalid deleted entr(ies) during storage normalization.`,
+    );
+  }
+
+  return { data: withDefaults };
 }
 
 function isStorageDataShape(data: unknown): data is StorageData {
@@ -141,14 +216,19 @@ function isStorageDataShape(data: unknown): data is StorageData {
 
 function migrateStorageData(data: StorageData): StorageData {
   if (data.schemaVersion >= CURRENT_SCHEMA_VERSION) {
-    return { ...data };
+    return structuredClone(data);
   }
 
-  const migrated = { ...data };
+  const migrated: StorageData = structuredClone(data);
 
   if (migrated.schemaVersion < 3) {
     for (const item of Object.values(migrated.items)) {
-      if (item.type === 'series' && item.progress) {
+      // Malformed records (null, primitives) pass through to quarantine,
+      // which drops them after migration salvages the valid items.
+      if (!isRecord(item)) {
+        continue;
+      }
+      if (item['type'] === 'series' && item['progress']) {
         const progress = item.progress as unknown as LegacyProgressV2;
         if ('totalEpisodes' in progress && typeof progress.totalEpisodes === 'number') {
           progress.seasons = [
@@ -175,6 +255,9 @@ function migrateStorageData(data: StorageData): StorageData {
 
   if (migrated.schemaVersion < 5) {
     for (const item of Object.values(migrated.items)) {
+      if (!isRecord(item)) {
+        continue;
+      }
       if (!('posterPath' in item)) {
         Object.assign(item, { posterPath: undefined });
       }
@@ -184,9 +267,12 @@ function migrateStorageData(data: StorageData): StorageData {
 
   if (migrated.schemaVersion < 6) {
     for (const item of Object.values(migrated.items)) {
+      if (!isRecord(item)) {
+        continue;
+      }
       // Remote URLs must never survive the offline-image migration. Existing
       // posters are deliberately cleared instead of being fetched at startup.
-      delete (item as unknown as Record<string, unknown>)['posterPath'];
+      delete item['posterPath'];
     }
     migrated.schemaVersion = 6;
   }
@@ -206,9 +292,11 @@ function migrateStorageData(data: StorageData): StorageData {
   if (migrated.schemaVersion < 9) {
     // Introduce required isAdult. Existing items lack the field; default to false (SFW).
     for (const item of Object.values(migrated.items)) {
-      const rec = item as unknown as Record<string, unknown>;
-      if (typeof rec['isAdult'] !== 'boolean') {
-        rec['isAdult'] = false;
+      if (!isRecord(item)) {
+        continue;
+      }
+      if (typeof item['isAdult'] !== 'boolean') {
+        item['isAdult'] = false;
       }
     }
     migrated.schemaVersion = 9;
