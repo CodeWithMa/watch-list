@@ -168,9 +168,11 @@ function quarantineInvalidRecords(data: StorageData): { data: StorageData } {
   });
 
   // Items pointing at a dropped group fall back to the default group
-  // instead of keeping a dangling reference.
+  // instead of keeping a dangling reference. The own-key check matters:
+  // a plain lookup would find inherited Object.prototype members (e.g. an
+  // item with groupId 'toString') and keep the dangling reference.
   for (const item of Object.values(withDefaults.items)) {
-    if (!withDefaults.groups[item.groupId]) {
+    if (!Object.hasOwn(withDefaults.groups, item.groupId)) {
       item.groupId = DEFAULT_GROUP_ID;
     }
   }
@@ -221,7 +223,12 @@ function migrateStorageData(data: StorageData): StorageData {
 
   if (migrated.schemaVersion < 3) {
     for (const item of Object.values(migrated.items)) {
-      if (item.type === 'series' && item.progress) {
+      // Malformed records (null, primitives) pass through to quarantine,
+      // which drops them after migration salvages the valid items.
+      if (!isRecord(item)) {
+        continue;
+      }
+      if (item['type'] === 'series' && item['progress']) {
         const progress = item.progress as unknown as LegacyProgressV2;
         if ('totalEpisodes' in progress && typeof progress.totalEpisodes === 'number') {
           progress.seasons = [
@@ -248,6 +255,9 @@ function migrateStorageData(data: StorageData): StorageData {
 
   if (migrated.schemaVersion < 5) {
     for (const item of Object.values(migrated.items)) {
+      if (!isRecord(item)) {
+        continue;
+      }
       if (!('posterPath' in item)) {
         Object.assign(item, { posterPath: undefined });
       }
@@ -257,9 +267,12 @@ function migrateStorageData(data: StorageData): StorageData {
 
   if (migrated.schemaVersion < 6) {
     for (const item of Object.values(migrated.items)) {
+      if (!isRecord(item)) {
+        continue;
+      }
       // Remote URLs must never survive the offline-image migration. Existing
       // posters are deliberately cleared instead of being fetched at startup.
-      delete (item as unknown as Record<string, unknown>)['posterPath'];
+      delete item['posterPath'];
     }
     migrated.schemaVersion = 6;
   }
@@ -279,9 +292,11 @@ function migrateStorageData(data: StorageData): StorageData {
   if (migrated.schemaVersion < 9) {
     // Introduce required isAdult. Existing items lack the field; default to false (SFW).
     for (const item of Object.values(migrated.items)) {
-      const rec = item as unknown as Record<string, unknown>;
-      if (typeof rec['isAdult'] !== 'boolean') {
-        rec['isAdult'] = false;
+      if (!isRecord(item)) {
+        continue;
+      }
+      if (typeof item['isAdult'] !== 'boolean') {
+        item['isAdult'] = false;
       }
     }
     migrated.schemaVersion = 9;
