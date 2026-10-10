@@ -360,7 +360,8 @@ import { environment } from '../../../environments/environment';
               <div class="flex flex-wrap gap-3">
                 <button
                   (click)="confirmImport()"
-                  class="px-6 py-2 border-none rounded cursor-pointer text-sm font-medium bg-accent-danger text-white hover:bg-accent-danger-hover"
+                  [disabled]="importInProgress()"
+                  class="px-6 py-2 border-none rounded cursor-pointer text-sm font-medium bg-accent-danger text-white hover:bg-accent-danger-hover disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Confirm Import
                 </button>
@@ -477,6 +478,7 @@ export class SettingsComponent implements OnInit {
   titleOrder = signal<TitlePreference>(this.providerSettingsService.getTitlePreference());
   recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
   pendingImportFile = signal<File | null>(null);
+  importInProgress = signal(false);
 
   ngOnInit(): void {
     this.loadRecoveryBackups();
@@ -624,24 +626,26 @@ export class SettingsComponent implements OnInit {
 
   async confirmImport(): Promise<void> {
     const file = this.pendingImportFile();
-    if (!file) {
+    if (!file || this.importInProgress()) {
       return;
     }
 
     this.errorMessage.set(null);
     this.successMessage.set(null);
+    this.importInProgress.set(true);
 
     try {
       await this.importExportService.importData(file);
       this.syncProviderSignals();
       this.successMessage.set('Data imported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
-      this.pendingImportFile.set(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
       this.errorMessage.set(`Import failed: ${message}`);
       setTimeout(() => this.errorMessage.set(null), 5000);
+    } finally {
       this.pendingImportFile.set(null);
+      this.importInProgress.set(false);
     }
   }
 

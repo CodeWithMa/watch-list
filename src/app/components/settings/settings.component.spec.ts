@@ -288,6 +288,42 @@ describe('SettingsComponent', () => {
     expect(window.focus).toHaveBeenCalled();
   });
 
+  it('runs only one import when confirm is triggered twice while in progress', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    let resolveImport!: () => void;
+    vi.mocked(exportService.importData).mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveImport = resolve;
+      }),
+    );
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const target = {
+      files: [
+        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
+      ] as unknown as FileList,
+      value: '',
+    };
+
+    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    const first = fixture.componentInstance.confirmImport();
+    expect(fixture.componentInstance.importInProgress()).toBe(true);
+    fixture.detectChanges();
+
+    const confirmButton = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (candidate: HTMLButtonElement) => candidate.textContent?.trim() === 'Confirm Import',
+    ) as HTMLButtonElement;
+    expect(confirmButton.disabled).toBe(true);
+
+    await fixture.componentInstance.confirmImport();
+    resolveImport();
+    await first;
+
+    expect(exportService.importData).toHaveBeenCalledOnce();
+    expect(fixture.componentInstance.importInProgress()).toBe(false);
+    expect(fixture.componentInstance.pendingImportFile()).toBeNull();
+  });
+
   it('stages the import on file select and imports only after confirmation', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
