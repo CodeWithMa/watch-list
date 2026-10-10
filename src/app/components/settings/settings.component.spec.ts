@@ -246,6 +246,31 @@ describe('SettingsComponent', () => {
     expect(exportService.importData).not.toHaveBeenCalled();
   });
 
+  it('opens the file picker exactly once from a keyboard-focusable Import Data button', () => {
+    configure({ token: '', key: '', credential: null });
+    const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.detectChanges();
+
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (candidate: HTMLButtonElement) => candidate.textContent?.trim() === 'Import Data',
+    ) as HTMLButtonElement | undefined;
+    expect(button?.tagName).toBe('BUTTON');
+    expect(button?.getAttribute('type')).toBe('button');
+    // The file input must not be nested in a label: label activation plus an
+    // explicit .click() would open the picker twice.
+    expect(
+      fixture.nativeElement.querySelector('label input[type="file"][accept=".json"]'),
+    ).toBeNull();
+
+    const input = fixture.nativeElement.querySelector(
+      'input[type="file"][accept=".json"]',
+    ) as HTMLInputElement;
+    const clickSpy = vi.spyOn(input, 'click').mockReturnValue(undefined);
+    button?.click();
+
+    expect(clickSpy).toHaveBeenCalledOnce();
+  });
+
   it('restores window focus after the native file picker closes', async () => {
     configure({ token: '', key: '', credential: null });
     const fixture = TestBed.createComponent(SettingsComponent);

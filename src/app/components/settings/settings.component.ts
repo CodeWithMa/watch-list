@@ -329,12 +329,23 @@ import { environment } from '../../../environments/environment';
           </p>
         </div>
         <div class="mb-4 last:mb-0">
-          <label
-            class="inline-block px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-info text-white hover:bg-accent-info-hover"
-          >
-            Import Data
-            <input type="file" (change)="onFileSelected($event)" accept=".json" class="hidden" />
-          </label>
+          <div>
+            <button
+              type="button"
+              (click)="fileInput.click()"
+              class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-info text-white hover:bg-accent-info-hover"
+            >
+              Import Data
+            </button>
+            <input
+              type="file"
+              #fileInput
+              (change)="onFileSelected($event)"
+              accept=".json"
+              class="hidden"
+              aria-label="Choose JSON file to import"
+            />
+          </div>
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
             Replace all data with imported JSON file
           </p>
