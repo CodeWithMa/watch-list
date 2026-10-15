@@ -206,6 +206,28 @@ describe('PosterPickerComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Use URL');
   });
 
+  it('opens the image picker exactly once from a keyboard-focusable Upload button', () => {
+    const fixture = TestBed.createComponent(PosterPickerComponent);
+    fixture.detectChanges();
+
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (candidate: HTMLButtonElement) => candidate.textContent?.trim() === 'Upload image',
+    ) as HTMLButtonElement | undefined;
+    expect(button?.tagName).toBe('BUTTON');
+    expect(button?.getAttribute('type')).toBe('button');
+    // The file input must not be nested in a label: label activation plus an
+    // explicit .click() would open the picker twice.
+    expect(fixture.nativeElement.querySelector('label input[type="file"]')).toBeNull();
+
+    const input = fixture.nativeElement.querySelector(
+      'input[type="file"][accept="image/*"]',
+    ) as HTMLInputElement;
+    const clickSpy = vi.spyOn(input, 'click').mockReturnValue(undefined);
+    button?.click();
+
+    expect(clickSpy).toHaveBeenCalledOnce();
+  });
+
   it('stores the poster from a suggestion URL', async () => {
     const fixture = TestBed.createComponent(PosterPickerComponent);
     fixture.detectChanges();

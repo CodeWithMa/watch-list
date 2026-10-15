@@ -15,6 +15,8 @@ describe('SettingsComponent', () => {
     origHash = environment.commitHash;
     origVersion = environment.appVersion;
     origBuildDate = environment.buildDate;
+    // jsdom does not implement window.focus; stub it (restored in afterEach).
+    vi.spyOn(window, 'focus').mockReturnValue(undefined);
   });
 
   afterEach(() => {
@@ -244,10 +246,132 @@ describe('SettingsComponent', () => {
     expect(exportService.importData).not.toHaveBeenCalled();
   });
 
-  it('aborts the import when the user cancels the confirmation', async () => {
+  it('opens the file picker exactly once from a keyboard-focusable Import Data button', () => {
+    configure({ token: '', key: '', credential: null });
+    const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.detectChanges();
+
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (candidate: HTMLButtonElement) => candidate.textContent?.trim() === 'Import Data',
+    ) as HTMLButtonElement | undefined;
+    expect(button?.tagName).toBe('BUTTON');
+    expect(button?.getAttribute('type')).toBe('button');
+    // The file input must not be nested in a label: label activation plus an
+    // explicit .click() would open the picker twice.
+    expect(
+      fixture.nativeElement.querySelector('label input[type="file"][accept=".json"]'),
+    ).toBeNull();
+
+    const input = fixture.nativeElement.querySelector(
+      'input[type="file"][accept=".json"]',
+    ) as HTMLInputElement;
+    const clickSpy = vi.spyOn(input, 'click').mockReturnValue(undefined);
+    button?.click();
+
+    expect(clickSpy).toHaveBeenCalledOnce();
+  });
+
+  it('restores window focus after the native file picker closes', async () => {
+    configure({ token: '', key: '', credential: null });
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const target = {
+      files: [
+        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
+      ] as unknown as FileList,
+      value: '',
+    };
+
+    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+
+    // Guards against the Electron focus-desync (electron/electron#40212) that
+    // left all inputs unfocusable after the native file dialog closed.
+    expect(window.focus).toHaveBeenCalled();
+  });
+
+  it('runs only one import when confirm is triggered twice while in progress', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    let resolveImport!: () => void;
+    vi.mocked(exportService.importData).mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveImport = resolve;
+      }),
+    );
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const target = {
+      files: [
+        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
+      ] as unknown as FileList,
+      value: '',
+    };
+
+    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    const first = fixture.componentInstance.confirmImport();
+    expect(fixture.componentInstance.importInProgress()).toBe(true);
+    fixture.detectChanges();
+
+    const confirmButton = [...fixture.nativeElement.querySelectorAll('button')].find(
+      (candidate: HTMLButtonElement) => candidate.textContent?.trim() === 'Confirm Import',
+    ) as HTMLButtonElement;
+    expect(confirmButton.disabled).toBe(true);
+
+    await fixture.componentInstance.confirmImport();
+    resolveImport();
+    await first;
+
+    expect(exportService.importData).toHaveBeenCalledOnce();
+    expect(fixture.componentInstance.importInProgress()).toBe(false);
+    expect(fixture.componentInstance.pendingImportFile()).toBeNull();
+  });
+
+  it('keeps a file selected during an import pending after the import finishes', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    let resolveFirst!: () => void;
+    vi.mocked(exportService.importData)
+      .mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          resolveFirst = resolve;
+        }),
+      )
+      .mockResolvedValue(undefined);
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const pick = (name: string) => ({
+      files: [new File(['{}'], name, { type: 'application/json' })] as unknown as FileList,
+      value: '',
+    });
+
+    await fixture.componentInstance.onFileSelected({ target: pick('a.json') } as unknown as Event);
+    const first = fixture.componentInstance.confirmImport();
+    expect(fixture.componentInstance.importInProgress()).toBe(true);
+    fixture.detectChanges();
+
+    const buttons = [...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[];
+    const byText = (text: string) => buttons.find((button) => button.textContent?.trim() === text);
+    expect(byText('Import Data')?.disabled).toBe(true);
+    expect(byText('Cancel')?.disabled).toBe(true);
+
+    // The picker is disabled while importing, but a file staged meanwhile
+    // must not be discarded by the running import's cleanup.
+    await fixture.componentInstance.onFileSelected({ target: pick('b.json') } as unknown as Event);
+    await fixture.componentInstance.confirmImport();
+    expect(exportService.importData).toHaveBeenCalledOnce();
+
+    resolveFirst();
+    await first;
+
+    expect(fixture.componentInstance.importInProgress()).toBe(false);
+    expect(fixture.componentInstance.pendingImportFile()?.name).toBe('b.json');
+
+    await fixture.componentInstance.confirmImport();
+
+    expect(exportService.importData).toHaveBeenCalledTimes(2);
+    expect(fixture.componentInstance.pendingImportFile()).toBeNull();
+  });
+
+  it('stages the import on file select and imports only after confirmation', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
     const fixture = TestBed.createComponent(SettingsComponent);
     const target = {
       files: [
@@ -259,13 +383,39 @@ describe('SettingsComponent', () => {
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
 
     expect(exportService.importData).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.pendingImportFile()?.name).toBe('export.json');
+    expect(target.value).toBe('');
+
+    await fixture.componentInstance.confirmImport();
+
+    expect(exportService.importData).toHaveBeenCalledOnce();
+    expect(fixture.componentInstance.pendingImportFile()).toBeNull();
+    expect(fixture.componentInstance.successMessage()).toBe('Data imported successfully');
+  });
+
+  it('aborts the import when the user cancels the inline confirmation', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const target = {
+      files: [
+        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
+      ] as unknown as FileList,
+      value: 'previous-file.json',
+    };
+
+    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    fixture.componentInstance.cancelImport();
+    await fixture.componentInstance.confirmImport();
+
+    expect(exportService.importData).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.pendingImportFile()).toBeNull();
     expect(target.value).toBe('');
   });
 
   it('shows success feedback after a confirmed import', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fixture = TestBed.createComponent(SettingsComponent);
     const target = {
       files: [
@@ -275,6 +425,7 @@ describe('SettingsComponent', () => {
     };
 
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    await fixture.componentInstance.confirmImport();
 
     expect(exportService.importData).toHaveBeenCalledOnce();
     expect(fixture.componentInstance.successMessage()).toBe('Data imported successfully');
@@ -285,7 +436,6 @@ describe('SettingsComponent', () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
     vi.spyOn(exportService, 'importData').mockRejectedValue(new Error('Invalid JSON file'));
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fixture = TestBed.createComponent(SettingsComponent);
     const target = {
       files: [
@@ -295,6 +445,7 @@ describe('SettingsComponent', () => {
     };
 
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    await fixture.componentInstance.confirmImport();
 
     expect(fixture.componentInstance.errorMessage()).toBe('Import failed: Invalid JSON file');
     expect(fixture.componentInstance.successMessage()).toBeNull();
@@ -447,7 +598,6 @@ describe('SettingsComponent', () => {
       ],
     });
     const exportService = TestBed.inject(ImportExportService);
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fixture = TestBed.createComponent(SettingsComponent);
     expect(fixture.componentInstance.includeAdult()).toBe(false);
 
@@ -464,6 +614,7 @@ describe('SettingsComponent', () => {
       value: '',
     };
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    await fixture.componentInstance.confirmImport();
     expect(exportService.importData).toHaveBeenCalledOnce();
     expect(fixture.componentInstance.includeAdult()).toBe(true);
     expect(fixture.componentInstance.tmdbEnabled()).toBe(true);

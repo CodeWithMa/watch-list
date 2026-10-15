@@ -88,12 +88,21 @@ import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
             Clear poster
           </button>
         }
-        <label
+        <button
+          type="button"
+          (click)="posterInput.click()"
           class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
         >
           Upload image
-          <input type="file" accept="image/*" class="hidden" (change)="uploadPoster($event)" />
-        </label>
+        </button>
+        <input
+          type="file"
+          #posterInput
+          accept="image/*"
+          class="hidden"
+          (change)="uploadPoster($event)"
+          aria-label="Choose image to upload"
+        />
         @if (posterLoading()) {
           <div class="text-xs text-light-font-secondary dark:text-dark-font-secondary">
             Saving poster...
