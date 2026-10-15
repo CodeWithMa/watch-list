@@ -4,7 +4,7 @@ import { SuggestionSearchService } from '../../services/suggestion-search.servic
 import { ImageStorageService } from '../../services/image-storage.service';
 import { PosterPickerComponent } from './poster-picker.component';
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 
 function createSuggestion(
@@ -18,6 +18,8 @@ function createSuggestion(
 }
 
 describe('PosterPickerComponent', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
@@ -226,6 +228,53 @@ describe('PosterPickerComponent', () => {
     button?.click();
 
     expect(clickSpy).toHaveBeenCalledOnce();
+  });
+
+  it.each(['change', 'cancel'])(
+    'requests window focus on %s with no file without changing the poster',
+    async (event) => {
+      const focus = vi.spyOn(window, 'focus').mockReturnValue(undefined);
+      const fixture = TestBed.createComponent(PosterPickerComponent);
+      fixture.detectChanges();
+      const changed = vi.fn();
+      fixture.componentInstance.posterIdChange.subscribe(changed);
+      const root = fixture.nativeElement as HTMLElement;
+      const input = root.querySelector<HTMLInputElement>('input[type="file"]')!;
+      input.dispatchEvent(new Event(event, { bubbles: true }));
+      await fixture.whenStable();
+
+      expect(focus).toHaveBeenCalledOnce();
+      expect(TestBed.inject(ImageStorageService).storeFile).not.toHaveBeenCalled();
+      expect(changed).not.toHaveBeenCalled();
+    },
+  );
+
+  it('requests window focus when a poster is selected, before image storage finishes', async () => {
+    const focus = vi.spyOn(window, 'focus').mockReturnValue(undefined);
+    const imageStorage = TestBed.inject(ImageStorageService);
+    let resolvePoster!: (id: string) => void;
+    vi.mocked(imageStorage.storeFile).mockReturnValue(
+      new Promise<string>((resolve) => {
+        resolvePoster = resolve;
+      }),
+    );
+    const fixture = TestBed.createComponent(PosterPickerComponent);
+    fixture.detectChanges();
+    const changed = vi.fn();
+    fixture.componentInstance.posterIdChange.subscribe(changed);
+    const root = fixture.nativeElement as HTMLElement;
+    const input = root.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const file = new File(['image'], 'poster.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(focus).toHaveBeenCalledOnce();
+    expect(imageStorage.storeFile).toHaveBeenCalledWith(file);
+    expect(changed).not.toHaveBeenCalled();
+
+    resolvePoster('image-1');
+    await fixture.whenStable();
+    expect(changed).toHaveBeenCalledWith('image-1');
   });
 
   it('stores the poster from a suggestion URL', async () => {

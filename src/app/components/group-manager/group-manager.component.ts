@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, ElementRef, signal, inject, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GroupService } from '../../services/group.service';
 import { Group } from '../../models/group.model';
@@ -17,6 +17,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
         </h2>
         <form (ngSubmit)="createGroup()" class="flex gap-4">
           <input
+            #newGroupInput
             type="text"
             [(ngModel)]="newGroupName"
             name="newGroupName"
@@ -80,22 +81,21 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
                 </button>
               }
               @if (group.id !== defaultGroupId) {
-                @if (pendingDeleteGroupId() !== group.id) {
+                <button
+                  #deleteButton
+                  (click)="
+                    pendingDeleteGroupId() === group.id
+                      ? confirmDeleteGroup(group.id)
+                      : requestDeleteGroup(group.id)
+                  "
+                  [class.animate-pulse]="pendingDeleteGroupId() === group.id"
+                  class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white hover:bg-accent-danger-hover cursor-pointer text-sm"
+                >
+                  {{ pendingDeleteGroupId() === group.id ? 'Confirm Delete?' : 'Delete' }}
+                </button>
+                @if (pendingDeleteGroupId() === group.id) {
                   <button
-                    (click)="requestDeleteGroup(group.id)"
-                    class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white hover:bg-accent-danger-hover cursor-pointer text-sm"
-                  >
-                    Delete
-                  </button>
-                } @else {
-                  <button
-                    (click)="confirmDeleteGroup(group.id)"
-                    class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white hover:bg-accent-danger-hover cursor-pointer text-sm animate-pulse"
-                  >
-                    Confirm Delete?
-                  </button>
-                  <button
-                    (click)="cancelDeleteGroup()"
+                    (click)="cancelDeleteGroup(); deleteButton.focus()"
                     class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
                   >
                     Cancel
@@ -143,6 +143,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
 })
 export class GroupManagerComponent {
   private groupService = inject(GroupService);
+  private newGroupInput = viewChild.required<ElementRef<HTMLInputElement>>('newGroupInput');
 
   readonly groups = this.groupService.groups;
   readonly defaultGroupId = DEFAULT_GROUP_ID;
@@ -195,8 +196,9 @@ export class GroupManagerComponent {
     try {
       this.groupService.deleteGroup(groupId);
       this.deleteError.set(null);
-    } catch {
-      this.deleteError.set('Cannot delete the ungrouped group');
+      this.newGroupInput().nativeElement.focus();
+    } catch (error) {
+      this.deleteError.set(error instanceof Error ? error.message : 'Failed to delete group');
     } finally {
       this.pendingDeleteGroupId.set(null);
     }

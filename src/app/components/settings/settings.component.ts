@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
+import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
 import {
   AdultDisplayMode,
   DEFAULT_TITLE_PREFERENCE,
@@ -16,7 +17,7 @@ import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, FilePickerFocusDirective],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
@@ -340,6 +341,7 @@ import { environment } from '../../../environments/environment';
             </button>
             <input
               type="file"
+              appFilePickerFocus
               #fileInput
               (change)="onFileSelected($event)"
               accept=".json"
@@ -614,12 +616,6 @@ export class SettingsComponent implements OnInit {
     this.successMessage.set(null);
     this.pendingImportFile.set(file);
     input.value = '';
-    // The native file picker can leave the Electron renderer without keyboard
-    // focus (see electron/electron#40212). Restoring focus here is a no-op on
-    // web but keeps inputs usable in the AppImage after a file is picked.
-    if (typeof window !== 'undefined' && typeof window.focus === 'function') {
-      window.focus();
-    }
   }
 
   cancelImport(): void {

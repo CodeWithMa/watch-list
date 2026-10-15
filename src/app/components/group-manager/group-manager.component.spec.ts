@@ -30,7 +30,7 @@ describe('GroupManagerComponent inline delete confirm', () => {
     });
     const fixture = TestBed.createComponent(GroupManagerComponent);
     fixture.detectChanges();
-    return { fixture, deleteGroup };
+    return { fixture, deleteGroup, groups };
   }
 
   function defaultGroups(): Group[] {
@@ -39,6 +39,52 @@ describe('GroupManagerComponent inline delete confirm', () => {
       { id: 'g1', name: 'Films', order: 1 },
     ];
   }
+
+  function button(root: HTMLElement, text: string) {
+    const found = [...root.querySelectorAll('button')].find(
+      (candidate) => candidate.textContent?.trim() === text,
+    );
+    if (!found) throw new Error(`Missing button: ${text}`);
+    return found;
+  }
+
+  it('keeps keyboard focus on confirmation and returns it to Delete after cancellation', () => {
+    const { fixture, deleteGroup } = setup();
+    const root = fixture.nativeElement as HTMLElement;
+    const remove = button(root, 'Delete');
+    remove.focus();
+    remove.click();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(button(root, 'Confirm Delete?'));
+    expect(deleteGroup).not.toHaveBeenCalled();
+
+    const cancel = button(root, 'Cancel');
+    cancel.focus();
+    cancel.click();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(button(root, 'Delete'));
+    expect(deleteGroup).not.toHaveBeenCalled();
+  });
+
+  it('focuses the create-group input after the confirmed group is removed', () => {
+    const { fixture, deleteGroup, groups } = setup();
+    deleteGroup.mockImplementation((id: string) => {
+      groups.update((current) => current.filter((group) => group.id !== id));
+    });
+    const root = fixture.nativeElement as HTMLElement;
+    button(root, 'Delete').click();
+    fixture.detectChanges();
+    const confirm = button(root, 'Confirm Delete?');
+    confirm.focus();
+    confirm.click();
+    fixture.detectChanges();
+
+    expect(confirm.isConnected).toBe(false);
+    expect(root.textContent).not.toContain('Films');
+    expect(document.activeElement).toBe(root.querySelector('input[name="newGroupName"]'));
+  });
 
   it('stages a delete without calling the service until confirmed', () => {
     const { fixture, deleteGroup } = setup();
@@ -64,18 +110,24 @@ describe('GroupManagerComponent inline delete confirm', () => {
     expect(deleteGroup).not.toHaveBeenCalled();
   });
 
-  it('shows an inline error when deleting fails', () => {
+  it.each([
+    { error: new Error('Unable to update groups'), message: 'Unable to update groups' },
+    { error: { code: 'UNKNOWN' }, message: 'Failed to delete group' },
+  ])('shows an accurate inline error and restores Delete focus: $message', ({ error, message }) => {
     const { fixture, deleteGroup } = setup();
     deleteGroup.mockImplementationOnce(() => {
-      throw new Error('Cannot delete the ungrouped group');
+      throw error;
     });
-
-    fixture.componentInstance.requestDeleteGroup('g1');
-    fixture.componentInstance.confirmDeleteGroup('g1');
+    const root = fixture.nativeElement as HTMLElement;
+    button(root, 'Delete').click();
+    fixture.detectChanges();
+    const confirm = button(root, 'Confirm Delete?');
+    confirm.focus();
+    confirm.click();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.deleteError()).toBe('Cannot delete the ungrouped group');
-    expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain(message);
+    expect(document.activeElement).toBe(button(root, 'Delete'));
   });
 
   it('renders the two-step confirm in the DOM without window.confirm', () => {

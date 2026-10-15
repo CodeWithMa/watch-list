@@ -271,22 +271,38 @@ describe('SettingsComponent', () => {
     expect(clickSpy).toHaveBeenCalledOnce();
   });
 
-  it('restores window focus after the native file picker closes', async () => {
+  it('requests window focus and stages the selected import from the file input', async () => {
     configure({ token: '', key: '', credential: null });
     const fixture = TestBed.createComponent(SettingsComponent);
-    const target = {
-      files: [
-        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
-      ] as unknown as FileList,
-      value: '',
-    };
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const input = root.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const file = new File(['{}'], 'export.json', { type: 'application/json' });
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await fixture.whenStable();
 
-    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
-
-    // Guards against the Electron focus-desync (electron/electron#40212) that
-    // left all inputs unfocusable after the native file dialog closed.
-    expect(window.focus).toHaveBeenCalled();
+    expect(window.focus).toHaveBeenCalledOnce();
+    expect(root.textContent).toContain('Import "export.json"?');
+    expect(TestBed.inject(ImportExportService).importData).not.toHaveBeenCalled();
   });
+
+  it.each(['change', 'cancel'])(
+    'requests window focus on %s with no file without staging or importing data',
+    async (event) => {
+      configure({ token: '', key: '', credential: null });
+      const fixture = TestBed.createComponent(SettingsComponent);
+      fixture.detectChanges();
+      const root = fixture.nativeElement as HTMLElement;
+      const input = root.querySelector<HTMLInputElement>('input[type="file"]')!;
+      input.dispatchEvent(new Event(event, { bubbles: true }));
+      await fixture.whenStable();
+
+      expect(window.focus).toHaveBeenCalledOnce();
+      expect(root.textContent).not.toContain('Confirm Import');
+      expect(TestBed.inject(ImportExportService).importData).not.toHaveBeenCalled();
+    },
+  );
 
   it('runs only one import when confirm is triggered twice while in progress', async () => {
     configure({ token: '', key: '', credential: null });

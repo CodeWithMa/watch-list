@@ -7,10 +7,11 @@ import { ImageStorageService } from '../../services/image-storage.service';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { createSearchStream } from '../../utils/search-stream.utils';
 import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
+import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
 
 @Component({
   selector: 'app-poster-picker',
-  imports: [FormsModule],
+  imports: [FormsModule, FilePickerFocusDirective],
   template: `
     <div class="flex gap-4">
       <div class="shrink-0">
@@ -97,6 +98,7 @@ import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
         </button>
         <input
           type="file"
+          appFilePickerFocus
           #posterInput
           accept="image/*"
           class="hidden"
