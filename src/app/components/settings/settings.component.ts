@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
+import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
 import {
   AdultDisplayMode,
   DEFAULT_TITLE_PREFERENCE,
@@ -16,7 +17,7 @@ import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, FilePickerFocusDirective],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
@@ -329,24 +330,54 @@ import { environment } from '../../../environments/environment';
           </p>
         </div>
         <div class="mb-4 last:mb-0">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="file"
-              #fileInput
-              (change)="onFileSelected($event)"
-              accept=".json"
-              style="display: none"
-            />
+          <div>
             <button
+              type="button"
               (click)="fileInput.click()"
-              class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-info text-white hover:bg-accent-info-hover"
+              [disabled]="importInProgress()"
+              class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-info text-white hover:bg-accent-info-hover disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Import Data
             </button>
-          </label>
+            <input
+              type="file"
+              appFilePickerFocus
+              #fileInput
+              (change)="onFileSelected($event)"
+              accept=".json"
+              class="hidden"
+              aria-label="Choose JSON file to import"
+            />
+          </div>
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
             Replace all data with imported JSON file
           </p>
+          @if (pendingImportFile()) {
+            <div
+              role="alert"
+              class="mt-4 p-4 rounded border border-error-border-light dark:border-error-border-dark bg-light-bg-secondary dark:bg-dark-bg-secondary"
+            >
+              <p class="mt-0 mb-3 text-sm text-light-font dark:text-dark-font">
+                Import "{{ pendingImportFile()?.name }}"? This will replace all existing data.
+              </p>
+              <div class="flex flex-wrap gap-3">
+                <button
+                  (click)="confirmImport()"
+                  [disabled]="importInProgress()"
+                  class="px-6 py-2 border-none rounded cursor-pointer text-sm font-medium bg-accent-danger text-white hover:bg-accent-danger-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Confirm Import
+                </button>
+                <button
+                  (click)="cancelImport()"
+                  [disabled]="importInProgress()"
+                  class="px-6 py-2 border border-light-border dark:border-dark-border rounded cursor-pointer text-sm font-medium bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </div>
 
@@ -450,6 +481,8 @@ export class SettingsComponent implements OnInit {
   adultDisplayMode = signal<AdultDisplayMode>(this.providerSettingsService.getAdultDisplayMode());
   titleOrder = signal<TitlePreference>(this.providerSettingsService.getTitlePreference());
   recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
+  pendingImportFile = signal<File | null>(null);
+  importInProgress = signal(false);
 
   ngOnInit(): void {
     this.loadRecoveryBackups();
@@ -579,25 +612,42 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
-    if (!confirm('Importing will replace all existing data. Are you sure?')) {
-      input.value = '';
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.pendingImportFile.set(file);
+    input.value = '';
+  }
+
+  cancelImport(): void {
+    this.pendingImportFile.set(null);
+  }
+
+  async confirmImport(): Promise<void> {
+    const file = this.pendingImportFile();
+    if (!file || this.importInProgress()) {
       return;
     }
 
     this.errorMessage.set(null);
     this.successMessage.set(null);
+    this.importInProgress.set(true);
 
     try {
       await this.importExportService.importData(file);
       this.syncProviderSignals();
       this.successMessage.set('Data imported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
-      input.value = '';
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
       this.errorMessage.set(`Import failed: ${message}`);
       setTimeout(() => this.errorMessage.set(null), 5000);
-      input.value = '';
+    } finally {
+      // A file staged while this import ran belongs to the next confirmation;
+      // only clear the pending state when it is still this call's file.
+      if (this.pendingImportFile() === file) {
+        this.pendingImportFile.set(null);
+      }
+      this.importInProgress.set(false);
     }
   }
 

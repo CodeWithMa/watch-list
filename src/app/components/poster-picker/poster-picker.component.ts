@@ -7,10 +7,11 @@ import { ImageStorageService } from '../../services/image-storage.service';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { createSearchStream } from '../../utils/search-stream.utils';
 import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
+import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
 
 @Component({
   selector: 'app-poster-picker',
-  imports: [FormsModule],
+  imports: [FormsModule, FilePickerFocusDirective],
   template: `
     <div class="flex gap-4">
       <div class="shrink-0">
@@ -88,12 +89,22 @@ import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
             Clear poster
           </button>
         }
-        <label
+        <button
+          type="button"
+          (click)="posterInput.click()"
           class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
         >
           Upload image
-          <input type="file" accept="image/*" class="hidden" (change)="uploadPoster($event)" />
-        </label>
+        </button>
+        <input
+          type="file"
+          appFilePickerFocus
+          #posterInput
+          accept="image/*"
+          class="hidden"
+          (change)="uploadPoster($event)"
+          aria-label="Choose image to upload"
+        />
         @if (posterLoading()) {
           <div class="text-xs text-light-font-secondary dark:text-dark-font-secondary">
             Saving poster...

@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, ElementRef, signal, inject, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { GroupService } from '../../services/group.service';
 import { Group } from '../../models/group.model';
@@ -17,6 +17,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
         </h2>
         <form (ngSubmit)="createGroup()" class="flex gap-4">
           <input
+            #newGroupInput
             type="text"
             [(ngModel)]="newGroupName"
             name="newGroupName"
@@ -37,6 +38,14 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
         class="bg-light-bg-secondary dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-lg p-6"
       >
         <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Groups</h2>
+        @if (deleteError()) {
+          <div
+            role="alert"
+            class="mb-4 p-4 rounded border border-error-border-light dark:border-error-border-dark bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark text-sm"
+          >
+            {{ deleteError() }}
+          </div>
+        }
         @for (group of groups(); track group.id; let i = $index) {
           <div
             class="flex justify-between items-center p-4 border-b border-light-border-light dark:border-dark-border-light last:border-b-0"
@@ -73,11 +82,25 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
               }
               @if (group.id !== defaultGroupId) {
                 <button
-                  (click)="deleteGroup(group.id)"
+                  #deleteButton
+                  (click)="
+                    pendingDeleteGroupId() === group.id
+                      ? confirmDeleteGroup(group.id)
+                      : requestDeleteGroup(group.id)
+                  "
+                  [class.animate-pulse]="pendingDeleteGroupId() === group.id"
                   class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white hover:bg-accent-danger-hover cursor-pointer text-sm"
                 >
-                  Delete
+                  {{ pendingDeleteGroupId() === group.id ? 'Confirm Delete?' : 'Delete' }}
                 </button>
+                @if (pendingDeleteGroupId() === group.id) {
+                  <button
+                    (click)="cancelDeleteGroup(); deleteButton.focus()"
+                    class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  >
+                    Cancel
+                  </button>
+                }
               }
             </div>
           </div>
@@ -120,6 +143,7 @@ import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
 })
 export class GroupManagerComponent {
   private groupService = inject(GroupService);
+  private newGroupInput = viewChild.required<ElementRef<HTMLInputElement>>('newGroupInput');
 
   readonly groups = this.groupService.groups;
   readonly defaultGroupId = DEFAULT_GROUP_ID;
@@ -127,6 +151,8 @@ export class GroupManagerComponent {
   editingGroup = signal<Group | null>(null);
   editGroupName = '';
   newGroupName = '';
+  pendingDeleteGroupId = signal<string | null>(null);
+  deleteError = signal<string | null>(null);
 
   createGroup(): void {
     if (!this.newGroupName.trim()) {
@@ -157,15 +183,24 @@ export class GroupManagerComponent {
     this.editGroupName = '';
   }
 
-  deleteGroup(groupId: string): void {
-    if (
-      confirm('Are you sure you want to delete this group? Items will be moved to "Ungrouped".')
-    ) {
-      try {
-        this.groupService.deleteGroup(groupId);
-      } catch {
-        alert('Cannot delete the ungrouped group');
-      }
+  requestDeleteGroup(groupId: string): void {
+    this.deleteError.set(null);
+    this.pendingDeleteGroupId.set(groupId);
+  }
+
+  cancelDeleteGroup(): void {
+    this.pendingDeleteGroupId.set(null);
+  }
+
+  confirmDeleteGroup(groupId: string): void {
+    try {
+      this.groupService.deleteGroup(groupId);
+      this.deleteError.set(null);
+      this.newGroupInput().nativeElement.focus();
+    } catch (error) {
+      this.deleteError.set(error instanceof Error ? error.message : 'Failed to delete group');
+    } finally {
+      this.pendingDeleteGroupId.set(null);
     }
   }
 
