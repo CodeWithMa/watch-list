@@ -31,6 +31,7 @@ interface SelectedSuggestionRef {
       <app-item-form
         [groups]="groups()"
         [initialValue]="initialValue"
+        [focusTitleOnOpen]="true"
         submitLabel="Add Item"
         [showStartImmediately]="true"
         [showStatusPicker]="false"
