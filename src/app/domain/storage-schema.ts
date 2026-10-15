@@ -98,7 +98,18 @@ export function createDefaultStorageData(): StorageData {
   };
 }
 
-export function normalizeStorageData(data: unknown): StorageData {
+export interface DroppedRecords {
+  groups: number;
+  items: number;
+  deletedItems: number;
+}
+
+export interface NormalizationResult {
+  data: StorageData;
+  dropped: DroppedRecords;
+}
+
+export function normalizeStorageData(data: unknown): NormalizationResult {
   if (!isStorageDataShape(data)) {
     throw new Error('Invalid data format');
   }
@@ -108,7 +119,7 @@ export function normalizeStorageData(data: unknown): StorageData {
 
   const result = StorageDataSchema.safeParse(normalized);
   if (result.success) {
-    return result.data as StorageData;
+    return { data: result.data as StorageData, dropped: { groups: 0, items: 0, deletedItems: 0 } };
   }
 
   const quarantined = quarantineInvalidRecords(normalized);
@@ -117,10 +128,10 @@ export function normalizeStorageData(data: unknown): StorageData {
     throw new Error('Invalid migrated data');
   }
 
-  return retry.data as StorageData;
+  return { data: retry.data as StorageData, dropped: quarantined.dropped };
 }
 
-function quarantineInvalidRecords(data: StorageData): { data: StorageData } {
+function quarantineInvalidRecords(data: StorageData): NormalizationResult {
   const inputItemCount = Object.keys(data.items ?? {}).length;
 
   const groups: Record<string, Group> = {};
@@ -184,7 +195,10 @@ function quarantineInvalidRecords(data: StorageData): { data: StorageData } {
     );
   }
 
-  return { data: withDefaults };
+  return {
+    data: withDefaults,
+    dropped: { groups: droppedGroups, items: droppedItems, deletedItems: droppedDeleted },
+  };
 }
 
 function isStorageDataShape(data: unknown): data is StorageData {

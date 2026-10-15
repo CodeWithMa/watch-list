@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
+import { DroppedRecords } from '../../domain/storage-schema';
 import {
   AdultDisplayMode,
   DEFAULT_TITLE_PREFERENCE,
@@ -333,7 +334,8 @@ import { environment } from '../../../environments/environment';
             <button
               type="button"
               (click)="fileInput.click()"
-              class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-info text-white hover:bg-accent-info-hover"
+              [disabled]="importInProgress()"
+              class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-info text-white hover:bg-accent-info-hover disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Import Data
             </button>
@@ -367,7 +369,8 @@ import { environment } from '../../../environments/environment';
                 </button>
                 <button
                   (click)="cancelImport()"
-                  class="px-6 py-2 border border-light-border dark:border-dark-border rounded cursor-pointer text-sm font-medium bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  [disabled]="importInProgress()"
+                  class="px-6 py-2 border border-light-border dark:border-dark-border rounded cursor-pointer text-sm font-medium bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
@@ -635,16 +638,20 @@ export class SettingsComponent implements OnInit {
     this.importInProgress.set(true);
 
     try {
-      await this.importExportService.importData(file);
+      const dropped = await this.importExportService.importData(file);
       this.syncProviderSignals();
-      this.successMessage.set('Data imported successfully');
+      this.successMessage.set(describeImportResult(dropped));
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
       this.errorMessage.set(`Import failed: ${message}`);
       setTimeout(() => this.errorMessage.set(null), 5000);
     } finally {
-      this.pendingImportFile.set(null);
+      // A file staged while this import ran belongs to the next confirmation;
+      // only clear the pending state when it is still this call's file.
+      if (this.pendingImportFile() === file) {
+        this.pendingImportFile.set(null);
+      }
       this.importInProgress.set(false);
     }
   }
@@ -657,4 +664,12 @@ export class SettingsComponent implements OnInit {
     this.adultDisplayMode.set(this.providerSettingsService.getAdultDisplayMode());
     this.titleOrder.set(this.providerSettingsService.getTitlePreference());
   }
+}
+
+function describeImportResult(dropped: DroppedRecords): string {
+  const total = dropped.groups + dropped.items + dropped.deletedItems;
+  if (total === 0) {
+    return 'Data imported successfully';
+  }
+  return `Import completed with ${total} invalid record(s) omitted.`;
 }

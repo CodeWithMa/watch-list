@@ -3,6 +3,7 @@ import { StorageData } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
+import type { DroppedRecords } from '../domain/storage-schema';
 import { StoredImage } from './image-storage.service';
 import { imagesInvalidated } from './image-invalidation';
 
@@ -40,7 +41,7 @@ export class StorageService {
 
   async importData(data: unknown): Promise<StorageData> {
     const normalized = normalizeStorageData(data);
-    await this.persistData(normalized);
+    await this.persistData(normalized.data);
     return this.getData();
   }
 
@@ -48,10 +49,13 @@ export class StorageService {
     return this.persistData(data);
   }
 
-  async importDataWithImages(data: unknown, images: StoredImage[]): Promise<StorageData> {
+  async importDataWithImages(
+    data: unknown,
+    images: StoredImage[],
+  ): Promise<{ data: StorageData; dropped: DroppedRecords }> {
     const normalized = normalizeStorageData(data);
     const updated: StorageData = {
-      ...cloneStorageData(normalized),
+      ...cloneStorageData(normalized.data),
       lastModifiedAt: new Date().toISOString(),
     };
     const snapshot = cloneStorageData(updated);
@@ -63,7 +67,7 @@ export class StorageService {
       // Images cannot be persisted without the database connection.
       this.lastPersistedData = cloneStorageData(snapshot);
       this.saveError.set(null);
-      return this.getData();
+      return { data: this.getData(), dropped: normalized.dropped };
     }
     const write = this.writeQueue.then(async () => {
       const transaction = this.database!.transaction([STORE_NAME, IMAGE_STORE_NAME], 'readwrite');
@@ -89,7 +93,7 @@ export class StorageService {
       },
     );
     await write;
-    return this.getData();
+    return { data: this.getData(), dropped: normalized.dropped };
   }
 
   getSaveErrorSignal() {
@@ -177,7 +181,7 @@ export class StorageService {
         let storedSnapshot: unknown;
         try {
           storedSnapshot = structuredClone(stored);
-          normalized = normalizeStorageData(stored);
+          normalized = normalizeStorageData(stored).data;
         } catch (error) {
           console.error('Failed to load stored watch-list data:', error);
           await this.backupRawData(storedSnapshot);

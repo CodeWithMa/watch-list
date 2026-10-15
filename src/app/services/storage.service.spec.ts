@@ -629,7 +629,8 @@ describe('StorageService', () => {
       [],
     );
 
-    expect(result.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(result.data.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(result.dropped).toEqual({ groups: 0, items: 0, deletedItems: 0 });
     expect(service.getSaveErrorSignal()()).toBeNull();
   });
 
