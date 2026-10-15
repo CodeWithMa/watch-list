@@ -310,9 +310,9 @@ describe('SettingsComponent', () => {
   it('runs only one import when confirm is triggered twice while in progress', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    let resolveImport!: () => void;
+    let resolveImport!: (value: DroppedRecords) => void;
     vi.mocked(exportService.importData).mockReturnValue(
-      new Promise<void>((resolve) => {
+      new Promise<DroppedRecords>((resolve) => {
         resolveImport = resolve;
       }),
     );
@@ -335,7 +335,7 @@ describe('SettingsComponent', () => {
     expect(confirmButton.disabled).toBe(true);
 
     await fixture.componentInstance.confirmImport();
-    resolveImport();
+    resolveImport(CLEAN_IMPORT);
     await first;
 
     expect(exportService.importData).toHaveBeenCalledOnce();
@@ -346,14 +346,14 @@ describe('SettingsComponent', () => {
   it('keeps a file selected during an import pending after the import finishes', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    let resolveFirst!: () => void;
+    let resolveFirst!: (value: DroppedRecords) => void;
     vi.mocked(exportService.importData)
       .mockReturnValueOnce(
-        new Promise<void>((resolve) => {
+        new Promise<DroppedRecords>((resolve) => {
           resolveFirst = resolve;
         }),
       )
-      .mockResolvedValue(undefined);
+      .mockResolvedValue(CLEAN_IMPORT);
     const fixture = TestBed.createComponent(SettingsComponent);
     const pick = (name: string) => ({
       files: [new File(['{}'], name, { type: 'application/json' })] as unknown as FileList,
@@ -376,7 +376,7 @@ describe('SettingsComponent', () => {
     await fixture.componentInstance.confirmImport();
     expect(exportService.importData).toHaveBeenCalledOnce();
 
-    resolveFirst();
+    resolveFirst(CLEAN_IMPORT);
     await first;
 
     expect(fixture.componentInstance.importInProgress()).toBe(false);
@@ -459,7 +459,6 @@ describe('SettingsComponent', () => {
       items: 2,
       deletedItems: 0,
     });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fixture = TestBed.createComponent(SettingsComponent);
     const target = {
       files: [
@@ -469,6 +468,7 @@ describe('SettingsComponent', () => {
     };
 
     await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    await fixture.componentInstance.confirmImport();
 
     expect(fixture.componentInstance.successMessage()).toBe(
       'Import completed with 3 invalid record(s) omitted.',
