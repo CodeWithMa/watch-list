@@ -129,4 +129,21 @@
   .form-control-sm {
     @apply w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary;
   }
+
+  .search-input-group {
+    --search-control-size: 3.125rem;
+    @apply flex items-stretch;
+  }
+
+  .search-input-group-sm {
+    --search-control-size: 2.75rem;
+  }
+
+  .search-input-group > input {
+    height: var(--search-control-size);
+  }
+
+  .search-input-group:has(app-search-provider-select:not(.hidden)) > input {
+    @apply rounded-l-none border-l-0;
+  }
 }

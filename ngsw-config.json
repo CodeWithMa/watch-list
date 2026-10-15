@@ -11,6 +11,7 @@
           "/index.csr.html",
           "/index.html",
           "/manifest.webmanifest",
+          "/icons/providers/*.svg",
           "/*.css",
           "/*.js"
         ]
@@ -21,9 +22,7 @@
       "installMode": "lazy",
       "updateMode": "prefetch",
       "resources": {
-        "files": [
-          "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
-        ]
+        "files": ["/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"]
       }
     }
   ]

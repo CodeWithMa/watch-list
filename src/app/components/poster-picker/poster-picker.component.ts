@@ -25,7 +25,7 @@ import { SearchProviderSelectComponent } from '../search-provider-select/search-
   selector: 'app-poster-picker',
   imports: [FormsModule, FilePickerFocusDirective, SearchProviderSelectComponent],
   template: `
-    <div class="flex gap-4">
+    <div class="flex flex-col gap-4 sm:flex-row">
       <div class="shrink-0">
         @if (posterPreviewUrl()) {
           <img
@@ -44,7 +44,13 @@ import { SearchProviderSelectComponent } from '../search-provider-select/search-
       <div class="flex-1 flex flex-col gap-3 min-w-0">
         @if (showPosterSearch()) {
           <div>
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="search-input-group search-input-group-sm">
+              <app-search-provider-select
+                [sources]="enabledSources()"
+                [value]="selectedSource()"
+                label="Poster search provider"
+                (valueChange)="onSearchProviderChanged($event)"
+              />
               <input
                 type="text"
                 [ngModel]="posterSearchQuery()"
@@ -52,12 +58,6 @@ import { SearchProviderSelectComponent } from '../search-provider-select/search-
                 name="posterSearch"
                 placeholder="Search for a poster..."
                 class="form-control-sm flex-1 min-w-0"
-              />
-              <app-search-provider-select
-                [sources]="enabledSources()"
-                [value]="selectedSource()"
-                label="Poster search provider"
-                (valueChange)="onSearchProviderChanged($event)"
               />
             </div>
             @if (posterSuggestionsLoading()) {

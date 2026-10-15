@@ -101,17 +101,27 @@ describe('AddItemComponent', () => {
       title.dispatchEvent(new Event('input'));
       await vi.advanceTimersByTimeAsync(400);
 
-      const provider = root.querySelector<HTMLSelectElement>(
-        'select[aria-label="Title search provider"]',
+      const provider = root.querySelector<HTMLButtonElement>(
+        'button[aria-label="Title search provider: TMDB"]',
       )!;
-      expect([...provider.options].map((option) => option.textContent?.trim())).toEqual([
+      expect(provider.textContent?.trim()).toBe('');
+      expect(provider.querySelector('img')?.getAttribute('src')).toBe('icons/providers/tmdb.svg');
+      expect(provider.title).toBe('Search with TMDB');
+      expect(
+        provider.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      provider.click();
+      fixture.detectChanges();
+      const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+      expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
         'TMDB',
         'Jikan',
         'AniList',
       ]);
-      provider.value = 'jikan';
-      provider.dispatchEvent(new Event('change'));
+      options[1].click();
       fixture.detectChanges();
+      expect(provider.getAttribute('aria-label')).toBe('Title search provider: Jikan');
+      expect(root.querySelector('[role="menu"]')).toBeNull();
       expect(root.textContent).not.toContain('Old provider result');
 
       lateResults.next([oldResult]);
@@ -144,12 +154,17 @@ describe('AddItemComponent', () => {
       fixture.detectChanges();
       await vi.advanceTimersByTimeAsync(0);
 
-      const provider = root.querySelector<HTMLSelectElement>(
-        'select[aria-label="Title search provider"]',
-      );
+      const provider = root.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
       if (sources.length > 1) {
-        expect([...provider!.options].map((option) => option.value)).toEqual(['jikan', 'anilist']);
-        expect(provider!.value).toBe('jikan');
+        expect(provider!.getAttribute('aria-label')).toBe('Title search provider: Jikan');
+        provider!.click();
+        fixture.detectChanges();
+        const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+        expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
+          'Jikan',
+          'AniList',
+        ]);
+        expect(options[0].getAttribute('aria-checked')).toBe('true');
       } else {
         expect(provider).toBeNull();
       }
@@ -161,6 +176,66 @@ describe('AddItemComponent', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('supports keyboard navigation and dismissal of the provider menu without changing the search', async () => {
+    const fixture = TestBed.createComponent(AddItemComponent);
+    const root = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const trigger = root.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!;
+    const key = (value: string) => {
+      const event = new KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true });
+      document.activeElement!.dispatchEvent(event);
+      fixture.detectChanges();
+      return event;
+    };
+    trigger.focus();
+    key('ArrowUp');
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement?.textContent?.trim()).toBe('AniList');
+    key('ArrowDown');
+    expect(document.activeElement?.getAttribute('aria-checked')).toBe('true');
+    key('End');
+    expect(document.activeElement?.textContent?.trim()).toBe('AniList');
+    key('Home');
+    expect(document.activeElement?.getAttribute('aria-checked')).toBe('true');
+    expect(key('Escape').defaultPrevented).toBe(true);
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    key('ArrowDown');
+    expect(key('Tab').defaultPrevented).toBe(false);
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(TestBed.inject(SuggestionSearchService).search).not.toHaveBeenCalled();
+    expect(TestBed.inject(WatchListService).addItem).not.toHaveBeenCalled();
+  });
+
+  it('dismisses the provider menu on outside click or when focus leaves, and preserves the current provider', async () => {
+    const fixture = TestBed.createComponent(AddItemComponent);
+    const root = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const trigger = root.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!;
+    trigger.click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('[role="menuitemradio"][aria-checked="true"]')!.click();
+    fixture.detectChanges();
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    trigger.click();
+    fixture.detectChanges();
+    document.body.click();
+    fixture.detectChanges();
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    trigger.click();
+    fixture.detectChanges();
+    root.querySelector<HTMLInputElement>('input[name="title"]')!.focus();
+    fixture.detectChanges();
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(trigger.getAttribute('aria-label')).toBe('Title search provider: TMDB');
+    expect(TestBed.inject(SuggestionSearchService).search).not.toHaveBeenCalled();
   });
 
   it('focuses the title on opening without stealing focus on later updates', async () => {

@@ -52,7 +52,8 @@ export interface ItemFormAutofillPatch {
         <label for="title" class="block mb-2 font-medium text-light-font dark:text-dark-font"
           >Title *</label
         >
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="search-input-group">
+          <ng-content select="[title-search-provider]" />
           <input
             #titleInput
             type="text"
@@ -63,7 +64,6 @@ export interface ItemFormAutofillPatch {
             required
             class="form-control flex-1 min-w-0"
           />
-          <ng-content select="[title-search-provider]" />
         </div>
         @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
           <div class="text-accent-danger text-sm mt-1">Title is required</div>

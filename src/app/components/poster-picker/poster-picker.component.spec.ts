@@ -81,17 +81,26 @@ describe('PosterPickerComponent', () => {
       query.dispatchEvent(new Event('input'));
       await vi.advanceTimersByTimeAsync(400);
 
-      const provider = root.querySelector<HTMLSelectElement>(
-        'select[aria-label="Poster search provider"]',
+      const provider = root.querySelector<HTMLButtonElement>(
+        'button[aria-label="Poster search provider: TMDB"]',
       )!;
-      expect([...provider.options].map((option) => option.value)).toEqual([
-        'tmdb',
-        'jikan',
-        'anilist',
-      ]);
-      provider.value = 'anilist';
-      provider.dispatchEvent(new Event('change'));
+      expect(
+        provider.compareDocumentPosition(query) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      provider.click();
       fixture.detectChanges();
+      const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+      expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
+        'TMDB',
+        'Jikan',
+        'AniList',
+      ]);
+      options[2].click();
+      fixture.detectChanges();
+      expect(provider.querySelector('img')?.getAttribute('src')).toBe(
+        'icons/providers/anilist.svg',
+      );
+      expect(provider.getAttribute('aria-label')).toBe('Poster search provider: AniList');
       expect(root.textContent).not.toContain('Old poster result');
       lateResults.next([oldResult]);
       lateResults.complete();
@@ -126,12 +135,17 @@ describe('PosterPickerComponent', () => {
       fixture.detectChanges();
       await vi.advanceTimersByTimeAsync(400);
 
-      const provider = root.querySelector<HTMLSelectElement>(
-        'select[aria-label="Poster search provider"]',
-      );
+      const provider = root.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
       if (sources.length > 1) {
-        expect([...provider!.options].map((option) => option.value)).toEqual(['jikan', 'anilist']);
-        expect(provider!.value).toBe('jikan');
+        expect(provider!.getAttribute('aria-label')).toBe('Poster search provider: Jikan');
+        provider!.click();
+        fixture.detectChanges();
+        const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+        expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
+          'Jikan',
+          'AniList',
+        ]);
+        expect(options[0].getAttribute('aria-checked')).toBe('true');
       } else {
         expect(provider).toBeNull();
       }
