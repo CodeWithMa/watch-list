@@ -3,8 +3,11 @@ import { environment } from '../../../environments/environment';
 import { ImportExportService } from '../../services/import-export.service';
 import { TmdbCredential, TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
+import { DroppedRecords } from '../../domain/storage-schema';
 import { SettingsComponent } from './settings.component';
 import { vi, afterEach, beforeEach } from 'vitest';
+
+const CLEAN_IMPORT: DroppedRecords = { groups: 0, items: 0, deletedItems: 0 };
 
 describe('SettingsComponent', () => {
   let origHash: string;
@@ -44,7 +47,7 @@ describe('SettingsComponent', () => {
             exportData: vi.fn(),
             getRecoveryBackups: vi.fn().mockResolvedValue([]),
             exportRecoveryBackup: vi.fn().mockResolvedValue(undefined),
-            importData: vi.fn(),
+            importData: vi.fn().mockResolvedValue(CLEAN_IMPORT),
           },
         },
         {
@@ -307,9 +310,9 @@ describe('SettingsComponent', () => {
   it('runs only one import when confirm is triggered twice while in progress', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    let resolveImport!: () => void;
+    let resolveImport!: (value: DroppedRecords) => void;
     vi.mocked(exportService.importData).mockReturnValue(
-      new Promise<void>((resolve) => {
+      new Promise<DroppedRecords>((resolve) => {
         resolveImport = resolve;
       }),
     );
@@ -332,7 +335,7 @@ describe('SettingsComponent', () => {
     expect(confirmButton.disabled).toBe(true);
 
     await fixture.componentInstance.confirmImport();
-    resolveImport();
+    resolveImport(CLEAN_IMPORT);
     await first;
 
     expect(exportService.importData).toHaveBeenCalledOnce();
@@ -343,14 +346,14 @@ describe('SettingsComponent', () => {
   it('keeps a file selected during an import pending after the import finishes', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    let resolveFirst!: () => void;
+    let resolveFirst!: (value: DroppedRecords) => void;
     vi.mocked(exportService.importData)
       .mockReturnValueOnce(
-        new Promise<void>((resolve) => {
+        new Promise<DroppedRecords>((resolve) => {
           resolveFirst = resolve;
         }),
       )
-      .mockResolvedValue(undefined);
+      .mockResolvedValue(CLEAN_IMPORT);
     const fixture = TestBed.createComponent(SettingsComponent);
     const pick = (name: string) => ({
       files: [new File(['{}'], name, { type: 'application/json' })] as unknown as FileList,
@@ -373,7 +376,7 @@ describe('SettingsComponent', () => {
     await fixture.componentInstance.confirmImport();
     expect(exportService.importData).toHaveBeenCalledOnce();
 
-    resolveFirst();
+    resolveFirst(CLEAN_IMPORT);
     await first;
 
     expect(fixture.componentInstance.importInProgress()).toBe(false);
@@ -445,6 +448,31 @@ describe('SettingsComponent', () => {
 
     expect(exportService.importData).toHaveBeenCalledOnce();
     expect(fixture.componentInstance.successMessage()).toBe('Data imported successfully');
+    expect(fixture.componentInstance.errorMessage()).toBeNull();
+  });
+
+  it('reports omitted records instead of a plain success message', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    vi.mocked(exportService.importData).mockResolvedValue({
+      groups: 1,
+      items: 2,
+      deletedItems: 0,
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const target = {
+      files: [
+        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
+      ] as unknown as FileList,
+      value: '',
+    };
+
+    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    await fixture.componentInstance.confirmImport();
+
+    expect(fixture.componentInstance.successMessage()).toBe(
+      'Import completed with 3 invalid record(s) omitted.',
+    );
     expect(fixture.componentInstance.errorMessage()).toBeNull();
   });
 
@@ -597,7 +625,7 @@ describe('SettingsComponent', () => {
             exportData: vi.fn(),
             getRecoveryBackups: vi.fn().mockResolvedValue([]),
             exportRecoveryBackup: vi.fn().mockResolvedValue(undefined),
-            importData: vi.fn().mockResolvedValue(undefined),
+            importData: vi.fn().mockResolvedValue(CLEAN_IMPORT),
           },
         },
         {
