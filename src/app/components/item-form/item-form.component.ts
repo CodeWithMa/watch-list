@@ -52,16 +52,19 @@ export interface ItemFormAutofillPatch {
         <label for="title" class="block mb-2 font-medium text-light-font dark:text-dark-font"
           >Title *</label
         >
-        <input
-          #titleInput
-          type="text"
-          id="title"
-          [ngModel]="formValue().title"
-          (ngModelChange)="updateTitle($event)"
-          name="title"
-          required
-          class="form-control"
-        />
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            #titleInput
+            type="text"
+            id="title"
+            [ngModel]="formValue().title"
+            (ngModelChange)="updateTitle($event)"
+            name="title"
+            required
+            class="form-control flex-1 min-w-0"
+          />
+          <ng-content select="[title-search-provider]" />
+        </div>
         @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
           <div class="text-accent-danger text-sm mt-1">Title is required</div>
         }

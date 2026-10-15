@@ -1,17 +1,29 @@
-import { Component, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  linkedSignal,
+  output,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Suggestion } from '../../models/suggestion.model';
+import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { createSearchStream } from '../../utils/search-stream.utils';
 import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
 import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
+import { SearchProviderSelectComponent } from '../search-provider-select/search-provider-select.component';
 
 @Component({
   selector: 'app-poster-picker',
-  imports: [FormsModule, FilePickerFocusDirective],
+  imports: [FormsModule, FilePickerFocusDirective, SearchProviderSelectComponent],
   template: `
     <div class="flex gap-4">
       <div class="shrink-0">
@@ -32,14 +44,22 @@ import { FilePickerFocusDirective } from '../../directives/file-picker-focus.dir
       <div class="flex-1 flex flex-col gap-3 min-w-0">
         @if (showPosterSearch()) {
           <div>
-            <input
-              type="text"
-              [ngModel]="posterSearchQuery()"
-              (ngModelChange)="onPosterSearchChanged($event)"
-              name="posterSearch"
-              placeholder="Search for a poster..."
-              class="form-control-sm"
-            />
+            <div class="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                [ngModel]="posterSearchQuery()"
+                (ngModelChange)="onPosterSearchChanged($event)"
+                name="posterSearch"
+                placeholder="Search for a poster..."
+                class="form-control-sm flex-1 min-w-0"
+              />
+              <app-search-provider-select
+                [sources]="enabledSources()"
+                [value]="selectedSource()"
+                label="Poster search provider"
+                (valueChange)="onSearchProviderChanged($event)"
+              />
+            </div>
             @if (posterSuggestionsLoading()) {
               <div class="mt-1 text-xs text-light-font-secondary dark:text-dark-font-secondary">
                 Searching...
@@ -128,6 +148,7 @@ import { FilePickerFocusDirective } from '../../directives/file-picker-focus.dir
 })
 export class PosterPickerComponent {
   private suggestionSearchService = inject(SuggestionSearchService);
+  private readonly providers = inject(ProviderSettingsService);
   private imageStorage = inject(ImageStorageService);
   private destroyRef = inject(DestroyRef);
 
@@ -136,6 +157,12 @@ export class PosterPickerComponent {
   readonly posterIdChange = output<string | undefined>();
   readonly loadingChange = output<boolean>();
 
+  readonly enabledSources = computed(() => this.providers.getEnabledSources());
+  readonly selectedSource = linkedSignal<SuggestionSource[], SuggestionSource | undefined>({
+    source: this.enabledSources,
+    computation: (sources, previous) =>
+      previous?.value && sources.includes(previous.value) ? previous.value : sources[0],
+  });
   readonly posterSearchQuery = signal('');
   readonly posterSuggestions = signal<Suggestion[]>([]);
   readonly posterSuggestionsLoading = signal(false);
@@ -152,7 +179,7 @@ export class PosterPickerComponent {
   private skipDraftCleanup = false;
 
   private readonly searchStream = createSearchStream(
-    (query) => this.suggestionSearchService.search(query),
+    (query) => this.suggestionSearchService.search(query, this.selectedSource()),
     'Search unavailable.',
     {
       debounceMs: SUGGESTION_DEBOUNCE_MS,
@@ -190,6 +217,14 @@ export class PosterPickerComponent {
   onPosterSearchChanged(query: string): void {
     this.posterSearchQuery.set(query);
     this.searchStream.query.next(query);
+  }
+
+  onSearchProviderChanged(source: SuggestionSource): void {
+    this.selectedSource.set(source);
+    this.posterSuggestions.set([]);
+    this.posterSuggestionsLoading.set(false);
+    this.posterSuggestionsError.set('');
+    this.searchStream.query.next(this.posterSearchQuery());
   }
 
   selectPosterSuggestion(suggestion: Suggestion): void {

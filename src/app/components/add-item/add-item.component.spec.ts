@@ -4,8 +4,9 @@ import { provideRouter, Router } from '@angular/router';
 import { GroupService } from '../../services/group.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { Item } from '../../models/item.model';
-import { Suggestion } from '../../models/suggestion.model';
+import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { AddItemComponent } from './add-item.component';
 import { vi } from 'vitest';
 import { Observable, Subject, of, throwError } from 'rxjs';
@@ -65,6 +66,101 @@ describe('AddItemComponent', () => {
         },
       ],
     });
+  });
+
+  it('switches title search providers, clearing results and cancelling the previous search immediately', async () => {
+    vi.useFakeTimers();
+    try {
+      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const lateResults = new Subject<Suggestion[]>();
+      const oldResult = createSuggestion({ id: 1, title: 'Old provider result', type: 'series' });
+      const newResult = createSuggestion({
+        source: 'jikan',
+        id: 2,
+        title: 'New provider result',
+        type: 'series',
+      });
+      search
+        .mockReturnValueOnce(of([oldResult]))
+        .mockReturnValueOnce(lateResults)
+        .mockReturnValueOnce(of([newResult]));
+      const fixture = TestBed.createComponent(AddItemComponent);
+      const root = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const title = root.querySelector<HTMLInputElement>('input[name="title"]')!;
+      title.value = 'Naruto';
+      title.dispatchEvent(new Event('input'));
+      await vi.advanceTimersByTimeAsync(400);
+      fixture.detectChanges();
+      expect(search).toHaveBeenLastCalledWith('Naruto', 'tmdb');
+      expect(root.textContent).toContain('Old provider result');
+
+      title.value = 'Naruto Shippuden';
+      title.dispatchEvent(new Event('input'));
+      await vi.advanceTimersByTimeAsync(400);
+
+      const provider = root.querySelector<HTMLSelectElement>(
+        'select[aria-label="Title search provider"]',
+      )!;
+      expect([...provider.options].map((option) => option.textContent?.trim())).toEqual([
+        'TMDB',
+        'Jikan',
+        'AniList',
+      ]);
+      provider.value = 'jikan';
+      provider.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(root.textContent).not.toContain('Old provider result');
+
+      lateResults.next([oldResult]);
+      lateResults.complete();
+      fixture.detectChanges();
+      expect(root.textContent).not.toContain('Old provider result');
+      await vi.advanceTimersByTimeAsync(400);
+      fixture.detectChanges();
+      expect(search).toHaveBeenLastCalledWith('Naruto Shippuden', 'jikan');
+      expect(root.textContent).toContain('New provider result');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each<{ sources: SuggestionSource[] }>([
+    { sources: ['jikan'] },
+    { sources: ['jikan', 'anilist'] },
+    { sources: [] },
+  ])('uses enabled title search providers: $sources', async ({ sources }) => {
+    vi.useFakeTimers();
+    try {
+      const settings = TestBed.inject(ProviderSettingsService);
+      for (const source of ['tmdb', 'jikan', 'anilist'] as const) {
+        settings.setEnabled(source, sources.includes(source));
+      }
+      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const fixture = TestBed.createComponent(AddItemComponent);
+      const root = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const provider = root.querySelector<HTMLSelectElement>(
+        'select[aria-label="Title search provider"]',
+      );
+      if (sources.length > 1) {
+        expect([...provider!.options].map((option) => option.value)).toEqual(['jikan', 'anilist']);
+        expect(provider!.value).toBe('jikan');
+      } else {
+        expect(provider).toBeNull();
+      }
+      const title = root.querySelector<HTMLInputElement>('input[name="title"]')!;
+      title.value = 'Naruto';
+      title.dispatchEvent(new Event('input'));
+      await vi.advanceTimersByTimeAsync(400);
+      expect(search).toHaveBeenCalledWith('Naruto', sources[0]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('focuses the title on opening without stealing focus on later updates', async () => {
@@ -447,7 +543,7 @@ describe('AddItemComponent', () => {
       await vi.advanceTimersByTimeAsync(400);
 
       expect(search).toHaveBeenCalledTimes(1);
-      expect(search).toHaveBeenCalledWith('Breaking');
+      expect(search).toHaveBeenCalledWith('Breaking', 'tmdb');
     } finally {
       vi.useRealTimers();
     }

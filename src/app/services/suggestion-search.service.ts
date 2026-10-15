@@ -1,14 +1,11 @@
 import { Injectable, inject } from '@angular/core';
-import { catchError, forkJoin, map, Observable, of } from 'rxjs';
+import { catchError, Observable, of } from 'rxjs';
 import { SeriesDetails, Suggestion, SuggestionSource } from '../models/suggestion.model';
 import { AnilistSuggestionService } from './anilist-suggestion.service';
 import { JikanSuggestionService } from './jikan-suggestion.service';
 import { ProviderSettingsService } from './provider-settings.service';
 import { TmdbSuggestionService } from './tmdb-suggestion.service';
-import {
-  SUGGESTION_MERGED_LIMIT,
-  SUGGESTION_MIN_QUERY_LENGTH,
-} from '../domain/suggestion.constants';
+import { SUGGESTION_MIN_QUERY_LENGTH } from '../domain/suggestion.constants';
 
 @Injectable({
   providedIn: 'root',
@@ -19,32 +16,18 @@ export class SuggestionSearchService {
   private readonly anilist = inject(AnilistSuggestionService);
   private readonly providers = inject(ProviderSettingsService);
 
-  search(query: string): Observable<Suggestion[]> {
+  search(query: string, source = this.providers.getEnabledSources()[0]): Observable<Suggestion[]> {
     const trimmed = query.trim();
     if (trimmed.length < SUGGESTION_MIN_QUERY_LENGTH) {
       return of([]);
     }
 
-    if (!this.providers.isAnyEnabled()) {
+    if (!source || !this.providers.isEnabled(source)) {
       return of([]);
     }
 
-    return forkJoin({
-      tmdb: this.providers.isEnabled('tmdb')
-        ? this.tmdb.search(trimmed).pipe(catchError(() => of([] as Suggestion[])))
-        : of([] as Suggestion[]),
-      jikan: this.providers.isEnabled('jikan')
-        ? this.jikan.search(trimmed).pipe(catchError(() => of([] as Suggestion[])))
-        : of([] as Suggestion[]),
-      anilist: this.providers.isEnabled('anilist')
-        ? this.anilist.search(trimmed).pipe(catchError(() => of([] as Suggestion[])))
-        : of([] as Suggestion[]),
-    }).pipe(
-      map(({ tmdb, jikan, anilist }) => {
-        const merged = [...tmdb, ...jikan, ...anilist];
-        return merged.slice(0, SUGGESTION_MERGED_LIMIT);
-      }),
-    );
+    const provider = { tmdb: this.tmdb, jikan: this.jikan, anilist: this.anilist }[source];
+    return provider.search(trimmed).pipe(catchError(() => of([] as Suggestion[])));
   }
 
   getDetails(ref: Pick<Suggestion, 'source' | 'id'>): Observable<SeriesDetails | null> {

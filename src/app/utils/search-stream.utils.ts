@@ -1,7 +1,7 @@
 import {
   Observable,
   Subject,
-  debounceTime,
+  timer,
   distinctUntilChanged,
   switchMap,
   catchError,
@@ -37,7 +37,7 @@ export function createSearchStream(
   const minLength = options.minLength ?? SUGGESTION_MIN_QUERY_LENGTH;
   const query = new Subject<string>();
 
-  let stream = query.pipe(debounceTime(debounceMs));
+  let stream = query.asObservable();
   if (options.distinct) {
     stream = stream.pipe(
       distinctUntilChanged((previous, current) => previous.trim() === current.trim()),
@@ -45,31 +45,35 @@ export function createSearchStream(
   }
 
   const results = stream.pipe(
-    switchMap((raw) => {
-      const trimmed = raw.trim();
-      options.onError?.('');
+    switchMap((raw) =>
+      timer(debounceMs).pipe(
+        switchMap(() => {
+          const trimmed = raw.trim();
+          options.onError?.('');
 
-      if (options.shouldSkip?.(trimmed)) {
-        options.onLoadingChange?.(false);
-        return of([]);
-      }
+          if (options.shouldSkip?.(trimmed)) {
+            options.onLoadingChange?.(false);
+            return of([]);
+          }
 
-      if (trimmed.length < minLength) {
-        options.onLoadingChange?.(false);
-        return of([]);
-      }
+          if (trimmed.length < minLength) {
+            options.onLoadingChange?.(false);
+            return of([]);
+          }
 
-      options.onLoadingChange?.(true);
-      return searchFn(trimmed).pipe(
-        catchError(() => {
-          options.onError?.(errorMessage);
-          return of([]);
+          options.onLoadingChange?.(true);
+          return searchFn(trimmed).pipe(
+            catchError(() => {
+              options.onError?.(errorMessage);
+              return of([]);
+            }),
+            finalize(() => {
+              options.onLoadingChange?.(false);
+            }),
+          );
         }),
-        finalize(() => {
-          options.onLoadingChange?.(false);
-        }),
-      );
-    }),
+      ),
+    ),
   );
 
   return { query, results };
