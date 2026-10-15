@@ -1,13 +1,16 @@
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  ElementRef,
   ViewChild,
+  afterNextRender,
   computed,
   effect,
   input,
   linkedSignal,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
@@ -50,6 +53,7 @@ export interface ItemFormAutofillPatch {
           >Title *</label
         >
         <input
+          #titleInput
           type="text"
           id="title"
           [ngModel]="formValue().title"
@@ -273,9 +277,11 @@ export interface ItemFormAutofillPatch {
 })
 export class ItemFormComponent {
   @ViewChild('posterPicker') private posterPicker?: PosterPickerComponent;
+  private readonly titleInput = viewChild.required<ElementRef<HTMLInputElement>>('titleInput');
 
   readonly groups = input.required<Group[]>();
   readonly initialValue = input<ItemFormValue>(createDefaultItemFormValue());
+  readonly focusTitleOnOpen = input(false);
   readonly submitLabel = input('Save');
   readonly cancelLabel = input('Cancel');
   readonly showStartImmediately = input(false);
@@ -329,6 +335,12 @@ export class ItemFormComponent {
   private lastAppliedAutofillPatchId: number | null = null;
 
   constructor() {
+    afterNextRender(() => {
+      if (this.focusTitleOnOpen()) {
+        this.titleInput().nativeElement.focus();
+      }
+    });
+
     effect(() => {
       const patch = this.autofillPatch();
       if (!patch || patch.id === this.lastAppliedAutofillPatchId) {

@@ -67,6 +67,24 @@ describe('AddItemComponent', () => {
     });
   });
 
+  it('focuses the title on opening without stealing focus on later updates', async () => {
+    const fixture = TestBed.createComponent(AddItemComponent);
+    const root = fixture.nativeElement as HTMLElement;
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(root.querySelector('input[name="title"]'));
+
+    const typeSelect = root.querySelector<HTMLSelectElement>('select[name="type"]');
+    typeSelect?.focus();
+    fixture.componentInstance.suggestionsLoading.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(typeSelect);
+  });
+
   it('shows a duplicate hint for an existing title with different casing and whitespace', async () => {
     const fixture = TestBed.createComponent(AddItemComponent);
 
