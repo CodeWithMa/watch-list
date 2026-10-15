@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { ImageStorageService } from './image-storage.service';
 import { ProviderSettings, ProviderSettingsService } from './provider-settings.service';
+import { DroppedRecords } from '../domain/storage-schema';
 
 export interface ExportPreferences {
   providerSettings: ProviderSettings;
@@ -57,7 +58,7 @@ export class ImportExportService {
     URL.revokeObjectURL(url);
   }
 
-  async importData(file: File): Promise<void> {
+  async importData(file: File): Promise<DroppedRecords> {
     try {
       const text = await file.text();
       const payload: unknown = JSON.parse(text);
@@ -65,8 +66,9 @@ export class ImportExportService {
       const images = await this.imageStorage.parseExportedImages(
         isPortableExport(payload) ? payload.images : [],
       );
-      await this.storageService.importDataWithImages(data, images);
+      const { dropped } = await this.storageService.importDataWithImages(data, images);
       this.applyPreferencesIfPresent(payload);
+      return dropped;
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file', { cause: error });

@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
 import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
+import { DroppedRecords } from '../../domain/storage-schema';
 import {
   AdultDisplayMode,
   DEFAULT_TITLE_PREFERENCE,
@@ -633,9 +634,9 @@ export class SettingsComponent implements OnInit {
     this.importInProgress.set(true);
 
     try {
-      await this.importExportService.importData(file);
+      const dropped = await this.importExportService.importData(file);
       this.syncProviderSignals();
-      this.successMessage.set('Data imported successfully');
+      this.successMessage.set(describeImportResult(dropped));
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
@@ -659,4 +660,12 @@ export class SettingsComponent implements OnInit {
     this.adultDisplayMode.set(this.providerSettingsService.getAdultDisplayMode());
     this.titleOrder.set(this.providerSettingsService.getTitlePreference());
   }
+}
+
+function describeImportResult(dropped: DroppedRecords): string {
+  const total = dropped.groups + dropped.items + dropped.deletedItems;
+  if (total === 0) {
+    return 'Data imported successfully';
+  }
+  return `Import completed with ${total} invalid record(s) omitted.`;
 }

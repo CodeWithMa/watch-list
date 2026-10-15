@@ -3,6 +3,7 @@ import { StorageData } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
+import type { DroppedRecords } from '../domain/storage-schema';
 import { StoredImage } from './image-storage.service';
 import { imagesInvalidated } from './image-invalidation';
 
@@ -40,7 +41,7 @@ export class StorageService {
 
   async importData(data: unknown): Promise<StorageData> {
     const normalized = normalizeStorageData(data);
-    await this.persistData(normalized);
+    await this.persistData(normalized.data);
     return this.getData();
   }
 
@@ -48,16 +49,26 @@ export class StorageService {
     return this.persistData(data);
   }
 
-  async importDataWithImages(data: unknown, images: StoredImage[]): Promise<StorageData> {
+  async importDataWithImages(
+    data: unknown,
+    images: StoredImage[],
+  ): Promise<{ data: StorageData; dropped: DroppedRecords }> {
     const normalized = normalizeStorageData(data);
     const updated: StorageData = {
-      ...cloneStorageData(normalized),
+      ...cloneStorageData(normalized.data),
       lastModifiedAt: new Date().toISOString(),
     };
     const snapshot = cloneStorageData(updated);
     const previousData = this.data();
     this.saveError.set(null);
     this.data.set(snapshot);
+    if (!this.database) {
+      // IndexedDB is unavailable (in-memory session): keep the update in memory.
+      // Images cannot be persisted without the database connection.
+      this.lastPersistedData = cloneStorageData(snapshot);
+      this.saveError.set(null);
+      return { data: this.getData(), dropped: normalized.dropped };
+    }
     const write = this.writeQueue.then(async () => {
       const transaction = this.database!.transaction([STORE_NAME, IMAGE_STORE_NAME], 'readwrite');
       transaction.objectStore(STORE_NAME).put(snapshot, DATA_KEY);
@@ -82,7 +93,7 @@ export class StorageService {
       },
     );
     await write;
-    return this.getData();
+    return { data: this.getData(), dropped: normalized.dropped };
   }
 
   getSaveErrorSignal() {
@@ -90,6 +101,9 @@ export class StorageService {
   }
 
   async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
+    if (!this.database) {
+      return [];
+    }
     const keys = await this.listBackupKeys();
     return keys
       .map((key) => ({
@@ -102,6 +116,9 @@ export class StorageService {
   async getRecoveryBackupByKey(key: string): Promise<unknown> {
     if (!key.startsWith(BACKUP_PREFIX)) {
       throw new Error('Invalid backup key');
+    }
+    if (!this.database) {
+      throw new Error('Recovery backup not found');
     }
     const backup = await this.readRecord(key);
     if (backup === undefined) {
@@ -164,7 +181,7 @@ export class StorageService {
         let storedSnapshot: unknown;
         try {
           storedSnapshot = structuredClone(stored);
-          normalized = normalizeStorageData(stored);
+          normalized = normalizeStorageData(stored).data;
         } catch (error) {
           console.error('Failed to load stored watch-list data:', error);
           await this.backupRawData(storedSnapshot);
@@ -212,6 +229,9 @@ export class StorageService {
   }
 
   private async backupRawData(raw: unknown): Promise<void> {
+    if (!this.database) {
+      return;
+    }
     const key = `${BACKUP_PREFIX}${Date.now()}`;
     const transaction = this.database!.transaction(STORE_NAME, 'readwrite');
     transaction.objectStore(STORE_NAME).put(raw, key);
@@ -220,6 +240,9 @@ export class StorageService {
   }
 
   private async pruneOldBackups(): Promise<void> {
+    if (!this.database) {
+      return;
+    }
     const keys = await this.listBackupKeys();
     if (keys.length <= BACKUP_LIMIT) {
       return;
@@ -234,7 +257,10 @@ export class StorageService {
   }
 
   private async listBackupKeys(): Promise<string[]> {
-    const transaction = this.database!.transaction(STORE_NAME, 'readonly');
+    if (!this.database) {
+      return [];
+    }
+    const transaction = this.database.transaction(STORE_NAME, 'readonly');
     const request = transaction.objectStore(STORE_NAME).getAllKeys();
     const allKeys = await this.promisifyRequest(
       request as IDBRequest<IDBValidKey[]>,
@@ -282,13 +308,19 @@ export class StorageService {
   }
 
   private readRecord(key: string): Promise<unknown | undefined> {
-    const transaction = this.database!.transaction(STORE_NAME, 'readonly');
+    if (!this.database) {
+      return Promise.resolve(undefined);
+    }
+    const transaction = this.database.transaction(STORE_NAME, 'readonly');
     const request = transaction.objectStore(STORE_NAME).get(key) as IDBRequest<unknown | undefined>;
     return this.promisifyRequest(request, transaction, 'IndexedDB read transaction aborted');
   }
 
   private writeData(data: StorageData): Promise<void> {
-    const transaction = this.database!.transaction(STORE_NAME, 'readwrite');
+    if (!this.database) {
+      return Promise.resolve();
+    }
+    const transaction = this.database.transaction(STORE_NAME, 'readwrite');
     transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
     return this.completeTransaction(transaction, 'Failed to write to IndexedDB');
   }

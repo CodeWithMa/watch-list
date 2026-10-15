@@ -3,8 +3,11 @@ import { environment } from '../../../environments/environment';
 import { ImportExportService } from '../../services/import-export.service';
 import { TmdbCredential, TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
+import { DroppedRecords } from '../../domain/storage-schema';
 import { SettingsComponent } from './settings.component';
 import { vi, afterEach, beforeEach } from 'vitest';
+
+const CLEAN_IMPORT: DroppedRecords = { groups: 0, items: 0, deletedItems: 0 };
 
 describe('SettingsComponent', () => {
   let origHash: string;
@@ -44,7 +47,7 @@ describe('SettingsComponent', () => {
             exportData: vi.fn(),
             getRecoveryBackups: vi.fn().mockResolvedValue([]),
             exportRecoveryBackup: vi.fn().mockResolvedValue(undefined),
-            importData: vi.fn(),
+            importData: vi.fn().mockResolvedValue(CLEAN_IMPORT),
           },
         },
         {
@@ -448,6 +451,31 @@ describe('SettingsComponent', () => {
     expect(fixture.componentInstance.errorMessage()).toBeNull();
   });
 
+  it('reports omitted records instead of a plain success message', async () => {
+    configure({ token: '', key: '', credential: null });
+    const exportService = TestBed.inject(ImportExportService);
+    vi.mocked(exportService.importData).mockResolvedValue({
+      groups: 1,
+      items: 2,
+      deletedItems: 0,
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const target = {
+      files: [
+        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
+      ] as unknown as FileList,
+      value: '',
+    };
+
+    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+
+    expect(fixture.componentInstance.successMessage()).toBe(
+      'Import completed with 3 invalid record(s) omitted.',
+    );
+    expect(fixture.componentInstance.errorMessage()).toBeNull();
+  });
+
   it('shows an error message when a confirmed import fails', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
@@ -597,7 +625,7 @@ describe('SettingsComponent', () => {
             exportData: vi.fn(),
             getRecoveryBackups: vi.fn().mockResolvedValue([]),
             exportRecoveryBackup: vi.fn().mockResolvedValue(undefined),
-            importData: vi.fn().mockResolvedValue(undefined),
+            importData: vi.fn().mockResolvedValue(CLEAN_IMPORT),
           },
         },
         {
