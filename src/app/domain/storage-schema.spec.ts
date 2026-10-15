@@ -79,6 +79,33 @@ describe('season release delay storage schema', () => {
     expect(normalized.dropped).toEqual({ groups: 0, items: 1, deletedItems: 0 });
   });
 
+  it.each(['corrupt', 42, true, [], null])(
+    'salvages valid v2 series when another series has malformed progress %j',
+    (progress) => {
+      const valid = dataWithSeason({});
+      const series = valid.items.series;
+      const normalized = normalizeStorageData({
+        ...valid,
+        schemaVersion: 2,
+        items: {
+          series: {
+            ...series,
+            progress: { season: 1, episode: 3, totalEpisodes: 12, totalSeasons: 1 },
+          },
+          bad: { ...series, id: 'bad', progress },
+        },
+      });
+
+      expect(Object.keys(normalized.data.items)).toEqual(['series']);
+      expect(normalized.data.items['series'].progress).toEqual({
+        season: 1,
+        episode: 3,
+        seasons: [{ seasonNumber: 1, totalEpisodes: 12 }],
+      });
+      expect(normalized.dropped).toEqual({ groups: 0, items: 1, deletedItems: 0 });
+    },
+  );
+
   it('remaps items pointing at dropped prototype-named groups', () => {
     const payload = {
       ...createDefaultStorageData(),

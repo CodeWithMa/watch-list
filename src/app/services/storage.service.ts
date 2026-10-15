@@ -3,7 +3,7 @@ import { StorageData } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
 import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
-import type { DroppedRecords } from '../domain/storage-schema';
+import type { DroppedRecords, NormalizationResult } from '../domain/storage-schema';
 import { StoredImage } from './image-storage.service';
 import { imagesInvalidated } from './image-invalidation';
 
@@ -21,6 +21,7 @@ const BACKUP_LIMIT = 10;
 export class StorageService {
   private readonly data = signal<StorageData | null>(null);
   private readonly saveError = signal<string | null>(null);
+  private readonly inMemorySession = signal(false);
   private database: IDBDatabase | null = null;
   private lastPersistedData: StorageData | null = null;
   private initialization: Promise<void> | null = null;
@@ -29,8 +30,7 @@ export class StorageService {
   initialize(): Promise<void> {
     this.initialization ??= this.loadData().catch((error: unknown) => {
       this.initialization = null;
-      this.database?.close();
-      this.database = null;
+      this.useInMemorySession();
       console.error('Storage initialization failed, falling back to in-memory session:', error);
       const defaults = createDefaultStorageData();
       this.lastPersistedData = cloneStorageData(defaults);
@@ -54,6 +54,11 @@ export class StorageService {
     images: StoredImage[],
   ): Promise<{ data: StorageData; dropped: DroppedRecords }> {
     const normalized = normalizeStorageData(data);
+    if (!this.database && images.length > 0) {
+      throw new Error(
+        'Cannot import posters while persistent storage is unavailable. No data was imported.',
+      );
+    }
     const updated: StorageData = {
       ...cloneStorageData(normalized.data),
       lastModifiedAt: new Date().toISOString(),
@@ -63,10 +68,7 @@ export class StorageService {
     this.saveError.set(null);
     this.data.set(snapshot);
     if (!this.database) {
-      // IndexedDB is unavailable (in-memory session): keep the update in memory.
-      // Images cannot be persisted without the database connection.
-      this.lastPersistedData = cloneStorageData(snapshot);
-      this.saveError.set(null);
+      // Imports without images can still update the in-memory session.
       return { data: this.getData(), dropped: normalized.dropped };
     }
     const write = this.writeQueue.then(async () => {
@@ -98,6 +100,10 @@ export class StorageService {
 
   getSaveErrorSignal() {
     return this.saveError.asReadonly();
+  }
+
+  getInMemorySessionSignal() {
+    return this.inMemorySession.asReadonly();
   }
 
   async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
@@ -135,6 +141,9 @@ export class StorageService {
     const writeSnapshot = cloneStorageData(updated);
     this.saveError.set(null);
     this.data.set(updated);
+    if (!this.database) {
+      return Promise.resolve();
+    }
     const write = this.writeQueue.then(() => this.writeData(writeSnapshot));
     this.writeQueue = write.then(
       () => {
@@ -173,15 +182,16 @@ export class StorageService {
 
   private async loadData(): Promise<void> {
     this.database = await this.openDatabase();
+    this.inMemorySession.set(false);
     try {
       const stored = await this.readData();
 
       if (stored !== undefined) {
-        let normalized: StorageData;
+        let normalized: NormalizationResult;
         let storedSnapshot: unknown;
         try {
           storedSnapshot = structuredClone(stored);
-          normalized = normalizeStorageData(stored).data;
+          normalized = normalizeStorageData(stored);
         } catch (error) {
           console.error('Failed to load stored watch-list data:', error);
           await this.backupRawData(storedSnapshot);
@@ -189,24 +199,26 @@ export class StorageService {
           try {
             await this.writeData(defaults);
           } catch {
-            this.database?.close();
-            this.database = null;
+            this.useInMemorySession();
           }
           this.lastPersistedData = cloneStorageData(defaults);
           this.data.set(cloneStorageData(defaults));
           return;
         }
 
-        if (!storageDataEqual(normalized, storedSnapshot)) {
+        if (!storageDataEqual(normalized.data, storedSnapshot)) {
           try {
-            await this.writeData(normalized);
+            const { groups, items, deletedItems } = normalized.dropped;
+            if (groups + items + deletedItems > 0) {
+              await this.backupRawData(storedSnapshot);
+            }
+            await this.writeData(normalized.data);
           } catch {
-            this.database?.close();
-            this.database = null;
+            this.useInMemorySession();
           }
         }
-        this.lastPersistedData = cloneStorageData(normalized);
-        this.data.set(cloneStorageData(normalized));
+        this.lastPersistedData = cloneStorageData(normalized.data);
+        this.data.set(cloneStorageData(normalized.data));
         return;
       }
 
@@ -214,18 +226,22 @@ export class StorageService {
       try {
         await this.writeData(defaults);
       } catch {
-        this.database?.close();
-        this.database = null;
+        this.useInMemorySession();
       }
       this.lastPersistedData = cloneStorageData(defaults);
       this.data.set(cloneStorageData(defaults));
     } catch {
-      this.database?.close();
-      this.database = null;
+      this.useInMemorySession();
       const defaults = createDefaultStorageData();
       this.lastPersistedData = cloneStorageData(defaults);
       this.data.set(cloneStorageData(defaults));
     }
+  }
+
+  private useInMemorySession(): void {
+    this.database?.close();
+    this.database = null;
+    this.inMemorySession.set(true);
   }
 
   private async backupRawData(raw: unknown): Promise<void> {
@@ -318,7 +334,7 @@ export class StorageService {
 
   private writeData(data: StorageData): Promise<void> {
     if (!this.database) {
-      return Promise.resolve();
+      return Promise.reject(new Error('Persistent storage is unavailable'));
     }
     const transaction = this.database.transaction(STORE_NAME, 'readwrite');
     transaction.objectStore(STORE_NAME).put(data, DATA_KEY);

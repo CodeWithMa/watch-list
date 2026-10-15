@@ -50,6 +50,15 @@
   </div>
 </nav>
 
+@if (inMemorySession()) {
+  <div
+    role="alert"
+    class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark px-8 py-3 text-center border-b border-error-border-light dark:border-error-border-dark"
+  >
+    Persistent storage is unavailable. Changes are only kept in memory and will be lost on reload.
+  </div>
+}
+
 @if (saveError()) {
   <div
     role="alert"

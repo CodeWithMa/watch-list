@@ -1,8 +1,9 @@
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { StorageService } from './storage.service';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBObjectStore as FakeIDBObjectStore } from 'fake-indexeddb';
 import { vi, afterEach } from 'vitest';
 import { Item } from '../models/item.model';
+import { createDefaultStorageData } from '../domain/storage-schema';
 
 describe('StorageService', () => {
   beforeEach(() => {
@@ -24,6 +25,7 @@ describe('StorageService', () => {
     expect(data.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(data.groups['ungrouped'].name).toBe('Ungrouped');
     expect(data.deletedItems).toEqual({});
+    expect(service.getInMemorySessionSignal()()).toBe(false);
   });
 
   it('allows initialization to be retried after an open failure', async () => {
@@ -37,6 +39,10 @@ describe('StorageService', () => {
     await expect(service.initialize()).resolves.toBeUndefined();
 
     expect(service.getData().schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(service.getInMemorySessionSignal()()).toBe(true);
+
+    await service.initialize();
+    expect(service.getInMemorySessionSignal()()).toBe(false);
   });
 
   it('closes an opened database when initialization fails', async () => {
@@ -54,6 +60,7 @@ describe('StorageService', () => {
     await expect(service.initialize()).resolves.toBeUndefined();
 
     expect(database.close).toHaveBeenCalledOnce();
+    expect(service.getInMemorySessionSignal()()).toBe(true);
   });
 
   it('rejects a blocked open request without reading its unavailable result', async () => {
@@ -174,6 +181,70 @@ describe('StorageService', () => {
     expect(backups[0].timestamp).toBeInstanceOf(Date);
     const backup = await readRecord(database, backups[0].key);
     expect(backup).toEqual(corruptData);
+  });
+
+  it.each(['groups', 'items', 'deletedItems'] as const)(
+    'backs up the original dataset when startup drops invalid %s',
+    async (collection) => {
+      const firstService = new StorageService();
+      await firstService.initialize();
+      const database = await openTestDatabase();
+      const valid = dataWithMovie();
+      const raw = { ...valid, [collection]: { ...valid[collection], bad: { invalid: true } } };
+      await writeRecord(database, raw);
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      const recovered = new StorageService();
+      await recovered.initialize();
+
+      expect(recovered.getData().items['movie'].title).toBe('Movie');
+      const backups = await recovered.getRecoveryBackups();
+      expect(backups).toHaveLength(1);
+      await expect(recovered.getRecoveryBackupByKey(backups[0].key)).resolves.toEqual(raw);
+
+      const reloaded = new StorageService();
+      await reloaded.initialize();
+      expect(reloaded.getData()).toEqual(recovered.getData());
+      expect(await reloaded.getRecoveryBackups()).toHaveLength(1);
+      database.close();
+    },
+  );
+
+  it('preserves partially recoverable raw data when its backup fails, even after session edits', async () => {
+    const firstService = new StorageService();
+    await firstService.initialize();
+    const database = await openTestDatabase();
+    const valid = dataWithMovie();
+    const raw = { ...valid, items: { ...valid.items, bad: { invalid: true } } };
+    await writeRecord(database, raw);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const put = FakeIDBObjectStore.prototype.put;
+    const failure = vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(function (
+      this: IDBObjectStore,
+      value,
+      key,
+    ) {
+      if (typeof key === 'string' && key.startsWith('watch-list-data-backup-')) {
+        throw new Error('Backup unavailable');
+      }
+      return put.call(this, value, key);
+    });
+
+    const recovered = new StorageService();
+    await recovered.initialize();
+    expect(recovered.getData().items['movie'].title).toBe('Movie');
+    expect(recovered.getInMemorySessionSignal()()).toBe(true);
+    await recovered.saveData(withGroup(recovered.getData(), 'session-only'));
+    expect(recovered.getInMemorySessionSignal()()).toBe(true);
+    failure.mockRestore();
+
+    const reloaded = new StorageService();
+    await reloaded.initialize();
+    const backups = await reloaded.getRecoveryBackups();
+    expect(backups).toHaveLength(1);
+    await expect(reloaded.getRecoveryBackupByKey(backups[0].key)).resolves.toEqual(raw);
+    expect(reloaded.getData().groups['session-only']).toBeUndefined();
+    database.close();
   });
 
   it('returns recovery backups sorted newest first', async () => {
@@ -585,15 +656,15 @@ describe('StorageService', () => {
     spy.mockRestore();
   });
 
-  it('keeps saving in memory when IndexedDB is unavailable', async () => {
+  it('keeps edits in memory and the non-persistent indicator active when IndexedDB is unavailable', async () => {
     const service = new StorageService();
-    const storage = service as unknown as {
-      openDatabase: () => Promise<IDBDatabase>;
-    };
-    vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('Unavailable');
+    });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     await service.initialize();
+    expect(service.getInMemorySessionSignal()()).toBe(true);
 
     const updated = {
       ...service.getData(),
@@ -606,9 +677,10 @@ describe('StorageService', () => {
 
     expect(service.getData().groups['test']).toMatchObject({ name: 'Test' });
     expect(service.getSaveErrorSignal()()).toBeNull();
+    expect(service.getInMemorySessionSignal()()).toBe(true);
   });
 
-  it('imports data with images in memory when IndexedDB is unavailable', async () => {
+  it('imports data without images in memory without clearing the non-persistent indicator', async () => {
     const service = new StorageService();
     const storage = service as unknown as {
       openDatabase: () => Promise<IDBDatabase>;
@@ -632,6 +704,31 @@ describe('StorageService', () => {
     expect(result.data.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(result.dropped).toEqual({ groups: 0, items: 0, deletedItems: 0 });
     expect(service.getSaveErrorSignal()()).toBeNull();
+    expect(service.getInMemorySessionSignal()()).toBe(true);
+  });
+
+  it('rejects poster imports without changing session data when IndexedDB is unavailable', async () => {
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('Unavailable');
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const service = new StorageService();
+    await service.initialize();
+    await service.saveData(withGroup(service.getData(), 'session'));
+    const previous = service.getData();
+    const imported = dataWithMovie();
+
+    await expect(
+      service.importDataWithImages(
+        {
+          ...imported,
+          items: { movie: { ...imported.items.movie, posterId: 'image-1' } },
+        },
+        [{ id: 'image-1', blob: new Blob(['poster'], { type: 'image/png' }) }],
+      ),
+    ).rejects.toThrow('Cannot import posters while persistent storage is unavailable');
+
+    expect(service.getData()).toEqual(previous);
   });
 
   it('returns no recovery backups when IndexedDB is unavailable', async () => {
@@ -659,6 +756,28 @@ function withGroup(data: ReturnType<StorageService['getData']>, id: string) {
       [id]: { id, name: id, order: 1 },
     },
   };
+}
+
+function dataWithMovie() {
+  const movie: Item = {
+    id: 'movie',
+    title: 'Movie',
+    type: 'movie',
+    groupId: 'ungrouped',
+    status: 'not-started',
+    isAdult: false,
+    createdAt: '2026-01-01',
+    watchHistory: [],
+  };
+  return { ...createDefaultStorageData(), items: { movie } };
+}
+
+function openTestDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('watch-list', 2);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
 }
 
 function writeRecord(database: IDBDatabase, data: unknown, key = 'watch-list-data'): Promise<void> {

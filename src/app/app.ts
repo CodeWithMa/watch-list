@@ -13,4 +13,5 @@ export class App {
   private readonly storageService = inject(StorageService);
   protected readonly title = signal('watch-list');
   protected readonly saveError = this.storageService.getSaveErrorSignal();
+  protected readonly inMemorySession = this.storageService.getInMemorySessionSignal();
 }

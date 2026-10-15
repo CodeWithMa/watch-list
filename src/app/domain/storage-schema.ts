@@ -4,14 +4,6 @@ import { CURRENT_SCHEMA_VERSION, DeletedItemHistory, StorageData } from '../mode
 import { Group } from '../models/group.model';
 import { Item } from '../models/item.model';
 
-interface LegacyProgressV2 {
-  season: number;
-  episode: number;
-  totalEpisodes?: number;
-  totalSeasons?: number;
-  seasons?: { seasonNumber: number; totalEpisodes?: number }[];
-}
-
 const SeasonInfoSchema = z.object({
   seasonNumber: z.number(),
   totalEpisodes: z.number().optional(),
@@ -242,22 +234,20 @@ function migrateStorageData(data: StorageData): StorageData {
       if (!isRecord(item)) {
         continue;
       }
-      if (item['type'] === 'series' && item['progress']) {
-        const progress = item.progress as unknown as LegacyProgressV2;
-        if ('totalEpisodes' in progress && typeof progress.totalEpisodes === 'number') {
-          progress.seasons = [
+      if (item['type'] === 'series' && isRecord(item['progress'])) {
+        const progress = item['progress'];
+        if (typeof progress['totalEpisodes'] === 'number') {
+          progress['seasons'] = [
             {
-              seasonNumber: progress.season,
-              totalEpisodes: progress.totalEpisodes,
+              seasonNumber: progress['season'],
+              totalEpisodes: progress['totalEpisodes'],
             },
           ];
-          delete progress.totalEpisodes;
-        } else if (!progress.seasons) {
-          progress.seasons = [];
+          delete progress['totalEpisodes'];
+        } else if (!progress['seasons']) {
+          progress['seasons'] = [];
         }
-        if ('totalSeasons' in progress) {
-          delete progress.totalSeasons;
-        }
+        delete progress['totalSeasons'];
       }
     }
     migrated.schemaVersion = 3;
