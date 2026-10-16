@@ -47,9 +47,9 @@ describe('StatsDailyActivityComponent', () => {
       'Sunday',
     ]);
     expect(rows.every((row) => row.querySelectorAll('td').length === 24)).toBe(true);
-    expect(element.querySelector('[aria-label="Monday, 18:00–19:00: 2 entries"]')).not.toBeNull();
-    expect(element.querySelector('[aria-label="Tuesday, 00:00–01:00: 1 entry"]')).not.toBeNull();
-    expect(element.querySelector('[aria-label="Sunday, 23:00–24:00: 0 entries"]')).not.toBeNull();
+    expect(element.querySelector('[title="Monday, 18:00–19:00: 2 entries"]')).not.toBeNull();
+    expect(element.querySelector('[title="Tuesday, 00:00–01:00: 1 entry"]')).not.toBeNull();
+    expect(element.querySelector('[title="Sunday, 23:00–24:00: 0 entries"]')).not.toBeNull();
   });
 
   it('includes all past history without a range selector and ignores invalid or future dates', () => {
@@ -61,7 +61,7 @@ describe('StatsDailyActivityComponent', () => {
     ]);
     expect(element.querySelector('select')).toBeNull();
     const hasCell = (label: string) =>
-      expect(element.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
+      expect(element.querySelector(`[title="${label}"]`)).not.toBeNull();
 
     hasCell('Thursday, 23:00–24:00: 1 entry');
     hasCell('Friday, 11:00–12:00: 1 entry');
@@ -70,12 +70,22 @@ describe('StatsDailyActivityComponent', () => {
 
   it('refreshes cell counts and the empty state when history changes', () => {
     const { fixture, element } = render([entry(new Date(2026, 9, 12, 18))]);
-    expect(element.querySelector('[aria-label="Monday, 18:00–19:00: 1 entry"]')).not.toBeNull();
+    expect(element.querySelector('[title="Monday, 18:00–19:00: 1 entry"]')).not.toBeNull();
 
     fixture.componentRef.setInput('historyEntries', []);
     fixture.detectChanges();
     expect(element.textContent).toContain('No watch activity yet.');
-    expect(element.querySelector('[aria-label="Monday, 18:00–19:00: 0 entries"]')).not.toBeNull();
+    expect(element.querySelector('[title="Monday, 18:00–19:00: 0 entries"]')).not.toBeNull();
     expect(element.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it('exposes read-only cell counts without adding keyboard tab stops', () => {
+    const { element } = render([entry(new Date(2026, 9, 12, 18))]);
+
+    expect(
+      element.querySelectorAll('button, a[href], input, select, textarea, [tabindex]'),
+    ).toHaveLength(0);
+    const cell = element.querySelector('td[title="Monday, 18:00–19:00: 1 entry"]');
+    expect(cell?.textContent).toContain('Monday, 18:00–19:00: 1 entry');
   });
 });

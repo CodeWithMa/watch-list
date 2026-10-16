@@ -36,14 +36,10 @@ import { HistoryEntry } from '../../../models/storage.model';
                 {{ row.label }}
               </th>
               @for (cell of row.cells; track cell.hour) {
-                <td class="p-0">
-                  <button
-                    type="button"
-                    class="block w-7 h-7 rounded-sm cursor-default focus-visible:outline-2 focus-visible:outline-accent-primary focus-visible:outline-offset-2"
-                    [class]="cell.color"
-                    [attr.aria-label]="cell.label"
-                    [title]="cell.label"
-                  ></button>
+                <td class="p-0" [title]="cell.label">
+                  <div class="w-7 h-7 rounded-sm" [class]="cell.color">
+                    <span class="sr-only">{{ cell.label }}</span>
+                  </div>
                 </td>
               }
             </tr>
