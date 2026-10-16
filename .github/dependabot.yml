@@ -53,6 +53,3 @@ updates:
         patterns:
           - vitest
           - '@vitest/*'
-        update-types:
-          - minor
-          - patch
