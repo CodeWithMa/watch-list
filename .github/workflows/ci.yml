@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [dev]
   pull_request:
     branches: [dev]
 
@@ -25,13 +27,24 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
-      - run: bun run test
+      - run: bun run test --coverage --no-watch
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./coverage/watch-list/lcov.info
+          disable_search: true
+          fail_ci_if_error: true
+          # Fork pull requests use Codecov's tokenless upload support.
+          use_oidc: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   build:
     runs-on: ubuntu-latest
