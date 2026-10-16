@@ -5,20 +5,15 @@ import {
   effect,
   inject,
   input,
-  linkedSignal,
   output,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
-import { createSearchStream } from '../../utils/search-stream.utils';
-import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
 import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
-import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { SearchProviderSelectComponent } from '../search-provider-select/search-provider-select.component';
 
 @Component({
@@ -148,25 +143,23 @@ import { SearchProviderSelectComponent } from '../search-provider-select/search-
 })
 export class PosterPickerComponent {
   private suggestionSearchService = inject(SuggestionSearchService);
-  private readonly providers = inject(ProviderSettingsService);
   private imageStorage = inject(ImageStorageService);
   private destroyRef = inject(DestroyRef);
+  private readonly search = this.suggestionSearchService.createSession('Search unavailable.');
 
   readonly posterId = input<string | undefined>(undefined);
   readonly searchSeed = input('');
   readonly posterIdChange = output<string | undefined>();
   readonly loadingChange = output<boolean>();
 
-  readonly enabledSources = computed(() => this.providers.getEnabledSources());
-  readonly selectedSource = linkedSignal<SuggestionSource[], SuggestionSource | undefined>({
-    source: this.enabledSources,
-    computation: (sources, previous) =>
-      previous?.value && sources.includes(previous.value) ? previous.value : sources[0],
-  });
-  readonly posterSearchQuery = signal('');
-  readonly posterSuggestions = signal<Suggestion[]>([]);
-  readonly posterSuggestionsLoading = signal(false);
-  readonly posterSuggestionsError = signal('');
+  readonly enabledSources = this.search.enabledSources;
+  readonly selectedSource = this.search.selectedSource;
+  readonly posterSearchQuery = this.search.query;
+  readonly posterSuggestions = computed(() =>
+    this.search.results().filter((suggestion) => suggestion.posterUrl),
+  );
+  readonly posterSuggestionsLoading = this.search.loading;
+  readonly posterSuggestionsError = this.search.error;
   readonly showPosterSearch = signal(false);
   readonly posterLoading = signal(false);
   readonly posterError = signal('');
@@ -177,16 +170,6 @@ export class PosterPickerComponent {
   private readonly draftPosterIds = new Set<string>();
   private destroyed = false;
   private skipDraftCleanup = false;
-
-  private readonly searchStream = createSearchStream(
-    (query) => this.suggestionSearchService.search(query, this.selectedSource()),
-    'Search unavailable.',
-    {
-      debounceMs: SUGGESTION_DEBOUNCE_MS,
-      onLoadingChange: (loading) => this.posterSuggestionsLoading.set(loading),
-      onError: (message) => this.posterSuggestionsError.set(message),
-    },
-  );
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -200,10 +183,6 @@ export class PosterPickerComponent {
       const version = this.imageStorage.version();
       void this.loadPosterPreview(posterId, version);
     });
-
-    this.searchStream.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((results) => {
-      this.posterSuggestions.set(results.filter((suggestion) => suggestion.posterUrl));
-    });
   }
 
   openPosterSearch(): void {
@@ -215,25 +194,18 @@ export class PosterPickerComponent {
   }
 
   onPosterSearchChanged(query: string): void {
-    this.posterSearchQuery.set(query);
-    this.searchStream.query.next(query);
+    this.search.setQuery(query);
   }
 
   onSearchProviderChanged(source: SuggestionSource): void {
-    this.selectedSource.set(source);
-    this.posterSuggestions.set([]);
-    this.posterSuggestionsLoading.set(false);
-    this.posterSuggestionsError.set('');
-    this.searchStream.query.next(this.posterSearchQuery());
+    this.search.setSource(source);
   }
 
   selectPosterSuggestion(suggestion: Suggestion): void {
     if (suggestion.posterUrl) {
       void this.storePoster(this.imageStorage.storeUrl(suggestion.posterUrl));
     }
-    this.posterSearchQuery.set('');
-    this.searchStream.query.next('');
-    this.posterSuggestions.set([]);
+    this.search.dismiss();
     this.showPosterSearch.set(false);
   }
 

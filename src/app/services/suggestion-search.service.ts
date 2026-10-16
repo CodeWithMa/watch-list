@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
 import { catchError, Observable, of } from 'rxjs';
 import { SeriesDetails, Suggestion, SuggestionSource } from '../models/suggestion.model';
 import { AnilistSuggestionService } from './anilist-suggestion.service';
@@ -6,6 +6,7 @@ import { JikanSuggestionService } from './jikan-suggestion.service';
 import { ProviderSettingsService } from './provider-settings.service';
 import { TmdbSuggestionService } from './tmdb-suggestion.service';
 import { SUGGESTION_MIN_QUERY_LENGTH } from '../domain/suggestion.constants';
+import { createSearchStream } from '../utils/search-stream.utils';
 
 @Injectable({
   providedIn: 'root',
@@ -15,6 +16,14 @@ export class SuggestionSearchService {
   private readonly jikan = inject(JikanSuggestionService);
   private readonly anilist = inject(AnilistSuggestionService);
   private readonly providers = inject(ProviderSettingsService);
+
+  createSession(errorMessage: string) {
+    return createSearchStream(
+      (query, source) => this.search(query, source),
+      computed(() => this.providers.getEnabledSources()),
+      errorMessage,
+    );
+  }
 
   search(query: string, source = this.providers.getEnabledSources()[0]): Observable<Suggestion[]> {
     const trimmed = query.trim();
@@ -27,7 +36,7 @@ export class SuggestionSearchService {
     }
 
     const provider = { tmdb: this.tmdb, jikan: this.jikan, anilist: this.anilist }[source];
-    return provider.search(trimmed).pipe(catchError(() => of([] as Suggestion[])));
+    return provider.search(trimmed);
   }
 
   getDetails(ref: Pick<Suggestion, 'source' | 'id'>): Observable<SeriesDetails | null> {

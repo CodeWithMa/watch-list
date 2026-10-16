@@ -1,12 +1,4 @@
-import {
-  Component,
-  DestroyRef,
-  ViewChild,
-  computed,
-  inject,
-  linkedSignal,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { of, Subject, switchMap } from 'rxjs';
@@ -20,10 +12,7 @@ import {
   ItemFormValue,
 } from '../../domain/item-form';
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
-import { createSearchStream } from '../../utils/search-stream.utils';
 import { isEpisodicType } from '../../domain/item.constants';
-import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
-import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { SearchProviderSelectComponent } from '../search-provider-select/search-provider-select.component';
 
 interface SelectedSuggestionRef {
@@ -71,39 +60,21 @@ export class AddItemComponent {
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
   private suggestionSearchService = inject(SuggestionSearchService);
-  private readonly providers = inject(ProviderSettingsService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
-  private readonly search = createSearchStream(
-    (query) => this.suggestionSearchService.search(query, this.selectedSource()),
+  private readonly search = this.suggestionSearchService.createSession(
     'Suggestions are unavailable.',
-    {
-      debounceMs: SUGGESTION_DEBOUNCE_MS,
-      shouldSkip: () => {
-        const skip = this.skipNextSearch;
-        this.skipNextSearch = false;
-        return skip;
-      },
-      onLoadingChange: (loading) => this.suggestionsLoading.set(loading),
-      onError: (message) => this.suggestionsError.set(message),
-    },
   );
   private selectedEpisodicRef = new Subject<SelectedSuggestionRef | null>();
-  private skipNextSearch = false;
-  private lastPushedQuery = '';
 
   readonly groups = this.groupService.groups;
-  readonly enabledSources = computed(() => this.providers.getEnabledSources());
-  readonly selectedSource = linkedSignal<SuggestionSource[], SuggestionSource | undefined>({
-    source: this.enabledSources,
-    computation: (sources, previous) =>
-      previous?.value && sources.includes(previous.value) ? previous.value : sources[0],
-  });
+  readonly enabledSources = this.search.enabledSources;
+  readonly selectedSource = this.search.selectedSource;
   readonly initialValue = createDefaultItemFormValue();
   readonly title = signal('');
-  readonly suggestions = signal<Suggestion[]>([]);
-  readonly suggestionsLoading = signal(false);
-  readonly suggestionsError = signal('');
+  readonly suggestions = this.search.results;
+  readonly suggestionsLoading = this.search.loading;
+  readonly suggestionsError = this.search.error;
   readonly autofillPatch = signal<{ id: number; value: Partial<ItemFormValue> } | null>(null);
   private autofillPatchId = 0;
   readonly duplicateTitleHint = computed(() => {
@@ -120,10 +91,6 @@ export class AddItemComponent {
   });
 
   constructor() {
-    this.search.results.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((suggestions) => {
-      this.suggestions.set(suggestions);
-    });
-
     this.selectedEpisodicRef
       .pipe(
         switchMap((ref) => {
@@ -149,44 +116,20 @@ export class AddItemComponent {
       });
   }
 
-  private requestTitleSearch(title: string): void {
-    const trimmed = title.trim();
-    const isDuplicate = trimmed === this.lastPushedQuery;
-    if (!isDuplicate) {
-      this.lastPushedQuery = trimmed;
-      this.search.query.next(title);
-    }
-    if (this.skipNextSearch && isDuplicate) {
-      this.skipNextSearch = false;
-      this.suggestions.set([]);
-      this.suggestionsLoading.set(false);
-      this.suggestionsError.set('');
-    }
-  }
-
   onTitleChanged(title: string): void {
     this.title.set(title);
     this.autofillPatch.set(null);
     this.selectedEpisodicRef.next(null);
-    this.requestTitleSearch(title);
+    this.search.setQuery(title);
   }
 
   onSearchProviderChanged(source: SuggestionSource): void {
-    this.selectedSource.set(source);
-    this.skipNextSearch = false;
-    this.suggestions.set([]);
-    this.suggestionsLoading.set(false);
-    this.suggestionsError.set('');
-    this.search.query.next(this.title());
+    this.search.setSource(source);
   }
 
   onSuggestionSelected(suggestion: Suggestion): void {
     this.title.set(suggestion.title);
-    this.skipNextSearch = true;
-    this.requestTitleSearch(suggestion.title);
-    this.suggestions.set([]);
-    this.suggestionsLoading.set(false);
-    this.suggestionsError.set('');
+    this.search.dismiss(suggestion.title);
 
     if (!isEpisodicType(suggestion.type)) {
       this.autofillPatch.set({

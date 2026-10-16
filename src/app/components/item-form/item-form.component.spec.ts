@@ -1,11 +1,10 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Group } from '../../models/group.model';
-import { SuggestionSearchService } from '../../services/suggestion-search.service';
+import { createSuggestionProviders } from '../../services/suggestion-search.test-utils';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { ItemFormComponent } from './item-form.component';
 import { vi } from 'vitest';
-import { of } from 'rxjs';
 
 describe('ItemFormComponent', () => {
   const groups: Group[] = [
@@ -19,12 +18,7 @@ describe('ItemFormComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        {
-          provide: SuggestionSearchService,
-          useValue: {
-            search: vi.fn(() => of([])),
-          },
-        },
+        ...createSuggestionProviders().providers,
         {
           provide: ImageStorageService,
           useValue: {

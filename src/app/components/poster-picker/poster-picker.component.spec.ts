@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { SuggestionSearchService } from '../../services/suggestion-search.service';
+import { createSuggestionProviders } from '../../services/suggestion-search.test-utils';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { PosterPickerComponent } from './poster-picker.component';
@@ -19,17 +19,14 @@ function createSuggestion(
 }
 
 describe('PosterPickerComponent', () => {
+  let suggestionSearchService: ReturnType<typeof createSuggestionProviders>;
   afterEach(() => vi.restoreAllMocks());
 
   beforeEach(() => {
+    suggestionSearchService = createSuggestionProviders();
     TestBed.configureTestingModule({
       providers: [
-        {
-          provide: SuggestionSearchService,
-          useValue: {
-            search: vi.fn(() => of([])),
-          },
-        },
+        ...suggestionSearchService.providers,
         {
           provide: ImageStorageService,
           useValue: {
@@ -51,7 +48,7 @@ describe('PosterPickerComponent', () => {
   it('switches poster search providers without allowing stale results to reappear', async () => {
     vi.useFakeTimers();
     try {
-      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const search = suggestionSearchService.search;
       const lateResults = new Subject<Suggestion[]>();
       const oldResult = createSuggestion({
         id: 1,
@@ -131,7 +128,7 @@ describe('PosterPickerComponent', () => {
       for (const source of ['tmdb', 'jikan', 'anilist'] as const) {
         settings.setEnabled(source, sources.includes(source));
       }
-      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const search = suggestionSearchService.search;
       const fixture = TestBed.createComponent(PosterPickerComponent);
       const root = fixture.nativeElement as HTMLElement;
       fixture.componentRef.setInput('searchSeed', 'Naruto');
@@ -153,7 +150,11 @@ describe('PosterPickerComponent', () => {
       } else {
         expect(provider).toBeNull();
       }
-      expect(search).toHaveBeenCalledWith('Naruto', sources[0]);
+      if (sources.length) {
+        expect(search).toHaveBeenCalledWith('Naruto', sources[0]);
+      } else {
+        expect(search).not.toHaveBeenCalled();
+      }
     } finally {
       vi.useRealTimers();
     }
@@ -161,7 +162,6 @@ describe('PosterPickerComponent', () => {
 
   it('seeds poster search with the item title when opened', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(PosterPickerComponent);
@@ -182,7 +182,6 @@ describe('PosterPickerComponent', () => {
 
   it('searches for posters after debounce', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       search.mockReturnValue(
@@ -219,7 +218,6 @@ describe('PosterPickerComponent', () => {
 
   it('filters out poster suggestions without posterUrl', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       search.mockReturnValue(
@@ -255,7 +253,6 @@ describe('PosterPickerComponent', () => {
 
   it('does not search for poster with query shorter than 2 characters', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(PosterPickerComponent);
@@ -273,7 +270,6 @@ describe('PosterPickerComponent', () => {
 
   it('stores the poster when selecting a poster suggestion', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       search.mockReturnValue(
@@ -464,7 +460,6 @@ describe('PosterPickerComponent', () => {
 
   it('re-triggers poster search when re-typing the same query after selection', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       search.mockReturnValue(
@@ -504,7 +499,6 @@ describe('PosterPickerComponent', () => {
 
   it('shows error when poster search fails', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       search.mockReturnValue(throwError(() => new Error('search unavailable')));
@@ -724,7 +718,7 @@ describe('PosterPickerComponent', () => {
     const getUrl = vi.fn(() => Promise.resolve('blob:preview'));
     TestBed.configureTestingModule({
       providers: [
-        { provide: SuggestionSearchService, useValue: { search: vi.fn(() => of([])) } },
+        ...suggestionSearchService.providers,
         {
           provide: ImageStorageService,
           useValue: {
@@ -759,7 +753,7 @@ describe('PosterPickerComponent', () => {
     const getUrl = vi.fn(() => new Promise<string | null>((res) => (resolveUrl = res)));
     TestBed.configureTestingModule({
       providers: [
-        { provide: SuggestionSearchService, useValue: { search: vi.fn(() => of([])) } },
+        ...suggestionSearchService.providers,
         {
           provide: ImageStorageService,
           useValue: {
