@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { GroupService } from '../../services/group.service';
 import { WatchListService } from '../../services/watch-list.service';
-import { SuggestionSearchService } from '../../services/suggestion-search.service';
+import { createSuggestionProviders } from '../../services/suggestion-search.test-utils';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { Item } from '../../models/item.model';
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
@@ -22,6 +22,7 @@ function createSuggestion(
 }
 
 describe('AddItemComponent', () => {
+  let suggestionSearchService: ReturnType<typeof createSuggestionProviders>;
   const existingItems: Item[] = [
     {
       id: 'item-1',
@@ -41,6 +42,7 @@ describe('AddItemComponent', () => {
   ];
 
   beforeEach(() => {
+    suggestionSearchService = createSuggestionProviders();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -57,13 +59,7 @@ describe('AddItemComponent', () => {
             groups: signal([{ id: 'ungrouped', name: 'Ungrouped', order: 0 }]),
           },
         },
-        {
-          provide: SuggestionSearchService,
-          useValue: {
-            search: vi.fn(() => of([])),
-            getDetails: vi.fn(() => of(null)),
-          },
-        },
+        ...suggestionSearchService.providers,
       ],
     });
     const settings = TestBed.inject(ProviderSettingsService);
@@ -75,7 +71,7 @@ describe('AddItemComponent', () => {
   it('switches title search providers, clearing results and cancelling the previous search immediately', async () => {
     vi.useFakeTimers();
     try {
-      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const search = suggestionSearchService.search;
       const lateResults = new Subject<Suggestion[]>();
       const oldResult = createSuggestion({ id: 1, title: 'Old provider result', type: 'series' });
       const newResult = createSuggestion({
@@ -152,7 +148,7 @@ describe('AddItemComponent', () => {
       for (const source of ['tmdb', 'jikan', 'anilist'] as const) {
         settings.setEnabled(source, sources.includes(source));
       }
-      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const search = suggestionSearchService.search;
       const fixture = TestBed.createComponent(AddItemComponent);
       const root = fixture.nativeElement as HTMLElement;
       fixture.detectChanges();
@@ -176,7 +172,11 @@ describe('AddItemComponent', () => {
       title.value = 'Naruto';
       title.dispatchEvent(new Event('input'));
       await vi.advanceTimersByTimeAsync(400);
-      expect(search).toHaveBeenCalledWith('Naruto', sources[0]);
+      if (sources.length) {
+        expect(search).toHaveBeenCalledWith('Naruto', sources[0]);
+      } else {
+        expect(search).not.toHaveBeenCalled();
+      }
     } finally {
       vi.useRealTimers();
     }
@@ -211,7 +211,7 @@ describe('AddItemComponent', () => {
     key('ArrowDown');
     expect(key('Tab').defaultPrevented).toBe(false);
     expect(root.querySelector('[role="menu"]')).toBeNull();
-    expect(TestBed.inject(SuggestionSearchService).search).not.toHaveBeenCalled();
+    expect(suggestionSearchService.search).not.toHaveBeenCalled();
     expect(TestBed.inject(WatchListService).addItem).not.toHaveBeenCalled();
   });
 
@@ -239,7 +239,7 @@ describe('AddItemComponent', () => {
     fixture.detectChanges();
     expect(root.querySelector('[role="menu"]')).toBeNull();
     expect(trigger.getAttribute('aria-label')).toBe('Title search provider: TMDB');
-    expect(TestBed.inject(SuggestionSearchService).search).not.toHaveBeenCalled();
+    expect(suggestionSearchService.search).not.toHaveBeenCalled();
   });
 
   it('focuses the title on opening without stealing focus on later updates', async () => {
@@ -253,7 +253,7 @@ describe('AddItemComponent', () => {
 
     const typeSelect = root.querySelector<HTMLSelectElement>('select[name="type"]');
     typeSelect?.focus();
-    fixture.componentInstance.suggestionsLoading.set(true);
+    fixture.componentInstance.onTitleChanged('Breaking');
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -298,24 +298,32 @@ describe('AddItemComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/items']);
   });
 
-  it('clears suggestions after selecting a suggestion', () => {
-    const fixture = TestBed.createComponent(AddItemComponent);
+  it('clears suggestions after selecting a suggestion', async () => {
+    vi.useFakeTimers();
+    try {
+      const suggestion = createSuggestion({
+        id: 1396,
+        title: 'Breaking Bad',
+        type: 'series',
+        year: '2008',
+      });
+      suggestionSearchService.search.mockReturnValue(of([suggestion]));
+      const caller = TestBed.createComponent(AddItemComponent).componentInstance;
+      caller.onTitleChanged('Breaking');
+      await vi.advanceTimersByTimeAsync(400);
+      expect(caller.suggestions()).toEqual([suggestion]);
 
-    fixture.componentInstance.suggestions.set([
-      createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
-    ]);
+      caller.onSuggestionSelected(suggestion);
 
-    fixture.componentInstance.onSuggestionSelected(
-      createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
-    );
-
-    expect(fixture.componentInstance.title()).toBe('Breaking Bad');
-    expect(fixture.componentInstance.suggestions()).toEqual([]);
-    expect(fixture.componentInstance.suggestionsLoading()).toBe(false);
+      expect(caller.title()).toBe('Breaking Bad');
+      expect(caller.suggestions()).toEqual([]);
+      expect(caller.suggestionsLoading()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('autofills seasons after selecting a TMDB series suggestion', () => {
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     vi.mocked(suggestionSearchService.getDetails).mockReturnValue(
       of({
         seasons: [
@@ -355,7 +363,6 @@ describe('AddItemComponent', () => {
   });
 
   it('autofills seasons after selecting a Jikan OVA suggestion', () => {
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     vi.mocked(suggestionSearchService.getDetails).mockReturnValue(
       of({
         seasons: [
@@ -396,7 +403,6 @@ describe('AddItemComponent', () => {
   });
 
   it('does not fetch season details for movie suggestions', () => {
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const fixture = TestBed.createComponent(AddItemComponent);
 
     fixture.componentInstance.onSuggestionSelected(
@@ -417,7 +423,6 @@ describe('AddItemComponent', () => {
   });
 
   it('does not apply stale TMDB details after the title changes', () => {
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
     vi.mocked(suggestionSearchService.getDetails).mockReturnValue(details.asObservable());
     const fixture = TestBed.createComponent(AddItemComponent);
@@ -439,7 +444,6 @@ describe('AddItemComponent', () => {
   });
 
   it('does not apply stale poster from a series when the title changes before details resolve', () => {
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
     vi.mocked(suggestionSearchService.getDetails).mockReturnValue(details.asObservable());
     const fixture = TestBed.createComponent(AddItemComponent);
@@ -467,7 +471,6 @@ describe('AddItemComponent', () => {
   });
 
   it('does not apply stale poster from a series when a movie is selected before details resolve', () => {
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const details = new Subject<{ seasons: { seasonNumber: number; totalEpisodes: number }[] }>();
     vi.mocked(suggestionSearchService.getDetails).mockReturnValue(details.asObservable());
     const fixture = TestBed.createComponent(AddItemComponent);
@@ -506,7 +509,6 @@ describe('AddItemComponent', () => {
   });
 
   it('cancels the previous TMDB details request when another series is selected', () => {
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     let firstRequestUnsubscribed = false;
     vi.mocked(suggestionSearchService.getDetails)
       .mockReturnValueOnce(
@@ -580,7 +582,6 @@ describe('AddItemComponent', () => {
 
   it('shows an error and keeps searching after a failed request', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       search
@@ -611,7 +612,6 @@ describe('AddItemComponent', () => {
 
   it('does not search again for whitespace-only title changes', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(AddItemComponent);
@@ -630,14 +630,10 @@ describe('AddItemComponent', () => {
 
   it('does not run a pending debounced search after selecting a suggestion', async () => {
     vi.useFakeTimers();
-    const suggestionSearchService = TestBed.inject(SuggestionSearchService);
     const search = vi.mocked(suggestionSearchService.search);
     try {
       const fixture = TestBed.createComponent(AddItemComponent);
 
-      fixture.componentInstance.suggestions.set([
-        createSuggestion({ id: 1396, title: 'Breaking Bad', type: 'series', year: '2008' }),
-      ]);
       fixture.componentInstance.onTitleChanged('Breakin');
       await vi.advanceTimersByTimeAsync(100);
       fixture.componentInstance.onSuggestionSelected(
@@ -650,6 +646,53 @@ describe('AddItemComponent', () => {
       expect(fixture.componentInstance.suggestions()).toEqual([]);
       expect(fixture.componentInstance.suggestionsLoading()).toBe(false);
       expect(fixture.componentInstance.suggestionsError()).toBe('');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([100, 400])(
+    'cancels same-title selection after %i ms without restoring suggestions',
+    async (elapsed) => {
+      vi.useFakeTimers();
+      try {
+        const response = new Subject<Suggestion[]>();
+        suggestionSearchService.search.mockReturnValue(response);
+        const fixture = TestBed.createComponent(AddItemComponent);
+        const caller = fixture.componentInstance;
+        const suggestion = createSuggestion({ id: 1, title: 'Breaking Bad', type: 'movie' });
+        caller.onTitleChanged(suggestion.title);
+        await vi.advanceTimersByTimeAsync(elapsed);
+        const callsBeforeSelection = suggestionSearchService.search.mock.calls.length;
+        caller.onSuggestionSelected(suggestion);
+        response.next([suggestion]);
+        await vi.advanceTimersByTimeAsync(400);
+        expect(suggestionSearchService.search).toHaveBeenCalledTimes(callsBeforeSelection);
+        expect(caller.suggestions()).toEqual([]);
+        expect(caller.suggestionsLoading()).toBe(false);
+        expect(caller.title()).toBe(suggestion.title);
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it('searches user input typed immediately after selecting a suggestion', async () => {
+    vi.useFakeTimers();
+    try {
+      const caller = TestBed.createComponent(AddItemComponent).componentInstance;
+      caller.onTitleChanged('Breakin');
+      await vi.advanceTimersByTimeAsync(100);
+      caller.onSuggestionSelected(
+        createSuggestion({ id: 1, title: 'Breaking Bad', type: 'movie' }),
+      );
+      await vi.advanceTimersByTimeAsync(100);
+      caller.onTitleChanged('Different show');
+      await vi.advanceTimersByTimeAsync(400);
+      expect(suggestionSearchService.search).toHaveBeenCalledExactlyOnceWith(
+        'Different show',
+        'tmdb',
+      );
     } finally {
       vi.useRealTimers();
     }

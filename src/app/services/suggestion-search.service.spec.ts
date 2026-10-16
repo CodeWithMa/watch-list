@@ -1,5 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import {
+  EnvironmentInjector,
+  createEnvironmentInjector,
+  runInInjectionContext,
+  signal,
+} from '@angular/core';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { SuggestionSearchService } from './suggestion-search.service';
 import { AnilistSuggestionService } from './anilist-suggestion.service';
@@ -91,15 +97,17 @@ describe('SuggestionSearchService', () => {
     },
   );
 
-  it('returns empty when the selected provider fails without falling back to another', () => {
+  it('reports provider failures without disguising them as empty results or falling back', () => {
     const service = TestBed.inject(SuggestionSearchService);
     tmdb.search.mockReturnValue(throwError(() => new Error('fail')));
     jikan.search.mockReturnValue(of([sug({ id: 2, title: 'jikan' })]));
     anilist.search.mockReturnValue(throwError(() => new Error('fail')));
 
-    let result: Suggestion[] = [];
-    service.search('test').subscribe((r) => (result = r));
-    expect(result).toEqual([]);
+    const next = vi.fn();
+    const error = vi.fn();
+    service.search('test').subscribe({ next, error });
+    expect(next).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(new Error('fail'));
     expect(jikan.search).not.toHaveBeenCalled();
   });
 
@@ -142,6 +150,189 @@ describe('SuggestionSearchService', () => {
     expect(r1).toBeNull();
     expect(r2).toBeNull();
     expect(jikan.getAnimeDetails).not.toHaveBeenCalled();
+  });
+
+  describe('search sessions', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it('debounces queries and exposes results and loading through the search interface', async () => {
+      const service = TestBed.inject(SuggestionSearchService);
+      const session = TestBed.runInInjectionContext(() => service.createSession('Unavailable.'));
+      const results = [sug({ id: 1, title: 'Breaking Bad' })];
+      tmdb.search.mockReturnValue(of(results));
+
+      session.setQuery('  Breaking  ');
+      await vi.advanceTimersByTimeAsync(399);
+      expect(tmdb.search).not.toHaveBeenCalled();
+      expect(session.results()).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(tmdb.search).toHaveBeenCalledWith('Breaking');
+      expect(session.results()).toEqual(results);
+      expect(session.loading()).toBe(false);
+      expect(session.error()).toBe('');
+    });
+
+    it('cancels an active request and searches the fallback when the selected provider is disabled', async () => {
+      const sources = signal<SuggestionSource[]>(['tmdb', 'jikan']);
+      provider.getEnabledSources.mockImplementation(() => sources());
+      provider.isEnabled.mockImplementation((source) => sources().includes(source));
+      const response = new Subject<Suggestion[]>();
+      tmdb.search.mockReturnValue(response);
+      const results = [sug({ source: 'jikan', id: 2, title: 'Fallback' })];
+      jikan.search.mockReturnValue(of(results));
+      const service = TestBed.inject(SuggestionSearchService);
+      const session = TestBed.runInInjectionContext(() => service.createSession('Unavailable.'));
+
+      session.setQuery('Breaking');
+      await vi.advanceTimersByTimeAsync(400);
+      expect(session.loading()).toBe(true);
+      sources.set(['jikan']);
+      TestBed.tick();
+      expect(session.selectedSource()).toBe('jikan');
+      expect(session.loading()).toBe(false);
+      response.next([sug({ id: 1, title: 'Stale' })]);
+      expect(session.results()).toEqual([]);
+      await vi.advanceTimersByTimeAsync(400);
+      expect(session.results()).toEqual(results);
+    });
+
+    it('deduplicates trimmed queries but cancels immediately when switching providers', async () => {
+      const response = new Subject<Suggestion[]>();
+      tmdb.search.mockReturnValue(response);
+      const service = TestBed.inject(SuggestionSearchService);
+      const session = TestBed.runInInjectionContext(() => service.createSession('Unavailable.'));
+      session.setQuery('Breaking');
+      await vi.advanceTimersByTimeAsync(400);
+      session.setQuery(' Breaking ');
+      await vi.advanceTimersByTimeAsync(400);
+      expect(tmdb.search).toHaveBeenCalledTimes(1);
+      expect(session.loading()).toBe(true);
+
+      session.setSource('jikan');
+      expect(session.loading()).toBe(false);
+      response.next([sug({ id: 1, title: 'Stale' })]);
+      expect(session.results()).toEqual([]);
+      await vi.advanceTimersByTimeAsync(400);
+      expect(jikan.search).toHaveBeenCalledWith('Breaking');
+    });
+
+    it.each([100, 400])(
+      'dismisses pending work after %i ms and allows the same query again',
+      async (elapsed) => {
+        const response = new Subject<Suggestion[]>();
+        tmdb.search.mockReturnValue(response);
+        const service = TestBed.inject(SuggestionSearchService);
+        const session = TestBed.runInInjectionContext(() => service.createSession('Unavailable.'));
+        session.setQuery('Breaking');
+        await vi.advanceTimersByTimeAsync(elapsed);
+        const callsBeforeSelection = tmdb.search.mock.calls.length;
+        session.dismiss('Breaking');
+        response.next([sug({ id: 1, title: 'Stale' })]);
+        await vi.advanceTimersByTimeAsync(400);
+        expect(tmdb.search).toHaveBeenCalledTimes(callsBeforeSelection);
+        expect(session.results()).toEqual([]);
+        expect(session.loading()).toBe(false);
+        expect(session.error()).toBe('');
+        expect(session.query()).toBe('Breaking');
+
+        session.setQuery('Breaking');
+        await vi.advanceTimersByTimeAsync(400);
+        expect(tmdb.search).toHaveBeenCalledTimes(callsBeforeSelection + 1);
+      },
+    );
+
+    it('clears results immediately on query changes and cancels when the query is too short', async () => {
+      const response = new Subject<Suggestion[]>();
+      tmdb.search.mockReturnValue(response);
+      const service = TestBed.inject(SuggestionSearchService);
+      const session = TestBed.runInInjectionContext(() => service.createSession('Unavailable.'));
+      session.setQuery('Breaking');
+      await vi.advanceTimersByTimeAsync(400);
+      response.next([sug({ id: 1, title: 'Breaking Bad' })]);
+      session.setQuery('Different');
+      expect(session.results()).toEqual([]);
+      session.setQuery(' a ');
+      response.next([sug({ id: 2, title: 'Late' })]);
+      await vi.advanceTimersByTimeAsync(400);
+      expect(tmdb.search).toHaveBeenCalledTimes(1);
+      expect(session.results()).toEqual([]);
+      expect(session.loading()).toBe(false);
+    });
+
+    it('distinguishes failures from empty results and recovers on the next query', async () => {
+      tmdb.search
+        .mockReturnValueOnce(throwError(() => new Error('offline')))
+        .mockReturnValue(of([]));
+      const service = TestBed.inject(SuggestionSearchService);
+      const session = TestBed.runInInjectionContext(() => service.createSession('Unavailable.'));
+      session.setQuery('Breaking');
+      await vi.advanceTimersByTimeAsync(400);
+      expect(session.error()).toBe('Unavailable.');
+      expect(session.loading()).toBe(false);
+      expect(session.results()).toEqual([]);
+
+      session.setQuery('Different');
+      expect(session.error()).toBe('');
+      await vi.advanceTimersByTimeAsync(400);
+      expect(tmdb.search).toHaveBeenCalledTimes(2);
+      expect(session.error()).toBe('');
+      expect(session.results()).toEqual([]);
+    });
+
+    it('keeps simultaneous title and poster sessions independent', async () => {
+      const response = new Subject<Suggestion[]>();
+      tmdb.search.mockReturnValue(response);
+      const service = TestBed.inject(SuggestionSearchService);
+      const title = TestBed.runInInjectionContext(() =>
+        service.createSession('Title unavailable.'),
+      );
+      const poster = TestBed.runInInjectionContext(() =>
+        service.createSession('Poster unavailable.'),
+      );
+      title.setQuery('Breaking');
+      poster.setQuery('Different');
+      await vi.advanceTimersByTimeAsync(400);
+      title.dismiss('Breaking Bad');
+      const results = [sug({ id: 1, title: 'Poster result' })];
+      response.next(results);
+      response.complete();
+      expect(title.results()).toEqual([]);
+      expect(title.query()).toBe('Breaking Bad');
+      expect(poster.results()).toEqual(results);
+      expect(poster.selectedSource()).toBe('tmdb');
+    });
+
+    it.each([100, 400])('cancels pending work on destruction after %i ms', async (elapsed) => {
+      const response = new Subject<Suggestion[]>();
+      tmdb.search.mockReturnValue(response);
+      const service = TestBed.inject(SuggestionSearchService);
+      const owner = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+      const session = runInInjectionContext(owner, () => service.createSession('Unavailable.'));
+      session.setQuery('Breaking');
+      await vi.advanceTimersByTimeAsync(elapsed);
+      const callsBeforeDestroy = tmdb.search.mock.calls.length;
+      owner.destroy();
+      response.next([sug({ id: 1, title: 'Late' })]);
+      await vi.advanceTimersByTimeAsync(400);
+      expect(tmdb.search).toHaveBeenCalledTimes(callsBeforeDestroy);
+      expect(session.results()).toEqual([]);
+      expect(session.loading()).toBe(false);
+    });
+
+    it('does not schedule work with no enabled providers', async () => {
+      provider.getEnabledSources.mockReturnValue([]);
+      const service = TestBed.inject(SuggestionSearchService);
+      const session = TestBed.runInInjectionContext(() => service.createSession('Unavailable.'));
+      session.setQuery('Breaking');
+      await vi.advanceTimersByTimeAsync(400);
+      expect(session.selectedSource()).toBeUndefined();
+      expect(tmdb.search).not.toHaveBeenCalled();
+      expect(jikan.search).not.toHaveBeenCalled();
+      expect(anilist.search).not.toHaveBeenCalled();
+      expect(session.loading()).toBe(false);
+      expect(session.error()).toBe('');
+    });
   });
 
   it('routes getDetails to correct source', () => {
