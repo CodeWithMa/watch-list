@@ -4,10 +4,55 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
   - package-ecosystem: bun
     directory: /
     schedule:
       interval: weekly
-    allow:
-      - dependency-name: electron
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      angular:
+        patterns:
+          - '@angular/*'
+        update-types:
+          - minor
+          - patch
+      eslint:
+        patterns:
+          - eslint
+          - '@eslint/js'
+          - typescript-eslint
+          - angular-eslint
+          - '@angular-eslint/*'
+        update-types:
+          - minor
+          - patch
+      tailwind:
+        patterns:
+          - tailwindcss
+          - '@tailwindcss/*'
+        update-types:
+          - minor
+          - patch
+      vitest:
+        patterns:
+          - vitest
+          - '@vitest/*'
+        update-types:
+          - minor
+          - patch
