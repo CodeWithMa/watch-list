@@ -59,42 +59,7 @@ export class StorageService {
         'Cannot import posters while persistent storage is unavailable. No data was imported.',
       );
     }
-    const updated: StorageData = {
-      ...cloneStorageData(normalized.data),
-      lastModifiedAt: new Date().toISOString(),
-    };
-    const snapshot = cloneStorageData(updated);
-    const previousData = this.data();
-    this.saveError.set(null);
-    this.data.set(snapshot);
-    if (!this.database) {
-      // Imports without images can still update the in-memory session.
-      return { data: this.getData(), dropped: normalized.dropped };
-    }
-    const write = this.writeQueue.then(async () => {
-      const transaction = this.database!.transaction([STORE_NAME, IMAGE_STORE_NAME], 'readwrite');
-      transaction.objectStore(STORE_NAME).put(snapshot, DATA_KEY);
-      const imageStore = transaction.objectStore(IMAGE_STORE_NAME);
-      imageStore.clear();
-      for (const image of images) imageStore.put(image);
-      await this.completeTransaction(transaction, 'Failed to import watch-list data');
-    });
-    this.writeQueue = write.then(
-      () => {
-        this.lastPersistedData = cloneStorageData(snapshot);
-        this.saveError.set(null);
-        imagesInvalidated.next();
-      },
-      (error: unknown) => {
-        if (this.data() === snapshot) {
-          this.data.set(previousData && cloneStorageData(previousData));
-        }
-        const message = error instanceof Error ? error.message : String(error);
-        this.saveError.set(message);
-        console.error('Failed to import watch-list data:', error);
-      },
-    );
-    await write;
+    await this.persistData(normalized.data, images);
     return { data: this.getData(), dropped: normalized.dropped };
   }
 
@@ -133,7 +98,7 @@ export class StorageService {
     return backup;
   }
 
-  private persistData(data: StorageData): Promise<void> {
+  private persistData(data: StorageData, images?: StoredImage[]): Promise<void> {
     const updated: StorageData = {
       ...cloneStorageData(data),
       lastModifiedAt: new Date().toISOString(),
@@ -144,11 +109,16 @@ export class StorageService {
     if (!this.database) {
       return Promise.resolve();
     }
-    const write = this.writeQueue.then(() => this.writeData(writeSnapshot));
+    const write = this.writeQueue.then(() =>
+      images === undefined
+        ? this.writeData(writeSnapshot)
+        : this.writeDataWithImages(writeSnapshot, images),
+    );
     this.writeQueue = write.then(
       () => {
         this.lastPersistedData = cloneStorageData(writeSnapshot);
         this.saveError.set(null);
+        if (images !== undefined) imagesInvalidated.next();
       },
       (error: unknown) => {
         if (this.data() === updated) {
@@ -156,7 +126,12 @@ export class StorageService {
         }
         const message = error instanceof Error ? error.message : String(error);
         this.saveError.set(message);
-        console.error('Failed to save watch-list data:', error);
+        console.error(
+          images === undefined
+            ? 'Failed to save watch-list data:'
+            : 'Failed to import watch-list data:',
+          error,
+        );
       },
     );
     return write;
@@ -339,6 +314,18 @@ export class StorageService {
     const transaction = this.database.transaction(STORE_NAME, 'readwrite');
     transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
     return this.completeTransaction(transaction, 'Failed to write to IndexedDB');
+  }
+
+  private writeDataWithImages(data: StorageData, images: StoredImage[]): Promise<void> {
+    if (!this.database) {
+      return Promise.reject(new Error('Persistent storage is unavailable'));
+    }
+    const transaction = this.database.transaction([STORE_NAME, IMAGE_STORE_NAME], 'readwrite');
+    transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
+    const imageStore = transaction.objectStore(IMAGE_STORE_NAME);
+    imageStore.clear();
+    for (const image of images) imageStore.put(image);
+    return this.completeTransaction(transaction, 'Failed to import watch-list data');
   }
 
   private promisifyRequest<T>(

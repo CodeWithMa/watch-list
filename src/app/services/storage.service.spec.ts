@@ -4,6 +4,7 @@ import { IDBFactory, IDBObjectStore as FakeIDBObjectStore } from 'fake-indexeddb
 import { vi, afterEach } from 'vitest';
 import { Item } from '../models/item.model';
 import { createDefaultStorageData } from '../domain/storage-schema';
+import { ImageStorageService } from './image-storage.service';
 
 describe('StorageService', () => {
   beforeEach(() => {
@@ -634,6 +635,110 @@ describe('StorageService', () => {
     expect(service.getData().groups['succeeding']).toMatchObject({ name: 'succeeding' });
   });
 
+  describe.each([
+    ['save', 'save'],
+    ['save', 'import'],
+    ['import', 'save'],
+    ['import', 'import'],
+  ] as const)('overlapping %s then %s', (firstKind, secondKind) => {
+    it.each([
+      { firstSucceeds: false, secondSucceeds: false },
+      { firstSucceeds: false, secondSucceeds: true },
+      { firstSucceeds: true, secondSucceeds: false },
+      { firstSucceeds: true, secondSucceeds: true },
+    ])(
+      'keeps committed data and posters when writes succeed: $firstSucceeds, $secondSucceeds',
+      async ({ firstSucceeds, secondSucceeds }) => {
+        const service = new StorageService();
+        await service.initialize();
+        await service.importDataWithImages(withGroup(service.getData(), 'committed'), [
+          poster('committed'),
+        ]);
+        const committed = service.getData();
+        abortStorageWrites([firstSucceeds, secondSucceeds]);
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:poster');
+
+        const firstWrite = write(firstKind, 'first');
+        expect(service.getData().groups).toEqual(withGroup(committed, 'first').groups);
+        const secondWrite = write(secondKind, 'second');
+        const secondSnapshot = service.getData();
+        expect(secondSnapshot.groups).toEqual(withGroup(committed, 'second').groups);
+        const settled = Promise.allSettled([firstWrite, secondWrite]);
+
+        await Promise.allSettled([firstWrite]);
+        expect(service.getData()).toEqual(secondSnapshot);
+        const results = await settled;
+        expect(results.map((result) => result.status)).toEqual([
+          firstSucceeds ? 'fulfilled' : 'rejected',
+          secondSucceeds ? 'fulfilled' : 'rejected',
+        ]);
+
+        const expectedGroups = secondSucceeds
+          ? withGroup(committed, 'second').groups
+          : firstSucceeds
+            ? withGroup(committed, 'first').groups
+            : committed.groups;
+        expect(service.getData().groups).toEqual(expectedGroups);
+        if (secondSucceeds) {
+          expect(service.getSaveErrorSignal()()).toBeNull();
+        } else {
+          expect(service.getSaveErrorSignal()()).toEqual(expect.any(String));
+        }
+        const reloaded = new StorageService();
+        await reloaded.initialize();
+        expect(reloaded.getData()).toEqual(service.getData());
+
+        const expectedPoster =
+          secondSucceeds && secondKind === 'import'
+            ? 'second'
+            : firstSucceeds && firstKind === 'import'
+              ? 'first'
+              : 'committed';
+        const images = new ImageStorageService();
+        for (const id of ['committed', 'first', 'second']) {
+          expect(await images.getUrl(id)).toBe(id === expectedPoster ? 'blob:poster' : null);
+        }
+
+        function write(kind: typeof firstKind, id: string) {
+          const data = withGroup(committed, id);
+          return kind === 'save'
+            ? service.saveData(data)
+            : service.importDataWithImages(data, [poster(id)]);
+        }
+      },
+    );
+  });
+
+  it('restores a newly committed save after two later portable imports abort and accepts further saves', async () => {
+    const service = new StorageService();
+    await service.initialize();
+    const initial = service.getData();
+    abortStorageWrites([true, false, false]);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const results = await Promise.allSettled([
+      service.saveData(withGroup(initial, 'committed')),
+      service.importDataWithImages(withGroup(initial, 'failed-first'), []),
+      service.importDataWithImages(withGroup(initial, 'failed-second'), []),
+    ]);
+
+    expect(results.map((result) => result.status)).toEqual(['fulfilled', 'rejected', 'rejected']);
+    expect(service.getData().groups).toEqual(withGroup(initial, 'committed').groups);
+    const reloaded = new StorageService();
+    await reloaded.initialize();
+    expect(reloaded.getData()).toEqual(service.getData());
+
+    await service.saveData(withGroup(service.getData(), 'recovered'));
+    expect(service.getSaveErrorSignal()()).toBeNull();
+    expect(service.getData().groups).toEqual(
+      withGroup(withGroup(initial, 'committed'), 'recovered').groups,
+    );
+    const recovered = new StorageService();
+    await recovered.initialize();
+    expect(recovered.getData()).toEqual(service.getData());
+  });
+
   it('rejects when a read transaction is aborted', async () => {
     const service = new StorageService();
     await service.initialize();
@@ -747,6 +852,25 @@ describe('StorageService', () => {
     );
   });
 });
+
+function abortStorageWrites(successes: boolean[]) {
+  const put = FakeIDBObjectStore.prototype.put;
+  vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(function (
+    this: IDBObjectStore,
+    value,
+    key,
+  ) {
+    const request = put.call(this, value, key);
+    if (this.name === 'storage' && key === 'watch-list-data' && successes.shift() === false) {
+      queueMicrotask(() => this.transaction.abort());
+    }
+    return request;
+  });
+}
+
+function poster(id: string) {
+  return { id, blob: new Blob([id], { type: 'image/png' }) };
+}
 
 function withGroup(data: ReturnType<StorageService['getData']>, id: string) {
   return {
