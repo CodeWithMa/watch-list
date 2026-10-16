@@ -339,7 +339,8 @@ describe('AnilistSuggestionService', () => {
                 format: 'TV',
                 episodes: 12,
                 startDate: { year: 2024, month: 7, day: 1 },
-                description: '<i>Great</i> anime &amp; more<br>Next line.',
+                description:
+                  '<i>Great</i> anime &amp; more<br>Next line. &lt; &gt; &quot; &#039; &#39;',
               },
             ],
           },
@@ -353,10 +354,38 @@ describe('AnilistSuggestionService', () => {
         title: 'Html Anime',
         type: 'series',
         year: '2024',
-        overview: 'Great anime & more Next line.',
+        overview: "Great anime & more Next line. < > \" ' '",
         posterUrl: undefined,
         isAdult: false,
       },
     ]);
+  });
+
+  it.each([
+    ['&amp;lt;b&amp;gt;', '&lt;b&gt;'],
+    ['&amp;quot;', '&quot;'],
+    ['&amp;#039;', '&#039;'],
+    ['&amp;#39;', '&#39;'],
+    ['&amp;amp;', '&amp;'],
+  ])('decodes only one entity layer in overview %s', (description, expectedOverview) => {
+    const service = TestBed.inject(AnilistSuggestionService);
+    const http = TestBed.inject(HttpTestingController);
+    let overview: string | undefined;
+
+    service.search('test').subscribe((results) => {
+      overview = results[0]?.overview;
+    });
+
+    http
+      .expectOne((req) => req.url === 'https://graphql.anilist.co')
+      .flush({
+        data: {
+          Page: {
+            media: [{ id: 200, title: { romaji: 'Html Anime' }, format: 'TV', description }],
+          },
+        },
+      });
+
+    expect(overview).toBe(expectedOverview);
   });
 });
