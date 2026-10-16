@@ -58,3 +58,29 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run build
+
+  container:
+    runs-on: ubuntu-latest
+    env:
+      COMMIT_HASH: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Install Podman and Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman podman-compose
+      - name: Verify rootless Podman
+        run: test "$(podman info --format '{{.Host.Security.Rootless}}')" = true
+      - name: Build and start production preview
+        run: bun run container:preview
+      - name: Smoke-test production preview
+        run: bun containers/smoke-test.mjs
+      - name: Show container logs
+        if: always()
+        run: podman-compose -f containers/compose.prod.yml logs
+      - name: Stop containers
+        if: always()
+        run: bun run container:down

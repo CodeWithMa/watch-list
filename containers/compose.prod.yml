@@ -1,0 +1,13 @@
+name: watch-list
+
+services:
+  watch-list:
+    image: localhost/watch-list:latest
+    build:
+      context: ..
+      dockerfile: containers/Containerfile
+      target: prod
+      args:
+        COMMIT_HASH: ${COMMIT_HASH:-unknown}
+    ports:
+      - 4200:80

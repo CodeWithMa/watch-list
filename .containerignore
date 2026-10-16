@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+node_modules
+.angular
+dist
+dist-electron
+release
+coverage
+tmp
+out-tsc
