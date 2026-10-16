@@ -1,5 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DOCUMENT, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { SwUpdate } from '@angular/service-worker';
+import { EMPTY, filter, map } from 'rxjs';
 import { ThemeSwitcherComponent } from './components/theme-switcher/theme-switcher.component';
 import { StorageService } from './services/storage.service';
 
@@ -11,7 +14,20 @@ import { StorageService } from './services/storage.service';
 })
 export class App {
   private readonly storageService = inject(StorageService);
+  private readonly document = inject(DOCUMENT);
+  private readonly updates = inject(SwUpdate, { optional: true });
   protected readonly title = signal('watch-list');
   protected readonly saveError = this.storageService.getSaveErrorSignal();
   protected readonly inMemorySession = this.storageService.getInMemorySessionSignal();
+  protected readonly updateReady = toSignal(
+    (this.updates?.isEnabled ? this.updates.versionUpdates : EMPTY).pipe(
+      filter((event) => event.type === 'VERSION_READY'),
+      map(() => true),
+    ),
+    { initialValue: false },
+  );
+
+  protected reload() {
+    this.document.location.reload();
+  }
 }

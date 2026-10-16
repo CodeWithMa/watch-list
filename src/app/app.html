@@ -50,6 +50,22 @@
   </div>
 </nav>
 
+@if (updateReady()) {
+  <div
+    role="status"
+    class="bg-success-bg-light dark:bg-success-bg-dark text-success-text-light dark:text-success-text-dark px-8 py-3 border-b border-success-border-light dark:border-success-border-dark flex flex-wrap items-center justify-center gap-3"
+  >
+    <span>A new version of Watch List is available.</span>
+    <button
+      type="button"
+      (click)="reload()"
+      class="px-3 py-1 rounded border border-current font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+    >
+      Reload
+    </button>
+  </div>
+}
+
 @if (inMemorySession()) {
   <div
     role="alert"
