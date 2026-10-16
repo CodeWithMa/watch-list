@@ -29,7 +29,7 @@ describe('StatsDailyActivityComponent', () => {
     return { fixture, element };
   }
 
-  it('shows local weekday/hour counts and an hourly mean across all seven weekdays', () => {
+  it('shows local weekday/hour counts for Monday through Sunday', () => {
     const { element } = render([
       entry(new Date(2026, 9, 5, 18)),
       entry(new Date(2026, 9, 12, 18), true),
@@ -38,7 +38,6 @@ describe('StatsDailyActivityComponent', () => {
 
     const rows = [...element.querySelectorAll('tbody tr')];
     expect(rows.map((row) => row.querySelector('th')?.textContent?.trim())).toEqual([
-      'Average',
       'Monday',
       'Tuesday',
       'Wednesday',
@@ -51,74 +50,32 @@ describe('StatsDailyActivityComponent', () => {
     expect(element.querySelector('[aria-label="Monday, 18:00–19:00: 2 entries"]')).not.toBeNull();
     expect(element.querySelector('[aria-label="Tuesday, 00:00–01:00: 1 entry"]')).not.toBeNull();
     expect(element.querySelector('[aria-label="Sunday, 23:00–24:00: 0 entries"]')).not.toBeNull();
-    expect(
-      element.querySelector('[aria-label="Average, 18:00–19:00: 0.29 entries (weekday mean)"]'),
-    ).not.toBeNull();
   });
 
-  it('switches between 30 days, 365 days, and all time using inclusive local date boundaries', () => {
-    const { fixture, element } = render([
-      entry(new Date(2026, 8, 17)),
-      entry(new Date(2026, 8, 16, 23, 59)),
-      entry(new Date(2025, 9, 17)),
+  it('includes all past history without a range selector and ignores invalid or future dates', () => {
+    const { element } = render([
       entry(new Date(2025, 9, 16, 23, 59)),
       entry(new Date(2026, 9, 16, 11)),
       entry(new Date(2026, 9, 17)),
       { ...entry(new Date()), date: 'invalid' },
     ]);
-    const select = element.querySelector('select')!;
-    expect(select).not.toBeNull();
-    expect(select.value).toBe('year');
+    expect(element.querySelector('select')).toBeNull();
     const hasCell = (label: string) =>
       expect(element.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
 
-    hasCell('Thursday, 00:00–01:00: 1 entry');
-    hasCell('Wednesday, 23:00–24:00: 1 entry');
-    hasCell('Friday, 00:00–01:00: 1 entry');
-    hasCell('Thursday, 23:00–24:00: 0 entries');
-    hasCell('Friday, 11:00–12:00: 1 entry');
-    hasCell('Saturday, 00:00–01:00: 0 entries');
-
-    select.value = 'month';
-    select.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-    hasCell('Thursday, 00:00–01:00: 1 entry');
-    hasCell('Wednesday, 23:00–24:00: 0 entries');
-    hasCell('Friday, 00:00–01:00: 0 entries');
-
-    select.value = 'all';
-    select.dispatchEvent(new Event('change'));
-    fixture.detectChanges();
     hasCell('Thursday, 23:00–24:00: 1 entry');
+    hasCell('Friday, 11:00–12:00: 1 entry');
     hasCell('Saturday, 00:00–01:00: 0 entries');
   });
 
-  it('shows cell details for keyboard and touch, and refreshes them when history changes', () => {
+  it('refreshes cell counts and the empty state when history changes', () => {
     const { fixture, element } = render([entry(new Date(2026, 9, 12, 18))]);
-    const cell = element.querySelector<HTMLButtonElement>(
-      '[aria-label="Monday, 18:00–19:00: 1 entry"]',
-    )!;
-    cell.focus();
-    fixture.detectChanges();
-    expect(element.querySelector('[role="status"]')?.textContent).toContain(
-      'Monday, 18:00–19:00: 1 entry',
-    );
+    expect(element.querySelector('[aria-label="Monday, 18:00–19:00: 1 entry"]')).not.toBeNull();
 
     fixture.componentRef.setInput('historyEntries', []);
     fixture.detectChanges();
-    expect(element.textContent).toContain('No watch activity in this range.');
-    expect(element.querySelector('[role="status"]')?.textContent).toContain(
-      'Monday, 18:00–19:00: 0 entries',
-    );
-
-    element
-      .querySelector<HTMLButtonElement>(
-        '[aria-label="Average, 00:00–01:00: 0 entries (weekday mean)"]',
-      )!
-      .click();
-    fixture.detectChanges();
-    expect(element.querySelector('[role="status"]')?.textContent).toContain(
-      'Average, 00:00–01:00: 0 entries (weekday mean)',
-    );
+    expect(element.textContent).toContain('No watch activity yet.');
+    expect(element.querySelector('[aria-label="Monday, 18:00–19:00: 0 entries"]')).not.toBeNull();
+    expect(element.querySelector('[role="status"]')).toBeNull();
   });
 });
