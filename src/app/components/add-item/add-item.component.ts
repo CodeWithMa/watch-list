@@ -1,4 +1,12 @@
-import { Component, DestroyRef, ViewChild, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ViewChild,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { of, Subject, switchMap } from 'rxjs';
@@ -15,6 +23,8 @@ import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { createSearchStream } from '../../utils/search-stream.utils';
 import { isEpisodicType } from '../../domain/item.constants';
 import { SUGGESTION_DEBOUNCE_MS } from '../../domain/suggestion.constants';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
+import { SearchProviderSelectComponent } from '../search-provider-select/search-provider-select.component';
 
 interface SelectedSuggestionRef {
   source: SuggestionSource;
@@ -23,7 +33,7 @@ interface SelectedSuggestionRef {
 
 @Component({
   selector: 'app-add-item',
-  imports: [ItemFormComponent],
+  imports: [ItemFormComponent, SearchProviderSelectComponent],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Add New Item</h1>
@@ -44,7 +54,15 @@ interface SelectedSuggestionRef {
         (suggestionSelected)="onSuggestionSelected($event)"
         (submitted)="onSubmit($event)"
         (cancelled)="cancel()"
-      />
+      >
+        <app-search-provider-select
+          title-search-provider
+          [sources]="enabledSources()"
+          [value]="selectedSource()"
+          label="Title search provider"
+          (valueChange)="onSearchProviderChanged($event)"
+        />
+      </app-item-form>
     </div>
   `,
 })
@@ -53,14 +71,14 @@ export class AddItemComponent {
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
   private suggestionSearchService = inject(SuggestionSearchService);
+  private readonly providers = inject(ProviderSettingsService);
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private readonly search = createSearchStream(
-    (query) => this.suggestionSearchService.search(query),
+    (query) => this.suggestionSearchService.search(query, this.selectedSource()),
     'Suggestions are unavailable.',
     {
       debounceMs: SUGGESTION_DEBOUNCE_MS,
-      distinct: true,
       shouldSkip: () => {
         const skip = this.skipNextSearch;
         this.skipNextSearch = false;
@@ -75,6 +93,12 @@ export class AddItemComponent {
   private lastPushedQuery = '';
 
   readonly groups = this.groupService.groups;
+  readonly enabledSources = computed(() => this.providers.getEnabledSources());
+  readonly selectedSource = linkedSignal<SuggestionSource[], SuggestionSource | undefined>({
+    source: this.enabledSources,
+    computation: (sources, previous) =>
+      previous?.value && sources.includes(previous.value) ? previous.value : sources[0],
+  });
   readonly initialValue = createDefaultItemFormValue();
   readonly title = signal('');
   readonly suggestions = signal<Suggestion[]>([]);
@@ -145,6 +169,15 @@ export class AddItemComponent {
     this.autofillPatch.set(null);
     this.selectedEpisodicRef.next(null);
     this.requestTitleSearch(title);
+  }
+
+  onSearchProviderChanged(source: SuggestionSource): void {
+    this.selectedSource.set(source);
+    this.skipNextSearch = false;
+    this.suggestions.set([]);
+    this.suggestionsLoading.set(false);
+    this.suggestionsError.set('');
+    this.search.query.next(this.title());
   }
 
   onSuggestionSelected(suggestion: Suggestion): void {

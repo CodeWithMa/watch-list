@@ -4,8 +4,9 @@ import { provideRouter, Router } from '@angular/router';
 import { GroupService } from '../../services/group.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { Item } from '../../models/item.model';
-import { Suggestion } from '../../models/suggestion.model';
+import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { AddItemComponent } from './add-item.component';
 import { vi } from 'vitest';
 import { Observable, Subject, of, throwError } from 'rxjs';
@@ -65,6 +66,180 @@ describe('AddItemComponent', () => {
         },
       ],
     });
+    const settings = TestBed.inject(ProviderSettingsService);
+    for (const source of ['tmdb', 'jikan', 'anilist'] as const) {
+      settings.setEnabled(source, true);
+    }
+  });
+
+  it('switches title search providers, clearing results and cancelling the previous search immediately', async () => {
+    vi.useFakeTimers();
+    try {
+      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const lateResults = new Subject<Suggestion[]>();
+      const oldResult = createSuggestion({ id: 1, title: 'Old provider result', type: 'series' });
+      const newResult = createSuggestion({
+        source: 'jikan',
+        id: 2,
+        title: 'New provider result',
+        type: 'series',
+      });
+      search
+        .mockReturnValueOnce(of([oldResult]))
+        .mockReturnValueOnce(lateResults)
+        .mockReturnValueOnce(of([newResult]));
+      const fixture = TestBed.createComponent(AddItemComponent);
+      const root = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const title = root.querySelector<HTMLInputElement>('input[name="title"]')!;
+      title.value = 'Naruto';
+      title.dispatchEvent(new Event('input'));
+      await vi.advanceTimersByTimeAsync(400);
+      fixture.detectChanges();
+      expect(search).toHaveBeenLastCalledWith('Naruto', 'tmdb');
+      expect(root.textContent).toContain('Old provider result');
+
+      title.value = 'Naruto Shippuden';
+      title.dispatchEvent(new Event('input'));
+      await vi.advanceTimersByTimeAsync(400);
+
+      const provider = root.querySelector<HTMLButtonElement>(
+        'button[aria-label="Title search provider: TMDB"]',
+      )!;
+      expect(provider.textContent?.trim()).toBe('');
+      expect(provider.querySelector('img')?.getAttribute('src')).toBe('icons/providers/tmdb.svg');
+      expect(provider.title).toBe('Search with TMDB');
+      expect(
+        provider.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      provider.click();
+      fixture.detectChanges();
+      const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+      expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
+        'TMDB',
+        'Jikan',
+        'AniList',
+      ]);
+      options[1].click();
+      fixture.detectChanges();
+      expect(provider.getAttribute('aria-label')).toBe('Title search provider: Jikan');
+      expect(root.querySelector('[role="menu"]')).toBeNull();
+      expect(root.textContent).not.toContain('Old provider result');
+
+      lateResults.next([oldResult]);
+      lateResults.complete();
+      fixture.detectChanges();
+      expect(root.textContent).not.toContain('Old provider result');
+      await vi.advanceTimersByTimeAsync(400);
+      fixture.detectChanges();
+      expect(search).toHaveBeenLastCalledWith('Naruto Shippuden', 'jikan');
+      expect(root.textContent).toContain('New provider result');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each<{ sources: SuggestionSource[] }>([
+    { sources: ['jikan'] },
+    { sources: ['jikan', 'anilist'] },
+    { sources: [] },
+  ])('uses enabled title search providers: $sources', async ({ sources }) => {
+    vi.useFakeTimers();
+    try {
+      const settings = TestBed.inject(ProviderSettingsService);
+      for (const source of ['tmdb', 'jikan', 'anilist'] as const) {
+        settings.setEnabled(source, sources.includes(source));
+      }
+      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const fixture = TestBed.createComponent(AddItemComponent);
+      const root = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const provider = root.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
+      if (sources.length > 1) {
+        expect(provider!.getAttribute('aria-label')).toBe('Title search provider: Jikan');
+        provider!.click();
+        fixture.detectChanges();
+        const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+        expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
+          'Jikan',
+          'AniList',
+        ]);
+        expect(options[0].getAttribute('aria-checked')).toBe('true');
+      } else {
+        expect(provider).toBeNull();
+      }
+      const title = root.querySelector<HTMLInputElement>('input[name="title"]')!;
+      title.value = 'Naruto';
+      title.dispatchEvent(new Event('input'));
+      await vi.advanceTimersByTimeAsync(400);
+      expect(search).toHaveBeenCalledWith('Naruto', sources[0]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('supports keyboard navigation and dismissal of the provider menu without changing the search', async () => {
+    const fixture = TestBed.createComponent(AddItemComponent);
+    const root = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const trigger = root.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!;
+    const key = (value: string) => {
+      const event = new KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true });
+      document.activeElement!.dispatchEvent(event);
+      fixture.detectChanges();
+      return event;
+    };
+    trigger.focus();
+    key('ArrowUp');
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement?.textContent?.trim()).toBe('AniList');
+    key('ArrowDown');
+    expect(document.activeElement?.getAttribute('aria-checked')).toBe('true');
+    key('End');
+    expect(document.activeElement?.textContent?.trim()).toBe('AniList');
+    key('Home');
+    expect(document.activeElement?.getAttribute('aria-checked')).toBe('true');
+    expect(key('Escape').defaultPrevented).toBe(true);
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    key('ArrowDown');
+    expect(key('Tab').defaultPrevented).toBe(false);
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(TestBed.inject(SuggestionSearchService).search).not.toHaveBeenCalled();
+    expect(TestBed.inject(WatchListService).addItem).not.toHaveBeenCalled();
+  });
+
+  it('dismisses the provider menu on outside click or when focus leaves, and preserves the current provider', async () => {
+    const fixture = TestBed.createComponent(AddItemComponent);
+    const root = fixture.nativeElement as HTMLElement;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const trigger = root.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!;
+    trigger.click();
+    fixture.detectChanges();
+    root.querySelector<HTMLButtonElement>('[role="menuitemradio"][aria-checked="true"]')!.click();
+    fixture.detectChanges();
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    trigger.click();
+    fixture.detectChanges();
+    document.body.click();
+    fixture.detectChanges();
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    trigger.click();
+    fixture.detectChanges();
+    root.querySelector<HTMLInputElement>('input[name="title"]')!.focus();
+    fixture.detectChanges();
+    expect(root.querySelector('[role="menu"]')).toBeNull();
+    expect(trigger.getAttribute('aria-label')).toBe('Title search provider: TMDB');
+    expect(TestBed.inject(SuggestionSearchService).search).not.toHaveBeenCalled();
   });
 
   it('focuses the title on opening without stealing focus on later updates', async () => {
@@ -447,7 +622,7 @@ describe('AddItemComponent', () => {
       await vi.advanceTimersByTimeAsync(400);
 
       expect(search).toHaveBeenCalledTimes(1);
-      expect(search).toHaveBeenCalledWith('Breaking');
+      expect(search).toHaveBeenCalledWith('Breaking', 'tmdb');
     } finally {
       vi.useRealTimers();
     }

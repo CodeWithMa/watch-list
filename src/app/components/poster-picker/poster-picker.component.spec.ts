@@ -2,10 +2,11 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ImageStorageService } from '../../services/image-storage.service';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { PosterPickerComponent } from './poster-picker.component';
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { afterEach, vi } from 'vitest';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 function createSuggestion(
   overrides: Partial<Suggestion> & Pick<Suggestion, 'id' | 'title' | 'type'>,
@@ -41,6 +42,121 @@ describe('PosterPickerComponent', () => {
         },
       ],
     });
+    const settings = TestBed.inject(ProviderSettingsService);
+    for (const source of ['tmdb', 'jikan', 'anilist'] as const) {
+      settings.setEnabled(source, true);
+    }
+  });
+
+  it('switches poster search providers without allowing stale results to reappear', async () => {
+    vi.useFakeTimers();
+    try {
+      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const lateResults = new Subject<Suggestion[]>();
+      const oldResult = createSuggestion({
+        id: 1,
+        title: 'Old poster result',
+        type: 'movie',
+        posterUrl: 'https://example.com/old.jpg',
+      });
+      const newResult = createSuggestion({
+        source: 'anilist',
+        id: 2,
+        title: 'New poster result',
+        type: 'movie',
+        posterUrl: 'https://example.com/new.jpg',
+      });
+      search
+        .mockReturnValueOnce(of([oldResult]))
+        .mockReturnValueOnce(lateResults)
+        .mockReturnValueOnce(of([newResult]));
+      const fixture = TestBed.createComponent(PosterPickerComponent);
+      const root = fixture.nativeElement as HTMLElement;
+      fixture.componentRef.setInput('searchSeed', 'Naruto');
+      fixture.componentInstance.openPosterSearch();
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(400);
+      fixture.detectChanges();
+      expect(search).toHaveBeenLastCalledWith('Naruto', 'tmdb');
+      expect(root.textContent).toContain('Old poster result');
+
+      const query = root.querySelector<HTMLInputElement>('input[name="posterSearch"]')!;
+      query.value = 'Naruto Shippuden';
+      query.dispatchEvent(new Event('input'));
+      await vi.advanceTimersByTimeAsync(400);
+
+      const provider = root.querySelector<HTMLButtonElement>(
+        'button[aria-label="Poster search provider: TMDB"]',
+      )!;
+      expect(
+        provider.compareDocumentPosition(query) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      provider.click();
+      fixture.detectChanges();
+      const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+      expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
+        'TMDB',
+        'Jikan',
+        'AniList',
+      ]);
+      options[2].click();
+      fixture.detectChanges();
+      expect(provider.querySelector('img')?.getAttribute('src')).toBe(
+        'icons/providers/anilist.svg',
+      );
+      expect(provider.getAttribute('aria-label')).toBe('Poster search provider: AniList');
+      expect(root.textContent).not.toContain('Old poster result');
+      lateResults.next([oldResult]);
+      lateResults.complete();
+      fixture.detectChanges();
+      expect(root.textContent).not.toContain('Old poster result');
+
+      await vi.advanceTimersByTimeAsync(400);
+      fixture.detectChanges();
+      expect(search).toHaveBeenLastCalledWith('Naruto Shippuden', 'anilist');
+      expect(root.textContent).toContain('New poster result');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each<{ sources: SuggestionSource[] }>([
+    { sources: ['anilist'] },
+    { sources: ['jikan', 'anilist'] },
+    { sources: [] },
+  ])('uses enabled poster search providers: $sources', async ({ sources }) => {
+    vi.useFakeTimers();
+    try {
+      const settings = TestBed.inject(ProviderSettingsService);
+      for (const source of ['tmdb', 'jikan', 'anilist'] as const) {
+        settings.setEnabled(source, sources.includes(source));
+      }
+      const search = vi.mocked(TestBed.inject(SuggestionSearchService).search);
+      const fixture = TestBed.createComponent(PosterPickerComponent);
+      const root = fixture.nativeElement as HTMLElement;
+      fixture.componentRef.setInput('searchSeed', 'Naruto');
+      fixture.componentInstance.openPosterSearch();
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(400);
+
+      const provider = root.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
+      if (sources.length > 1) {
+        expect(provider!.getAttribute('aria-label')).toBe('Poster search provider: Jikan');
+        provider!.click();
+        fixture.detectChanges();
+        const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
+        expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
+          'Jikan',
+          'AniList',
+        ]);
+        expect(options[0].getAttribute('aria-checked')).toBe('true');
+      } else {
+        expect(provider).toBeNull();
+      }
+      expect(search).toHaveBeenCalledWith('Naruto', sources[0]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('seeds poster search with the item title when opened', async () => {
@@ -58,7 +174,7 @@ describe('PosterPickerComponent', () => {
       expect(fixture.componentInstance.posterSearchQuery()).toBe('Test Movie');
 
       await vi.advanceTimersByTimeAsync(400);
-      expect(search).toHaveBeenCalledWith('Test Movie');
+      expect(search).toHaveBeenCalledWith('Test Movie', 'tmdb');
     } finally {
       vi.useRealTimers();
     }
@@ -86,7 +202,7 @@ describe('PosterPickerComponent', () => {
       fixture.componentInstance.onPosterSearchChanged('test');
       await vi.advanceTimersByTimeAsync(400);
 
-      expect(search).toHaveBeenCalledWith('test');
+      expect(search).toHaveBeenCalledWith('test', 'tmdb');
       expect(fixture.componentInstance.posterSuggestions()).toEqual([
         createSuggestion({
           id: 1,

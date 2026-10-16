@@ -6,7 +6,7 @@ import { AnilistSuggestionService } from './anilist-suggestion.service';
 import { JikanSuggestionService } from './jikan-suggestion.service';
 import { ProviderSettingsService } from './provider-settings.service';
 import { TmdbSuggestionService } from './tmdb-suggestion.service';
-import { Suggestion } from '../models/suggestion.model';
+import { Suggestion, SuggestionSource } from '../models/suggestion.model';
 
 function sug(overrides: Partial<Suggestion> & Pick<Suggestion, 'id' | 'title'>): Suggestion {
   return {
@@ -43,7 +43,7 @@ describe('SuggestionSearchService', () => {
     provider = {
       isEnabled: vi.fn(() => true),
       isAnyEnabled: vi.fn(() => true),
-      getEnabledSources: vi.fn(() => ['tmdb', 'jikan', 'anilist'] as never[]),
+      getEnabledSources: vi.fn(() => ['tmdb', 'jikan', 'anilist']),
     };
 
     TestBed.configureTestingModule({
@@ -72,35 +72,26 @@ describe('SuggestionSearchService', () => {
     expect(tmdb.search).not.toHaveBeenCalled();
   });
 
-  it('merges results from all sources and slices to limit', () => {
-    const service = TestBed.inject(SuggestionSearchService);
-    const many = Array.from({ length: 10 }, (_, i) => sug({ id: i, title: `t${i}` }));
-    tmdb.search.mockReturnValue(of(many.slice(0, 6)));
-    jikan.search.mockReturnValue(of(many.slice(6, 12).slice(0, 6)));
-    anilist.search.mockReturnValue(of(many.slice(0, 6)));
+  it.each<SuggestionSource>(['tmdb', 'jikan', 'anilist'])(
+    'searches only the selected %s provider with the trimmed query',
+    (source) => {
+      const service = TestBed.inject(SuggestionSearchService);
+      const results = [sug({ source, id: 1, title: 'Selected result' })];
+      const services = { tmdb, jikan, anilist };
+      services[source].search.mockReturnValue(of(results));
 
-    // Total 18 but limit is 15
-    tmdb.search.mockReturnValue(
-      of(Array.from({ length: 6 }, (_, i) => sug({ id: i, title: `a${i}` }))),
-    );
-    jikan.search.mockReturnValue(
-      of(Array.from({ length: 6 }, (_, i) => sug({ id: 100 + i, title: `b${i}` }))),
-    );
-    anilist.search.mockReturnValue(
-      of(Array.from({ length: 6 }, (_, i) => sug({ id: 200 + i, title: `c${i}` }))),
-    );
+      let result: Suggestion[] = [];
+      service.search('  test  ', source).subscribe((r) => (result = r));
 
-    let result: Suggestion[] = [];
-    service.search('  test  ').subscribe((r) => (result = r));
-    expect(tmdb.search).toHaveBeenCalledWith('test');
-    expect(jikan.search).toHaveBeenCalledWith('test');
-    expect(anilist.search).toHaveBeenCalledWith('test');
-    expect(result).toHaveLength(15);
-    expect(result[0].id).toBe(0);
-    expect(result[14].id).toBe(202);
-  });
+      expect(result).toEqual(results);
+      expect(services[source].search).toHaveBeenCalledWith('test');
+      for (const other of ['tmdb', 'jikan', 'anilist'] as const) {
+        if (other !== source) expect(services[other].search).not.toHaveBeenCalled();
+      }
+    },
+  );
 
-  it('handles source errors by returning empty for that source', () => {
+  it('returns empty when the selected provider fails without falling back to another', () => {
     const service = TestBed.inject(SuggestionSearchService);
     tmdb.search.mockReturnValue(throwError(() => new Error('fail')));
     jikan.search.mockReturnValue(of([sug({ id: 2, title: 'jikan' })]));
@@ -108,7 +99,39 @@ describe('SuggestionSearchService', () => {
 
     let result: Suggestion[] = [];
     service.search('test').subscribe((r) => (result = r));
-    expect(result).toEqual([sug({ id: 2, title: 'jikan' })]);
+    expect(result).toEqual([]);
+    expect(jikan.search).not.toHaveBeenCalled();
+  });
+
+  it('defaults to the first enabled provider', () => {
+    provider.getEnabledSources.mockReturnValue(['jikan', 'anilist']);
+    const service = TestBed.inject(SuggestionSearchService);
+    service.search('test').subscribe();
+    expect(jikan.search).toHaveBeenCalledWith('test');
+    expect(tmdb.search).not.toHaveBeenCalled();
+    expect(anilist.search).not.toHaveBeenCalled();
+  });
+
+  it('does not search a disabled selected provider', () => {
+    provider.isEnabled.mockImplementation((source) => source !== 'jikan');
+    const service = TestBed.inject(SuggestionSearchService);
+    let result: Suggestion[] | undefined;
+    service.search('test', 'jikan').subscribe((value) => (result = value));
+    expect(result).toEqual([]);
+    expect(tmdb.search).not.toHaveBeenCalled();
+    expect(jikan.search).not.toHaveBeenCalled();
+    expect(anilist.search).not.toHaveBeenCalled();
+  });
+
+  it('returns empty without searching when no providers are enabled', () => {
+    provider.getEnabledSources.mockReturnValue([]);
+    const service = TestBed.inject(SuggestionSearchService);
+    let result: Suggestion[] | undefined;
+    service.search('test').subscribe((value) => (result = value));
+    expect(result).toEqual([]);
+    expect(tmdb.search).not.toHaveBeenCalled();
+    expect(jikan.search).not.toHaveBeenCalled();
+    expect(anilist.search).not.toHaveBeenCalled();
   });
 
   it('returns null for invalid getDetails ids', () => {
