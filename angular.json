@@ -114,7 +114,18 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "coverageInclude": [
+              "src/app/**/*.ts"
+            ],
+            "coverageReporters": [
+              "text-summary",
+              "html",
+              "lcovonly",
+              "json-summary"
+            ]
+          }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",

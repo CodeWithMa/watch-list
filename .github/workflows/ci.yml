@@ -24,7 +24,43 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bun run test
+      - name: Run tests with coverage
+        run: bun run test -- --coverage --no-watch
+      - name: Summarize coverage
+        if: ${{ !cancelled() && hashFiles('coverage/watch-list/coverage-summary.json') != '' }}
+        run: |
+          # Template literals below are expanded by Bun, not the shell.
+          # shellcheck disable=SC2016
+          bun -e '
+            import { appendFileSync, readFileSync } from "node:fs";
+
+            const { total } = JSON.parse(readFileSync("coverage/watch-list/coverage-summary.json", "utf8"));
+            const rows = ["statements", "branches", "functions", "lines"].map((metric) => {
+              const { pct, covered, total: count } = total[metric];
+              return `| ${metric} | ${pct}% | ${covered} / ${count} |`;
+            });
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
+              "## Test coverage (reporting only)",
+              "",
+              `Commit: ${process.env.GITHUB_SHA}`,
+              "",
+              "| Metric | Coverage | Covered / Total |",
+              "| --- | ---: | ---: |",
+              ...rows,
+              "",
+              "Scope: application TypeScript in the Angular test bundle; not whole-repository coverage.",
+              "Download the test-coverage artifact for HTML, LCOV, and JSON reports. No coverage threshold is enforced.",
+              "",
+            ].join("\n"));
+          '
+      - name: Upload coverage reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-coverage
+          path: coverage/watch-list/
+          retention-days: 30
+          if-no-files-found: error
 
   build:
     runs-on: ubuntu-latest
