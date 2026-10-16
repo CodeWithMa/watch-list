@@ -23,6 +23,9 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - uses: j178/prek-action@v3.0.1
+        with:
+          # Branch protection applies to local commits, not CI checkouts.
+          extra-args: --all-files --skip no-commit-to-branch
       - run: bunx tsc --noEmit -p electron/tsconfig.json
 
   test:
