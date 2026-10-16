@@ -58,7 +58,7 @@
     "@j178/prek": "^0.4.10",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.0.0",
-    "concurrently": "^9.0.0",
+    "concurrently": "^10.0.6",
     "electron": "^44.7.0",
     "electron-builder": "^25.0.0",
     "wait-on": "^8.0.0",
