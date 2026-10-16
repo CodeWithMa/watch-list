@@ -42,6 +42,10 @@ describe('PosterPickerComponent', () => {
         },
       ],
     });
+    const settings = TestBed.inject(ProviderSettingsService);
+    for (const source of ['tmdb', 'jikan', 'anilist'] as const) {
+      settings.setEnabled(source, true);
+    }
   });
 
   it('switches poster search providers without allowing stale results to reappear', async () => {

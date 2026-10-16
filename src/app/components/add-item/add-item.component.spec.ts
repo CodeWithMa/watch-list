@@ -66,6 +66,10 @@ describe('AddItemComponent', () => {
         },
       ],
     });
+    const settings = TestBed.inject(ProviderSettingsService);
+    for (const source of ['tmdb', 'jikan', 'anilist'] as const) {
+      settings.setEnabled(source, true);
+    }
   });
 
   it('switches title search providers, clearing results and cancelling the previous search immediately', async () => {
