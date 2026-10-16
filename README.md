@@ -30,6 +30,19 @@ bun run electron:build
 - Mark watched item as watched
 - Rinse and repeat
 
+## Containers
+
+Requires rootless Podman and `podman-compose`. Run from the repository root:
+
+```shell
+bun run container:dev      # Development with hot reload
+bun run container:preview  # Local production preview (detached)
+bun run container:logs     # Follow logs
+bun run container:down     # Stop and remove containers
+```
+
+Open <http://localhost:4200>. Stop the current mode before switching between dev and preview.
+
 ## Development
 
 This project uses [prek](https://github.com/j178/prek) for Git hooks.

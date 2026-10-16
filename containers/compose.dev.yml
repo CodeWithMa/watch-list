@@ -1,0 +1,23 @@
+name: watch-list
+
+services:
+  watch-list:
+    image: localhost/watch-list-dev:latest
+    build:
+      context: ..
+      dockerfile: containers/Containerfile
+      target: dev
+    volumes:
+      - ../src:/app/builder/src
+      - ../public:/app/builder/public
+      - ../angular.json:/app/builder/angular.json
+      - ../package.json:/app/builder/package.json
+      - ../bun.lock:/app/builder/bun.lock
+      - ../tsconfig.json:/app/builder/tsconfig.json
+      - ../tsconfig.app.json:/app/builder/tsconfig.app.json
+      - ../tsconfig.spec.json:/app/builder/tsconfig.spec.json
+      - ../.postcssrc.json:/app/builder/.postcssrc.json
+      - ../scripts:/app/builder/scripts
+    ports:
+      - 127.0.0.1:4200:4200
+    command: bun run start --host 0.0.0.0

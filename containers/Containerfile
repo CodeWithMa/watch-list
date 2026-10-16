@@ -1,4 +1,4 @@
-FROM docker.io/oven/bun:1.4.3-alpine AS builder
+FROM docker.io/oven/bun:1.4.3-alpine AS dev
 
 WORKDIR /app/builder
 COPY package.json .
@@ -14,14 +14,17 @@ COPY ngsw-config.json .
 COPY tsconfig.json .
 COPY tsconfig.app.json .
 COPY tsconfig.spec.json .
+COPY .postcssrc.json .
 COPY scripts ./scripts
+
+FROM dev AS builder
 
 ARG COMMIT_HASH=unknown
 RUN bun run build
 
-FROM nginx:alpine-slim AS prod
+FROM docker.io/library/nginx:alpine-slim AS prod
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY containers/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/builder/dist/watch-list/browser /usr/share/nginx/html
 
 EXPOSE 80
