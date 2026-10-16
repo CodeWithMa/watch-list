@@ -2,10 +2,11 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { StatsService } from '../../services/stats.service';
 import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
+import { StatsDailyActivityComponent } from './stats-daily-activity/stats-daily-activity.component';
 
 @Component({
   selector: 'app-stats',
-  imports: [RouterLink, StatsHeatmapComponent],
+  imports: [RouterLink, StatsHeatmapComponent, StatsDailyActivityComponent],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Stats</h1>
@@ -93,6 +94,17 @@ import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
               class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-6"
             >
               <app-stats-heatmap [historyEntries]="history()" />
+            </div>
+          </section>
+
+          <section>
+            <h2 class="text-lg font-semibold mb-4 text-light-font dark:text-dark-font">
+              Daily Activity
+            </h2>
+            <div
+              class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-6"
+            >
+              <app-stats-daily-activity [historyEntries]="history()" />
             </div>
           </section>
 
