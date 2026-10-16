@@ -1,4 +1,4 @@
-FROM docker.io/oven/bun:1.3.11-alpine AS builder
+FROM docker.io/oven/bun:1.4.3-alpine AS builder
 
 WORKDIR /app/builder
 COPY package.json .
