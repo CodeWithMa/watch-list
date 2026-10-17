@@ -2,6 +2,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { vi, afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { ImageStorageService } from './image-storage.service';
 import { imageVersion, imagesInvalidated } from './image-invalidation';
+import { TestBed } from '@angular/core/testing';
 
 function createImageBlob(content = 'fake-image', type = 'image/png', size?: number): Blob {
   const blob = new Blob([content], { type });
@@ -150,7 +151,7 @@ describe('ImageStorageService', () => {
   });
 
   it('stores a valid image file and returns generated id', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
     expect(id).toBe('image-test-uuid-1234');
@@ -161,7 +162,7 @@ describe('ImageStorageService', () => {
   });
 
   it('rejects empty, oversized and non-image blobs', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     await expect(service.storeFile(createImageBlob('', 'image/png'))).rejects.toThrow(
       '5 MB or smaller',
     );
@@ -174,7 +175,7 @@ describe('ImageStorageService', () => {
   });
 
   it('rejects when createImageBitmap fails', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     globalThis.createImageBitmap = vi.fn(() => Promise.reject(new Error('bad image')));
     await expect(service.storeFile(createImageBlob('x', 'image/png'))).rejects.toThrow(
       'browser-supported image',
@@ -182,14 +183,14 @@ describe('ImageStorageService', () => {
   });
 
   it('stores URL via fetch', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     const id = await service.storeUrl('https://example.com/poster.jpg');
     expect(fetch).toHaveBeenCalledWith('https://example.com/poster.jpg');
     expect(id).toBe('image-test-uuid-1234');
   });
 
   it('throws when fetch fails or response not ok', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     vi.mocked(fetch).mockRejectedValueOnce(new Error('network'));
     await expect(service.storeUrl('https://example.com/a.jpg')).rejects.toThrow('Check the URL');
     vi.mocked(fetch).mockResolvedValueOnce({
@@ -203,7 +204,7 @@ describe('ImageStorageService', () => {
   });
 
   it('getUrl returns null for undefined and caches promise', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     expect(await service.getUrl(undefined)).toBeNull();
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
@@ -217,7 +218,7 @@ describe('ImageStorageService', () => {
   });
 
   it('getUrl removes cache on failure', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
     // manually inject failing promise via get id that not exists and throw? easier to force get to fail
@@ -228,7 +229,7 @@ describe('ImageStorageService', () => {
   });
 
   it('deletes image and revokes url', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
     await service.getUrl(id);
@@ -243,12 +244,12 @@ describe('ImageStorageService', () => {
   });
 
   it('delete does nothing for undefined', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     await expect(service.delete(undefined)).resolves.toBeUndefined();
   });
 
   it('exports images as base64', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('hello', 'image/png');
     const id = await service.storeFile(blob);
     const exported = await service.exportImages();
@@ -259,7 +260,7 @@ describe('ImageStorageService', () => {
   });
 
   it('replaceImages parses and stores exported images', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('old', 'image/png');
     const oldId = await service.storeFile(blob);
     await service.getUrl(oldId);
@@ -276,7 +277,7 @@ describe('ImageStorageService', () => {
   });
 
   it('parseExportedImages throws for invalid data', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     await expect(service.parseExportedImages(null)).rejects.toThrow('Invalid image data');
     await expect(service.parseExportedImages([{ id: 'x' }])).rejects.toThrow('Invalid image data');
     await expect(
@@ -288,7 +289,7 @@ describe('ImageStorageService', () => {
   });
 
   it('invalidateAll triggers refreshCache and increments version', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
     await service.getUrl(id);
@@ -301,7 +302,7 @@ describe('ImageStorageService', () => {
   });
 
   it('handles cache revocation errors gracefully', async () => {
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
     const urlPromise = service.getUrl(id);
@@ -318,7 +319,7 @@ describe('ImageStorageService', () => {
   it('handles imageVersion subscription', async () => {
     const uniqueUrl = 'blob:unique-image-version-test';
     URL.createObjectURL = vi.fn(() => uniqueUrl) as unknown as typeof URL.createObjectURL;
-    const service = new ImageStorageService();
+    const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
     await service.getUrl(id);

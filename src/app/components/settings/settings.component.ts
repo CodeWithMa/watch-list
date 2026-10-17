@@ -4,7 +4,7 @@ import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
 import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
-import { DroppedRecords } from '../../domain/storage-schema';
+import { DroppedRecords, UnsupportedSchemaVersionError } from '../../domain/storage-schema';
 import {
   AdultDisplayMode,
   DEFAULT_TITLE_PREFERENCE,
@@ -385,6 +385,7 @@ import { environment } from '../../../environments/environment';
       @if (errorMessage()) {
         <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
           <div
+            role="alert"
             class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark p-4 rounded border border-error-border-light dark:border-error-border-dark"
           >
             {{ errorMessage() }}
@@ -577,7 +578,7 @@ export class SettingsComponent implements OnInit {
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch {
       this.errorMessage.set('Failed to export data');
-      setTimeout(() => this.errorMessage.set(null), 5000);
+      this.clearErrorAfterDelay('Failed to export data');
     }
   }
 
@@ -592,7 +593,7 @@ export class SettingsComponent implements OnInit {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to export recovery backup';
       this.errorMessage.set(message);
-      setTimeout(() => this.errorMessage.set(null), 5000);
+      this.clearErrorAfterDelay(message);
     }
   }
 
@@ -640,8 +641,11 @@ export class SettingsComponent implements OnInit {
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
-      this.errorMessage.set(`Import failed: ${message}`);
-      setTimeout(() => this.errorMessage.set(null), 5000);
+      const importError = `Import failed: ${message}`;
+      this.errorMessage.set(importError);
+      if (!(error instanceof UnsupportedSchemaVersionError)) {
+        this.clearErrorAfterDelay(importError);
+      }
     } finally {
       // A file staged while this import ran belongs to the next confirmation;
       // only clear the pending state when it is still this call's file.
@@ -650,6 +654,12 @@ export class SettingsComponent implements OnInit {
       }
       this.importInProgress.set(false);
     }
+  }
+
+  private clearErrorAfterDelay(message: string) {
+    setTimeout(() => {
+      if (this.errorMessage() === message) this.errorMessage.set(null);
+    }, 5000);
   }
 
   private syncProviderSignals(): void {

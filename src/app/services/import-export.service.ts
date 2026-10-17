@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { ImageStorageService } from './image-storage.service';
 import { ProviderSettings, ProviderSettingsService } from './provider-settings.service';
-import { DroppedRecords } from '../domain/storage-schema';
+import { assertSupportedStorageVersion, DroppedRecords } from '../domain/storage-schema';
 
 export interface ExportPreferences {
   providerSettings: ProviderSettings;
@@ -45,6 +45,10 @@ export class ImportExportService {
     this.downloadJson(backup, 'watch-list-recovery-backup');
   }
 
+  exportUnsupportedData() {
+    this.downloadJson(this.storageService.getUnsupportedData(), 'watch-list-original');
+  }
+
   private downloadJson(data: unknown, filenamePrefix: string): void {
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -62,7 +66,10 @@ export class ImportExportService {
     try {
       const text = await file.text();
       const payload: unknown = JSON.parse(text);
+      // Unknown fields on a newer raw document may resemble today's export wrapper.
+      assertSupportedStorageVersion(payload);
       const data = isPortableExport(payload) ? payload.data : payload;
+      assertSupportedStorageVersion(data);
       const images = await this.imageStorage.parseExportedImages(
         isPortableExport(payload) ? payload.images : [],
       );

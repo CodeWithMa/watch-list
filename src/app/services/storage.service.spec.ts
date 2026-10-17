@@ -5,6 +5,7 @@ import { vi, afterEach } from 'vitest';
 import { Item } from '../models/item.model';
 import { createDefaultStorageData } from '../domain/storage-schema';
 import { ImageStorageService } from './image-storage.service';
+import { TestBed } from '@angular/core/testing';
 
 describe('StorageService', () => {
   beforeEach(() => {
@@ -166,6 +167,55 @@ describe('StorageService', () => {
     expect(error).toHaveBeenCalledWith('Failed to load stored watch-list data:', expect.any(Error));
   });
 
+  it.each([false, true])(
+    'preserves a newer document and stays locked instead of recovering to writable defaults (changed shape: %s)',
+    async (changedShape) => {
+      const initial = new StorageService();
+      await initial.initialize();
+      const database = await openTestDatabase();
+      const supported = dataWithMovie();
+      const raw = changedShape
+        ? { schemaVersion: CURRENT_SCHEMA_VERSION + 1, collection: { entries: ['future'] } }
+        : {
+            ...supported,
+            schemaVersion: CURRENT_SCHEMA_VERSION + 1,
+            futureSettings: { layout: 'timeline' },
+            items: {
+              movie: { ...supported.items.movie, metadata: { rating: 5 } },
+              future: { type: 'interactive', chapters: [{ title: 'Opening' }] },
+            },
+          };
+      await writeRecord(database, raw);
+      // Even an unavailable corruption-backup/write path must not turn compatibility into
+      // the generic in-memory fallback. This also detects any normalization write.
+      const put = vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(() => {
+        throw new Error('Writes unavailable');
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const service = new StorageService();
+
+      await expect(service.initialize()).resolves.toBeUndefined();
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      expect(service.getCompatibilityErrorSignal()()?.version).toBe(CURRENT_SCHEMA_VERSION + 1);
+      expect(service.getUnsupportedData()).toEqual(raw);
+      expect(() => service.getData()).toThrow(/newer version of Watch List/);
+      await expect(service.saveData(supported)).rejects.toThrow(/newer version of Watch List/);
+      await expect(service.importData(supported)).rejects.toThrow(/newer version of Watch List/);
+      await expect(service.importDataWithImages(supported, [])).rejects.toThrow(
+        /newer version of Watch List/,
+      );
+      await service.initialize();
+
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getUnsupportedData()).toEqual(raw);
+      expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+      expect(await service.getRecoveryBackups()).toEqual([]);
+      expect(put).not.toHaveBeenCalled();
+      database.close();
+    },
+  );
+
   it('backs up unreadable data to a timestamped key', async () => {
     const firstService = new StorageService();
     await firstService.initialize();
@@ -182,6 +232,64 @@ describe('StorageService', () => {
     expect(backups[0].timestamp).toBeInstanceOf(Date);
     const backup = await readRecord(database, backups[0].key);
     expect(backup).toEqual(corruptData);
+  });
+
+  it('blocks poster changes even when the image service is used before storage initialization', async () => {
+    const initial = new StorageService();
+    await initial.initialize();
+    const database = await openTestDatabase();
+    const raw = { ...dataWithMovie(), schemaVersion: CURRENT_SCHEMA_VERSION + 1 };
+    await writeRecord(database, raw);
+    const transaction = database.transaction('images', 'readwrite');
+    const image = { id: 'future-poster', bytes: [1, 2, 3], metadata: { format: 'future' } };
+    transaction.objectStore('images').put(image);
+    await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+    const service = TestBed.inject(StorageService);
+    const images = TestBed.inject(ImageStorageService);
+    const fetch = vi.spyOn(globalThis, 'fetch');
+
+    await expect(images.delete('future-poster')).rejects.toThrow(/newer version of Watch List/);
+    await expect(images.replaceImages([])).rejects.toThrow(/newer version of Watch List/);
+    await expect(images.storeFile(new Blob(['poster'], { type: 'image/png' }))).rejects.toThrow(
+      /newer version of Watch List/,
+    );
+    await expect(images.storeUrl('https://example.com/poster.png')).rejects.toThrow(
+      /newer version of Watch List/,
+    );
+
+    const request = database.transaction('images', 'readonly').objectStore('images').getAll();
+    const remaining = await new Promise<unknown>((resolve) => {
+      request.onsuccess = () => resolve(request.result);
+    });
+    expect(remaining).toEqual([image]);
+    expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+    expect(service.getDataSignal()()).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    database.close();
+  });
+
+  it('refuses document replacement when a write is attempted before initialization', async () => {
+    const initial = new StorageService();
+    await initial.initialize();
+    const database = await openTestDatabase();
+    const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: [{ value: 'keep' }] };
+    await writeRecord(database, raw);
+    const supported = dataWithMovie();
+
+    for (const operation of ['save', 'import', 'portable'] as const) {
+      const service = new StorageService();
+      const write =
+        operation === 'save'
+          ? service.saveData(supported)
+          : operation === 'import'
+            ? service.importData(supported)
+            : service.importDataWithImages(supported, [poster('replacement')]);
+
+      await expect(write).rejects.toThrow(/newer version of Watch List/);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+    }
+    database.close();
   });
 
   it.each(['groups', 'items', 'deletedItems'] as const)(
@@ -695,7 +803,7 @@ describe('StorageService', () => {
             : firstSucceeds && firstKind === 'import'
               ? 'first'
               : 'committed';
-        const images = new ImageStorageService();
+        const images = TestBed.inject(ImageStorageService);
         for (const id of ['committed', 'first', 'second']) {
           expect(await images.getUrl(id)).toBe(id === expectedPoster ? 'blob:poster' : null);
         }

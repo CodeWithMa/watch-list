@@ -5,6 +5,7 @@ import { SwUpdate } from '@angular/service-worker';
 import { EMPTY, filter, map } from 'rxjs';
 import { ThemeSwitcherComponent } from './components/theme-switcher/theme-switcher.component';
 import { StorageService } from './services/storage.service';
+import { ImportExportService } from './services/import-export.service';
 
 @Component({
   selector: 'app-root',
@@ -14,11 +15,14 @@ import { StorageService } from './services/storage.service';
 })
 export class App {
   private readonly storageService = inject(StorageService);
+  private readonly importExportService = inject(ImportExportService);
   private readonly document = inject(DOCUMENT);
   private readonly updates = inject(SwUpdate, { optional: true });
   protected readonly title = signal('watch-list');
   protected readonly saveError = this.storageService.getSaveErrorSignal();
   protected readonly inMemorySession = this.storageService.getInMemorySessionSignal();
+  protected readonly compatibilityError = this.storageService.getCompatibilityErrorSignal();
+  protected readonly downloadError = signal<string | null>(null);
   protected readonly updateReady = toSignal(
     (this.updates?.isEnabled ? this.updates.versionUpdates : EMPTY).pipe(
       filter((event) => event.type === 'VERSION_READY'),
@@ -29,5 +33,14 @@ export class App {
 
   protected reload() {
     this.document.location.reload();
+  }
+
+  protected downloadOriginal() {
+    this.downloadError.set(null);
+    try {
+      this.importExportService.exportUnsupportedData();
+    } catch {
+      this.downloadError.set('Could not download the original document. Please try again.');
+    }
   }
 }

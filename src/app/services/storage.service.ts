@@ -2,9 +2,14 @@ import { Injectable, signal } from '@angular/core';
 import { StorageData } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
-import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
+import {
+  assertSupportedStorageVersion,
+  createDefaultStorageData,
+  normalizeStorageData,
+  UnsupportedSchemaVersionError,
+} from '../domain/storage-schema';
 import type { DroppedRecords, NormalizationResult } from '../domain/storage-schema';
-import { StoredImage } from './image-storage.service';
+import type { StoredImage } from './image-storage.service';
 import { imagesInvalidated } from './image-invalidation';
 
 const DATABASE_NAME = 'watch-list';
@@ -22,6 +27,8 @@ export class StorageService {
   private readonly data = signal<StorageData | null>(null);
   private readonly saveError = signal<string | null>(null);
   private readonly inMemorySession = signal(false);
+  private readonly compatibilityError = signal<UnsupportedSchemaVersionError | null>(null);
+  private unsupportedData: unknown;
   private database: IDBDatabase | null = null;
   private lastPersistedData: StorageData | null = null;
   private initialization: Promise<void> | null = null;
@@ -29,6 +36,7 @@ export class StorageService {
 
   initialize(): Promise<void> {
     this.initialization ??= this.loadData().catch((error: unknown) => {
+      if (this.compatibilityError()) return;
       this.initialization = null;
       this.useInMemorySession();
       console.error('Storage initialization failed, falling back to in-memory session:', error);
@@ -54,11 +62,6 @@ export class StorageService {
     images: StoredImage[],
   ): Promise<{ data: StorageData; dropped: DroppedRecords }> {
     const normalized = normalizeStorageData(data);
-    if (!this.database && images.length > 0) {
-      throw new Error(
-        'Cannot import posters while persistent storage is unavailable. No data was imported.',
-      );
-    }
     await this.persistData(normalized.data, images);
     return { data: this.getData(), dropped: normalized.dropped };
   }
@@ -69,6 +72,20 @@ export class StorageService {
 
   getInMemorySessionSignal() {
     return this.inMemorySession.asReadonly();
+  }
+
+  getCompatibilityErrorSignal() {
+    return this.compatibilityError.asReadonly();
+  }
+
+  getUnsupportedData() {
+    if (!this.compatibilityError()) throw new Error('No incompatible collection is loaded');
+    return structuredClone(this.unsupportedData);
+  }
+
+  assertWritable() {
+    const error = this.compatibilityError();
+    if (error) throw error;
   }
 
   async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
@@ -98,7 +115,15 @@ export class StorageService {
     return backup;
   }
 
-  private persistData(data: StorageData, images?: StoredImage[]): Promise<void> {
+  private async persistData(data: StorageData, images?: StoredImage[]): Promise<void> {
+    if (!this.data()) await this.initialize();
+    this.assertWritable();
+    assertSupportedStorageVersion(data);
+    if (!this.database && images && images.length > 0) {
+      throw new Error(
+        'Cannot import posters while persistent storage is unavailable. No data was imported.',
+      );
+    }
     const updated: StorageData = {
       ...cloneStorageData(data),
       lastModifiedAt: new Date().toISOString(),
@@ -138,6 +163,7 @@ export class StorageService {
   }
 
   getData(): StorageData {
+    this.assertWritable();
     return cloneStorageData(this.data()!);
   }
 
@@ -168,6 +194,11 @@ export class StorageService {
           storedSnapshot = structuredClone(stored);
           normalized = normalizeStorageData(stored);
         } catch (error) {
+          if (error instanceof UnsupportedSchemaVersionError) {
+            this.unsupportedData = storedSnapshot;
+            this.compatibilityError.set(error);
+            return;
+          }
           console.error('Failed to load stored watch-list data:', error);
           await this.backupRawData(storedSnapshot);
           const defaults = createDefaultStorageData();
@@ -206,6 +237,7 @@ export class StorageService {
       this.lastPersistedData = cloneStorageData(defaults);
       this.data.set(cloneStorageData(defaults));
     } catch {
+      if (this.compatibilityError()) return;
       this.useInMemorySession();
       const defaults = createDefaultStorageData();
       this.lastPersistedData = cloneStorageData(defaults);
