@@ -549,6 +549,29 @@ describe('SettingsComponent', () => {
     expect(fixture.componentInstance.successMessage()).toBeNull();
   });
 
+  it('keeps a repeated import failure visible for five seconds after the latest failure', async () => {
+    vi.useFakeTimers();
+    configure({ token: '', key: '', credential: null });
+    vi.mocked(TestBed.inject(ImportExportService).importData).mockRejectedValue(
+      new Error('Invalid JSON file'),
+    );
+    const component = TestBed.createComponent(SettingsComponent).componentInstance;
+    const file = new File(['invalid'], 'invalid.json');
+
+    component.pendingImportFile.set(file);
+    await component.confirmImport();
+    vi.advanceTimersByTime(4000);
+    component.pendingImportFile.set(file);
+    await component.confirmImport();
+    vi.advanceTimersByTime(1000);
+
+    expect(component.errorMessage()).toBe('Import failed: Invalid JSON file');
+    vi.advanceTimersByTime(3999);
+    expect(component.errorMessage()).toBe('Import failed: Invalid JSON file');
+    vi.advanceTimersByTime(1);
+    expect(component.errorMessage()).toBeNull();
+  });
+
   it('clears recovery backups when loading them fails', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);

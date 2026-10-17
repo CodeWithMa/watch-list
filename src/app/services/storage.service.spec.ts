@@ -234,6 +234,93 @@ describe('StorageService', () => {
     expect(backup).toEqual(corruptData);
   });
 
+  it.each(['save', 'import', 'portable'] as const)(
+    'locks an initialized collection instead of overwriting a newer cross-tab document during %s',
+    async (operation) => {
+      const service = new StorageService();
+      await service.initialize();
+      const snapshot = service.getData();
+      const database = await openTestDatabase();
+      const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
+      await writeRecord(database, raw);
+      const image = { id: 'future-poster', futureBytes: [1, 2, 3] };
+      const transaction = database.transaction('images', 'readwrite');
+      transaction.objectStore('images').put(image);
+      await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      const writes = [1, 2].map(() =>
+        operation === 'save'
+          ? service.saveData(snapshot)
+          : operation === 'import'
+            ? service.importData(snapshot)
+            : service.importDataWithImages(snapshot, [poster('replacement')]),
+      );
+      const results = await Promise.allSettled(writes);
+
+      expect(results.map((result) => result.status)).toEqual(['rejected', 'rejected']);
+      expect(service.getCompatibilityErrorSignal()()?.version).toBe(CURRENT_SCHEMA_VERSION + 1);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getUnsupportedData()).toEqual(raw);
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      expect(service.getSaveErrorSignal()()).toBeNull();
+      expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+      const images = database.transaction('images', 'readonly').objectStore('images').getAll();
+      const remaining = await new Promise<unknown>((resolve) => {
+        images.onsuccess = () => resolve(images.result);
+      });
+      expect(remaining).toEqual([image]);
+      await expect(service.saveData(snapshot)).rejects.toThrow(/newer version of Watch List/);
+      database.close();
+    },
+  );
+
+  it.each(['empty', 'corrupt', 'legacy'] as const)(
+    'stays locked when another tab upgrades an %s collection between startup read and write',
+    async (state) => {
+      const initial = new StorageService();
+      await initial.initialize();
+      const database = await openTestDatabase();
+      await writeRecord(
+        database,
+        state === 'empty'
+          ? undefined
+          : state === 'corrupt'
+            ? { invalid: true }
+            : { ...createDefaultStorageData(), schemaVersion: 9 },
+      );
+      const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
+      const upgrade = upgradeAfterNextRead(database, raw);
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const service = new StorageService();
+
+      await service.initialize();
+      await upgrade;
+
+      expect(service.getCompatibilityErrorSignal()()?.version).toBe(CURRENT_SCHEMA_VERSION + 1);
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getUnsupportedData()).toEqual(raw);
+      expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+      database.close();
+    },
+  );
+
+  it('commits its version check and save atomically with another tab upgrading the collection', async () => {
+    const service = new StorageService();
+    await service.initialize();
+    const database = await openTestDatabase();
+    const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
+    // A separate preflight read would let the upgrade commit before the stale save.
+    const upgrade = upgradeAfterNextRead(database, raw);
+
+    await service.saveData(withGroup(service.getData(), 'edited'));
+    await upgrade;
+
+    expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+    database.close();
+  });
+
   it('blocks poster changes even when the image service is used before storage initialization', async () => {
     const initial = new StorageService();
     await initial.initialize();
@@ -960,6 +1047,26 @@ describe('StorageService', () => {
     );
   });
 });
+
+function upgradeAfterNextRead(database: IDBDatabase, raw: unknown) {
+  return new Promise<void>((resolve, reject) => {
+    const get = FakeIDBObjectStore.prototype.get;
+    const spy = vi.spyOn(FakeIDBObjectStore.prototype, 'get').mockImplementation(function (
+      this: IDBObjectStore,
+      key,
+    ) {
+      const request = get.call(this, key);
+      if (this.name === 'storage' && key === 'watch-list-data') {
+        request.addEventListener('success', () => {
+          spy.mockRestore();
+          // Queue another tab's write before the reader can queue a replacement.
+          void writeRecord(database, raw).then(resolve, reject);
+        });
+      }
+      return request;
+    });
+  });
+}
 
 function abortStorageWrites(successes: boolean[]) {
   const put = FakeIDBObjectStore.prototype.put;

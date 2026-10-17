@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
@@ -456,10 +456,11 @@ import { environment } from '../../../environments/environment';
     </div>
   `,
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent implements OnInit, OnDestroy {
   private importExportService = inject(ImportExportService);
   private tmdbSettingsService = inject(TmdbSettingsService);
   private providerSettingsService = inject(ProviderSettingsService);
+  private errorTimeout: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly environment = environment;
 
@@ -488,6 +489,10 @@ export class SettingsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRecoveryBackups();
+  }
+
+  ngOnDestroy() {
+    clearTimeout(this.errorTimeout);
   }
 
   saveTmdbToken(): void {
@@ -577,13 +582,12 @@ export class SettingsComponent implements OnInit {
       this.successMessage.set('Data exported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch {
-      this.errorMessage.set('Failed to export data');
-      this.clearErrorAfterDelay('Failed to export data');
+      this.setError('Failed to export data');
     }
   }
 
   async exportRecoveryBackup(key: string): Promise<void> {
-    this.errorMessage.set(null);
+    this.setError(null);
     this.successMessage.set(null);
 
     try {
@@ -592,8 +596,7 @@ export class SettingsComponent implements OnInit {
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to export recovery backup';
-      this.errorMessage.set(message);
-      this.clearErrorAfterDelay(message);
+      this.setError(message);
     }
   }
 
@@ -614,7 +617,7 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
-    this.errorMessage.set(null);
+    this.setError(null);
     this.successMessage.set(null);
     this.pendingImportFile.set(file);
     input.value = '';
@@ -630,7 +633,7 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
-    this.errorMessage.set(null);
+    this.setError(null);
     this.successMessage.set(null);
     this.importInProgress.set(true);
 
@@ -642,10 +645,7 @@ export class SettingsComponent implements OnInit {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
       const importError = `Import failed: ${message}`;
-      this.errorMessage.set(importError);
-      if (!(error instanceof UnsupportedSchemaVersionError)) {
-        this.clearErrorAfterDelay(importError);
-      }
+      this.setError(importError, error instanceof UnsupportedSchemaVersionError);
     } finally {
       // A file staged while this import ran belongs to the next confirmation;
       // only clear the pending state when it is still this call's file.
@@ -656,10 +656,13 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  private clearErrorAfterDelay(message: string) {
-    setTimeout(() => {
-      if (this.errorMessage() === message) this.errorMessage.set(null);
-    }, 5000);
+  private setError(message: string | null, persistent = false) {
+    clearTimeout(this.errorTimeout);
+    this.errorTimeout = undefined;
+    this.errorMessage.set(message);
+    if (message && !persistent) {
+      this.errorTimeout = setTimeout(() => this.errorMessage.set(null), 5000);
+    }
   }
 
   private syncProviderSignals(): void {

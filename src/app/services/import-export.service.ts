@@ -14,6 +14,16 @@ export interface PortableExport {
   preferences?: ExportPreferences;
 }
 
+export class UnsupportedRecoveryFormatError extends Error {
+  constructor() {
+    super(
+      'This document contains data that cannot be preserved in JSON. No download was created. ' +
+        "Keep this app's storage and open it with a newer version of Watch List to recover it.",
+    );
+    this.name = 'UnsupportedRecoveryFormatError';
+  }
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -46,7 +56,9 @@ export class ImportExportService {
   }
 
   exportUnsupportedData() {
-    this.downloadJson(this.storageService.getUnsupportedData(), 'watch-list-original');
+    const raw = this.storageService.getUnsupportedData();
+    assertLosslessJson(raw);
+    this.downloadJson(raw, 'watch-list-original');
   }
 
   private downloadJson(data: unknown, filenamePrefix: string): void {
@@ -96,6 +108,26 @@ export class ImportExportService {
       // Invalid preferences must never break the data import.
     }
   }
+}
+
+function assertLosslessJson(value: unknown, seen = new WeakSet<object>()): void {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
+  if (typeof value === 'number' && Number.isFinite(value) && !Object.is(value, -0)) return;
+  // Repeated references also lose their identity in JSON, even without a cycle.
+  if (typeof value !== 'object' || seen.has(value)) {
+    throw new UnsupportedRecoveryFormatError();
+  }
+  seen.add(value);
+  const keys = Object.keys(value);
+  if (Array.isArray(value)) {
+    // JSON drops extra array properties and turns holes into null.
+    if (keys.length !== value.length || keys.some((key, index) => key !== String(index))) {
+      throw new UnsupportedRecoveryFormatError();
+    }
+  } else if (Object.prototype.toString.call(value) !== '[object Object]') {
+    throw new UnsupportedRecoveryFormatError();
+  }
+  for (const child of Object.values(value)) assertLosslessJson(child, seen);
 }
 
 function isPortableExport(value: unknown): value is PortableExport {

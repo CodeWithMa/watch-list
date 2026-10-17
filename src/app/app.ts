@@ -5,7 +5,10 @@ import { SwUpdate } from '@angular/service-worker';
 import { EMPTY, filter, map } from 'rxjs';
 import { ThemeSwitcherComponent } from './components/theme-switcher/theme-switcher.component';
 import { StorageService } from './services/storage.service';
-import { ImportExportService } from './services/import-export.service';
+import {
+  ImportExportService,
+  UnsupportedRecoveryFormatError,
+} from './services/import-export.service';
 
 @Component({
   selector: 'app-root',
@@ -39,8 +42,12 @@ export class App {
     this.downloadError.set(null);
     try {
       this.importExportService.exportUnsupportedData();
-    } catch {
-      this.downloadError.set('Could not download the original document. Please try again.');
+    } catch (error) {
+      this.downloadError.set(
+        error instanceof UnsupportedRecoveryFormatError
+          ? error.message
+          : 'Could not download the original document. Please try again.',
+      );
     }
   }
 }

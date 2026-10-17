@@ -141,6 +141,7 @@ describe('App storage warning', () => {
       'newer version of Watch List',
     );
     expect(root.textContent).toContain('Collection changes are disabled');
+    expect(root.textContent).toContain('does not include locally stored posters');
     expect(root.querySelector('router-outlet')).toBeNull();
     expect(root.textContent).not.toContain('Changes are only kept in memory');
     expect(root.textContent).not.toContain('was reverted');
@@ -191,6 +192,90 @@ describe('App storage warning', () => {
     expect(root.querySelector('router-outlet')).toBeNull();
     database.close();
   });
+
+  const unsupportedRecoveryValues = [
+    ['Map', () => new Map([['edition', 'extended']])],
+    ['Set', () => new Set(['special'])],
+    // fake-indexeddb needs Node's cloneable Blob rather than jsdom's Blob.
+    [
+      'Blob',
+      async () => {
+        const { Blob } = await vi.importActual<{ Blob: typeof globalThis.Blob }>('node:buffer');
+        return new Blob(['future bytes']);
+      },
+    ],
+    ['Date', () => new Date('2026-01-01')],
+    ['typed array', () => new Uint8Array([1, 2])],
+    ['undefined', () => undefined],
+    ['bigint', () => 123n],
+    ['non-finite number', () => NaN],
+    ['negative zero', () => -0],
+    ['sparse array', () => new Array(2)],
+    ['array with extra fields', () => Object.assign(['keep'], { future: true })],
+    [
+      'shared references',
+      () => {
+        const shared = { keep: true };
+        return { first: shared, second: shared };
+      },
+    ],
+    [
+      'cycle',
+      () => {
+        const value: Record<string, unknown> = {};
+        value['self'] = value;
+        return value;
+      },
+    ],
+  ] satisfies [string, () => unknown][];
+
+  it.each(unsupportedRecoveryValues)(
+    'explains why a future document containing %s cannot be downloaded losslessly as JSON',
+    async (_, createValue) => {
+      Object.defineProperty(globalThis, 'indexedDB', {
+        configurable: true,
+        value: new IDBFactory(),
+      });
+      const initial = new StorageService();
+      await initial.initialize();
+      const database = await new Promise<IDBDatabase>((resolve) => {
+        const request = indexedDB.open('watch-list', 2);
+        request.onsuccess = () => resolve(request.result);
+      });
+      const raw = {
+        schemaVersion: CURRENT_SCHEMA_VERSION + 1,
+        futureMetadata: await createValue(),
+      };
+      const transaction = database.transaction('storage', 'readwrite');
+      transaction.objectStore('storage').put(raw, 'watch-list-data');
+      await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
+      });
+      const storage = TestBed.inject(StorageService);
+      await storage.initialize();
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      const root = fixture.nativeElement as HTMLElement;
+      const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:lossy');
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(() => undefined);
+
+      root.querySelector<HTMLButtonElement>('main button')?.click();
+      fixture.detectChanges();
+
+      expect(root.textContent).toContain('cannot be preserved in JSON');
+      expect(root.textContent).toContain('No download was created');
+      expect(root.textContent).toContain("Keep this app's storage");
+      expect(createObjectURL).not.toHaveBeenCalled();
+      expect(click).not.toHaveBeenCalled();
+      expect(storage.getDataSignal()()).toBeNull();
+      expect(storage.getUnsupportedData()).toEqual(structuredClone(raw));
+      database.close();
+    },
+  );
 
   it('keeps the session-only warning visible after edits and imports until storage recovers', async () => {
     Object.defineProperty(globalThis, 'indexedDB', {

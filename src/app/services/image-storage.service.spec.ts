@@ -3,6 +3,8 @@ import { vi, afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { ImageStorageService } from './image-storage.service';
 import { imageVersion, imagesInvalidated } from './image-invalidation';
 import { TestBed } from '@angular/core/testing';
+import { StorageService } from './storage.service';
+import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 
 function createImageBlob(content = 'fake-image', type = 'image/png', size?: number): Blob {
   const blob = new Blob([content], { type });
@@ -160,6 +162,45 @@ describe('ImageStorageService', () => {
     expect(url).toBe('blob:mock-url');
     expect(URL.createObjectURL).toHaveBeenCalled();
   });
+
+  it.each(['delete', 'replace', 'file', 'url'] as const)(
+    'preserves newer cross-tab posters when an initialized tab attempts %s',
+    async (operation) => {
+      const storage = TestBed.inject(StorageService);
+      await storage.initialize();
+      const service = TestBed.inject(ImageStorageService);
+      const database = await new Promise<IDBDatabase>((resolve) => {
+        const request = indexedDB.open('watch-list', 2);
+        request.onsuccess = () => resolve(request.result);
+      });
+      const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
+      const image = { id: 'future-poster', futureBytes: [1, 2, 3] };
+      const transaction = database.transaction(['storage', 'images'], 'readwrite');
+      transaction.objectStore('storage').put(raw, 'watch-list-data');
+      transaction.objectStore('images').put(image);
+      await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+
+      const write =
+        operation === 'delete'
+          ? service.delete(image.id)
+          : operation === 'replace'
+            ? service.replaceImages([])
+            : operation === 'file'
+              ? service.storeFile(createImageBlob())
+              : service.storeUrl('https://example.com/poster.png');
+      await expect(write).rejects.toThrow(/newer version of Watch List/);
+
+      expect(storage.getCompatibilityErrorSignal()()?.version).toBe(CURRENT_SCHEMA_VERSION + 1);
+      expect(storage.getDataSignal()()).toBeNull();
+      expect(storage.getUnsupportedData()).toEqual(raw);
+      const request = database.transaction('images').objectStore('images').getAll();
+      const remaining = await new Promise<unknown>((resolve) => {
+        request.onsuccess = () => resolve(request.result);
+      });
+      expect(remaining).toEqual([image]);
+      database.close();
+    },
+  );
 
   it('rejects empty, oversized and non-image blobs', async () => {
     const service = TestBed.inject(ImageStorageService);

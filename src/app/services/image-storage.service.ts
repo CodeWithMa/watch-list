@@ -71,8 +71,7 @@ export class ImageStorageService {
     if (!id) return;
     await this.ensureWritable();
     await this.revokeUrl(id);
-    const db = await this.openDatabase();
-    await this.request(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(id));
+    await this.storageService.writeImages((store) => store.delete(id));
   }
 
   async exportImages(): Promise<ExportedImage[]> {
@@ -89,12 +88,10 @@ export class ImageStorageService {
     await this.ensureWritable();
     const parsed = await this.parseExportedImages(images);
     for (const id of [...this.posterUrls.keys()]) await this.revokeUrl(id);
-    const db = await this.openDatabase();
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    store.clear();
-    for (const image of parsed) store.put(image);
-    await this.transaction(transaction);
+    await this.storageService.writeImages((store) => {
+      store.clear();
+      for (const image of parsed) store.put(image);
+    });
     this.invalidateAll();
   }
 
@@ -150,9 +147,8 @@ export class ImageStorageService {
   }
 
   private async put(image: StoredImage): Promise<void> {
-    const db = await this.openDatabase();
     await this.revokeUrl(image.id);
-    await this.request(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(image));
+    await this.storageService.writeImages((store) => store.put(image));
   }
 
   private async revokeUrl(id: string): Promise<void> {
@@ -185,16 +181,6 @@ export class ImageStorageService {
     return new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('Image storage request failed'));
-    });
-  }
-
-  private transaction(transaction: IDBTransaction): Promise<void> {
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () =>
-        reject(transaction.error ?? new Error('Image storage transaction failed'));
-      transaction.onabort = () =>
-        reject(transaction.error ?? new Error('Image storage transaction aborted'));
     });
   }
 }
