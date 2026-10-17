@@ -4,6 +4,98 @@ import { StorageService } from './storage.service';
 import { ImageStorageService } from './image-storage.service';
 import { ProviderSettingsService } from './provider-settings.service';
 import { vi, afterEach } from 'vitest';
+import { IDBFactory } from 'fake-indexeddb';
+import { createDefaultStorageData } from '../domain/storage-schema';
+import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
+
+describe('import version compatibility', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(['raw', 'raw with wrapper-like fields', 'portable', 'portable with newer images'])(
+    'rejects a newer %s import without changing the collection, posters, or preferences',
+    async (format) => {
+      Object.defineProperty(globalThis, 'indexedDB', {
+        configurable: true,
+        value: new IDBFactory(),
+      });
+      const storage = TestBed.inject(StorageService);
+      await storage.initialize();
+      await storage.importData({
+        ...createDefaultStorageData(),
+        items: {
+          movie: {
+            id: 'movie',
+            title: 'Keep this movie',
+            type: 'movie',
+            groupId: 'ungrouped',
+            status: 'not-started',
+            isAdult: false,
+            createdAt: '2026-01-01',
+            watchHistory: [],
+            posterId: 'existing-poster',
+          },
+        },
+      });
+      const original = storage.getData();
+      const settings = TestBed.inject(ProviderSettingsService);
+      settings.setEnabled('tmdb', false);
+      const preferences = settings.exportSettings();
+      const persistedPreferences = localStorage.getItem('suggestionProviders');
+      const database = await new Promise<IDBDatabase>((resolve) => {
+        const request = indexedDB.open('watch-list', 2);
+        request.onsuccess = () => resolve(request.result);
+      });
+      const image = { id: 'existing-poster', bytes: [1, 2, 3], metadata: { keep: true } };
+      const transaction = database.transaction('images', 'readwrite');
+      transaction.objectStore('images').put(image);
+      await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+      const newer = {
+        ...createDefaultStorageData(),
+        schemaVersion: CURRENT_SCHEMA_VERSION + 1,
+        futureSettings: { layout: 'timeline' },
+        items: { future: { type: 'interactive', metadata: { chapters: [1, 2] } } },
+      };
+      const payload =
+        format === 'raw'
+          ? newer
+          : format === 'raw with wrapper-like fields'
+            ? {
+                ...newer,
+                data: createDefaultStorageData(),
+                images: [],
+                preferences: { providerSettings: { tmdb: true } },
+              }
+            : {
+                data: newer,
+                // Newer image formats must not hide the version explanation behind an image error.
+                images: format === 'portable' ? [] : { futureFormat: true },
+                preferences: { providerSettings: { tmdb: true } },
+              };
+      const file = new File([], 'newer-export.json');
+      Object.defineProperty(file, 'text', { value: async () => JSON.stringify(payload) });
+
+      await expect(TestBed.inject(ImportExportService).importData(file)).rejects.toThrow(
+        /newer version of Watch List/,
+      );
+
+      expect(storage.getData()).toEqual(original);
+      const reloaded = new StorageService();
+      await reloaded.initialize();
+      expect(reloaded.getData()).toEqual(original);
+      expect(storage.getCompatibilityErrorSignal()()).toBeNull();
+      expect(settings.exportSettings()).toEqual(preferences);
+      expect(localStorage.getItem('suggestionProviders')).toBe(persistedPreferences);
+      const request = database.transaction('images', 'readonly').objectStore('images').getAll();
+      const images = await new Promise<unknown>((resolve) => {
+        request.onsuccess = () => resolve(request.result);
+      });
+      expect(images).toEqual([image]);
+      // Rejection must not lock an otherwise compatible collection.
+      await expect(storage.saveData(original)).resolves.toBeUndefined();
+      database.close();
+    },
+  );
+});
 
 describe('ImportExportService', () => {
   let importExportService: ImportExportService;

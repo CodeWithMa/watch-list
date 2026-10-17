@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { StorageService } from './storage.service';
 import { ImageStorageService } from './image-storage.service';
 import { ProviderSettings, ProviderSettingsService } from './provider-settings.service';
-import { DroppedRecords } from '../domain/storage-schema';
+import { assertSupportedStorageVersion, DroppedRecords } from '../domain/storage-schema';
 
 export interface ExportPreferences {
   providerSettings: ProviderSettings;
@@ -12,6 +12,16 @@ export interface PortableExport {
   data: unknown;
   images: unknown;
   preferences?: ExportPreferences;
+}
+
+export class UnsupportedRecoveryFormatError extends Error {
+  constructor() {
+    super(
+      'This document contains data that cannot be preserved in JSON. No download was created. ' +
+        "Keep this app's storage and open it with a newer version of Watch List to recover it.",
+    );
+    this.name = 'UnsupportedRecoveryFormatError';
+  }
 }
 
 @Injectable({
@@ -45,6 +55,12 @@ export class ImportExportService {
     this.downloadJson(backup, 'watch-list-recovery-backup');
   }
 
+  exportUnsupportedData() {
+    const raw = this.storageService.getUnsupportedData();
+    assertLosslessJson(raw);
+    this.downloadJson(raw, 'watch-list-original');
+  }
+
   private downloadJson(data: unknown, filenamePrefix: string): void {
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -62,7 +78,10 @@ export class ImportExportService {
     try {
       const text = await file.text();
       const payload: unknown = JSON.parse(text);
+      // Unknown fields on a newer raw document may resemble today's export wrapper.
+      assertSupportedStorageVersion(payload);
       const data = isPortableExport(payload) ? payload.data : payload;
+      assertSupportedStorageVersion(data);
       const images = await this.imageStorage.parseExportedImages(
         isPortableExport(payload) ? payload.images : [],
       );
@@ -89,6 +108,26 @@ export class ImportExportService {
       // Invalid preferences must never break the data import.
     }
   }
+}
+
+function assertLosslessJson(value: unknown, seen = new WeakSet<object>()): void {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
+  if (typeof value === 'number' && Number.isFinite(value) && !Object.is(value, -0)) return;
+  // Repeated references also lose their identity in JSON, even without a cycle.
+  if (typeof value !== 'object' || seen.has(value)) {
+    throw new UnsupportedRecoveryFormatError();
+  }
+  seen.add(value);
+  const keys = Object.keys(value);
+  if (Array.isArray(value)) {
+    // JSON drops extra array properties and turns holes into null.
+    if (keys.length !== value.length || keys.some((key, index) => key !== String(index))) {
+      throw new UnsupportedRecoveryFormatError();
+    }
+  } else if (Object.prototype.toString.call(value) !== '[object Object]') {
+    throw new UnsupportedRecoveryFormatError();
+  }
+  for (const child of Object.values(value)) assertLosslessJson(child, seen);
 }
 
 function isPortableExport(value: unknown): value is PortableExport {

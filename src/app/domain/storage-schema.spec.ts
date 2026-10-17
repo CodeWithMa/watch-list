@@ -1,5 +1,28 @@
 import { createDefaultStorageData, normalizeStorageData } from './storage-schema';
 import { DEFAULT_GROUP_ID } from './item.constants';
+import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
+
+describe('storage version compatibility', () => {
+  it('rejects newer versions before interpreting their records as supported data', () => {
+    const newer = {
+      ...createDefaultStorageData(),
+      schemaVersion: CURRENT_SCHEMA_VERSION + 1,
+      futureSettings: { layout: 'timeline' },
+      items: { future: { type: 'interactive', metadata: { chapters: [1, 2] } } },
+    };
+    const original = structuredClone(newer);
+
+    expect(() => normalizeStorageData(newer)).toThrow(/newer version of Watch List/);
+    expect(newer).toEqual(original);
+    // A future schema may replace today's required fields entirely.
+    expect(() => normalizeStorageData({ schemaVersion: newer.schemaVersion })).toThrow(
+      /newer version of Watch List/,
+    );
+    expect(() => normalizeStorageData({ schemaVersion: CURRENT_SCHEMA_VERSION })).toThrow(
+      'Invalid data format',
+    );
+  });
+});
 
 describe('season release delay storage schema', () => {
   function dataWithSeason(season: Record<string, unknown>) {

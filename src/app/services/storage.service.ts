@@ -2,9 +2,14 @@ import { Injectable, signal } from '@angular/core';
 import { StorageData } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
-import { createDefaultStorageData, normalizeStorageData } from '../domain/storage-schema';
+import {
+  assertSupportedStorageVersion,
+  createDefaultStorageData,
+  normalizeStorageData,
+  UnsupportedSchemaVersionError,
+} from '../domain/storage-schema';
 import type { DroppedRecords, NormalizationResult } from '../domain/storage-schema';
-import { StoredImage } from './image-storage.service';
+import type { StoredImage } from './image-storage.service';
 import { imagesInvalidated } from './image-invalidation';
 
 const DATABASE_NAME = 'watch-list';
@@ -22,6 +27,8 @@ export class StorageService {
   private readonly data = signal<StorageData | null>(null);
   private readonly saveError = signal<string | null>(null);
   private readonly inMemorySession = signal(false);
+  private readonly compatibilityError = signal<UnsupportedSchemaVersionError | null>(null);
+  private unsupportedData: unknown;
   private database: IDBDatabase | null = null;
   private lastPersistedData: StorageData | null = null;
   private initialization: Promise<void> | null = null;
@@ -29,6 +36,7 @@ export class StorageService {
 
   initialize(): Promise<void> {
     this.initialization ??= this.loadData().catch((error: unknown) => {
+      if (this.compatibilityError()) return;
       this.initialization = null;
       this.useInMemorySession();
       console.error('Storage initialization failed, falling back to in-memory session:', error);
@@ -54,13 +62,18 @@ export class StorageService {
     images: StoredImage[],
   ): Promise<{ data: StorageData; dropped: DroppedRecords }> {
     const normalized = normalizeStorageData(data);
-    if (!this.database && images.length > 0) {
-      throw new Error(
-        'Cannot import posters while persistent storage is unavailable. No data was imported.',
-      );
-    }
     await this.persistData(normalized.data, images);
     return { data: this.getData(), dropped: normalized.dropped };
+  }
+
+  async writeImages(write: (store: IDBObjectStore) => void) {
+    await this.initialize();
+    this.assertWritable();
+    await this.writeTransaction(
+      [STORE_NAME, IMAGE_STORE_NAME],
+      (transaction) => write(transaction.objectStore(IMAGE_STORE_NAME)),
+      'Failed to update posters',
+    );
   }
 
   getSaveErrorSignal() {
@@ -69,6 +82,20 @@ export class StorageService {
 
   getInMemorySessionSignal() {
     return this.inMemorySession.asReadonly();
+  }
+
+  getCompatibilityErrorSignal() {
+    return this.compatibilityError.asReadonly();
+  }
+
+  getUnsupportedData() {
+    if (!this.compatibilityError()) throw new Error('No incompatible collection is loaded');
+    return structuredClone(this.unsupportedData);
+  }
+
+  assertWritable() {
+    const error = this.compatibilityError();
+    if (error) throw error;
   }
 
   async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
@@ -98,7 +125,15 @@ export class StorageService {
     return backup;
   }
 
-  private persistData(data: StorageData, images?: StoredImage[]): Promise<void> {
+  private async persistData(data: StorageData, images?: StoredImage[]): Promise<void> {
+    if (!this.data()) await this.initialize();
+    this.assertWritable();
+    assertSupportedStorageVersion(data);
+    if (!this.database && images && images.length > 0) {
+      throw new Error(
+        'Cannot import posters while persistent storage is unavailable. No data was imported.',
+      );
+    }
     const updated: StorageData = {
       ...cloneStorageData(data),
       lastModifiedAt: new Date().toISOString(),
@@ -125,7 +160,7 @@ export class StorageService {
           this.data.set(this.lastPersistedData && cloneStorageData(this.lastPersistedData));
         }
         const message = error instanceof Error ? error.message : String(error);
-        this.saveError.set(message);
+        this.saveError.set(this.compatibilityError() ? null : message);
         console.error(
           images === undefined
             ? 'Failed to save watch-list data:'
@@ -138,6 +173,7 @@ export class StorageService {
   }
 
   getData(): StorageData {
+    this.assertWritable();
     return cloneStorageData(this.data()!);
   }
 
@@ -168,29 +204,24 @@ export class StorageService {
           storedSnapshot = structuredClone(stored);
           normalized = normalizeStorageData(stored);
         } catch (error) {
-          console.error('Failed to load stored watch-list data:', error);
-          await this.backupRawData(storedSnapshot);
-          const defaults = createDefaultStorageData();
-          try {
-            await this.writeData(defaults);
-          } catch {
-            this.useInMemorySession();
+          if (error instanceof UnsupportedSchemaVersionError) {
+            this.lockUnsupportedData(storedSnapshot, error);
+            return;
           }
+          console.error('Failed to load stored watch-list data:', error);
+          const defaults = createDefaultStorageData();
+          await this.writeInitialData(defaults, storedSnapshot);
           this.lastPersistedData = cloneStorageData(defaults);
           this.data.set(cloneStorageData(defaults));
           return;
         }
 
         if (!storageDataEqual(normalized.data, storedSnapshot)) {
-          try {
-            const { groups, items, deletedItems } = normalized.dropped;
-            if (groups + items + deletedItems > 0) {
-              await this.backupRawData(storedSnapshot);
-            }
-            await this.writeData(normalized.data);
-          } catch {
-            this.useInMemorySession();
-          }
+          const { groups, items, deletedItems } = normalized.dropped;
+          await this.writeInitialData(
+            normalized.data,
+            groups + items + deletedItems > 0 ? storedSnapshot : undefined,
+          );
         }
         this.lastPersistedData = cloneStorageData(normalized.data);
         this.data.set(cloneStorageData(normalized.data));
@@ -198,14 +229,11 @@ export class StorageService {
       }
 
       const defaults = createDefaultStorageData();
-      try {
-        await this.writeData(defaults);
-      } catch {
-        this.useInMemorySession();
-      }
+      await this.writeInitialData(defaults);
       this.lastPersistedData = cloneStorageData(defaults);
       this.data.set(cloneStorageData(defaults));
     } catch {
+      if (this.compatibilityError()) return;
       this.useInMemorySession();
       const defaults = createDefaultStorageData();
       this.lastPersistedData = cloneStorageData(defaults);
@@ -217,6 +245,22 @@ export class StorageService {
     this.database?.close();
     this.database = null;
     this.inMemorySession.set(true);
+  }
+
+  private async writeInitialData(data: StorageData, backup?: unknown) {
+    try {
+      if (backup !== undefined) await this.backupRawData(backup);
+      await this.writeData(data);
+    } catch (error) {
+      if (error instanceof UnsupportedSchemaVersionError) throw error;
+      this.useInMemorySession();
+    }
+  }
+
+  private lockUnsupportedData(raw: unknown, error: UnsupportedSchemaVersionError) {
+    this.unsupportedData = structuredClone(raw);
+    this.compatibilityError.set(error);
+    this.data.set(null);
   }
 
   private async backupRawData(raw: unknown): Promise<void> {
@@ -308,24 +352,61 @@ export class StorageService {
   }
 
   private writeData(data: StorageData): Promise<void> {
-    if (!this.database) {
-      return Promise.reject(new Error('Persistent storage is unavailable'));
-    }
-    const transaction = this.database.transaction(STORE_NAME, 'readwrite');
-    transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
-    return this.completeTransaction(transaction, 'Failed to write to IndexedDB');
+    return this.writeTransaction(
+      [STORE_NAME],
+      (transaction) => transaction.objectStore(STORE_NAME).put(data, DATA_KEY),
+      'Failed to write to IndexedDB',
+    );
   }
 
   private writeDataWithImages(data: StorageData, images: StoredImage[]): Promise<void> {
+    return this.writeTransaction(
+      [STORE_NAME, IMAGE_STORE_NAME],
+      (transaction) => {
+        transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
+        const imageStore = transaction.objectStore(IMAGE_STORE_NAME);
+        imageStore.clear();
+        for (const image of images) imageStore.put(image);
+      },
+      'Failed to import watch-list data',
+    );
+  }
+
+  private writeTransaction(
+    stores: string[],
+    write: (transaction: IDBTransaction) => void,
+    message: string,
+  ): Promise<void> {
     if (!this.database) {
       return Promise.reject(new Error('Persistent storage is unavailable'));
     }
-    const transaction = this.database.transaction([STORE_NAME, IMAGE_STORE_NAME], 'readwrite');
-    transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
-    const imageStore = transaction.objectStore(IMAGE_STORE_NAME);
-    imageStore.clear();
-    for (const image of images) imageStore.put(image);
-    return this.completeTransaction(transaction, 'Failed to import watch-list data');
+    return new Promise((resolve, reject) => {
+      const transaction = this.database!.transaction(stores, 'readwrite');
+      let failure: unknown;
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(failure ?? transaction.error ?? new Error(message));
+      transaction.onabort = () => reject(failure ?? transaction.error ?? new Error(message));
+      // Reading and writing in one transaction prevents another tab from upgrading
+      // the document between the compatibility check and any collection/poster changes.
+      const request = transaction.objectStore(STORE_NAME).get(DATA_KEY) as IDBRequest<unknown>;
+      request.onsuccess = () => {
+        try {
+          this.assertWritable();
+          try {
+            assertSupportedStorageVersion(request.result);
+          } catch (error) {
+            if (error instanceof UnsupportedSchemaVersionError) {
+              this.lockUnsupportedData(request.result, error);
+            }
+            throw error;
+          }
+          write(transaction);
+        } catch (error) {
+          failure = error;
+          transaction.abort();
+        }
+      };
+    });
   }
 
   private promisifyRequest<T>(

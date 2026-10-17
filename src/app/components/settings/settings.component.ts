@@ -1,10 +1,10 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
 import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
-import { DroppedRecords } from '../../domain/storage-schema';
+import { DroppedRecords, UnsupportedSchemaVersionError } from '../../domain/storage-schema';
 import {
   AdultDisplayMode,
   DEFAULT_TITLE_PREFERENCE,
@@ -385,6 +385,7 @@ import { environment } from '../../../environments/environment';
       @if (errorMessage()) {
         <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
           <div
+            role="alert"
             class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark p-4 rounded border border-error-border-light dark:border-error-border-dark"
           >
             {{ errorMessage() }}
@@ -455,10 +456,11 @@ import { environment } from '../../../environments/environment';
     </div>
   `,
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent implements OnInit, OnDestroy {
   private importExportService = inject(ImportExportService);
   private tmdbSettingsService = inject(TmdbSettingsService);
   private providerSettingsService = inject(ProviderSettingsService);
+  private errorTimeout: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly environment = environment;
 
@@ -487,6 +489,10 @@ export class SettingsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRecoveryBackups();
+  }
+
+  ngOnDestroy() {
+    clearTimeout(this.errorTimeout);
   }
 
   saveTmdbToken(): void {
@@ -576,13 +582,12 @@ export class SettingsComponent implements OnInit {
       this.successMessage.set('Data exported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch {
-      this.errorMessage.set('Failed to export data');
-      setTimeout(() => this.errorMessage.set(null), 5000);
+      this.setError('Failed to export data');
     }
   }
 
   async exportRecoveryBackup(key: string): Promise<void> {
-    this.errorMessage.set(null);
+    this.setError(null);
     this.successMessage.set(null);
 
     try {
@@ -591,8 +596,7 @@ export class SettingsComponent implements OnInit {
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to export recovery backup';
-      this.errorMessage.set(message);
-      setTimeout(() => this.errorMessage.set(null), 5000);
+      this.setError(message);
     }
   }
 
@@ -613,7 +617,7 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
-    this.errorMessage.set(null);
+    this.setError(null);
     this.successMessage.set(null);
     this.pendingImportFile.set(file);
     input.value = '';
@@ -629,7 +633,7 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
-    this.errorMessage.set(null);
+    this.setError(null);
     this.successMessage.set(null);
     this.importInProgress.set(true);
 
@@ -640,8 +644,8 @@ export class SettingsComponent implements OnInit {
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
-      this.errorMessage.set(`Import failed: ${message}`);
-      setTimeout(() => this.errorMessage.set(null), 5000);
+      const importError = `Import failed: ${message}`;
+      this.setError(importError, error instanceof UnsupportedSchemaVersionError);
     } finally {
       // A file staged while this import ran belongs to the next confirmation;
       // only clear the pending state when it is still this call's file.
@@ -649,6 +653,15 @@ export class SettingsComponent implements OnInit {
         this.pendingImportFile.set(null);
       }
       this.importInProgress.set(false);
+    }
+  }
+
+  private setError(message: string | null, persistent = false) {
+    clearTimeout(this.errorTimeout);
+    this.errorTimeout = undefined;
+    this.errorMessage.set(message);
+    if (message && !persistent) {
+      this.errorTimeout = setTimeout(() => this.errorMessage.set(null), 5000);
     }
   }
 

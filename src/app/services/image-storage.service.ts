@@ -1,5 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { imageVersion, imagesInvalidated } from './image-invalidation';
+import { StorageService } from './storage.service';
 
 const DATABASE_NAME = 'watch-list';
 const DATABASE_VERSION = 2;
@@ -21,6 +22,7 @@ type PosterUrlCache = Map<string, Promise<string | null>>;
 
 @Injectable({ providedIn: 'root' })
 export class ImageStorageService {
+  private readonly storageService = inject(StorageService);
   private database: Promise<IDBDatabase> | null = null;
   private readonly posterUrls: PosterUrlCache = new Map();
   readonly version = imageVersion.asReadonly();
@@ -30,6 +32,7 @@ export class ImageStorageService {
   }
 
   async storeFile(file: Blob): Promise<string> {
+    await this.ensureWritable();
     await this.validateImage(file);
     const id = `image-${crypto.randomUUID()}`;
     await this.put({ id, blob: file });
@@ -37,6 +40,7 @@ export class ImageStorageService {
   }
 
   async storeUrl(url: string): Promise<string> {
+    await this.ensureWritable();
     let response: Response;
     try {
       response = await fetch(url);
@@ -65,9 +69,9 @@ export class ImageStorageService {
 
   async delete(id: string | undefined): Promise<void> {
     if (!id) return;
+    await this.ensureWritable();
     await this.revokeUrl(id);
-    const db = await this.openDatabase();
-    await this.request(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(id));
+    await this.storageService.writeImages((store) => store.delete(id));
   }
 
   async exportImages(): Promise<ExportedImage[]> {
@@ -81,19 +85,23 @@ export class ImageStorageService {
   }
 
   async replaceImages(images: unknown): Promise<void> {
+    await this.ensureWritable();
     const parsed = await this.parseExportedImages(images);
     for (const id of [...this.posterUrls.keys()]) await this.revokeUrl(id);
-    const db = await this.openDatabase();
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    store.clear();
-    for (const image of parsed) store.put(image);
-    await this.transaction(transaction);
+    await this.storageService.writeImages((store) => {
+      store.clear();
+      for (const image of parsed) store.put(image);
+    });
     this.invalidateAll();
   }
 
   invalidateAll(): void {
     imagesInvalidated.next();
+  }
+
+  private async ensureWritable() {
+    await this.storageService.initialize();
+    this.storageService.assertWritable();
   }
 
   private refreshCache(): void {
@@ -139,9 +147,8 @@ export class ImageStorageService {
   }
 
   private async put(image: StoredImage): Promise<void> {
-    const db = await this.openDatabase();
     await this.revokeUrl(image.id);
-    await this.request(db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(image));
+    await this.storageService.writeImages((store) => store.put(image));
   }
 
   private async revokeUrl(id: string): Promise<void> {
@@ -174,16 +181,6 @@ export class ImageStorageService {
     return new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('Image storage request failed'));
-    });
-  }
-
-  private transaction(transaction: IDBTransaction): Promise<void> {
-    return new Promise((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () =>
-        reject(transaction.error ?? new Error('Image storage transaction failed'));
-      transaction.onabort = () =>
-        reject(transaction.error ?? new Error('Image storage transaction aborted'));
     });
   }
 }

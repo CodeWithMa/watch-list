@@ -6,6 +6,9 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
 import { DroppedRecords } from '../../domain/storage-schema';
 import { SettingsComponent } from './settings.component';
 import { vi, afterEach, beforeEach } from 'vitest';
+import { IDBFactory } from 'fake-indexeddb';
+import { StorageService } from '../../services/storage.service';
+import { CURRENT_SCHEMA_VERSION } from '../../models/storage.model';
 
 const CLEAN_IMPORT: DroppedRecords = { groups: 0, items: 0, deletedItems: 0 };
 
@@ -59,6 +62,57 @@ describe('SettingsComponent', () => {
 
     return tmdbSettingsService;
   }
+
+  it('keeps a clear explanation visible when an import requires a newer app version', async () => {
+    Object.defineProperty(globalThis, 'indexedDB', {
+      configurable: true,
+      value: new IDBFactory(),
+    });
+    const storage = TestBed.inject(StorageService);
+    await storage.initialize();
+    const original = storage.getData();
+    const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const file = new File([], 'newer-export.json');
+    Object.defineProperty(file, 'text', {
+      value: async () =>
+        JSON.stringify({
+          ...original,
+          schemaVersion: CURRENT_SCHEMA_VERSION + 1,
+          futureSettings: { layout: 'timeline' },
+        }),
+    });
+    const root = fixture.nativeElement as HTMLElement;
+    const input = root.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const invalid = new File([], 'invalid.json');
+    Object.defineProperty(invalid, 'text', { value: async () => 'not JSON' });
+    Object.defineProperty(input, 'files', { value: [invalid], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    vi.useFakeTimers();
+    await fixture.componentInstance.confirmImport();
+    expect(fixture.componentInstance.errorMessage()).toContain('Invalid JSON file');
+    vi.advanceTimersByTime(1000);
+    Object.defineProperty(input, 'files', { value: [file] });
+    input.dispatchEvent(new Event('change'));
+
+    await fixture.componentInstance.confirmImport();
+    fixture.detectChanges();
+
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Import failed:');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+      'newer version of Watch List',
+    );
+    expect(root.textContent).toContain('No data was changed.');
+    expect(storage.getData()).toEqual(original);
+    vi.advanceTimersByTime(5001);
+    fixture.detectChanges();
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+      'newer version of Watch List',
+    );
+    expect(fixture.componentInstance.successMessage()).toBeNull();
+    expect(fixture.componentInstance.importInProgress()).toBe(false);
+  });
 
   it('does not show a TMDB status message on initial load with saved credentials', async () => {
     configure({
@@ -493,6 +547,29 @@ describe('SettingsComponent', () => {
 
     expect(fixture.componentInstance.errorMessage()).toBe('Import failed: Invalid JSON file');
     expect(fixture.componentInstance.successMessage()).toBeNull();
+  });
+
+  it('keeps a repeated import failure visible for five seconds after the latest failure', async () => {
+    vi.useFakeTimers();
+    configure({ token: '', key: '', credential: null });
+    vi.mocked(TestBed.inject(ImportExportService).importData).mockRejectedValue(
+      new Error('Invalid JSON file'),
+    );
+    const component = TestBed.createComponent(SettingsComponent).componentInstance;
+    const file = new File(['invalid'], 'invalid.json');
+
+    component.pendingImportFile.set(file);
+    await component.confirmImport();
+    vi.advanceTimersByTime(4000);
+    component.pendingImportFile.set(file);
+    await component.confirmImport();
+    vi.advanceTimersByTime(1000);
+
+    expect(component.errorMessage()).toBe('Import failed: Invalid JSON file');
+    vi.advanceTimersByTime(3999);
+    expect(component.errorMessage()).toBe('Import failed: Invalid JSON file');
+    vi.advanceTimersByTime(1);
+    expect(component.errorMessage()).toBeNull();
   });
 
   it('clears recovery backups when loading them fails', async () => {

@@ -5,6 +5,7 @@ import { vi, afterEach } from 'vitest';
 import { Item } from '../models/item.model';
 import { createDefaultStorageData } from '../domain/storage-schema';
 import { ImageStorageService } from './image-storage.service';
+import { TestBed } from '@angular/core/testing';
 
 describe('StorageService', () => {
   beforeEach(() => {
@@ -166,6 +167,55 @@ describe('StorageService', () => {
     expect(error).toHaveBeenCalledWith('Failed to load stored watch-list data:', expect.any(Error));
   });
 
+  it.each([false, true])(
+    'preserves a newer document and stays locked instead of recovering to writable defaults (changed shape: %s)',
+    async (changedShape) => {
+      const initial = new StorageService();
+      await initial.initialize();
+      const database = await openTestDatabase();
+      const supported = dataWithMovie();
+      const raw = changedShape
+        ? { schemaVersion: CURRENT_SCHEMA_VERSION + 1, collection: { entries: ['future'] } }
+        : {
+            ...supported,
+            schemaVersion: CURRENT_SCHEMA_VERSION + 1,
+            futureSettings: { layout: 'timeline' },
+            items: {
+              movie: { ...supported.items.movie, metadata: { rating: 5 } },
+              future: { type: 'interactive', chapters: [{ title: 'Opening' }] },
+            },
+          };
+      await writeRecord(database, raw);
+      // Even an unavailable corruption-backup/write path must not turn compatibility into
+      // the generic in-memory fallback. This also detects any normalization write.
+      const put = vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(() => {
+        throw new Error('Writes unavailable');
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const service = new StorageService();
+
+      await expect(service.initialize()).resolves.toBeUndefined();
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      expect(service.getCompatibilityErrorSignal()()?.version).toBe(CURRENT_SCHEMA_VERSION + 1);
+      expect(service.getUnsupportedData()).toEqual(raw);
+      expect(() => service.getData()).toThrow(/newer version of Watch List/);
+      await expect(service.saveData(supported)).rejects.toThrow(/newer version of Watch List/);
+      await expect(service.importData(supported)).rejects.toThrow(/newer version of Watch List/);
+      await expect(service.importDataWithImages(supported, [])).rejects.toThrow(
+        /newer version of Watch List/,
+      );
+      await service.initialize();
+
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getUnsupportedData()).toEqual(raw);
+      expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+      expect(await service.getRecoveryBackups()).toEqual([]);
+      expect(put).not.toHaveBeenCalled();
+      database.close();
+    },
+  );
+
   it('backs up unreadable data to a timestamped key', async () => {
     const firstService = new StorageService();
     await firstService.initialize();
@@ -182,6 +232,151 @@ describe('StorageService', () => {
     expect(backups[0].timestamp).toBeInstanceOf(Date);
     const backup = await readRecord(database, backups[0].key);
     expect(backup).toEqual(corruptData);
+  });
+
+  it.each(['save', 'import', 'portable'] as const)(
+    'locks an initialized collection instead of overwriting a newer cross-tab document during %s',
+    async (operation) => {
+      const service = new StorageService();
+      await service.initialize();
+      const snapshot = service.getData();
+      const database = await openTestDatabase();
+      const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
+      await writeRecord(database, raw);
+      const image = { id: 'future-poster', futureBytes: [1, 2, 3] };
+      const transaction = database.transaction('images', 'readwrite');
+      transaction.objectStore('images').put(image);
+      await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      const writes = [1, 2].map(() =>
+        operation === 'save'
+          ? service.saveData(snapshot)
+          : operation === 'import'
+            ? service.importData(snapshot)
+            : service.importDataWithImages(snapshot, [poster('replacement')]),
+      );
+      const results = await Promise.allSettled(writes);
+
+      expect(results.map((result) => result.status)).toEqual(['rejected', 'rejected']);
+      expect(service.getCompatibilityErrorSignal()()?.version).toBe(CURRENT_SCHEMA_VERSION + 1);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getUnsupportedData()).toEqual(raw);
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      expect(service.getSaveErrorSignal()()).toBeNull();
+      expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+      const images = database.transaction('images', 'readonly').objectStore('images').getAll();
+      const remaining = await new Promise<unknown>((resolve) => {
+        images.onsuccess = () => resolve(images.result);
+      });
+      expect(remaining).toEqual([image]);
+      await expect(service.saveData(snapshot)).rejects.toThrow(/newer version of Watch List/);
+      database.close();
+    },
+  );
+
+  it.each(['empty', 'corrupt', 'legacy'] as const)(
+    'stays locked when another tab upgrades an %s collection between startup read and write',
+    async (state) => {
+      const initial = new StorageService();
+      await initial.initialize();
+      const database = await openTestDatabase();
+      await writeRecord(
+        database,
+        state === 'empty'
+          ? undefined
+          : state === 'corrupt'
+            ? { invalid: true }
+            : { ...createDefaultStorageData(), schemaVersion: 9 },
+      );
+      const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
+      const upgrade = upgradeAfterNextRead(database, raw);
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const service = new StorageService();
+
+      await service.initialize();
+      await upgrade;
+
+      expect(service.getCompatibilityErrorSignal()()?.version).toBe(CURRENT_SCHEMA_VERSION + 1);
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getUnsupportedData()).toEqual(raw);
+      expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+      database.close();
+    },
+  );
+
+  it('commits its version check and save atomically with another tab upgrading the collection', async () => {
+    const service = new StorageService();
+    await service.initialize();
+    const database = await openTestDatabase();
+    const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
+    // A separate preflight read would let the upgrade commit before the stale save.
+    const upgrade = upgradeAfterNextRead(database, raw);
+
+    await service.saveData(withGroup(service.getData(), 'edited'));
+    await upgrade;
+
+    expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+    database.close();
+  });
+
+  it('blocks poster changes even when the image service is used before storage initialization', async () => {
+    const initial = new StorageService();
+    await initial.initialize();
+    const database = await openTestDatabase();
+    const raw = { ...dataWithMovie(), schemaVersion: CURRENT_SCHEMA_VERSION + 1 };
+    await writeRecord(database, raw);
+    const transaction = database.transaction('images', 'readwrite');
+    const image = { id: 'future-poster', bytes: [1, 2, 3], metadata: { format: 'future' } };
+    transaction.objectStore('images').put(image);
+    await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+    const service = TestBed.inject(StorageService);
+    const images = TestBed.inject(ImageStorageService);
+    const fetch = vi.spyOn(globalThis, 'fetch');
+
+    await expect(images.delete('future-poster')).rejects.toThrow(/newer version of Watch List/);
+    await expect(images.replaceImages([])).rejects.toThrow(/newer version of Watch List/);
+    await expect(images.storeFile(new Blob(['poster'], { type: 'image/png' }))).rejects.toThrow(
+      /newer version of Watch List/,
+    );
+    await expect(images.storeUrl('https://example.com/poster.png')).rejects.toThrow(
+      /newer version of Watch List/,
+    );
+
+    const request = database.transaction('images', 'readonly').objectStore('images').getAll();
+    const remaining = await new Promise<unknown>((resolve) => {
+      request.onsuccess = () => resolve(request.result);
+    });
+    expect(remaining).toEqual([image]);
+    expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+    expect(service.getDataSignal()()).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    database.close();
+  });
+
+  it('refuses document replacement when a write is attempted before initialization', async () => {
+    const initial = new StorageService();
+    await initial.initialize();
+    const database = await openTestDatabase();
+    const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: [{ value: 'keep' }] };
+    await writeRecord(database, raw);
+    const supported = dataWithMovie();
+
+    for (const operation of ['save', 'import', 'portable'] as const) {
+      const service = new StorageService();
+      const write =
+        operation === 'save'
+          ? service.saveData(supported)
+          : operation === 'import'
+            ? service.importData(supported)
+            : service.importDataWithImages(supported, [poster('replacement')]);
+
+      await expect(write).rejects.toThrow(/newer version of Watch List/);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
+    }
+    database.close();
   });
 
   it.each(['groups', 'items', 'deletedItems'] as const)(
@@ -695,7 +890,7 @@ describe('StorageService', () => {
             : firstSucceeds && firstKind === 'import'
               ? 'first'
               : 'committed';
-        const images = new ImageStorageService();
+        const images = TestBed.inject(ImageStorageService);
         for (const id of ['committed', 'first', 'second']) {
           expect(await images.getUrl(id)).toBe(id === expectedPoster ? 'blob:poster' : null);
         }
@@ -852,6 +1047,26 @@ describe('StorageService', () => {
     );
   });
 });
+
+function upgradeAfterNextRead(database: IDBDatabase, raw: unknown) {
+  return new Promise<void>((resolve, reject) => {
+    const get = FakeIDBObjectStore.prototype.get;
+    const spy = vi.spyOn(FakeIDBObjectStore.prototype, 'get').mockImplementation(function (
+      this: IDBObjectStore,
+      key,
+    ) {
+      const request = get.call(this, key);
+      if (this.name === 'storage' && key === 'watch-list-data') {
+        request.addEventListener('success', () => {
+          spy.mockRestore();
+          // Queue another tab's write before the reader can queue a replacement.
+          void writeRecord(database, raw).then(resolve, reject);
+        });
+      }
+      return request;
+    });
+  });
+}
 
 function abortStorageWrites(successes: boolean[]) {
   const put = FakeIDBObjectStore.prototype.put;

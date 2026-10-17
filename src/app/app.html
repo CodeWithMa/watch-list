@@ -86,6 +86,32 @@
 
 <main class="min-h-[calc(100vh-80px)] bg-light-bg-primary dark:bg-dark-bg-primary">
   <div class="page-container">
-    <router-outlet />
+    @if (compatibilityError(); as error) {
+      <section
+        role="alert"
+        class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark p-6 rounded border border-error-border-light dark:border-error-border-dark"
+      >
+        <h1 class="text-2xl mb-4">A newer app version is required</h1>
+        <p>{{ error.message }}</p>
+        <p class="my-4">
+          Collection changes are disabled to protect your data and posters. Update Watch List or
+          open this collection with the version that created it. You can download the original
+          document below and keep it for recovery. This download does not include locally stored
+          posters. Do not clear this app's storage.
+        </p>
+        <button
+          type="button"
+          (click)="downloadOriginal()"
+          class="px-4 py-2 rounded border border-current font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          Download original document
+        </button>
+        @if (downloadError()) {
+          <p class="mt-4">{{ downloadError() }}</p>
+        }
+      </section>
+    } @else {
+      <router-outlet />
+    }
   </div>
 </main>

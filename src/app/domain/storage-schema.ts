@@ -101,7 +101,29 @@ export interface NormalizationResult {
   dropped: DroppedRecords;
 }
 
+export class UnsupportedSchemaVersionError extends Error {
+  constructor(readonly version: number) {
+    super(
+      `This collection uses data version ${version}, but this app supports up to ${CURRENT_SCHEMA_VERSION}. ` +
+        'Open it with a newer version of Watch List. No data was changed.',
+    );
+    this.name = 'UnsupportedSchemaVersionError';
+  }
+}
+
+export function assertSupportedStorageVersion(data: unknown) {
+  if (
+    isRecord(data) &&
+    typeof data['schemaVersion'] === 'number' &&
+    Number.isFinite(data['schemaVersion']) &&
+    data['schemaVersion'] > CURRENT_SCHEMA_VERSION
+  ) {
+    throw new UnsupportedSchemaVersionError(data['schemaVersion']);
+  }
+}
+
 export function normalizeStorageData(data: unknown): NormalizationResult {
+  assertSupportedStorageVersion(data);
   if (!isStorageDataShape(data)) {
     throw new Error('Invalid data format');
   }

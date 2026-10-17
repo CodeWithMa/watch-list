@@ -1,12 +1,15 @@
 import { DOCUMENT, PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { SwUpdate, VersionEvent } from '@angular/service-worker';
 import { IDBFactory } from 'fake-indexeddb';
 import { Subject } from 'rxjs';
 import { afterEach, vi } from 'vitest';
 import { App } from './app';
 import { StorageService } from './services/storage.service';
+import { CURRENT_SCHEMA_VERSION } from './models/storage.model';
+import { createDefaultStorageData } from './domain/storage-schema';
+import { routes } from './app.routes';
 
 describe('App update notification', () => {
   function setup(isEnabled: boolean | null = true) {
@@ -104,6 +107,175 @@ describe('App update notification', () => {
 
 describe('App storage warning', () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it('keeps incompatible collections behind an actionable message and downloads the original document', async () => {
+    Object.defineProperty(globalThis, 'indexedDB', {
+      configurable: true,
+      value: new IDBFactory(),
+    });
+    const initial = new StorageService();
+    await initial.initialize();
+    const database = await new Promise<IDBDatabase>((resolve) => {
+      const request = indexedDB.open('watch-list', 2);
+      request.onsuccess = () => resolve(request.result);
+    });
+    const raw = {
+      ...createDefaultStorageData(),
+      schemaVersion: CURRENT_SCHEMA_VERSION + 1,
+      futureSettings: { layout: 'timeline' },
+      items: { future: { type: 'interactive', metadata: { chapters: [1, 2] } } },
+    };
+    const transaction = database.transaction('storage', 'readwrite');
+    transaction.objectStore('storage').put(raw, 'watch-list-data');
+    await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes), { provide: PLATFORM_ID, useValue: 'server' }],
+    });
+    const storage = TestBed.inject(StorageService);
+    await storage.initialize();
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+      'newer version of Watch List',
+    );
+    expect(root.textContent).toContain('Collection changes are disabled');
+    expect(root.textContent).toContain('does not include locally stored posters');
+    expect(root.querySelector('router-outlet')).toBeNull();
+    expect(root.textContent).not.toContain('Changes are only kept in memory');
+    expect(root.textContent).not.toContain('was reverted');
+    for (const path of ['/items/add', '/groups', '/settings']) {
+      await TestBed.inject(Router).navigateByUrl(path);
+      fixture.detectChanges();
+      expect(root.querySelector('router-outlet')).toBeNull();
+      expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+        'newer version of Watch List',
+      );
+    }
+
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:original');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const button = root.querySelector<HTMLButtonElement>('main button');
+    expect(button?.textContent?.trim()).toBe('Download original document');
+    createObjectURL.mockImplementationOnce(() => {
+      throw new Error('Download unavailable');
+    });
+    button?.click();
+    fixture.detectChanges();
+    expect(root.textContent).toContain(
+      'Could not download the original document. Please try again.',
+    );
+    expect(root.querySelector('router-outlet')).toBeNull();
+    button?.click();
+    fixture.detectChanges();
+
+    expect(click).toHaveBeenCalledOnce();
+    expect(root.textContent).not.toContain('Could not download');
+    const blob = createObjectURL.mock.calls[1][0] as Blob;
+    const json = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsText(blob);
+    });
+    expect(JSON.parse(json)).toEqual(raw);
+    await expect(storage.saveData(createDefaultStorageData())).rejects.toThrow(
+      /newer version of Watch List/,
+    );
+    fixture.detectChanges();
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain(
+      'newer version of Watch List',
+    );
+    expect(root.querySelector('router-outlet')).toBeNull();
+    database.close();
+  });
+
+  const unsupportedRecoveryValues = [
+    ['Map', () => new Map([['edition', 'extended']])],
+    ['Set', () => new Set(['special'])],
+    // fake-indexeddb needs Node's cloneable Blob rather than jsdom's Blob.
+    [
+      'Blob',
+      async () => {
+        const { Blob } = await vi.importActual<{ Blob: typeof globalThis.Blob }>('node:buffer');
+        return new Blob(['future bytes']);
+      },
+    ],
+    ['Date', () => new Date('2026-01-01')],
+    ['typed array', () => new Uint8Array([1, 2])],
+    ['undefined', () => undefined],
+    ['bigint', () => 123n],
+    ['non-finite number', () => NaN],
+    ['negative zero', () => -0],
+    ['sparse array', () => new Array(2)],
+    ['array with extra fields', () => Object.assign(['keep'], { future: true })],
+    [
+      'shared references',
+      () => {
+        const shared = { keep: true };
+        return { first: shared, second: shared };
+      },
+    ],
+    [
+      'cycle',
+      () => {
+        const value: Record<string, unknown> = {};
+        value['self'] = value;
+        return value;
+      },
+    ],
+  ] satisfies [string, () => unknown][];
+
+  it.each(unsupportedRecoveryValues)(
+    'explains why a future document containing %s cannot be downloaded losslessly as JSON',
+    async (_, createValue) => {
+      Object.defineProperty(globalThis, 'indexedDB', {
+        configurable: true,
+        value: new IDBFactory(),
+      });
+      const initial = new StorageService();
+      await initial.initialize();
+      const database = await new Promise<IDBDatabase>((resolve) => {
+        const request = indexedDB.open('watch-list', 2);
+        request.onsuccess = () => resolve(request.result);
+      });
+      const raw = {
+        schemaVersion: CURRENT_SCHEMA_VERSION + 1,
+        futureMetadata: await createValue(),
+      };
+      const transaction = database.transaction('storage', 'readwrite');
+      transaction.objectStore('storage').put(raw, 'watch-list-data');
+      await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
+      });
+      const storage = TestBed.inject(StorageService);
+      await storage.initialize();
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      const root = fixture.nativeElement as HTMLElement;
+      const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:lossy');
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(() => undefined);
+
+      root.querySelector<HTMLButtonElement>('main button')?.click();
+      fixture.detectChanges();
+
+      expect(root.textContent).toContain('cannot be preserved in JSON');
+      expect(root.textContent).toContain('No download was created');
+      expect(root.textContent).toContain("Keep this app's storage");
+      expect(createObjectURL).not.toHaveBeenCalled();
+      expect(click).not.toHaveBeenCalled();
+      expect(storage.getDataSignal()()).toBeNull();
+      expect(storage.getUnsupportedData()).toEqual(structuredClone(raw));
+      database.close();
+    },
+  );
 
   it('keeps the session-only warning visible after edits and imports until storage recovers', async () => {
     Object.defineProperty(globalThis, 'indexedDB', {
