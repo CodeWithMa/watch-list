@@ -301,6 +301,7 @@ describe('ImportExportService', () => {
       imageStorage.parseExportedImages.mockResolvedValue([]);
       storageService.importDataWithImages.mockResolvedValue({
         dropped: { groups: 0, items: 0, deletedItems: 0 },
+        repairedGroupReferences: 0,
       });
 
       await importExportService.importData(file);
@@ -315,6 +316,7 @@ describe('ImportExportService', () => {
       imageStorage.parseExportedImages.mockResolvedValue(parsedImages);
       storageService.importDataWithImages.mockResolvedValue({
         dropped: { groups: 0, items: 0, deletedItems: 0 },
+        repairedGroupReferences: 0,
       });
 
       await importExportService.importData(
@@ -345,6 +347,7 @@ describe('ImportExportService', () => {
       imageStorage.parseExportedImages.mockResolvedValue([]);
       storageService.importDataWithImages.mockResolvedValue({
         dropped: { groups: 0, items: 0, deletedItems: 0 },
+        repairedGroupReferences: 0,
       });
 
       await importExportService.importData(file);
@@ -364,6 +367,7 @@ describe('ImportExportService', () => {
       imageStorage.parseExportedImages.mockResolvedValue([]);
       storageService.importDataWithImages.mockResolvedValue({
         dropped: { groups: 0, items: 0, deletedItems: 0 },
+        repairedGroupReferences: 0,
       });
 
       await importExportService.importData(file);
@@ -389,6 +393,7 @@ describe('ImportExportService', () => {
       const file = mockFile(JSON.stringify(payload));
       storageService.importDataWithImages.mockResolvedValue({
         dropped: { groups: 0, items: 0, deletedItems: 0 },
+        repairedGroupReferences: 0,
       });
       imageStorage.parseExportedImages.mockResolvedValue([]);
 
@@ -410,25 +415,26 @@ describe('ImportExportService', () => {
       });
       storageService.importDataWithImages.mockResolvedValue({
         dropped: { groups: 0, items: 0, deletedItems: 0 },
+        repairedGroupReferences: 0,
       });
       imageStorage.parseExportedImages.mockResolvedValue([]);
 
       await expect(importExportService.importData(file)).resolves.toEqual({
-        groups: 0,
-        items: 0,
-        deletedItems: 0,
+        dropped: { groups: 0, items: 0, deletedItems: 0 },
+        repairedGroupReferences: 0,
       });
       expect(storageService.importDataWithImages).toHaveBeenCalledWith({ items: [] }, []);
       expect(providerSettings.importSettings).toHaveBeenCalled();
     });
 
-    it('returns the dropped-record counts from the storage service', async () => {
+    it('returns the omissions and repairs from the storage service', async () => {
       const file = mockFile(JSON.stringify({ data: { items: [] }, images: [] }));
       const dropped = { groups: 1, items: 2, deletedItems: 0 };
       imageStorage.parseExportedImages.mockResolvedValue([]);
-      storageService.importDataWithImages.mockResolvedValue({ dropped });
+      const report = { dropped, repairedGroupReferences: 3 };
+      storageService.importDataWithImages.mockResolvedValue(report);
 
-      await expect(importExportService.importData(file)).resolves.toEqual(dropped);
+      await expect(importExportService.importData(file)).resolves.toEqual(report);
     });
 
     it('never imports sensitive tokens even if injected', async () => {
@@ -451,6 +457,7 @@ describe('ImportExportService', () => {
       const file = mockFile(JSON.stringify(payload));
       storageService.importDataWithImages.mockResolvedValue({
         dropped: { groups: 0, items: 0, deletedItems: 0 },
+        repairedGroupReferences: 0,
       });
       imageStorage.parseExportedImages.mockResolvedValue([]);
 

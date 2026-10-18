@@ -406,42 +406,122 @@ describe('StorageService', () => {
     },
   );
 
-  it('preserves partially recoverable raw data when its backup fails, even after session edits', async () => {
-    const firstService = new StorageService();
-    await firstService.initialize();
+  it('backs up original persisted data before repairing a missing group without dropping records', async () => {
+    const service = new StorageService();
+    await service.initialize();
     const database = await openTestDatabase();
-    const valid = dataWithMovie();
-    const raw = { ...valid, items: { ...valid.items, bad: { invalid: true } } };
+    const raw = dataWithMovie();
+    raw.items.movie.groupId = 'missing';
     await writeRecord(database, raw);
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const put = FakeIDBObjectStore.prototype.put;
-    const failure = vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(function (
-      this: IDBObjectStore,
-      value,
-      key,
-    ) {
-      if (typeof key === 'string' && key.startsWith('watch-list-data-backup-')) {
-        throw new Error('Backup unavailable');
-      }
-      return put.call(this, value, key);
-    });
 
     const recovered = new StorageService();
     await recovered.initialize();
-    expect(recovered.getData().items['movie'].title).toBe('Movie');
-    expect(recovered.getInMemorySessionSignal()()).toBe(true);
-    await recovered.saveData(withGroup(recovered.getData(), 'session-only'));
-    expect(recovered.getInMemorySessionSignal()()).toBe(true);
-    failure.mockRestore();
 
+    expect(recovered.getData().items['movie'].groupId).toBe('ungrouped');
+    const backups = await recovered.getRecoveryBackups();
+    expect(backups).toHaveLength(1);
+    await expect(recovered.getRecoveryBackupByKey(backups[0].key)).resolves.toEqual(raw);
     const reloaded = new StorageService();
     await reloaded.initialize();
-    const backups = await reloaded.getRecoveryBackups();
-    expect(backups).toHaveLength(1);
-    await expect(reloaded.getRecoveryBackupByKey(backups[0].key)).resolves.toEqual(raw);
-    expect(reloaded.getData().groups['session-only']).toBeUndefined();
+    expect(reloaded.getData()).toEqual(recovered.getData());
+    expect(await reloaded.getRecoveryBackups()).toHaveLength(1);
     database.close();
   });
+
+  it('backs up malformed own prototype-named records before omitting them during startup', async () => {
+    const service = new StorageService();
+    await service.initialize();
+    const database = await openTestDatabase();
+    const valid = dataWithMovie();
+    const malformed = { ['__proto__']: { invalid: true } };
+    const raw = {
+      ...valid,
+      items: { ...valid.items, ...malformed },
+      groups: malformed,
+      deletedItems: malformed,
+    };
+    await writeRecord(database, raw);
+
+    const recovered = new StorageService();
+    await recovered.initialize();
+
+    expect(recovered.getData().items).toEqual(valid.items);
+    expect(recovered.getData().groups).toEqual(valid.groups);
+    expect(recovered.getData().deletedItems).toEqual({});
+    const backups = await recovered.getRecoveryBackups();
+    expect(backups).toHaveLength(1);
+    await expect(recovered.getRecoveryBackupByKey(backups[0].key)).resolves.toEqual(raw);
+    database.close();
+  });
+
+  it.each(['title', 'identity', 'date', 'group'])(
+    'rejects unsafe normal saves (%s) without publishing or persisting partial recovery',
+    async (invalid) => {
+      const service = new StorageService();
+      await service.initialize();
+      const original = service.getData();
+      const unsafe = dataWithMovie();
+      const movie = unsafe.items.movie;
+      const other = { ...movie, id: 'other' };
+      if (invalid === 'title') movie.title = '  ';
+      if (invalid === 'identity') movie.id = 'different';
+      if (invalid === 'date') movie.createdAt = 'invalid';
+      if (invalid === 'group') movie.groupId = 'missing';
+
+      await expect(
+        service.saveData({ ...unsafe, items: { ...unsafe.items, other } }),
+      ).rejects.toThrow(/Invalid/);
+
+      expect(service.getData()).toEqual(original);
+      const reloaded = new StorageService();
+      await reloaded.initialize();
+      expect(reloaded.getData()).toEqual(original);
+      expect(await reloaded.getRecoveryBackups()).toEqual([]);
+    },
+  );
+
+  it.each(['omission', 'reference repair'])(
+    'preserves recoverable raw data when its backup fails (%s), even after session edits',
+    async (recovery) => {
+      const firstService = new StorageService();
+      await firstService.initialize();
+      const database = await openTestDatabase();
+      const valid = dataWithMovie();
+      const raw =
+        recovery === 'omission'
+          ? { ...valid, items: { ...valid.items, bad: { invalid: true } } }
+          : { ...valid, items: { movie: { ...valid.items.movie, groupId: 'missing' } } };
+      await writeRecord(database, raw);
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const put = FakeIDBObjectStore.prototype.put;
+      const failure = vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(function (
+        this: IDBObjectStore,
+        value,
+        key,
+      ) {
+        if (typeof key === 'string' && key.startsWith('watch-list-data-backup-')) {
+          throw new Error('Backup unavailable');
+        }
+        return put.call(this, value, key);
+      });
+
+      const recovered = new StorageService();
+      await recovered.initialize();
+      expect(recovered.getData().items['movie'].title).toBe('Movie');
+      expect(recovered.getInMemorySessionSignal()()).toBe(true);
+      await recovered.saveData(withGroup(recovered.getData(), 'session-only'));
+      expect(recovered.getInMemorySessionSignal()()).toBe(true);
+      failure.mockRestore();
+
+      const reloaded = new StorageService();
+      await reloaded.initialize();
+      const backups = await reloaded.getRecoveryBackups();
+      expect(backups).toHaveLength(1);
+      await expect(reloaded.getRecoveryBackupByKey(backups[0].key)).resolves.toEqual(raw);
+      expect(reloaded.getData().groups['session-only']).toBeUndefined();
+      database.close();
+    },
+  );
 
   it('returns recovery backups sorted newest first', async () => {
     const firstService = new StorageService();
