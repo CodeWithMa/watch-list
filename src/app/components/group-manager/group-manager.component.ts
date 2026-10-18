@@ -4,13 +4,17 @@ import { GroupService } from '../../services/group.service';
 import { Group } from '../../models/group.model';
 import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
 import type { MutationResult } from '../../services/storage.service';
+import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
 @Component({
   selector: 'app-group-manager',
-  imports: [FormsModule],
+  imports: [FormsModule, ConflictRecoveryComponent],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Group Management</h1>
+      @if (!editingGroup()) {
+        <app-conflict-recovery [disabled]="busy()" (recovered)="operationError.set(null)" />
+      }
 
       @if (operationError() && !editingGroup()) {
         <div
@@ -124,6 +128,7 @@ import type { MutationResult } from '../../services/storage.service';
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]">
           <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary p-8 rounded-lg min-w-[400px]">
             <h3 class="mt-0 mb-6">Edit Group</h3>
+            <app-conflict-recovery [disabled]="busy()" (recovered)="operationError.set(null)" />
             @if (operationError()) {
               <div role="alert" class="mb-4 text-error-text-light dark:text-error-text-dark">
                 {{ operationError() }}

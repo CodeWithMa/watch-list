@@ -15,10 +15,12 @@ import {
 import { TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { SuggestionSource } from '../../models/suggestion.model';
 import { environment } from '../../../environments/environment';
+import { CollectionConflictError, StorageService } from '../../services/storage.service';
+import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, DatePipe, FilePickerFocusDirective],
+  imports: [FormsModule, DatePipe, FilePickerFocusDirective, ConflictRecoveryComponent],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
@@ -319,6 +321,10 @@ import { environment } from '../../../environments/environment';
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
           Data Management
         </h2>
+        <app-conflict-recovery
+          [disabled]="importInProgress()"
+          (recovered)="errorMessage.set(null)"
+        />
         <div class="mb-4 last:mb-0">
           <button
             (click)="exportData()"
@@ -364,7 +370,7 @@ import { environment } from '../../../environments/environment';
               <div class="flex flex-wrap gap-3">
                 <button
                   (click)="confirmImport()"
-                  [disabled]="importInProgress()"
+                  [disabled]="importInProgress() || refreshing()"
                   class="px-6 py-2 border-none rounded cursor-pointer text-sm font-medium bg-accent-danger text-white hover:bg-accent-danger-hover disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Confirm Import
@@ -457,6 +463,7 @@ import { environment } from '../../../environments/environment';
   `,
 })
 export class SettingsComponent implements OnInit, OnDestroy {
+  readonly refreshing = inject(StorageService).getRefreshingSignal();
   private importExportService = inject(ImportExportService);
   private tmdbSettingsService = inject(TmdbSettingsService);
   private providerSettingsService = inject(ProviderSettingsService);
@@ -629,13 +636,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   async confirmImport(): Promise<void> {
     const file = this.pendingImportFile();
-    if (!file || this.importInProgress()) {
+    if (!file || this.importInProgress() || this.refreshing()) {
       return;
     }
 
     this.setError(null);
     this.successMessage.set(null);
     this.importInProgress.set(true);
+    let retainFile = false;
 
     try {
       const report = await this.importExportService.importData(file);
@@ -645,11 +653,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
       const importError = `Import failed: ${message}`;
-      this.setError(importError, error instanceof UnsupportedSchemaVersionError);
+      retainFile = error instanceof CollectionConflictError;
+      this.setError(importError, retainFile || error instanceof UnsupportedSchemaVersionError);
     } finally {
       // A file staged while this import ran belongs to the next confirmation;
       // only clear the pending state when it is still this call's file.
-      if (this.pendingImportFile() === file) {
+      if (!retainFile && this.pendingImportFile() === file) {
         this.pendingImportFile.set(null);
       }
       this.importInProgress.set(false);

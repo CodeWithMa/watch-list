@@ -1,12 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { GroupService } from './group.service';
 import { StorageService } from './storage.service';
-import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
+import { IDBFactory } from 'fake-indexeddb';
 import { Group } from '../models/group.model';
 import { Item } from '../models/item.model';
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { DEFAULT_GROUP_ID } from '../domain/item.constants';
 import { vi } from 'vitest';
+import { controlStorageWrites } from './indexeddb-write.test-utils';
 
 describe('GroupService', () => {
   let storageService: StorageService;
@@ -217,19 +218,7 @@ describe('GroupService', () => {
             items: { movie: createItem({ id: 'movie', groupId: 'films' }) },
           });
           const films = storageService.getData().groups['films'];
-          const put = IDBObjectStore.prototype.put;
-          const outcomes = [firstSucceeds, secondSucceeds];
-          vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
-            this: IDBObjectStore,
-            value,
-            key,
-          ) {
-            const request = put.call(this, value, key);
-            if (this.name === 'storage' && outcomes.shift() === false) {
-              request.addEventListener('success', () => this.transaction.abort());
-            }
-            return request;
-          });
+          controlStorageWrites([firstSucceeds, secondSucceeds]);
           vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
           const first = (() => {

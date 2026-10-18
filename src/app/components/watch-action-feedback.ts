@@ -1,5 +1,5 @@
 import { signal } from '@angular/core';
-import type { MutationResult } from '../services/storage.service';
+import { CollectionConflictError, type MutationResult } from '../services/storage.service';
 
 /** Component-local feedback and duplicate protection for settled watch commands. */
 export class WatchActionFeedback {
@@ -15,8 +15,12 @@ export class WatchActionFeedback {
     try {
       const result = await operation();
       this.sessionSuccess.set(result.durability === 'session-only');
-    } catch {
-      this.error.set(`${failureMessage} Please try again.`);
+    } catch (error) {
+      this.error.set(
+        error instanceof CollectionConflictError
+          ? error.message
+          : `${failureMessage} Please try again.`,
+      );
     } finally {
       this.busy.set(false);
     }

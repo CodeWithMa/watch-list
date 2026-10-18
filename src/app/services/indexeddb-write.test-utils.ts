@@ -14,7 +14,7 @@ export function controlStorageWrites(
     key,
   ) {
     const request = put.call(this, value, key);
-    if (this.name === 'storage') {
+    if (this.name === 'storage' && key === 'watch-list-data') {
       const current = index++;
       request.addEventListener('success', () => {
         onRequestSuccess?.(current, this);

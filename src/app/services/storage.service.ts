@@ -20,12 +20,23 @@ import {
 } from './watch-list-database.service';
 
 const DATA_KEY = 'watch-list-data';
+// Local concurrency metadata stays out of portable documents and schema migration.
+const REVISION_KEY = 'watch-list-revision';
 const BACKUP_PREFIX = 'watch-list-data-backup-';
 const BACKUP_LIMIT = 10;
 
 export interface MutationResult<T> {
   value: T;
   durability: 'persistent' | 'session-only';
+}
+
+export class CollectionConflictError extends Error {
+  constructor(
+    message = 'The collection changed in another tab or window. Refresh the collection, review the latest changes, and retry. Your changes were not saved.',
+  ) {
+    super(message);
+    this.name = 'CollectionConflictError';
+  }
 }
 
 @Injectable({
@@ -47,11 +58,15 @@ export class StorageService {
     this.databaseError() ? null : this.saveError(),
   );
   private readonly inMemorySession = signal(false);
+  private readonly conflict = signal(false);
   private readonly compatibilityError = signal<UnsupportedSchemaVersionError | null>(null);
   private unsupportedData: unknown;
   private persistentStorage = false;
   private lastPersistedData: StorageData | null = null;
   private settledData: StorageData | null = null;
+  private revision: unknown = undefined;
+  private readonly refreshing = signal(false);
+  private importContext = Symbol();
   private readonly pendingSaves = new Set<{
     apply: (settled: StorageData) => StorageData;
     requiresImages: boolean;
@@ -137,8 +152,10 @@ export class StorageService {
    * Legacy item saves rebase their changed fields; snapshot saves/imports replace the collection.
    * Both legacy paths may publish optimistically until migrated.
    */
-  mutate<T>(intent: (draft: StorageData) => T): Promise<MutationResult<T>> {
+  async mutate<T>(intent: (draft: StorageData) => T): Promise<MutationResult<T>> {
+    this.assertMutationReady();
     const mutation = this.writeQueue.then(async () => {
+      if (this.conflict()) throw new CollectionConflictError();
       this.assertWritable();
       if (this.loading() || !this.data()) await this.initialize();
       this.assertWritable();
@@ -157,21 +174,47 @@ export class StorageService {
     return mutation;
   }
 
-  async importDataWithImages(data: unknown, images: StoredImage[]): Promise<NormalizationResult> {
+  /** Bind asynchronous file preparation to the context in which import was confirmed. */
+  captureImportContext() {
+    this.assertMutationReady();
+    return this.importContext;
+  }
+
+  async importDataWithImages(
+    data: unknown,
+    images: StoredImage[],
+    expectedContext = this.importContext,
+  ): Promise<NormalizationResult> {
+    if (expectedContext !== this.importContext) {
+      throw new CollectionConflictError(
+        'The collection was refreshed while preparing this import. Review the latest collection and confirm the import again. No data was imported.',
+      );
+    }
     const normalized = normalizeStorageData(data);
     await this.persistData(normalized.data, { images });
     return { ...normalized, data: this.getData() };
   }
 
   async writeImages(write: (store: IDBObjectStore) => void) {
+    this.assertMutationReady();
     this.assertWritable();
-    await this.initialize();
-    this.assertWritable();
-    await this.writeTransaction(
-      [STORE_NAME, IMAGE_STORE_NAME],
-      (transaction) => write(transaction.objectStore(IMAGE_STORE_NAME)),
-      'Failed to update posters',
+    // Reserve the same queue as collection commands before awaiting initialization.
+    const mutation = this.writeQueue.then(async () => {
+      if (this.conflict()) throw new CollectionConflictError();
+      await this.initialize();
+      this.assertWritable();
+      await this.writeTransaction(
+        [STORE_NAME, IMAGE_STORE_NAME],
+        (transaction) => write(transaction.objectStore(IMAGE_STORE_NAME)),
+        'Failed to update posters',
+      );
+      this.saveError.set(null);
+    });
+    this.writeQueue = mutation.then(
+      () => undefined,
+      (error: unknown) => this.reportSaveFailure(error, 'Failed to update posters:'),
     );
+    return mutation;
   }
 
   getSaveErrorSignal() {
@@ -180,6 +223,56 @@ export class StorageService {
 
   getInMemorySessionSignal() {
     return this.inMemorySession.asReadonly();
+  }
+
+  getConflictSignal() {
+    return this.conflict.asReadonly();
+  }
+
+  getRefreshingSignal() {
+    return this.refreshing.asReadonly();
+  }
+
+  /** Refresh committed state in place: mounted forms keep ownership of their drafts. */
+  refresh(): Promise<void> {
+    if (this.refreshing())
+      return Promise.reject(new Error('The collection is already refreshing.'));
+    this.refreshing.set(true);
+    this.importContext = Symbol();
+    const refresh = this.writeQueue
+      .then(async () => {
+        this.assertWritable();
+        if (!this.persistentStorage) {
+          throw new Error('Session-only changes cannot be refreshed from shared storage.');
+        }
+        const previousRevision = this.revision;
+        try {
+          await this.loadData(false);
+          this.assertWritable();
+          this.conflict.set(false);
+          this.saveError.set(null);
+          imagesInvalidated.next();
+        } catch (error) {
+          this.revision = previousRevision;
+          throw error;
+        }
+      })
+      .finally(() => {
+        this.refreshing.set(false);
+      });
+    this.writeQueue = refresh.then(
+      () => undefined,
+      (error: unknown) => this.reportSaveFailure(error, 'Failed to refresh collection:'),
+    );
+    return refresh;
+  }
+
+  private assertMutationReady() {
+    if (this.refreshing())
+      throw new Error(
+        'The collection is refreshing. Review the latest changes and retry when it finishes.',
+      );
+    if (this.conflict()) throw new CollectionConflictError();
   }
 
   getCompatibilityErrorSignal() {
@@ -233,6 +326,7 @@ export class StorageService {
       rebaseItems?: (settled: StorageData) => StorageData;
     } = {},
   ): Promise<void> {
+    this.assertMutationReady();
     this.assertWritable();
     assertSupportedStorageVersion(data);
     const updated: StorageData = {
@@ -350,7 +444,7 @@ export class StorageService {
     return Object.values(data.groups).sort((a, b) => a.order - b.order);
   }
 
-  private async loadData(): Promise<void> {
+  private async loadData(allowSessionFallback = true): Promise<void> {
     await this.databaseOwner.open();
     this.persistentStorage = true;
     this.inMemorySession.set(false);
@@ -370,15 +464,16 @@ export class StorageService {
           }
           console.error('Failed to load stored watch-list data:', error);
           const defaults = createDefaultStorageData();
-          await this.writeInitialData(defaults, storedSnapshot);
+          await this.writeInitialData(defaults, storedSnapshot, allowSessionFallback);
           this.publishLoadedData(defaults);
           return;
         }
 
-        if (!storageDataEqual(normalized.data, storedSnapshot)) {
+        if (this.revision === undefined || !storageDataEqual(normalized.data, storedSnapshot)) {
           await this.writeInitialData(
             normalized.data,
             requiresRecovery(normalized) ? storedSnapshot : undefined,
+            allowSessionFallback,
           );
         }
         this.publishLoadedData(normalized.data);
@@ -386,10 +481,14 @@ export class StorageService {
       }
 
       const defaults = createDefaultStorageData();
-      await this.writeInitialData(defaults);
+      await this.writeInitialData(defaults, undefined, allowSessionFallback);
       this.publishLoadedData(defaults);
     } catch (error) {
       if (this.compatibilityError()) return;
+      // Another initializer may have won the first revision or normalization write.
+      // Read its committed state rather than publishing defaults or a stale snapshot.
+      if (error instanceof CollectionConflictError) return this.loadData(allowSessionFallback);
+      if (!allowSessionFallback) throw error;
       if (this.databaseError()) throw error;
       this.useInMemorySession();
       const defaults = createDefaultStorageData();
@@ -403,12 +502,18 @@ export class StorageService {
     this.inMemorySession.set(true);
   }
 
-  private async writeInitialData(data: StorageData, backup?: unknown) {
+  private async writeInitialData(data: StorageData, backup?: unknown, allowSessionFallback = true) {
     try {
       if (backup !== undefined) await this.backupRawData(backup);
       await this.writeData(data);
     } catch (error) {
-      if (error instanceof UnsupportedSchemaVersionError || this.databaseError()) throw error;
+      if (
+        error instanceof UnsupportedSchemaVersionError ||
+        error instanceof CollectionConflictError ||
+        !allowSessionFallback ||
+        this.databaseError()
+      )
+        throw error;
       this.useInMemorySession();
     }
   }
@@ -468,8 +573,15 @@ export class StorageService {
       );
   }
 
-  private readData(): Promise<unknown | undefined> {
-    return this.readRecord(DATA_KEY);
+  private async readData(): Promise<unknown | undefined> {
+    const database = await this.databaseOwner.open();
+    const transaction = database.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const data = store.get(DATA_KEY) as IDBRequest<unknown>;
+    const revision = store.get(REVISION_KEY) as IDBRequest<unknown>;
+    const result = await this.promisifyRequest(data, transaction, 'Failed to read collection');
+    this.revision = revision.result;
+    return result;
   }
 
   private async readRecord(key: string): Promise<unknown | undefined> {
@@ -514,14 +626,19 @@ export class StorageService {
     const database = await this.databaseOwner.open();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(stores, 'readwrite');
+      const nextRevision = crypto.randomUUID();
       let failure: unknown;
-      transaction.oncomplete = () => resolve();
+      transaction.oncomplete = () => {
+        this.revision = nextRevision;
+        resolve();
+      };
       transaction.onerror = () => reject(failure ?? transaction.error ?? new Error(message));
       transaction.onabort = () => reject(failure ?? transaction.error ?? new Error(message));
       // Reading and writing in one transaction prevents another tab from upgrading
       // the document between the compatibility check and any collection/poster changes.
       const request = transaction.objectStore(STORE_NAME).get(DATA_KEY) as IDBRequest<unknown>;
-      request.onsuccess = () => {
+      const revision = transaction.objectStore(STORE_NAME).get(REVISION_KEY) as IDBRequest<unknown>;
+      revision.onsuccess = () => {
         try {
           this.assertWritable();
           try {
@@ -532,7 +649,12 @@ export class StorageService {
             }
             throw error;
           }
+          if (revision.result !== this.revision) {
+            if (this.settledData) this.conflict.set(true);
+            throw new CollectionConflictError();
+          }
           write(transaction);
+          transaction.objectStore(STORE_NAME).put(nextRevision, REVISION_KEY);
         } catch (error) {
           failure = error;
           transaction.abort();

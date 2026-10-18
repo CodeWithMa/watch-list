@@ -12,12 +12,14 @@ import {
   ItemFormValue,
 } from '../../domain/item-form';
 import { ItemMutationFeedback } from '../item-mutation-feedback';
+import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
 @Component({
   selector: 'app-item-detail',
-  imports: [ItemFormComponent, RouterLink],
+  imports: [ItemFormComponent, RouterLink, ConflictRecoveryComponent],
   template: `
     <div>
+      <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
       @if (item()) {
         <div class="border border-light-border dark:border-dark-border rounded-lg p-6">
           <div class="flex justify-between items-center mb-6">
