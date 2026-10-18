@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { canLeaveItemForm } from './components/item-mutation-feedback';
 
 export const routes: Routes = [
   {
@@ -12,6 +13,7 @@ export const routes: Routes = [
   },
   {
     path: 'items/add',
+    canDeactivate: [canLeaveItemForm],
     loadComponent: () =>
       import('./components/add-item/add-item.component').then((m) => m.AddItemComponent),
   },
@@ -22,6 +24,7 @@ export const routes: Routes = [
   },
   {
     path: 'items/:id/edit',
+    canDeactivate: [canLeaveItemForm],
     loadComponent: () =>
       import('./components/item-detail/item-detail.component').then((m) => m.ItemDetailComponent),
   },

@@ -306,7 +306,7 @@ describe('Settled watch actions', () => {
   });
 
   describe.each(['markWatched', 'markPaused', 'snoozeOneWeek'] as const)(
-    '%s with legacy item saves',
+    '%s with settled item saves',
     (command) => {
       describe.each(['add', 'update', 'delete'] as const)('%s unrelated item', (itemAction) => {
         it.each([true, false])(
@@ -332,9 +332,9 @@ describe('Settled watch actions', () => {
                     isAdult: false,
                   })
                 : itemAction === 'update'
-                  ? watch.updateItem({ ...other, title: 'Edited' })
+                  ? watch.updateItem(other.id, { title: 'Edited' })
                   : watch.deleteItem('other');
-            let itemWrite: Promise<void> | undefined;
+            let itemWrite: ReturnType<typeof saveItem> | undefined;
             if (overlap)
               controlStorageWrites([], (index) => {
                 if (index === 0) itemWrite = saveItem();
@@ -379,7 +379,7 @@ describe('Settled watch actions', () => {
           const watched = watch.markWatched('series');
           const itemWrite =
             action === 'update'
-              ? watch.updateItem({ ...watch.getItemById('series')!, title: 'Edited' })
+              ? watch.updateItem('series', { title: 'Edited' })
               : watch.deleteItem('series');
           const results = await Promise.allSettled([watched, itemWrite]);
           expect(results.map((result) => result.status)).toEqual([

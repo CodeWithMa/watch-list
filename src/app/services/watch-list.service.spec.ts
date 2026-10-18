@@ -24,8 +24,8 @@ describe('WatchListService', () => {
   });
 
   describe('addItem', () => {
-    it('adds a new item with generated id, createdAt and empty watch history', () => {
-      service.addItem({
+    it('adds a new item with generated id, createdAt and empty watch history', async () => {
+      await service.addItem({
         title: 'Brand New',
         type: 'series',
         groupId: 'ungrouped',
@@ -43,27 +43,27 @@ describe('WatchListService', () => {
   });
 
   describe('updateItem', () => {
-    it('updates an existing item', () => {
+    it('updates an existing item', async () => {
       const item = createItem({ id: 'i1', title: 'Before' });
-      saveData({ items: { i1: item } });
+      await saveData({ items: { i1: item } });
 
-      service.updateItem({ ...item, title: 'After' });
+      await service.updateItem(item.id, { title: 'After' });
 
       expect(storageService.getData().items['i1'].title).toBe('After');
     });
   });
 
   describe('deleteItem', () => {
-    it('moves the item to deletedItems with its watch history', () => {
+    it('moves the item to deletedItems with its watch history', async () => {
       const item = createItem({
         id: 'i1',
         title: 'Gone',
         type: 'series',
         watchHistory: [{ date: '2026-01-01T10:00:00.000Z', season: 1, episode: 2 }],
       });
-      saveData({ items: { i1: item } });
+      await saveData({ items: { i1: item } });
 
-      service.deleteItem('i1');
+      await service.deleteItem('i1');
 
       const data = storageService.getData();
       expect(data.items['i1']).toBeUndefined();
@@ -76,13 +76,11 @@ describe('WatchListService', () => {
       expect(data.deletedItems?.['i1'].deletedAt).toBeDefined();
     });
 
-    it('does nothing when the item does not exist', () => {
-      saveData({ items: {} });
-      const saveSpy = vi.spyOn(storageService, 'saveItemChanges');
-
-      service.deleteItem('missing');
-
-      expect(saveSpy).not.toHaveBeenCalled();
+    it('does nothing when the item does not exist', async () => {
+      await saveData({ items: {} });
+      await service.deleteItem('missing');
+      expect(storageService.getItems()).toEqual([]);
+      expect(storageService.getData().deletedItems).toEqual({});
     });
   });
 
@@ -386,9 +384,9 @@ describe('WatchListService', () => {
       async (type) => {
         await saveData({ items: { snoozed: snoozable({ type }) } });
         await service.snoozeOneWeek('snoozed');
-        const item = service.getItemById('snoozed')!;
-        item.progress!.seasons[0].firstEpisodeAirDate = undefined;
-        await service.updateItem(item);
+        await service.updateItem('snoozed', {
+          progress: { seasons: { 1: { firstEpisodeAirDate: undefined } } },
+        });
         await service.removeOneWeekDelay('snoozed');
         expect(service.getItemById('snoozed')!.progress!.seasons[0].snoozeCount).toBe(0);
       },

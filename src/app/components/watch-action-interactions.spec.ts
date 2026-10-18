@@ -60,17 +60,17 @@ describe('Settled watch interactions', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       const element = fixture.nativeElement as HTMLElement;
-      let edit: Promise<void> | undefined;
+      let edit: ReturnType<WatchListService['updateItem']> | undefined;
       const held = holdStorageWrite(1, (index) => {
-        if (index === 0)
-          edit = watch.updateItem({ ...watch.getItemById('series')!, title: 'Edited title' });
+        if (index === 0) edit = watch.updateItem('series', { title: 'Edited title' });
       });
       element.querySelector('button')!.click();
       try {
         await held.started;
         await vi.waitFor(() => expect(fixture.componentInstance.actions.busy()).toBe(false));
         fixture.detectChanges();
-        expect(element.textContent).toContain('Edited title');
+        expect(element.textContent).toContain('Series');
+        expect(element.textContent).not.toContain('Edited title');
         expect(element.textContent).toContain('S1E2');
         expect(element.querySelector('button')?.disabled).toBe(false);
         if (component === ItemViewComponent)

@@ -48,238 +48,245 @@ export interface ItemFormAutofillPatch {
       #itemForm="ngForm"
       class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-8 rounded-lg"
     >
-      <div class="mb-6">
-        <label for="title" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-          >Title *</label
-        >
-        <div class="search-input-group">
-          <ng-content select="[title-search-provider]" />
-          <input
-            #titleInput
-            type="text"
-            id="title"
-            [ngModel]="formValue().title"
-            (ngModelChange)="updateTitle($event)"
-            name="title"
-            required
-            class="form-control flex-1 min-w-0"
-          />
-        </div>
-        @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
-          <div class="text-accent-danger text-sm mt-1">Title is required</div>
-        }
-        @if (duplicateTitleHint()) {
-          <div class="text-accent-secondary text-sm mt-1">{{ duplicateTitleHint() }}</div>
-        }
-        @if (showSuggestions()) {
-          <div
-            class="mt-3 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary overflow-hidden"
+      <fieldset [disabled]="busy()" class="border-0 p-0 m-0 min-w-0">
+        <div class="mb-6">
+          <label for="title" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+            >Title *</label
           >
-            @if (suggestionsLoading()) {
-              <div
-                class="px-3 py-2 text-sm text-light-font-secondary dark:text-dark-font-secondary"
-              >
-                Searching...
-              </div>
-            } @else if (suggestionsError()) {
-              <div class="px-3 py-2 text-sm text-accent-secondary">{{ suggestionsError() }}</div>
-            } @else if (suggestions().length > 0) {
-              @for (suggestion of suggestions(); track suggestion.source + '-' + suggestion.id) {
-                <button
-                  type="button"
-                  (click)="selectSuggestion(suggestion)"
-                  class="w-full text-left px-3 py-3 border-0 border-b border-light-border dark:border-dark-border last:border-b-0 bg-transparent hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer"
+          <div class="search-input-group">
+            <ng-content select="[title-search-provider]" />
+            <input
+              #titleInput
+              type="text"
+              id="title"
+              [ngModel]="formValue().title"
+              (ngModelChange)="updateTitle($event)"
+              name="title"
+              required
+              class="form-control flex-1 min-w-0"
+            />
+          </div>
+          @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
+            <div class="text-accent-danger text-sm mt-1">Title is required</div>
+          }
+          @if (duplicateTitleHint()) {
+            <div class="text-accent-secondary text-sm mt-1">{{ duplicateTitleHint() }}</div>
+          }
+          @if (showSuggestions()) {
+            <div
+              class="mt-3 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary overflow-hidden"
+            >
+              @if (suggestionsLoading()) {
+                <div
+                  class="px-3 py-2 text-sm text-light-font-secondary dark:text-dark-font-secondary"
                 >
-                  <span class="block text-light-font dark:text-dark-font font-medium">
-                    {{ suggestion.title }}
-                    @if (suggestion.year) {
-                      <span class="text-light-font-muted dark:text-dark-font-muted font-normal"
-                        >({{ suggestion.year }})</span
+                  Searching...
+                </div>
+              } @else if (suggestionsError()) {
+                <div class="px-3 py-2 text-sm text-accent-secondary">{{ suggestionsError() }}</div>
+              } @else if (suggestions().length > 0) {
+                @for (suggestion of suggestions(); track suggestion.source + '-' + suggestion.id) {
+                  <button
+                    type="button"
+                    (click)="selectSuggestion(suggestion)"
+                    class="w-full text-left px-3 py-3 border-0 border-b border-light-border dark:border-dark-border last:border-b-0 bg-transparent hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer"
+                  >
+                    <span class="block text-light-font dark:text-dark-font font-medium">
+                      {{ suggestion.title }}
+                      @if (suggestion.year) {
+                        <span class="text-light-font-muted dark:text-dark-font-muted font-normal"
+                          >({{ suggestion.year }})</span
+                        >
+                      }
+                    </span>
+                    <span
+                      class="block text-sm text-light-font-secondary dark:text-dark-font-secondary"
+                      >{{ itemTypeLabels[suggestion.type] }} ·
+                      {{
+                        suggestion.source === 'jikan'
+                          ? 'Jikan'
+                          : suggestion.source === 'anilist'
+                            ? 'AniList'
+                            : 'TMDB'
+                      }}</span
+                    >
+                    @if (suggestion.overview) {
+                      <span
+                        class="block text-sm text-light-font-muted dark:text-dark-font-muted mt-1 line-clamp-2"
+                        >{{ suggestion.overview }}</span
                       >
                     }
-                  </span>
-                  <span
-                    class="block text-sm text-light-font-secondary dark:text-dark-font-secondary"
-                    >{{ itemTypeLabels[suggestion.type] }} ·
-                    {{
-                      suggestion.source === 'jikan'
-                        ? 'Jikan'
-                        : suggestion.source === 'anilist'
-                          ? 'AniList'
-                          : 'TMDB'
-                    }}</span
-                  >
-                  @if (suggestion.overview) {
-                    <span
-                      class="block text-sm text-light-font-muted dark:text-dark-font-muted mt-1 line-clamp-2"
-                      >{{ suggestion.overview }}</span
-                    >
-                  }
-                </button>
+                  </button>
+                }
               }
-            }
-          </div>
-        }
-      </div>
-
-      <div class="mb-6">
-        <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Poster</span>
-        <app-poster-picker
-          [posterId]="formValue().posterId"
-          [searchSeed]="formValue().title"
-          (posterIdChange)="updatePosterId($event)"
-          (loadingChange)="posterLoading.set($event)"
-          #posterPicker
-        />
-      </div>
-
-      <div class="mb-6">
-        <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-          >Type *</label
-        >
-        <select
-          id="type"
-          [ngModel]="formValue().type"
-          (ngModelChange)="setType($event)"
-          name="type"
-          class="form-control"
-        >
-          @for (itemType of itemTypes; track itemType) {
-            <option [value]="itemType">{{ itemTypeLabels[itemType] }}</option>
+            </div>
           }
-        </select>
-      </div>
-
-      <div class="mb-6">
-        <label for="groupId" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-          >Group *</label
-        >
-        <select
-          id="groupId"
-          [ngModel]="formValue().groupId"
-          (ngModelChange)="updateGroupId($event)"
-          name="groupId"
-          required
-          class="form-control"
-        >
-          @for (group of groups(); track group.id) {
-            <option [value]="group.id">{{ group.name }}</option>
-          }
-        </select>
-      </div>
-
-      <div class="mb-6">
-        <label class="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            id="isAdult"
-            [ngModel]="formValue().isAdult"
-            (ngModelChange)="updateIsAdult($event)"
-            name="isAdult"
-            class="w-5 h-5"
-          />
-          <span class="text-light-font dark:text-dark-font">Adult content</span>
-        </label>
-      </div>
-
-      @if (showStatusPicker()) {
-        <div class="mb-6">
-          <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Status:</span>
-          <div class="flex flex-wrap gap-3">
-            @for (status of itemStatuses; track status) {
-              <button
-                type="button"
-                (click)="updateStatus(status)"
-                [class]="statusButtonClass(status)"
-              >
-                {{ itemStatusLabels[status] }}
-              </button>
-            }
-          </div>
         </div>
-      }
 
-      @if (showStartImmediately()) {
+        <div class="mb-6">
+          <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Poster</span>
+          <app-poster-picker
+            [posterId]="formValue().posterId"
+            [searchSeed]="formValue().title"
+            (posterIdChange)="updatePosterId($event)"
+            (loadingChange)="posterLoading.set($event)"
+            #posterPicker
+          />
+        </div>
+
+        <div class="mb-6">
+          <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+            >Type *</label
+          >
+          <select
+            id="type"
+            [ngModel]="formValue().type"
+            (ngModelChange)="setType($event)"
+            name="type"
+            class="form-control"
+          >
+            @for (itemType of itemTypes; track itemType) {
+              <option [value]="itemType">{{ itemTypeLabels[itemType] }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="mb-6">
+          <label for="groupId" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+            >Group *</label
+          >
+          <select
+            id="groupId"
+            [ngModel]="formValue().groupId"
+            (ngModelChange)="updateGroupId($event)"
+            name="groupId"
+            required
+            class="form-control"
+          >
+            @for (group of groups(); track group.id) {
+              <option [value]="group.id">{{ group.name }}</option>
+            }
+          </select>
+        </div>
+
         <div class="mb-6">
           <label class="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
-              [ngModel]="formValue().startImmediately"
-              (ngModelChange)="updateStartImmediately($event)"
-              name="startImmediately"
+              id="isAdult"
+              [ngModel]="formValue().isAdult"
+              (ngModelChange)="updateIsAdult($event)"
+              name="isAdult"
               class="w-5 h-5"
             />
-            <span class="text-light-font dark:text-dark-font">Start watching immediately</span>
+            <span class="text-light-font dark:text-dark-font">Adult content</span>
           </label>
         </div>
-      }
 
-      @if (isEpisodic(formValue().type)) {
-        <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
+        @if (showStatusPicker()) {
           <div class="mb-6">
-            <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-              >Season</label
-            >
-            <input
-              type="number"
-              id="season"
-              [ngModel]="formValue().season"
-              (ngModelChange)="updateSeason($event)"
-              name="season"
-              min="1"
-              class="form-control"
-            />
-          </div>
-          <div class="mb-6">
-            <label for="episode" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-              >Episode</label
-            >
-            <input
-              type="number"
-              id="episode"
-              [ngModel]="formValue().episode"
-              (ngModelChange)="updateEpisode($event)"
-              name="episode"
-              min="1"
-              class="form-control"
-            />
-          </div>
-          <app-season-editor
-            [seasons]="formValue().seasons"
-            (seasonsChange)="updateSeasons($event)"
-          />
-          @if (hasInvalidProgress()) {
-            <div role="alert" class="text-accent-danger text-sm mt-2">
-              Season and episode values must be positive whole numbers within the supported range.
+            <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Status:</span>
+            <div class="flex flex-wrap gap-3">
+              @for (status of itemStatuses; track status) {
+                <button
+                  type="button"
+                  (click)="updateStatus(status)"
+                  [class]="statusButtonClass(status)"
+                >
+                  {{ itemStatusLabels[status] }}
+                </button>
+              }
             </div>
-          }
-        </div>
-      }
+          </div>
+        }
 
-      @if (showDirtyState() && isDirty()) {
-        <div
-          class="mb-4 px-3 py-2 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary border border-accent-secondary text-accent-secondary text-sm"
-        >
-          You have unsaved changes
-        </div>
-      }
+        @if (showStartImmediately()) {
+          <div class="mb-6">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                [ngModel]="formValue().startImmediately"
+                (ngModelChange)="updateStartImmediately($event)"
+                name="startImmediately"
+                class="w-5 h-5"
+              />
+              <span class="text-light-font dark:text-dark-font">Start watching immediately</span>
+            </label>
+          </div>
+        }
 
-      <div class="flex gap-4 mt-8">
-        <button
-          type="submit"
-          class="px-8 py-3 bg-accent-primary text-white border-none rounded cursor-pointer text-base font-medium hover:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-          [disabled]="isSubmitDisabled()"
-        >
-          {{ submitLabel() }}
-        </button>
-        <button
-          type="button"
-          (click)="handleCancel()"
-          class="px-8 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer text-base hover:bg-accent-secondary-hover"
-        >
-          {{ cancelLabel() }}
-        </button>
-      </div>
+        @if (isEpisodic(formValue().type)) {
+          <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
+            <div class="mb-6">
+              <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+                >Season</label
+              >
+              <input
+                type="number"
+                id="season"
+                [ngModel]="formValue().season"
+                (ngModelChange)="updateSeason($event)"
+                name="season"
+                min="1"
+                class="form-control"
+              />
+            </div>
+            <div class="mb-6">
+              <label
+                for="episode"
+                class="block mb-2 font-medium text-light-font dark:text-dark-font"
+                >Episode</label
+              >
+              <input
+                type="number"
+                id="episode"
+                [ngModel]="formValue().episode"
+                (ngModelChange)="updateEpisode($event)"
+                name="episode"
+                min="1"
+                class="form-control"
+              />
+            </div>
+            <app-season-editor
+              [seasons]="formValue().seasons"
+              (seasonsChange)="updateSeasons($event)"
+            />
+            @if (hasInvalidProgress()) {
+              <div role="alert" class="text-accent-danger text-sm mt-2">
+                Season and episode values must be positive whole numbers within the supported range.
+              </div>
+            }
+          </div>
+        }
+
+        @if (showDirtyState() && isDirty()) {
+          <div
+            class="mb-4 px-3 py-2 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary border border-accent-secondary text-accent-secondary text-sm"
+          >
+            You have unsaved changes
+          </div>
+        }
+
+        @if (error()) {
+          <div role="alert" class="text-accent-danger mt-4">{{ error() }}</div>
+        }
+        <div class="flex gap-4 mt-8">
+          <button
+            type="submit"
+            class="px-8 py-3 bg-accent-primary text-white border-none rounded cursor-pointer text-base font-medium hover:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="isSubmitDisabled()"
+          >
+            {{ submitLabel() }}
+          </button>
+          <button
+            type="button"
+            (click)="handleCancel()"
+            class="px-8 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer text-base hover:bg-accent-secondary-hover"
+          >
+            {{ cancelLabel() }}
+          </button>
+        </div>
+      </fieldset>
     </form>
   `,
 })
@@ -291,6 +298,8 @@ export class ItemFormComponent {
   readonly initialValue = input<ItemFormValue>(createDefaultItemFormValue());
   readonly focusTitleOnOpen = input(false);
   readonly submitLabel = input('Save');
+  readonly busy = input(false);
+  readonly error = input<string | null>(null);
   readonly cancelLabel = input('Cancel');
   readonly showStartImmediately = input(false);
   readonly showStatusPicker = input(true);
@@ -340,7 +349,12 @@ export class ItemFormComponent {
   });
 
   readonly isSubmitDisabled = computed(() => {
-    if (!this.formValue().title.trim() || this.posterLoading() || this.hasInvalidProgress()) {
+    if (
+      this.busy() ||
+      !this.formValue().title.trim() ||
+      this.posterLoading() ||
+      this.hasInvalidProgress()
+    ) {
       return true;
     }
 
@@ -404,6 +418,7 @@ export class ItemFormComponent {
   }
 
   handleCancel(): void {
+    if (this.busy()) return;
     this.posterPicker?.clearDrafts();
     if (this.resetOnCancel()) {
       this.formValue.set(normalizeFormValueForType(this.initialValue()));

@@ -4,7 +4,7 @@ import { afterEach, vi } from 'vitest';
 import { StorageService } from './storage.service';
 import { WatchListService } from './watch-list.service';
 import { controlStorageWrites, holdStorageWrite } from './indexeddb-write.test-utils';
-import { buildItemMutationInput, createItemFormValue } from '../domain/item-form';
+import { buildItemEditInput, createItemFormValue } from '../domain/item-form';
 import type { Item } from '../models/item.model';
 
 describe('Item edits coexisting with settled watch commands', () => {
@@ -15,12 +15,15 @@ describe('Item edits coexisting with settled watch commands', () => {
     (command) => {
       it.each([true, false])('preserves committed progress (overlap: %s)', async (overlap) => {
         const { storage, watch } = await setup();
-        let edit: Promise<void> | undefined;
+        let edit: ReturnType<WatchListService['updateItem']> | undefined;
         const editSeason = () => {
           const current = watch.getItemById('series')!;
           const form = createItemFormValue(current);
           form.seasons = form.seasons.map((season) => ({ ...season, totalEpisodes: 12 }));
-          return watch.updateItem({ ...current, ...buildItemMutationInput(form) });
+          return watch.updateItem(
+            current.id,
+            buildItemEditInput(createItemFormValue(current), form),
+          );
         };
         if (overlap)
           controlStorageWrites([], (index) => {
@@ -58,7 +61,10 @@ describe('Item edits coexisting with settled watch commands', () => {
           const current = watch.getItemById('series')!;
           const form = createItemFormValue(current);
           form.seasons = form.seasons.map((season) => ({ ...season, totalEpisodes: 12 }));
-          const edit = watch.updateItem({ ...current, ...buildItemMutationInput(form) });
+          const edit = watch.updateItem(
+            current.id,
+            buildItemEditInput(createItemFormValue(current), form),
+          );
           const results = await Promise.allSettled([action, edit]);
           expect(results.map((result) => result.status)).toEqual([
             watchSucceeds ? 'fulfilled' : 'rejected',
@@ -86,7 +92,7 @@ describe('Item edits coexisting with settled watch commands', () => {
         else form.seasons = form.seasons.map((season) => ({ ...season, snoozeCount: 5 }));
         await Promise.all([
           action,
-          watch.updateItem({ ...current, ...buildItemMutationInput(form) }),
+          watch.updateItem(current.id, buildItemEditInput(createItemFormValue(current), form)),
         ]);
         const expected = {
           episode: command === 'markWatched' ? 8 : 2,
@@ -104,29 +110,44 @@ describe('Item edits coexisting with settled watch commands', () => {
 
   it('rebases season fields by season number when the form reorders, adds and removes seasons', async () => {
     const { storage, watch } = await setup();
-    const original = watch.getItemById('series')!;
-    await watch.updateItem({
+    const original = storage.getData();
+    await storage.saveData({
       ...original,
-      progress: {
-        season: 3,
-        episode: 2,
-        seasons: [
-          { seasonNumber: 3, totalEpisodes: 10, firstEpisodeAirDate: '2026-01-01', snoozeCount: 2 },
-          { seasonNumber: 2, totalEpisodes: 4, snoozeCount: 4 },
-          { seasonNumber: 1, totalEpisodes: 8, snoozeCount: 0 },
-        ],
+      items: {
+        ...original.items,
+        series: {
+          ...original.items['series'],
+          progress: {
+            season: 3,
+            episode: 2,
+            seasons: [
+              {
+                seasonNumber: 3,
+                totalEpisodes: 10,
+                firstEpisodeAirDate: '2026-01-01',
+                snoozeCount: 2,
+              },
+              { seasonNumber: 2, totalEpisodes: 4, snoozeCount: 4 },
+              { seasonNumber: 1, totalEpisodes: 8, snoozeCount: 0 },
+            ],
+          },
+        },
       },
     });
     const action = watch.snoozeOneWeek('series');
     const current = watch.getItemById('series')!;
     const form = createItemFormValue(current);
+    expect(form.seasons.map((season) => season.seasonNumber)).toEqual([3, 2, 1]);
     form.seasons = [
       ...form.seasons
         .filter((season) => season.seasonNumber !== 2)
         .map((season) => (season.seasonNumber === 1 ? { ...season, totalEpisodes: 12 } : season)),
       { seasonNumber: 5, totalEpisodes: 6, snoozeCount: 1 },
     ];
-    await Promise.all([action, watch.updateItem({ ...current, ...buildItemMutationInput(form) })]);
+    await Promise.all([
+      action,
+      watch.updateItem(current.id, buildItemEditInput(createItemFormValue(current), form)),
+    ]);
     const expected = {
       season: 3,
       episode: 2,
@@ -146,7 +167,10 @@ describe('Item edits coexisting with settled watch commands', () => {
     const current = watch.getItemById('series')!;
     const form = createItemFormValue(current);
     form.seasons = form.seasons.map((season) => ({ ...season, firstEpisodeAirDate: undefined }));
-    await Promise.all([action, watch.updateItem({ ...current, ...buildItemMutationInput(form) })]);
+    await Promise.all([
+      action,
+      watch.updateItem(current.id, buildItemEditInput(createItemFormValue(current), form)),
+    ]);
     expect(watch.getItemById('series')?.progress?.seasons[0]).toMatchObject({
       firstEpisodeAirDate: undefined,
       snoozeCount: 1,
@@ -161,14 +185,17 @@ describe('Item edits coexisting with settled watch commands', () => {
         'retains the first watch or explicit episode (overlap: %s)',
         async (overlap) => {
           const { storage, watch } = await setup();
-          await watch.updateItem({ ...watch.getItemById('series')!, progress: undefined });
-          let edit: Promise<void> | undefined;
+          await watch.updateItem('series', { progress: null });
+          let edit: ReturnType<WatchListService['updateItem']> | undefined;
           const editMetadata = () => {
             const current = watch.getItemById('series')!;
             const form = createItemFormValue(current);
             form.seasons = [{ seasonNumber: 1, totalEpisodes: 12 }];
             if (explicitEpisode) form.episode = 8;
-            return watch.updateItem({ ...current, ...buildItemMutationInput(form) });
+            return watch.updateItem(
+              current.id,
+              buildItemEditInput(createItemFormValue(current), form),
+            );
           };
           if (overlap)
             controlStorageWrites([], (index) => {
@@ -197,7 +224,7 @@ describe('Item edits coexisting with settled watch commands', () => {
     [true, false],
     [true, true],
   ])(
-    'edits a provisional addition only if creation succeeds (add: %s; edit write: %s)',
+    'edits an addition only after creation succeeds (add: %s; edit write: %s)',
     async (addSucceeds, editSucceeds) => {
       const { storage, watch } = await setup();
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -209,19 +236,19 @@ describe('Item edits coexisting with settled watch commands', () => {
         groupId: 'ungrouped',
         isAdult: false,
       });
-      const provisional = watch.items().find((item) => item.title === 'Original movie')!;
-      expect(provisional).toBeDefined();
-      const edit = watch.updateItem({ ...provisional, title: 'Edited movie' });
-      const outcomes = await Promise.allSettled([addition, edit]);
-      expect(outcomes.map((outcome) => outcome.status)).toEqual([
-        addSucceeds ? 'fulfilled' : 'rejected',
-        addSucceeds && editSucceeds ? 'fulfilled' : 'rejected',
-      ]);
-      if (!addSucceeds && outcomes[1].status === 'rejected') {
-        expect(outcomes[1].reason).toMatchObject({
-          message: expect.stringContaining('no longer exists'),
-        });
+      expect(watch.items().find((item) => item.title === 'Original movie')).toBeUndefined();
+      const [outcome] = await Promise.allSettled([addition]);
+      expect(outcome.status).toBe(addSucceeds ? 'fulfilled' : 'rejected');
+      if (outcome.status === 'rejected') {
+        expect(watch.items()).toHaveLength(1);
+        expect((await reload()).getData()).toEqual(storage.getData());
+        return;
       }
+      const added = outcome.value.value;
+      const [editOutcome] = await Promise.allSettled([
+        watch.updateItem(added.id, { title: 'Edited movie' }),
+      ]);
+      expect(editOutcome.status).toBe(editSucceeds ? 'fulfilled' : 'rejected');
       const reloaded = await reload();
       const expectedTitle = !addSucceeds
         ? undefined
@@ -229,8 +256,8 @@ describe('Item edits coexisting with settled watch commands', () => {
           ? 'Edited movie'
           : 'Original movie';
       expect({
-        live: storage.getData().items[provisional.id]?.title,
-        reloaded: reloaded.getData().items[provisional.id]?.title,
+        live: storage.getData().items[added.id]?.title,
+        reloaded: reloaded.getData().items[added.id]?.title,
       }).toEqual({ live: expectedTitle, reloaded: expectedTitle });
     },
   );
@@ -239,7 +266,7 @@ describe('Item edits coexisting with settled watch commands', () => {
     const { storage, watch } = await setup();
     const stale = watch.getItemById('series')!;
     await watch.deleteItem('series');
-    await expect(watch.updateItem({ ...stale, title: 'Recreated' })).rejects.toThrow(
+    await expect(watch.updateItem(stale.id, { title: 'Recreated' })).rejects.toThrow(
       'no longer exists',
     );
     expect(storage.getItems()).toEqual([]);
@@ -253,11 +280,10 @@ describe('Item edits coexisting with settled watch commands', () => {
         'publishes before a later edit settles (overlap: %s)',
         async (overlap) => {
           const { storage, watch } = await setup();
-          let edit: Promise<void> | undefined;
+          let edit: ReturnType<WatchListService['updateItem']> | undefined;
           let editSettled = false;
           const editTitle = () => {
-            const write = watch.updateItem({
-              ...watch.getItemById('series')!,
+            const write = watch.updateItem('series', {
               title: 'Edited title',
             });
             void write.then(() => {
@@ -293,7 +319,7 @@ describe('Item edits coexisting with settled watch commands', () => {
           });
           expect({ immediatelyAfterCommand, whileEditIsPending }).toEqual({
             immediatelyAfterCommand: expected,
-            whileEditIsPending: { editSettled: false, visible: expected, title: 'Edited title' },
+            whileEditIsPending: { editSettled: false, visible: expected, title: 'Series' },
           });
         },
       );

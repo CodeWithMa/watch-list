@@ -1,5 +1,6 @@
 import { Item, ItemStatus, ItemType, SeasonInfo } from '../models/item.model';
 import { DEFAULT_GROUP_ID, isEpisodicType } from './item.constants';
+import { createItemEdit } from './item-edit';
 
 export interface ItemFormValue {
   title: string;
@@ -78,6 +79,13 @@ export function prepareSubmittedItemFormValue(
     ...formValue,
     startImmediately: false,
   };
+}
+
+export function buildItemEditInput(initial: ItemFormValue, submitted: ItemFormValue) {
+  return createItemEdit(
+    buildItemMutationInput(prepareSubmittedItemFormValue(initial, false)),
+    buildItemMutationInput(prepareSubmittedItemFormValue(submitted, false)),
+  );
 }
 
 export function normalizeFormValueForType(formValue: ItemFormValue): ItemFormValue {

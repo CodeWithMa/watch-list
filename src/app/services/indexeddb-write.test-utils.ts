@@ -28,6 +28,7 @@ export function controlStorageWrites(
 /** Keep a real transaction pending until release, without mocking application persistence. */
 export function holdStorageWrite(index: number, onRequestSuccess?: (index: number) => void) {
   let released = false;
+  let transaction: IDBTransaction | undefined;
   let signalStarted: () => void = () => undefined;
   const started = new Promise<void>((resolve) => {
     signalStarted = resolve;
@@ -35,6 +36,7 @@ export function holdStorageWrite(index: number, onRequestSuccess?: (index: numbe
   controlStorageWrites([], (current, store) => {
     onRequestSuccess?.(current);
     if (current !== index) return;
+    transaction = store.transaction;
     const keepAlive = () => {
       const request = store.get('watch-list-data');
       request.addEventListener('success', () => {
@@ -48,6 +50,10 @@ export function holdStorageWrite(index: number, onRequestSuccess?: (index: numbe
     started,
     release: () => {
       released = true;
+    },
+    abort: () => {
+      released = true;
+      transaction?.abort();
     },
   };
 }

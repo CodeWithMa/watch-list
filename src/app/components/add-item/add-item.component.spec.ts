@@ -50,7 +50,7 @@ describe('AddItemComponent', () => {
           provide: WatchListService,
           useValue: {
             items: signal(existingItems),
-            addItem: vi.fn(),
+            addItem: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
           },
         },
         {
@@ -280,7 +280,7 @@ describe('AddItemComponent', () => {
     const router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate');
 
-    fixture.componentInstance.onSubmit({
+    await fixture.componentInstance.onSubmit({
       title: 'Existing Show',
       type: 'series',
       groupId: 'ungrouped',
