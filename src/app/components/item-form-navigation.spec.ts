@@ -94,7 +94,63 @@ describe('Item form navigation with pending saves', () => {
     expect(router.url).toBe('/items');
     await harness.fixture.whenStable();
   });
+
+  it('retains the original edit draft when edit-to-edit navigation is attempted before a save rejects', async () => {
+    const { storage, router, harness, path, screen, root } = await openForm('edit');
+    await addOtherItem(storage);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const held = holdStorageWrite(0);
+    root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    try {
+      await held.started;
+      expect(await router.navigateByUrl('/items/other/edit')).toBe(false);
+      expect(router.url).toBe(path);
+      expect(harness.routeNativeElement).toBe(root);
+      expect(root.querySelector<HTMLInputElement>('#title')?.value).toBe('Saved with poster');
+    } finally {
+      held.abort();
+    }
+    await vi.waitFor(() => {
+      harness.detectChanges();
+      expect(screen.mutation.busy()).toBe(false);
+      expect(root.querySelector('[role="alert"]')?.textContent).toContain('Please try again');
+    });
+    expect(root.querySelector<HTMLInputElement>('#title')?.value).toBe('Saved with poster');
+    expect(root.querySelector('img[src="blob:uploaded-poster"]')).not.toBeNull();
+    expect(storage.getData().items['series'].title).toBe('Series');
+    expect(storage.getData().items['other'].title).toBe('Other item');
+    root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await vi.waitFor(() => expect(router.url).toBe('/items'));
+    await harness.fixture.whenStable();
+    const reloaded = TestBed.runInInjectionContext(() => new StorageService());
+    await reloaded.initialize();
+    const saved = reloaded.getData().items['series'];
+    expect(saved.title).toBe('Saved with poster');
+    expect(reloaded.getData().items['other'].title).toBe('Other item');
+    const images = TestBed.runInInjectionContext(() => new ImageStorageService());
+    expect(await images.getUrl(saved.posterId)).toBe('blob:uploaded-poster');
+    expect(reloaded.getData()).toEqual(storage.getData());
+  });
+
+  it('reuses the idle edit component and opens the other item when its route parameter changes', async () => {
+    const { storage, router, harness, screen, root } = await openForm('edit');
+    await addOtherItem(storage);
+    const next = await harness.navigateByUrl('/items/other/edit', ItemDetailComponent);
+    expect(next).toBe(screen);
+    expect(harness.routeNativeElement).toBe(root);
+    expect(router.url).toBe('/items/other/edit');
+    expect(next.item()?.id).toBe('other');
+    expect(root.querySelector<HTMLInputElement>('#title')?.value).toBe('Other item');
+  });
 });
+
+async function addOtherItem(storage: StorageService) {
+  const data = storage.getData();
+  await storage.saveData({
+    ...data,
+    items: { ...data.items, other: { ...data.items['series'], id: 'other', title: 'Other item' } },
+  });
+}
 
 async function openForm(mode: 'add' | 'edit') {
   const context = await setup();
