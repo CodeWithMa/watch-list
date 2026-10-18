@@ -45,9 +45,6 @@ export class WatchListDatabase {
       const fail = (error: unknown) => {
         abandoned = true;
         clearTimeout(timeout);
-        if (error instanceof DatabaseAccessError && this.connection === connection) {
-          this.accessError.set(error);
-        }
         reject(error);
       };
       // A retry can queue behind a blocked request without receiving its own blocked event.
@@ -116,6 +113,9 @@ export class WatchListDatabase {
     });
     const connection = {
       promise: opening.catch((error: unknown) => {
+        if (this.connection === connection && this.accessError()?.recovery !== 'reload') {
+          this.accessError.set(error instanceof DatabaseAccessError ? error : null);
+        }
         connection.close();
         throw error;
       }),

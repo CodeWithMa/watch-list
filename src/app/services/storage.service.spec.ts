@@ -92,6 +92,49 @@ describe('StorageService', () => {
     expect(reloaded.getData().groups['saved-after-retry'].name).toBe('saved-after-retry');
   });
 
+  it.each(['synchronous', 'asynchronous'])(
+    'falls back to a writable session when a blocked retry fails with an unrelated %s error',
+    async (failure) => {
+      const legacy = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('watch-list', 2);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore('storage');
+          request.result.createObjectStore('images', { keyPath: 'id' });
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const original = dataWithMovie();
+      await writeRecord(legacy, original);
+      const service = createStorageService();
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      try {
+        await service.initialize();
+        expect(service.getDatabaseErrorSignal()()?.recovery).toBe('retry');
+      } finally {
+        legacy.close();
+      }
+
+      const error = new DOMException('Storage unavailable', 'UnknownError');
+      const request = { error, onerror: null } as unknown as IDBOpenDBRequest;
+      vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+        if (failure === 'synchronous') throw error;
+        return request;
+      });
+      const retry = service.initialize();
+      if (failure === 'asynchronous') request.onerror!(new Event('error'));
+      await retry;
+
+      expect(service.getDatabaseErrorSignal()()).toBeNull();
+      expect(service.getInMemorySessionSignal()()).toBe(true);
+      await service.saveData(withGroup(service.getData(), 'session-edit'));
+      expect(service.getData().groups['session-edit'].name).toBe('session-edit');
+      const reloaded = createStorageService();
+      await reloaded.initialize();
+      expect(reloaded.getData()).toEqual(original);
+    },
+  );
+
   it('invalidates the loaded collection before a newer tab upgrades the database', async () => {
     const service = createStorageService();
     await service.initialize();
