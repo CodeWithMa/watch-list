@@ -10,6 +10,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { getMostRecentWatchDate } from '../../utils/progress.utils';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { isEpisodicType } from '../../domain/item.constants';
+import { WatchActionFeedback } from '../watch-action-feedback';
 import {
   canSnoozeCurrentSeason,
   getCurrentSeason,
@@ -93,7 +94,8 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
               <button
                 type="button"
                 (click)="runAction(action.action)"
-                class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary text-light-font dark:text-dark-font cursor-pointer hover:border-accent-primary transition-colors"
+                [disabled]="actions.busy()"
+                class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary text-light-font dark:text-dark-font cursor-pointer hover:border-accent-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ action.label }}
               </button>
@@ -102,7 +104,7 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
               <button
                 type="button"
                 (click)="changeReleaseDelay(1)"
-                [disabled]="savingReleaseDelay() || !canSnooze()"
+                [disabled]="actions.busy() || !canSnooze()"
                 class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary text-light-font dark:text-dark-font cursor-pointer hover:border-accent-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Snooze 1 week
@@ -111,7 +113,7 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                 <button
                   type="button"
                   (click)="changeReleaseDelay(-1)"
-                  [disabled]="savingReleaseDelay()"
+                  [disabled]="actions.busy()"
                   class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary text-light-font dark:text-dark-font cursor-pointer hover:border-accent-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Remove 1 week delay
@@ -119,8 +121,13 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
               }
             }
           </div>
-          @if (showReleaseDelayControls() && releaseDelayError()) {
-            <p role="alert" class="mt-3 text-sm text-accent-danger">{{ releaseDelayError() }}</p>
+          @if (actions.error()) {
+            <p role="alert" class="mt-3 text-sm text-accent-danger">{{ actions.error() }}</p>
+          }
+          @if (actions.sessionSuccess()) {
+            <p role="status" class="mt-3 text-sm">
+              Changed for this session only; not saved to disk.
+            </p>
           }
         </section>
 
@@ -134,7 +141,7 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
             </p>
           } @else {
             <ol class="space-y-2 list-none p-0 m-0">
-              @for (entry of watchHistory(); track entry.date) {
+              @for (entry of watchHistory(); track $index) {
                 <li
                   class="flex items-center gap-4 px-5 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border"
                 >
@@ -234,8 +241,7 @@ export class ItemViewComponent {
   readonly canRemoveDelay = computed(
     () => isValidSnoozeCount(this.snoozeCount()) && this.snoozeCount() > 0,
   );
-  readonly savingReleaseDelay = signal(false);
-  readonly releaseDelayError = signal<string | null>(null);
+  readonly actions = new WatchActionFeedback();
 
   constructor() {
     effect(() => {
@@ -247,30 +253,29 @@ export class ItemViewComponent {
     });
   }
 
-  runAction(action: QuickAction): void {
+  runAction(action: QuickAction) {
     const item = this.item();
     if (!item) return;
 
-    if (action === 'watched') this.watchListService.markWatched(item.id);
-    else if (action === 'started') this.watchListService.markStarted(item.id);
-    else if (action === 'paused') this.watchListService.markPaused(item.id);
-    else this.watchListService.markDropped(item.id);
+    return this.actions.run(() => {
+      if (action === 'watched') return this.watchListService.markWatched(item.id);
+      if (action === 'started') return this.watchListService.markStarted(item.id);
+      if (action === 'paused') return this.watchListService.markPaused(item.id);
+      return this.watchListService.markDropped(item.id);
+    }, 'Could not save the watch action.');
   }
 
-  async changeReleaseDelay(change: 1 | -1): Promise<void> {
+  changeReleaseDelay(change: 1 | -1) {
     const item = this.item();
-    if (!item || !this.showReleaseDelayControls() || this.savingReleaseDelay()) return;
+    if (!item || !this.showReleaseDelayControls()) return;
     if (change === 1 ? !this.canSnooze() : !this.canRemoveDelay()) return;
-    this.savingReleaseDelay.set(true);
-    this.releaseDelayError.set(null);
-    try {
-      if (change === 1) await this.watchListService.snoozeOneWeek(item.id);
-      else await this.watchListService.removeOneWeekDelay(item.id);
-    } catch {
-      this.releaseDelayError.set('Could not save the release delay. Please try again.');
-    } finally {
-      this.savingReleaseDelay.set(false);
-    }
+    return this.actions.run(
+      () =>
+        change === 1
+          ? this.watchListService.snoozeOneWeek(item.id)
+          : this.watchListService.removeOneWeekDelay(item.id),
+      'Could not save the release delay.',
+    );
   }
 
   private async loadPoster(id: string | undefined, loadedVersion: number): Promise<void> {

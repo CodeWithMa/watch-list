@@ -33,13 +33,13 @@ describe('ItemViewComponent', () => {
   function configure(items: Item[]) {
     const watchList = {
       items: signal(items),
-      markWatched: vi.fn(),
-      markCompleted: vi.fn(),
-      markStarted: vi.fn(),
-      markPaused: vi.fn(),
-      markDropped: vi.fn(),
-      snoozeOneWeek: vi.fn().mockResolvedValue(undefined),
-      removeOneWeekDelay: vi.fn().mockResolvedValue(undefined),
+      markWatched: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
+      markCompleted: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
+      markStarted: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
+      markPaused: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
+      markDropped: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
+      snoozeOneWeek: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
+      removeOneWeekDelay: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -107,10 +107,10 @@ describe('ItemViewComponent', () => {
     await fixture.whenStable();
 
     const service = TestBed.inject(WatchListService);
-    fixture.componentInstance.runAction('watched');
-    fixture.componentInstance.runAction('started');
-    fixture.componentInstance.runAction('paused');
-    fixture.componentInstance.runAction('dropped');
+    await fixture.componentInstance.runAction('watched');
+    await fixture.componentInstance.runAction('started');
+    await fixture.componentInstance.runAction('paused');
+    await fixture.componentInstance.runAction('dropped');
 
     expect(service.markWatched).toHaveBeenCalledWith(item.id);
     expect(service.markStarted).toHaveBeenCalledWith(item.id);
@@ -256,7 +256,7 @@ describe('ItemViewComponent', () => {
     expect(fixture.nativeElement.textContent).toContain(
       'Could not save the release delay. Please try again.',
     );
-    expect(fixture.componentInstance.savingReleaseDelay()).toBe(false);
+    expect(fixture.componentInstance.actions.busy()).toBe(false);
     expect(fixture.componentInstance.snoozeCount()).toBe(0);
   });
 

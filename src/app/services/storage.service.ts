@@ -109,13 +109,18 @@ export class StorageService {
 
   /**
    * Legacy item workflows still publish optimistically until their intent migration.
-   * Only their item/history snapshots are accepted here. At the queue slot, retain the
-   * latest settled groups and repair references to groups deleted by preceding commands.
+   * Capture only the item/history field changes relative to the visible snapshot. At
+   * the queue slot, rebase those changes onto settled state, retaining preceding watch
+   * commands and groups. Deletion archives the latest settled item's history.
+   * Group references deleted by preceding commands are repaired during normalization.
    * Import/recovery remain explicit whole-collection replacement operations.
    */
   async saveItemChanges({ items, deletedItems }: Pick<StorageData, 'items' | 'deletedItems'>) {
-    const data = validateSaveData({ ...this.getData(), items, deletedItems });
-    return this.persistData(data, { preserveGroups: true });
+    const before = this.getData();
+    const after = validateSaveData({ ...before, items, deletedItems });
+    return this.persistData(after, {
+      rebaseItems: (settled) => rebaseItemChanges(before, after, settled),
+    });
   }
 
   /**
@@ -123,7 +128,7 @@ export class StorageService {
    * An intent edits a detached draft of the latest successful state after earlier writes settle.
    * Keep the callback synchronous and side-effect free. Rejection discards its entire draft;
    * success publishes only after transaction completion (or explicitly as session-only).
-   * Legacy item saves preserve settled groups; explicit snapshot saves/imports replace them.
+   * Legacy item saves rebase their changed fields; snapshot saves/imports replace the collection.
    * Both legacy paths may publish optimistically until migrated.
    */
   mutate<T>(intent: (draft: StorageData) => T): Promise<MutationResult<T>> {
@@ -216,7 +221,13 @@ export class StorageService {
 
   private persistData(
     data: StorageData,
-    { images, preserveGroups }: { images?: StoredImage[]; preserveGroups?: boolean } = {},
+    {
+      images,
+      rebaseItems,
+    }: {
+      images?: StoredImage[];
+      rebaseItems?: (settled: StorageData) => StorageData;
+    } = {},
   ): Promise<void> {
     this.assertWritable();
     assertSupportedStorageVersion(data);
@@ -247,11 +258,11 @@ export class StorageService {
         publish(this.optimisticRevision === revision);
       }
       this.assertWritable();
-      if (preserveGroups) {
-        writeSnapshot = normalizeStorageData({
-          ...writeSnapshot,
-          groups: this.settledData?.groups ?? this.getData().groups,
-        }).data;
+      if (rebaseItems) {
+        writeSnapshot = {
+          ...rebaseItems(this.settledData ?? this.getData()),
+          lastModifiedAt: updated.lastModifiedAt,
+        };
       }
       if (!this.persistentStorage) return;
       await (images === undefined
@@ -261,7 +272,7 @@ export class StorageService {
     this.writeQueue = write.then(
       () => {
         this.recordSuccessfulWrite(writeSnapshot);
-        if (preserveGroups && this.optimisticRevision === revision) {
+        if (rebaseItems && this.optimisticRevision === revision) {
           this.data.set(cloneStorageData(writeSnapshot));
         }
         if (images !== undefined) imagesInvalidated.next();
@@ -535,6 +546,52 @@ export class StorageService {
 
 function cloneStorageData(data: StorageData): StorageData {
   return structuredClone(data);
+}
+
+function rebaseItemChanges(before: StorageData, after: StorageData, settled: StorageData) {
+  const items = applyRecordChanges(before.items, after.items, settled.items);
+  const deletedItems = applyRecordChanges(
+    before.deletedItems ?? {},
+    after.deletedItems ?? {},
+    settled.deletedItems ?? {},
+  );
+  for (const id of Object.keys(before.items)) {
+    const removed = Object.hasOwn(settled.items, id) ? settled.items[id] : undefined;
+    if (!Object.hasOwn(after.items, id) && Object.hasOwn(deletedItems, id) && removed) {
+      deletedItems[id] = {
+        ...deletedItems[id],
+        itemTitle: removed.title,
+        itemType: removed.type,
+        watchHistory: removed.watchHistory,
+      };
+    }
+  }
+  return normalizeStorageData({ ...settled, items, deletedItems }).data;
+}
+
+function applyRecordChanges<T extends object>(
+  before: Record<string, T>,
+  after: Record<string, T>,
+  settled: Record<string, T>,
+) {
+  const result = new Map(Object.entries(settled));
+  for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (!Object.hasOwn(after, id)) {
+      result.delete(id);
+    } else if (!Object.hasOwn(before, id)) {
+      result.set(id, after[id]);
+    } else if (!storageDataEqual(before[id], after[id])) {
+      const entry = { ...(result.get(id) ?? before[id]) };
+      const fields = Object.keys({ ...before[id], ...after[id] }) as (keyof T)[];
+      for (const field of fields) {
+        if (storageDataEqual(before[id][field], after[id][field])) continue;
+        if (Object.hasOwn(after[id], field)) entry[field] = after[id][field];
+        else delete entry[field];
+      }
+      result.set(id, entry);
+    }
+  }
+  return Object.fromEntries(result);
 }
 
 function validateSaveData(data: StorageData) {

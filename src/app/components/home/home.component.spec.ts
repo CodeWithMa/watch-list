@@ -68,11 +68,13 @@ describe('HomeComponent', () => {
           useValue: {
             items: signal(watchItems),
             inProgressSeries: signal(inProgressSeries),
-            markStarted: vi.fn(),
-            markDropped: vi.fn(),
-            markWatched: vi.fn(),
-            markCompleted: vi.fn(),
-            markPaused: vi.fn(),
+            markStarted: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
+            markDropped: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
+            markWatched: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
+            markCompleted: vi
+              .fn()
+              .mockResolvedValue({ value: undefined, durability: 'persistent' }),
+            markPaused: vi.fn().mockResolvedValue({ value: undefined, durability: 'persistent' }),
           },
         },
         {
@@ -106,12 +108,12 @@ describe('HomeComponent', () => {
     expect(pausedContainer?.textContent).not.toContain('Backlog Series');
   });
 
-  it('resumes and drops paused items', () => {
+  it('resumes and drops paused items', async () => {
     const fixture = TestBed.createComponent(HomeComponent);
     const watchListService = TestBed.inject(WatchListService);
 
-    fixture.componentInstance.resumePausedItem('paused-movie');
-    fixture.componentInstance.dropPausedItem('paused-movie');
+    await fixture.componentInstance.resumePausedItem('paused-movie');
+    await fixture.componentInstance.dropPausedItem('paused-movie');
 
     expect(watchListService.markStarted).toHaveBeenCalledWith('paused-movie');
     expect(watchListService.markDropped).toHaveBeenCalledWith('paused-movie');
@@ -189,17 +191,17 @@ describe('HomeComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No items paused');
   });
 
-  it('shows backlog items and handles start/drop backlog', () => {
+  it('shows backlog items and handles start/drop backlog', async () => {
     setup();
     const fixture = TestBed.createComponent(HomeComponent);
     const svc = TestBed.inject(WatchListService);
-    fixture.componentInstance.startBacklogItem('backlog-item');
-    fixture.componentInstance.dropBacklogItem('backlog-item');
+    await fixture.componentInstance.startBacklogItem('backlog-item');
+    await fixture.componentInstance.dropBacklogItem('backlog-item');
     expect(svc.markStarted).toHaveBeenCalledWith('backlog-item');
     expect(svc.markDropped).toHaveBeenCalledWith('backlog-item');
   });
 
-  it('markItem delegates to correct service methods', () => {
+  it('markItem delegates to correct service methods', async () => {
     setup();
     const fixture = TestBed.createComponent(HomeComponent);
     const svc = TestBed.inject(WatchListService) as unknown as {
@@ -210,16 +212,16 @@ describe('HomeComponent', () => {
     };
     const item = createItem({ id: 'x', title: 'X', status: 'in-progress', isAdult: false });
 
-    fixture.componentInstance.markItem(() => item, 'watched');
+    await fixture.componentInstance.markItem(() => item, 'watched');
     expect(svc.markWatched).toHaveBeenCalledWith('x');
 
-    fixture.componentInstance.markItem(() => item, 'completed');
+    await fixture.componentInstance.markItem(() => item, 'completed');
     expect(svc.markCompleted).toHaveBeenCalledWith('x');
 
-    fixture.componentInstance.markItem(() => item, 'dropped');
+    await fixture.componentInstance.markItem(() => item, 'dropped');
     expect(svc.markDropped).toHaveBeenCalledWith('x');
 
-    fixture.componentInstance.markItem(() => item, 'paused');
+    await fixture.componentInstance.markItem(() => item, 'paused');
     expect(svc.markPaused).toHaveBeenCalledWith('x');
   });
 
