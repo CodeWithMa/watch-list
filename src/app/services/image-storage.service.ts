@@ -1,10 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { imageVersion, imagesInvalidated } from './image-invalidation';
 import { StorageService } from './storage.service';
+import { WatchListDatabase, IMAGE_STORE_NAME as STORE_NAME } from './watch-list-database.service';
 
-const DATABASE_NAME = 'watch-list';
-const DATABASE_VERSION = 2;
-const STORE_NAME = 'images';
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 export interface StoredImage {
@@ -23,7 +21,7 @@ type PosterUrlCache = Map<string, Promise<string | null>>;
 @Injectable({ providedIn: 'root' })
 export class ImageStorageService {
   private readonly storageService = inject(StorageService);
-  private database: Promise<IDBDatabase> | null = null;
+  private readonly databaseOwner = inject(WatchListDatabase);
   private readonly posterUrls: PosterUrlCache = new Map();
   readonly version = imageVersion.asReadonly();
 
@@ -75,9 +73,11 @@ export class ImageStorageService {
   }
 
   async exportImages(): Promise<ExportedImage[]> {
-    const db = await this.openDatabase();
+    const db = await this.databaseOwner.open();
+    const transaction = db.transaction(STORE_NAME, 'readonly');
     const images = await this.request<StoredImage[]>(
-      db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll(),
+      transaction,
+      transaction.objectStore(STORE_NAME).getAll(),
     );
     return Promise.all(
       images.map(async ({ id, blob }) => ({ id, type: blob.type, data: await blobToBase64(blob) })),
@@ -142,8 +142,9 @@ export class ImageStorageService {
   }
 
   private async get(id: string): Promise<StoredImage | undefined> {
-    const db = await this.openDatabase();
-    return this.request(db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(id));
+    const db = await this.databaseOwner.open();
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    return this.request(transaction, transaction.objectStore(STORE_NAME).get(id));
   }
 
   private async put(image: StoredImage): Promise<void> {
@@ -164,23 +165,12 @@ export class ImageStorageService {
     }
   }
 
-  private openDatabase(): Promise<IDBDatabase> {
-    this.database ??= new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-      request.onupgradeneeded = () => {
-        if (!request.result.objectStoreNames.contains(STORE_NAME))
-          request.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error ?? new Error('Unable to open image storage'));
-    });
-    return this.database;
-  }
-
-  private request<T>(request: IDBRequest<T>): Promise<T> {
+  private request<T>(transaction: IDBTransaction, request: IDBRequest<T>): Promise<T> {
     return new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
+      transaction.oncomplete = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('Image storage request failed'));
+      transaction.onabort = () =>
+        reject(transaction.error ?? new Error('Image storage transaction aborted'));
     });
   }
 }

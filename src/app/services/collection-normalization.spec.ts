@@ -74,10 +74,10 @@ describe('normalized collections at domain consumer boundaries', () => {
       const raw = legacyRecoveryFixture();
       const storage = TestBed.inject(StorageService);
       if (path === 'startup') {
-        const seed = new StorageService();
+        const seed = TestBed.runInInjectionContext(() => new StorageService());
         await seed.initialize();
         const database = await new Promise<IDBDatabase>((resolve) => {
-          const request = indexedDB.open('watch-list', 2);
+          const request = indexedDB.open('watch-list');
           request.onsuccess = () => resolve(request.result);
         });
         const transaction = database.transaction('storage', 'readwrite');
@@ -154,7 +154,7 @@ describe('normalized collections at domain consumer boundaries', () => {
         ),
       ).rejects.toThrow('Invalid migrated data');
       expect(storage.getData()).toEqual(original);
-      const reloaded = new StorageService();
+      const reloaded = TestBed.runInInjectionContext(() => new StorageService());
       await reloaded.initialize();
       expect(reloaded.getData()).toEqual(original);
     },

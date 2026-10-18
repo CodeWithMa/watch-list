@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { StorageData } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
@@ -11,11 +11,12 @@ import {
 import type { NormalizationReport, NormalizationResult } from '../domain/storage-schema';
 import type { StoredImage } from './image-storage.service';
 import { imagesInvalidated } from './image-invalidation';
+import {
+  WatchListDatabase,
+  STORAGE_STORE_NAME as STORE_NAME,
+  IMAGE_STORE_NAME,
+} from './watch-list-database.service';
 
-const DATABASE_NAME = 'watch-list';
-const DATABASE_VERSION = 2;
-const STORE_NAME = 'storage';
-const IMAGE_STORE_NAME = 'images';
 const DATA_KEY = 'watch-list-data';
 const BACKUP_PREFIX = 'watch-list-data-backup-';
 const BACKUP_LIMIT = 10;
@@ -24,12 +25,13 @@ const BACKUP_LIMIT = 10;
   providedIn: 'root',
 })
 export class StorageService {
+  private readonly databaseOwner = inject(WatchListDatabase);
   private readonly data = signal<StorageData | null>(null);
   private readonly saveError = signal<string | null>(null);
   private readonly inMemorySession = signal(false);
   private readonly compatibilityError = signal<UnsupportedSchemaVersionError | null>(null);
   private unsupportedData: unknown;
-  private database: IDBDatabase | null = null;
+  private persistentStorage = false;
   private lastPersistedData: StorageData | null = null;
   private initialization: Promise<void> | null = null;
   private writeQueue: Promise<void> = Promise.resolve();
@@ -100,7 +102,7 @@ export class StorageService {
   }
 
   async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
-    if (!this.database) {
+    if (!this.persistentStorage) {
       return [];
     }
     const keys = await this.listBackupKeys();
@@ -116,7 +118,7 @@ export class StorageService {
     if (!key.startsWith(BACKUP_PREFIX)) {
       throw new Error('Invalid backup key');
     }
-    if (!this.database) {
+    if (!this.persistentStorage) {
       throw new Error('Recovery backup not found');
     }
     const backup = await this.readRecord(key);
@@ -130,7 +132,7 @@ export class StorageService {
     if (!this.data()) await this.initialize();
     this.assertWritable();
     assertSupportedStorageVersion(data);
-    if (!this.database && images && images.length > 0) {
+    if (!this.persistentStorage && images && images.length > 0) {
       throw new Error(
         'Cannot import posters while persistent storage is unavailable. No data was imported.',
       );
@@ -142,7 +144,7 @@ export class StorageService {
     const writeSnapshot = cloneStorageData(updated);
     this.saveError.set(null);
     this.data.set(updated);
-    if (!this.database) {
+    if (!this.persistentStorage) {
       return Promise.resolve();
     }
     const write = this.writeQueue.then(() =>
@@ -193,7 +195,8 @@ export class StorageService {
   }
 
   private async loadData(): Promise<void> {
-    this.database = await this.openDatabase();
+    await this.databaseOwner.open();
+    this.persistentStorage = true;
     this.inMemorySession.set(false);
     try {
       const stored = await this.readData();
@@ -242,8 +245,8 @@ export class StorageService {
   }
 
   private useInMemorySession(): void {
-    this.database?.close();
-    this.database = null;
+    this.databaseOwner.close();
+    this.persistentStorage = false;
     this.inMemorySession.set(true);
   }
 
@@ -264,18 +267,19 @@ export class StorageService {
   }
 
   private async backupRawData(raw: unknown): Promise<void> {
-    if (!this.database) {
+    if (!this.persistentStorage) {
       return;
     }
     const key = `${BACKUP_PREFIX}${Date.now()}`;
-    const transaction = this.database!.transaction(STORE_NAME, 'readwrite');
+    const database = await this.databaseOwner.open();
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
     transaction.objectStore(STORE_NAME).put(raw, key);
     await this.completeTransaction(transaction, 'Failed to back up corrupted data');
     await this.pruneOldBackups();
   }
 
   private async pruneOldBackups(): Promise<void> {
-    if (!this.database) {
+    if (!this.persistentStorage) {
       return;
     }
     const keys = await this.listBackupKeys();
@@ -283,7 +287,8 @@ export class StorageService {
       return;
     }
     const toDelete = keys.slice(BACKUP_LIMIT);
-    const transaction = this.database!.transaction(STORE_NAME, 'readwrite');
+    const database = await this.databaseOwner.open();
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
     const store = transaction.objectStore(STORE_NAME);
     for (const key of toDelete) {
       store.delete(key);
@@ -292,10 +297,11 @@ export class StorageService {
   }
 
   private async listBackupKeys(): Promise<string[]> {
-    if (!this.database) {
+    if (!this.persistentStorage) {
       return [];
     }
-    const transaction = this.database.transaction(STORE_NAME, 'readonly');
+    const database = await this.databaseOwner.open();
+    const transaction = database.transaction(STORE_NAME, 'readonly');
     const request = transaction.objectStore(STORE_NAME).getAllKeys();
     const allKeys = await this.promisifyRequest(
       request as IDBRequest<IDBValidKey[]>,
@@ -309,44 +315,16 @@ export class StorageService {
       );
   }
 
-  private openDatabase(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-      let abandoned = false;
-
-      request.onupgradeneeded = () => {
-        const database = request.result;
-        if (!database.objectStoreNames.contains(STORE_NAME)) {
-          database.createObjectStore(STORE_NAME);
-        }
-        if (!database.objectStoreNames.contains(IMAGE_STORE_NAME)) {
-          database.createObjectStore(IMAGE_STORE_NAME, { keyPath: 'id' });
-        }
-      };
-      request.onsuccess = () => {
-        if (abandoned) {
-          request.result.close();
-          return;
-        }
-        resolve(request.result);
-      };
-      request.onerror = () => reject(request.error ?? new Error('Failed to open IndexedDB'));
-      request.onblocked = () => {
-        abandoned = true;
-        reject(new Error('IndexedDB open request is blocked by another open connection'));
-      };
-    });
-  }
-
   private readData(): Promise<unknown | undefined> {
     return this.readRecord(DATA_KEY);
   }
 
-  private readRecord(key: string): Promise<unknown | undefined> {
-    if (!this.database) {
-      return Promise.resolve(undefined);
+  private async readRecord(key: string): Promise<unknown | undefined> {
+    if (!this.persistentStorage) {
+      return undefined;
     }
-    const transaction = this.database.transaction(STORE_NAME, 'readonly');
+    const database = await this.databaseOwner.open();
+    const transaction = database.transaction(STORE_NAME, 'readonly');
     const request = transaction.objectStore(STORE_NAME).get(key) as IDBRequest<unknown | undefined>;
     return this.promisifyRequest(request, transaction, 'IndexedDB read transaction aborted');
   }
@@ -372,16 +350,17 @@ export class StorageService {
     );
   }
 
-  private writeTransaction(
+  private async writeTransaction(
     stores: string[],
     write: (transaction: IDBTransaction) => void,
     message: string,
   ): Promise<void> {
-    if (!this.database) {
-      return Promise.reject(new Error('Persistent storage is unavailable'));
+    if (!this.persistentStorage) {
+      throw new Error('Persistent storage is unavailable');
     }
+    const database = await this.databaseOwner.open();
     return new Promise((resolve, reject) => {
-      const transaction = this.database!.transaction(stores, 'readwrite');
+      const transaction = database.transaction(stores, 'readwrite');
       let failure: unknown;
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(failure ?? transaction.error ?? new Error(message));
@@ -415,7 +394,7 @@ export class StorageService {
     abortMessage: string,
   ): Promise<T> {
     return new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
+      transaction.oncomplete = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
       transaction.onabort = () => reject(transaction.error ?? new Error(abortMessage));
     });

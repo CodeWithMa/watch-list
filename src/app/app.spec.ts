@@ -109,14 +109,17 @@ describe('App storage warning', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('keeps incompatible collections behind an actionable message and downloads the original document', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes), { provide: PLATFORM_ID, useValue: 'server' }],
+    });
     Object.defineProperty(globalThis, 'indexedDB', {
       configurable: true,
       value: new IDBFactory(),
     });
-    const initial = new StorageService();
+    const initial = TestBed.runInInjectionContext(() => new StorageService());
     await initial.initialize();
     const database = await new Promise<IDBDatabase>((resolve) => {
-      const request = indexedDB.open('watch-list', 2);
+      const request = indexedDB.open('watch-list');
       request.onsuccess = () => resolve(request.result);
     });
     const raw = {
@@ -128,9 +131,6 @@ describe('App storage warning', () => {
     const transaction = database.transaction('storage', 'readwrite');
     transaction.objectStore('storage').put(raw, 'watch-list-data');
     await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
-    TestBed.configureTestingModule({
-      providers: [provideRouter(routes), { provide: PLATFORM_ID, useValue: 'server' }],
-    });
     const storage = TestBed.inject(StorageService);
     await storage.initialize();
     const fixture = TestBed.createComponent(App);
@@ -232,14 +232,17 @@ describe('App storage warning', () => {
   it.each(unsupportedRecoveryValues)(
     'explains why a future document containing %s cannot be downloaded losslessly as JSON',
     async (_, createValue) => {
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
+      });
       Object.defineProperty(globalThis, 'indexedDB', {
         configurable: true,
         value: new IDBFactory(),
       });
-      const initial = new StorageService();
+      const initial = TestBed.runInInjectionContext(() => new StorageService());
       await initial.initialize();
       const database = await new Promise<IDBDatabase>((resolve) => {
-        const request = indexedDB.open('watch-list', 2);
+        const request = indexedDB.open('watch-list');
         request.onsuccess = () => resolve(request.result);
       });
       const raw = {
@@ -249,9 +252,6 @@ describe('App storage warning', () => {
       const transaction = database.transaction('storage', 'readwrite');
       transaction.objectStore('storage').put(raw, 'watch-list-data');
       await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
-      TestBed.configureTestingModule({
-        providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
-      });
       const storage = TestBed.inject(StorageService);
       await storage.initialize();
       const fixture = TestBed.createComponent(App);
