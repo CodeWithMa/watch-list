@@ -29,15 +29,17 @@ export class ImageStorageService {
     imagesInvalidated.subscribe(() => this.refreshCache());
   }
 
-  async storeFile(file: Blob): Promise<string> {
+  async storeFile(file: Blob, { provisional = false } = {}): Promise<string> {
     await this.ensureWritable();
     await this.validateImage(file);
     const id = `image-${crypto.randomUUID()}`;
-    await this.put({ id, blob: file });
+    const image = { id, blob: file };
+    if (provisional) this.storageService.stageImage(image);
+    else await this.put(image);
     return id;
   }
 
-  async storeUrl(url: string): Promise<string> {
+  async storeUrl(url: string, { provisional = false } = {}): Promise<string> {
     await this.ensureWritable();
     let response: Response;
     try {
@@ -46,7 +48,12 @@ export class ImageStorageService {
       throw new Error('Could not download the poster. Check the URL and your connection.');
     }
     if (!response.ok) throw new Error('Could not download the poster.');
-    return this.storeFile(await response.blob());
+    return this.storeFile(await response.blob(), { provisional });
+  }
+
+  /** Releasing a UI draft never deletes persistent images or committed ownership. */
+  discardDraft(id: string): void {
+    if (this.storageService.discardProvisionalImage(id)) void this.revokeUrl(id);
   }
 
   async getUrl(id: string | undefined): Promise<string | null> {
@@ -68,8 +75,8 @@ export class ImageStorageService {
   async delete(id: string | undefined): Promise<void> {
     if (!id) return;
     await this.ensureWritable();
-    await this.revokeUrl(id);
-    await this.storageService.writeImages((store) => store.delete(id));
+    const removed = await this.storageService.deleteUnreferencedImage(id);
+    if (removed) await this.revokeUrl(id);
   }
 
   async exportImages(): Promise<ExportedImage[]> {
@@ -143,6 +150,8 @@ export class ImageStorageService {
   }
 
   private async get(id: string): Promise<StoredImage | undefined> {
+    const provisional = this.storageService.getProvisionalImage(id);
+    if (provisional) return provisional;
     const db = await this.databaseOwner.open();
     const transaction = db.transaction(STORE_NAME, 'readonly');
     return this.request(transaction, transaction.objectStore(STORE_NAME).get(id));

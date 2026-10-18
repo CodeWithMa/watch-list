@@ -73,6 +73,7 @@ export class StorageService {
   }>();
   private initialization: Promise<void> | null = null;
   private writeQueue: Promise<void> = Promise.resolve();
+  private readonly provisionalImages = new Map<string, StoredImage>();
 
   initialize(): Promise<void> {
     const retryingAccess = this.databaseError()?.recovery === 'retry';
@@ -153,6 +154,36 @@ export class StorageService {
    * Both legacy paths may publish optimistically until migrated.
    */
   async mutate<T>(intent: (draft: StorageData) => T): Promise<MutationResult<T>> {
+    return this.enqueueMutation(intent);
+  }
+
+  stageImage(image: StoredImage) {
+    this.assertMutationReady();
+    this.assertWritable();
+    this.provisionalImages.set(image.id, image);
+  }
+
+  getProvisionalImage(id: string) {
+    return this.provisionalImages.get(id);
+  }
+
+  discardProvisionalImage(id: string) {
+    return this.provisionalImages.delete(id);
+  }
+
+  /** Capture the blob at command invocation: form destruction can only release its draft,
+   * never the command's copy. The image and its first committed reference share a transaction.
+   * A rejected command leaves a mounted form's draft available for explicit retry.
+   */
+  mutateWithPoster<T>(intent: (draft: StorageData) => T, posterId?: string) {
+    return this.enqueueMutation(intent, posterId);
+  }
+
+  private async enqueueMutation<T>(
+    intent: (draft: StorageData) => T,
+    posterId?: string,
+    poster = posterId ? this.provisionalImages.get(posterId) : undefined,
+  ): Promise<MutationResult<T>> {
     this.assertMutationReady();
     const mutation = this.writeQueue.then(async () => {
       if (this.conflict()) throw new CollectionConflictError();
@@ -162,9 +193,23 @@ export class StorageService {
       const draft = cloneStorageData(this.settledData ?? this.getData());
       const value = intent(draft);
       const updated = { ...validateSaveData(draft), lastModifiedAt: new Date().toISOString() };
-      if (this.persistentStorage) await this.writeData(updated);
+      if (posterId && !this.persistentStorage) {
+        throw new Error(
+          'Cannot save a poster while persistent storage is unavailable. Please retry.',
+        );
+      }
+      if (this.persistentStorage) {
+        await (posterId
+          ? this.writeDataWithPoster(updated, posterId, poster)
+          : this.writeData(updated));
+      }
       this.recordSuccessfulWrite(updated);
       this.publishPendingData();
+      if (poster) {
+        if (this.provisionalImages.get(poster.id) === poster)
+          this.provisionalImages.delete(poster.id);
+        imagesInvalidated.next();
+      }
       return { value, durability: this.persistentStorage ? 'persistent' : 'session-only' } as const;
     });
     this.writeQueue = mutation.then(
@@ -195,7 +240,11 @@ export class StorageService {
     return { ...normalized, data: this.getData() };
   }
 
-  async writeImages(write: (store: IDBObjectStore) => void) {
+  writeImages(write: (store: IDBObjectStore) => void) {
+    return this.enqueueImageWrite(write, true);
+  }
+
+  private async enqueueImageWrite<T>(write: (store: IDBObjectStore) => T, reportFailure: boolean) {
     this.assertMutationReady();
     this.assertWritable();
     // Reserve the same queue as collection commands before awaiting initialization.
@@ -203,18 +252,34 @@ export class StorageService {
       if (this.conflict()) throw new CollectionConflictError();
       await this.initialize();
       this.assertWritable();
+      let value!: T;
       await this.writeTransaction(
         [STORE_NAME, IMAGE_STORE_NAME],
-        (transaction) => write(transaction.objectStore(IMAGE_STORE_NAME)),
+        (transaction) => {
+          value = write(transaction.objectStore(IMAGE_STORE_NAME));
+        },
         'Failed to update posters',
       );
-      this.saveError.set(null);
+      if (reportFailure) this.saveError.set(null);
+      return value;
     });
     this.writeQueue = mutation.then(
       () => undefined,
-      (error: unknown) => this.reportSaveFailure(error, 'Failed to update posters:'),
+      (error: unknown) => {
+        if (reportFailure) this.reportSaveFailure(error, 'Failed to update posters:');
+      },
     );
     return mutation;
+  }
+
+  /** Only unreferenced images may be collected, under the shared revision/transaction lock. */
+  deleteUnreferencedImage(id: string) {
+    return this.enqueueImageWrite((store) => {
+      if (Object.values(this.settledData?.items ?? {}).some((item) => item.posterId === id))
+        return false;
+      store.delete(id);
+      return true;
+    }, false);
   }
 
   getSaveErrorSignal() {
@@ -615,9 +680,41 @@ export class StorageService {
     );
   }
 
+  private writeDataWithPoster(
+    data: StorageData,
+    posterId: string,
+    image?: StoredImage,
+  ): Promise<void> {
+    return this.writeTransaction(
+      [STORE_NAME, IMAGE_STORE_NAME],
+      (transaction, abort) => {
+        const store = transaction.objectStore(IMAGE_STORE_NAME);
+        if (image) {
+          store.put(image);
+          transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
+        } else {
+          const request = store.get(posterId);
+          request.onsuccess = () => {
+            try {
+              if (!request.result) {
+                throw new Error(
+                  'The selected poster is no longer available. Choose it again and retry.',
+                );
+              }
+              transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
+            } catch (error) {
+              abort(error);
+            }
+          };
+        }
+      },
+      'Failed to save item and poster',
+    );
+  }
+
   private async writeTransaction(
     stores: string[],
-    write: (transaction: IDBTransaction) => void,
+    write: (transaction: IDBTransaction, abort: (error: unknown) => void) => void,
     message: string,
   ): Promise<void> {
     if (!this.persistentStorage) {
@@ -628,6 +725,10 @@ export class StorageService {
       const transaction = database.transaction(stores, 'readwrite');
       const nextRevision = crypto.randomUUID();
       let failure: unknown;
+      const abort = (error: unknown) => {
+        failure = error;
+        transaction.abort();
+      };
       transaction.oncomplete = () => {
         this.revision = nextRevision;
         resolve();
@@ -653,11 +754,10 @@ export class StorageService {
             if (this.settledData) this.conflict.set(true);
             throw new CollectionConflictError();
           }
-          write(transaction);
+          write(transaction, abort);
           transaction.objectStore(STORE_NAME).put(nextRevision, REVISION_KEY);
         } catch (error) {
-          failure = error;
-          transaction.abort();
+          abort(error);
         }
       };
     });

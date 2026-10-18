@@ -48,19 +48,19 @@ export class WatchListService {
       watchHistory: [],
     };
 
-    return this.storageService.mutate((draft) => {
+    return this.storageService.mutateWithPoster((draft) => {
       const added = {
         ...newItem,
         groupId: Object.hasOwn(draft.groups, newItem.groupId) ? newItem.groupId : DEFAULT_GROUP_ID,
       };
       draft.items[id] = added;
       return added;
-    });
+    }, newItem.posterId);
   }
 
   async updateItem(itemId: string, changes: ItemEdit) {
     const edit = structuredClone(changes);
-    const result = await this.storageService.mutate((draft) => {
+    const result = await this.storageService.mutateWithPoster((draft) => {
       if (!Object.hasOwn(draft.items, itemId)) {
         throw new Error('The edited item no longer exists. Refresh the item list and try again.');
       }
@@ -69,7 +69,7 @@ export class WatchListService {
       if (!Object.hasOwn(draft.groups, updated.groupId)) updated.groupId = DEFAULT_GROUP_ID;
       draft.items[itemId] = updated;
       return current.posterId !== updated.posterId ? current.posterId : undefined;
-    });
+    }, edit.posterId);
     await this.cleanupPoster(result.value);
     return { ...result, value: undefined };
   }

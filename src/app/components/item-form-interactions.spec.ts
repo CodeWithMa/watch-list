@@ -18,6 +18,72 @@ describe('Settled item form interactions', () => {
     vi.unstubAllGlobals();
   });
 
+  describe.each([true, false])('pending save commits: %s', (commits) => {
+    it.each(['add', 'save'] as const)(
+      'settles the item/poster pair when the %s form is destroyed during its save',
+      async (command) => {
+        vi.stubGlobal('createImageBitmap', async () => ({ close: vi.fn() }));
+        vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:owned-poster');
+        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+        vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (
+          this: FileReader,
+        ) {
+          Object.defineProperty(this, 'result', { value: 'data:image/png;base64,aW1hZ2U=' });
+          this.dispatchEvent(new ProgressEvent('load'));
+        });
+        const { storage, navigate } = await setup();
+        if (command === 'save') await seedSeries(storage);
+        const fixture =
+          command === 'add'
+            ? TestBed.createComponent(AddItemComponent)
+            : TestBed.createComponent(ItemDetailComponent);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        const root = fixture.nativeElement as HTMLElement;
+        const title = root.querySelector<HTMLInputElement>('#title')!;
+        title.value = 'Owned poster';
+        title.dispatchEvent(new Event('input'));
+        const upload = root.querySelector<HTMLInputElement>('input[type="file"]')!;
+        Object.defineProperty(upload, 'files', {
+          value: [new File(['image'], 'poster.png', { type: 'image/png' })],
+        });
+        upload.dispatchEvent(new Event('change'));
+        await vi.waitFor(() => {
+          fixture.detectChanges();
+          expect(root.querySelector('img[src="blob:owned-poster"]')).not.toBeNull();
+        });
+        // A draft is previewable, but must not be persisted separately from its item.
+        expect(await TestBed.inject(ImageStorageService).exportImages()).toEqual([]);
+        const held = holdStorageWrite(0);
+        root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+        try {
+          await held.started;
+          fixture.destroy();
+        } finally {
+          if (commits) held.release();
+          else held.abort();
+        }
+        await vi.waitFor(() => expect(fixture.componentInstance.mutation.busy()).toBe(false));
+        const reloaded = TestBed.runInInjectionContext(() => new StorageService());
+        await reloaded.initialize();
+        const item = reloaded.getItems().find((item) => item.title === 'Owned poster');
+        if (commits) {
+          expect(navigate).toHaveBeenCalled();
+          expect(item?.posterId).toBeDefined();
+          const images = TestBed.runInInjectionContext(() => new ImageStorageService());
+          expect(await images.getUrl(item?.posterId)).toBe('blob:owned-poster');
+        } else {
+          expect(navigate).not.toHaveBeenCalled();
+          expect(item).toBeUndefined();
+          expect(await TestBed.inject(ImageStorageService).exportImages()).toEqual([]);
+          expect(reloaded.getItems().map((item) => item.title)).toEqual(
+            command === 'save' ? ['Series'] : [],
+          );
+        }
+      },
+    );
+  });
+
   it('keeps failed creation input and exposes a retry without navigation or duplicate additions', async () => {
     const { storage, navigate } = await setup();
     const fixture = TestBed.createComponent(AddItemComponent);
