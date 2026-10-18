@@ -18,7 +18,7 @@ describe('Group and item mutation coexistence', () => {
 
           // Start the real item command after the group put succeeds but before its
           // transaction completes. No application methods or queue internals are mocked.
-          let itemWrite: Promise<void> | undefined;
+          let itemWrite: ReturnType<typeof runItemCommand> | undefined;
           const saveItem = () => runItemCommand(items, itemAction, target);
           const put = IDBObjectStore.prototype.put;
           if (overlap)
@@ -158,7 +158,7 @@ describe('Group and item mutation coexistence', () => {
         status: 'not-started',
         isAdult: false,
       }),
-      items.updateItem({ ...movie, title: 'After' }),
+      items.updateItem(movie.id, { title: 'After' }),
     ]);
     expect(results[0].durability).toBe('session-only');
     expect(storage.getGroups().map((group) => group.id)).toEqual(['ungrouped']);
@@ -219,7 +219,7 @@ function runItemCommand(
         isAdult: false,
       });
     case 'update':
-      return service.updateItem({ ...target, title: 'After' });
+      return service.updateItem(target.id, { title: 'After' });
     case 'delete':
       return service.deleteItem(target.id);
   }

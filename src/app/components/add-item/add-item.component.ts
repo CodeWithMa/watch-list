@@ -14,6 +14,7 @@ import {
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { SearchProviderSelectComponent } from '../search-provider-select/search-provider-select.component';
+import { ItemMutationFeedback } from '../item-mutation-feedback';
 
 interface SelectedSuggestionRef {
   source: SuggestionSource;
@@ -32,6 +33,8 @@ interface SelectedSuggestionRef {
         [initialValue]="initialValue"
         [focusTitleOnOpen]="true"
         submitLabel="Add Item"
+        [busy]="mutation.busy()"
+        [error]="mutation.error()"
         [showStartImmediately]="true"
         [showStatusPicker]="false"
         [duplicateTitleHint]="duplicateTitleHint()"
@@ -68,6 +71,7 @@ export class AddItemComponent {
   private selectedEpisodicRef = new Subject<SelectedSuggestionRef | null>();
 
   readonly groups = this.groupService.groups;
+  readonly mutation = new ItemMutationFeedback();
   readonly enabledSources = this.search.enabledSources;
   readonly selectedSource = this.search.selectedSource;
   readonly initialValue = createDefaultItemFormValue();
@@ -148,16 +152,18 @@ export class AddItemComponent {
   }
 
   async onSubmit(formValue: ItemFormValue): Promise<void> {
-    try {
-      await this.watchListService.addItem(buildItemMutationInput(formValue));
+    const result = await this.mutation.run(
+      () => this.watchListService.addItem(buildItemMutationInput(formValue)),
+      'Unable to add this item.',
+    );
+    if (result) {
       this.form?.commitDrafts();
       this.router.navigate(['/items']);
-    } catch {
-      this.form?.clearDrafts();
     }
   }
 
   cancel(): void {
+    if (this.mutation.busy()) return;
     this.router.navigate(['/items']);
   }
 

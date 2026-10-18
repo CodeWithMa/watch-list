@@ -3,7 +3,8 @@ import { StorageService } from './storage.service';
 import { Item, ItemStatus, SeriesProgress } from '../models/item.model';
 import { HistoryEntry } from '../models/storage.model';
 import { ImageStorageService } from './image-storage.service';
-import { isEpisodicType } from '../domain/item.constants';
+import { DEFAULT_GROUP_ID, isEpisodicType } from '../domain/item.constants';
+import { applyItemEdit, ItemEdit } from '../domain/item-edit';
 import {
   canSnoozeCurrentSeason,
   getCurrentSeason,
@@ -36,69 +37,70 @@ export class WatchListService {
   private storageService = inject(StorageService);
   private imageStorage = inject(ImageStorageService);
 
-  async addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): Promise<void> {
-    const data = this.storageService.getData();
+  addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>) {
     const id = this.generateId();
     const now = new Date().toISOString();
 
     const newItem: Item = {
-      ...item,
+      ...structuredClone(item),
       id,
       createdAt: now,
       watchHistory: [],
     };
 
-    await this.storageService.saveItemChanges({
-      deletedItems: data.deletedItems,
-      items: {
-        ...data.items,
-        [id]: newItem,
-      },
+    return this.storageService.mutate((draft) => {
+      const added = {
+        ...newItem,
+        groupId: Object.hasOwn(draft.groups, newItem.groupId) ? newItem.groupId : DEFAULT_GROUP_ID,
+      };
+      draft.items[id] = added;
+      return added;
     });
   }
 
-  async updateItem(item: Item): Promise<void> {
-    const data = this.storageService.getData();
-    if (!Object.hasOwn(data.items, item.id)) {
-      throw new Error('The edited item no longer exists. Refresh the item list and try again.');
-    }
-    const previousPosterId = data.items[item.id]?.posterId;
-    await this.storageService.saveItemChanges({
-      deletedItems: data.deletedItems,
-      items: {
-        ...data.items,
-        [item.id]: item,
-      },
+  async updateItem(itemId: string, changes: ItemEdit) {
+    const edit = structuredClone(changes);
+    const result = await this.storageService.mutate((draft) => {
+      if (!Object.hasOwn(draft.items, itemId)) {
+        throw new Error('The edited item no longer exists. Refresh the item list and try again.');
+      }
+      const current = draft.items[itemId];
+      const updated = applyItemEdit(current, edit);
+      if (!Object.hasOwn(draft.groups, updated.groupId)) updated.groupId = DEFAULT_GROUP_ID;
+      draft.items[itemId] = updated;
+      return current.posterId !== updated.posterId ? current.posterId : undefined;
     });
-    if (previousPosterId && previousPosterId !== item.posterId) {
-      await this.imageStorage.delete(previousPosterId);
-    }
+    await this.cleanupPoster(result.value);
+    return { ...result, value: undefined };
   }
 
-  async deleteItem(itemId: string): Promise<void> {
-    const data = this.storageService.getData();
-    const { [itemId]: removed, ...items } = data.items;
-
-    if (!removed) {
-      return;
-    }
-
-    const deletedItems = {
-      ...(data.deletedItems || {}),
-      [itemId]: {
+  async deleteItem(itemId: string) {
+    const result = await this.storageService.mutate((draft) => {
+      if (!Object.hasOwn(draft.items, itemId)) return;
+      const removed = draft.items[itemId];
+      draft.deletedItems ??= {};
+      draft.deletedItems[itemId] = {
         itemId,
         itemTitle: removed.title,
         itemType: removed.type,
         watchHistory: removed.watchHistory || [],
         deletedAt: new Date().toISOString(),
-      },
-    };
-
-    await this.storageService.saveItemChanges({
-      items,
-      deletedItems,
+      };
+      delete draft.items[itemId];
+      return removed.posterId;
     });
-    await this.imageStorage.delete(removed.posterId);
+    await this.cleanupPoster(result.value);
+    return { ...result, value: undefined };
+  }
+
+  private async cleanupPoster(posterId: string | undefined) {
+    if (!posterId) return;
+    // Collection success is not undone by a later poster-cleanup failure.
+    try {
+      await this.imageStorage.delete(posterId);
+    } catch (error) {
+      console.error('Failed to remove unused poster:', error);
+    }
   }
 
   markWatched(itemId: string) {
