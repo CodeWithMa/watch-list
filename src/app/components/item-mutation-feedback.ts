@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import type { CanDeactivateFn } from '@angular/router';
 import type { MutationResult } from '../services/storage.service';
 
 /** One in-flight form command, retaining the draft on rejection. */
@@ -21,3 +22,8 @@ export class ItemMutationFeedback {
     }
   }
 }
+
+/** Keep draft posters owned by their mounted picker until the command settles. */
+export const canLeaveItemForm: CanDeactivateFn<{ mutation: ItemMutationFeedback } | null> = (
+  component,
+) => !component?.mutation.busy();
