@@ -1,6 +1,6 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
-import { Item, SeriesProgress } from '../models/item.model';
+import { Item, ItemStatus, SeriesProgress } from '../models/item.model';
 import { HistoryEntry } from '../models/storage.model';
 import { ImageStorageService } from './image-storage.service';
 import { isEpisodicType } from '../domain/item.constants';
@@ -35,7 +35,6 @@ function advanceSeriesProgress(progress: SeriesProgress): {
 export class WatchListService {
   private storageService = inject(StorageService);
   private imageStorage = inject(ImageStorageService);
-  private releaseDelayQueue = Promise.resolve();
 
   async addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>): Promise<void> {
     const data = this.storageService.getData();
@@ -60,6 +59,9 @@ export class WatchListService {
 
   async updateItem(item: Item): Promise<void> {
     const data = this.storageService.getData();
+    if (!Object.hasOwn(data.items, item.id)) {
+      throw new Error('The edited item no longer exists. Refresh the item list and try again.');
+    }
     const previousPosterId = data.items[item.id]?.posterId;
     await this.storageService.saveItemChanges({
       deletedItems: data.deletedItems,
@@ -99,105 +101,69 @@ export class WatchListService {
     await this.imageStorage.delete(removed.posterId);
   }
 
-  markWatched(itemId: string): void {
-    const item = this.getItemById(itemId);
-    if (!item) return;
+  markWatched(itemId: string) {
+    return this.mutateItem(itemId, (item) => {
+      const now = new Date().toISOString();
+      if (!isEpisodicType(item.type)) {
+        item.status = 'completed';
+        item.watchHistory.push({ date: now });
+        return;
+      }
 
-    const now = new Date().toISOString();
-
-    if (!isEpisodicType(item.type)) {
-      this.persistItemUpdate({
-        ...item,
-        status: 'completed',
-        watchHistory: [...item.watchHistory, { date: now }],
-      });
-      return;
-    }
-
-    const progress = item.progress || { season: 1, episode: 1, seasons: [] };
-    const { progress: newProgress, completed } = advanceSeriesProgress(progress);
-
-    this.persistItemUpdate({
-      ...item,
-      status: completed ? 'completed' : 'in-progress',
-      progress: newProgress,
-      watchHistory: [
-        ...item.watchHistory,
-        { date: now, season: progress.season, episode: progress.episode },
-      ],
+      const progress = item.progress || { season: 1, episode: 1, seasons: [] };
+      const { progress: newProgress, completed } = advanceSeriesProgress(progress);
+      item.status = completed ? 'completed' : 'in-progress';
+      item.progress = newProgress;
+      item.watchHistory.push({ date: now, season: progress.season, episode: progress.episode });
     });
   }
 
-  snoozeOneWeek(itemId: string): Promise<void> {
-    return this.queueReleaseDelayChange(itemId, 1);
+  snoozeOneWeek(itemId: string) {
+    return this.changeReleaseDelay(itemId, 1);
   }
 
-  removeOneWeekDelay(itemId: string): Promise<void> {
-    return this.queueReleaseDelayChange(itemId, -1);
+  removeOneWeekDelay(itemId: string) {
+    return this.changeReleaseDelay(itemId, -1);
   }
 
-  private queueReleaseDelayChange(itemId: string, change: 1 | -1): Promise<void> {
-    // Read after the preceding write settles, so failed or rapid clicks cannot leak a delay.
-    const write = this.releaseDelayQueue.then(async () => {
-      const item = this.getItemById(itemId);
-      if (!item || item.status !== 'in-progress' || !item.progress) return;
+  private changeReleaseDelay(itemId: string, change: 1 | -1) {
+    return this.mutateItem(itemId, (item) => {
+      if (item.status !== 'in-progress' || !item.progress) return;
       const season = getCurrentSeason(item);
       if (!season) return;
       const count = season.snoozeCount ?? 0;
       if (!isValidSnoozeCount(count)) return;
       if (change === 1 ? !canSnoozeCurrentSeason(item) : count === 0) return;
 
-      await this.updateItem({
-        ...item,
-        progress: {
-          ...item.progress,
-          seasons: item.progress.seasons.map((entry) =>
-            entry === season ? { ...entry, snoozeCount: count + change } : entry,
-          ),
-        },
-      });
-    });
-    this.releaseDelayQueue = write.catch(() => undefined);
-    return write;
-  }
-
-  markCompleted(itemId: string): void {
-    const item = this.getItemById(itemId);
-    if (!item) return;
-
-    this.persistItemUpdate({
-      ...item,
-      status: 'completed',
+      season.snoozeCount = count + change;
     });
   }
 
-  markDropped(itemId: string): void {
-    const item = this.getItemById(itemId);
-    if (!item) return;
+  markCompleted(itemId: string) {
+    return this.changeStatus(itemId, 'completed');
+  }
 
-    this.persistItemUpdate({
-      ...item,
-      status: 'dropped',
+  markDropped(itemId: string) {
+    return this.changeStatus(itemId, 'dropped');
+  }
+
+  markStarted(itemId: string) {
+    return this.changeStatus(itemId, 'in-progress');
+  }
+
+  markPaused(itemId: string) {
+    return this.changeStatus(itemId, 'paused');
+  }
+
+  private changeStatus(itemId: string, status: ItemStatus) {
+    return this.mutateItem(itemId, (item) => {
+      item.status = status;
     });
   }
 
-  markStarted(itemId: string): void {
-    const item = this.getItemById(itemId);
-    if (!item) return;
-
-    this.persistItemUpdate({
-      ...item,
-      status: 'in-progress',
-    });
-  }
-
-  markPaused(itemId: string): void {
-    const item = this.getItemById(itemId);
-    if (!item) return;
-
-    this.persistItemUpdate({
-      ...item,
-      status: 'paused',
+  private mutateItem(itemId: string, intent: (item: Item) => void) {
+    return this.storageService.mutate((draft) => {
+      if (Object.hasOwn(draft.items, itemId)) intent(draft.items[itemId]);
     });
   }
 
@@ -212,12 +178,6 @@ export class WatchListService {
 
   private generateId(): string {
     return `item-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-  }
-
-  private persistItemUpdate(item: Item): void {
-    void this.updateItem(item).catch((error: unknown) => {
-      console.error('Failed to update watch-list item:', error);
-    });
   }
 
   items = computed(() => {

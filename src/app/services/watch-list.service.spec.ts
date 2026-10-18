@@ -87,7 +87,7 @@ describe('WatchListService', () => {
   });
 
   describe('markWatched', () => {
-    it('marks a movie as completed with a watch history entry', () => {
+    it('marks a movie as completed with a watch history entry', async () => {
       const item = createItem({
         id: 'm1',
         title: 'Movie',
@@ -95,9 +95,9 @@ describe('WatchListService', () => {
         status: 'in-progress',
         isAdult: false,
       });
-      saveData({ items: { m1: item } });
+      await saveData({ items: { m1: item } });
 
-      service.markWatched('m1');
+      await service.markWatched('m1');
 
       const updated = storageService.getData().items['m1'];
       expect(updated.status).toBe('completed');
@@ -105,16 +105,16 @@ describe('WatchListService', () => {
       expect(updated.watchHistory[0].date).toBeDefined();
     });
 
-    it('starts a series without progress at season 1 episode 2', () => {
+    it('starts a series without progress at season 1 episode 2', async () => {
       const item = createItem({
         id: 's1',
         title: 'Fresh Series',
         status: 'in-progress',
         isAdult: false,
       });
-      saveData({ items: { s1: item } });
+      await saveData({ items: { s1: item } });
 
-      service.markWatched('s1');
+      await service.markWatched('s1');
 
       const updated = storageService.getData().items['s1'];
       expect(updated.progress!.season).toBe(1);
@@ -122,7 +122,7 @@ describe('WatchListService', () => {
       expect(updated.watchHistory[0]).toMatchObject({ season: 1, episode: 1 });
     });
 
-    it('marks series as completed when watching last episode of final season', () => {
+    it('marks series as completed when watching last episode of final season', async () => {
       const item: Item = {
         id: 'series-1',
         title: 'Test Series',
@@ -139,7 +139,7 @@ describe('WatchListService', () => {
         createdAt: '2026-04-01T10:00:00.000Z',
       };
 
-      storageService.saveData({
+      await storageService.saveData({
         schemaVersion: CURRENT_SCHEMA_VERSION,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
@@ -147,14 +147,14 @@ describe('WatchListService', () => {
         deletedItems: {},
       });
 
-      service.markWatched('series-1');
+      await service.markWatched('series-1');
 
       const updatedItem = storageService.getData().items['series-1'];
       expect(updatedItem.status).toBe('completed');
       expect(updatedItem.progress!.episode).toBe(10);
     });
 
-    it('moves to next season episode 1 when watching last episode of current season', () => {
+    it('moves to next season episode 1 when watching last episode of current season', async () => {
       const item: Item = {
         id: 'series-2',
         title: 'Multi Season Series',
@@ -174,7 +174,7 @@ describe('WatchListService', () => {
         createdAt: '2026-04-01T10:00:00.000Z',
       };
 
-      storageService.saveData({
+      await storageService.saveData({
         schemaVersion: CURRENT_SCHEMA_VERSION,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
@@ -182,7 +182,7 @@ describe('WatchListService', () => {
         deletedItems: {},
       });
 
-      service.markWatched('series-2');
+      await service.markWatched('series-2');
 
       const updatedItem = storageService.getData().items['series-2'];
       expect(updatedItem.status).toBe('in-progress');
@@ -190,7 +190,7 @@ describe('WatchListService', () => {
       expect(updatedItem.progress!.episode).toBe(1);
     });
 
-    it('handles non-contiguous season numbers when advancing to next season', () => {
+    it('handles non-contiguous season numbers when advancing to next season', async () => {
       const item: Item = {
         id: 'series-3',
         title: 'Non-Contiguous Seasons',
@@ -210,7 +210,7 @@ describe('WatchListService', () => {
         createdAt: '2026-04-01T10:00:00.000Z',
       };
 
-      storageService.saveData({
+      await storageService.saveData({
         schemaVersion: CURRENT_SCHEMA_VERSION,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
@@ -218,7 +218,7 @@ describe('WatchListService', () => {
         deletedItems: {},
       });
 
-      service.markWatched('series-3');
+      await service.markWatched('series-3');
 
       const updatedItem = storageService.getData().items['series-3'];
       expect(updatedItem.status).toBe('in-progress');
@@ -228,66 +228,70 @@ describe('WatchListService', () => {
   });
 
   describe('status transitions', () => {
-    it('marks an item as completed', () => {
-      saveData({ items: { i1: createItem({ id: 'i1', status: 'in-progress', isAdult: false }) } });
+    it('marks an item as completed', async () => {
+      await saveData({
+        items: { i1: createItem({ id: 'i1', status: 'in-progress', isAdult: false }) },
+      });
 
-      service.markCompleted('i1');
+      await service.markCompleted('i1');
 
       expect(storageService.getData().items['i1'].status).toBe('completed');
     });
 
-    it('marks an item as dropped', () => {
-      saveData({ items: { i1: createItem({ id: 'i1', status: 'in-progress', isAdult: false }) } });
+    it('marks an item as dropped', async () => {
+      await saveData({
+        items: { i1: createItem({ id: 'i1', status: 'in-progress', isAdult: false }) },
+      });
 
-      service.markDropped('i1');
+      await service.markDropped('i1');
 
       expect(storageService.getData().items['i1'].status).toBe('dropped');
     });
 
-    it('marks an item as started', () => {
-      saveData({ items: { i1: createItem({ id: 'i1', status: 'not-started', isAdult: false }) } });
+    it('marks an item as started', async () => {
+      await saveData({
+        items: { i1: createItem({ id: 'i1', status: 'not-started', isAdult: false }) },
+      });
 
-      service.markStarted('i1');
+      await service.markStarted('i1');
 
       expect(storageService.getData().items['i1'].status).toBe('in-progress');
     });
 
-    it('marks a series as paused', () => {
-      saveData({
+    it('marks a series as paused', async () => {
+      await saveData({
         items: {
           i1: createItem({ id: 'i1', type: 'series', status: 'in-progress', isAdult: false }),
         },
       });
 
-      service.markPaused('i1');
+      await service.markPaused('i1');
 
       expect(storageService.getData().items['i1'].status).toBe('paused');
     });
 
-    it('marks a movie as paused', () => {
-      saveData({
+    it('marks a movie as paused', async () => {
+      await saveData({
         items: {
           i1: createItem({ id: 'i1', type: 'movie', status: 'in-progress', isAdult: false }),
         },
       });
 
-      service.markPaused('i1');
+      await service.markPaused('i1');
 
       expect(storageService.getData().items['i1'].status).toBe('paused');
     });
 
-    it('does nothing when the item does not exist', () => {
-      saveData({
+    it('does nothing when the item does not exist', async () => {
+      await saveData({
         items: { i1: createItem({ id: 'i1', status: 'in-progress', isAdult: false }) },
       });
-      const saveSpy = vi.spyOn(storageService, 'saveItemChanges');
-
-      service.markCompleted('missing');
-      service.markDropped('missing');
-      service.markStarted('missing');
-      service.markPaused('missing');
-
-      expect(saveSpy).not.toHaveBeenCalled();
+      const original = service.items();
+      await service.markCompleted('missing');
+      await service.markDropped('missing');
+      await service.markStarted('missing');
+      await service.markPaused('missing');
+      expect(service.items()).toEqual(original);
     });
   });
 
@@ -390,7 +394,7 @@ describe('WatchListService', () => {
       },
     );
 
-    it('does not write for invalid targets, unusable dates, or unsafe increments', async () => {
+    it('does not change invalid targets, unusable dates, or unsafe increments', async () => {
       for (const item of [
         snoozable({ type: 'movie' }),
         snoozable({ status: 'paused' }),
@@ -417,11 +421,10 @@ describe('WatchListService', () => {
         ),
       ]) {
         await saveData({ items: { snoozed: item } });
-        const spy = vi.spyOn(storageService, 'saveItemChanges');
+        const original = service.items();
         await service.snoozeOneWeek('snoozed');
         await service.snoozeOneWeek('missing');
-        expect(spy).not.toHaveBeenCalled();
-        spy.mockRestore();
+        expect(service.items()).toEqual(original);
       }
     });
 
@@ -434,10 +437,10 @@ describe('WatchListService', () => {
         snoozeCount: 1,
       });
       await saveData({ items: { snoozed: item } });
-      service.markWatched('snoozed');
+      await service.markWatched('snoozed');
       expect(service.getItemById('snoozed')!.progress!.episode).toBe(4);
       expect(service.getItemById('snoozed')!.progress!.seasons).toEqual(item.progress!.seasons);
-      service.markWatched('snoozed');
+      await service.markWatched('snoozed');
       const updated = service.getItemById('snoozed')!;
       expect(updated.progress!.season).toBe(2);
       expect(updated.progress!.seasons).toEqual(item.progress!.seasons);

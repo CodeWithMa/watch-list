@@ -7,6 +7,7 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 import { Item, ItemType } from '../../models/item.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
+import { WatchActionFeedback } from '../watch-action-feedback';
 
 @Component({
   selector: 'app-home',
@@ -14,6 +15,12 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">What should I watch now?</h1>
+      @if (actions.error()) {
+        <p role="alert" class="mb-4 text-sm text-accent-danger">{{ actions.error() }}</p>
+      }
+      @if (actions.sessionSuccess()) {
+        <p role="status" class="mb-4 text-sm">Changed for this session only; not saved to disk.</p>
+      }
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 justify-items-center">
         <div class="w-full max-w-[280px] justify-self-center">
@@ -29,19 +36,22 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
               <div class="flex flex-wrap justify-center gap-2 mt-3">
                 <button
                   (click)="markItem(nextSeries, 'watched')"
-                  class="px-3 py-1.5 border border-transparent rounded bg-accent-primary text-white cursor-pointer text-xs font-medium hover:bg-accent-primary-hover"
+                  [disabled]="actions.busy()"
+                  class="px-3 py-1.5 border border-transparent rounded bg-accent-primary text-white cursor-pointer text-xs font-medium hover:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Mark Watched
                 </button>
                 <button
                   (click)="markItem(nextSeries, 'paused')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  [disabled]="actions.busy()"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Pause
                 </button>
                 <button
                   (click)="markItem(nextSeries, 'dropped')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  [disabled]="actions.busy()"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Drop
                 </button>
@@ -76,19 +86,22 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
               <div class="flex flex-wrap justify-center gap-2 mt-3">
                 <button
                   (click)="markItem(nextMovie, 'watched')"
-                  class="px-3 py-1.5 border border-transparent rounded bg-accent-primary text-white cursor-pointer text-xs font-medium hover:bg-accent-primary-hover"
+                  [disabled]="actions.busy()"
+                  class="px-3 py-1.5 border border-transparent rounded bg-accent-primary text-white cursor-pointer text-xs font-medium hover:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Mark Watched
                 </button>
                 <button
                   (click)="markItem(nextMovie, 'paused')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  [disabled]="actions.busy()"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Pause
                 </button>
                 <button
                   (click)="markItem(nextMovie, 'dropped')"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                  [disabled]="actions.busy()"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Drop
                 </button>
@@ -134,13 +147,15 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
                 <div class="flex shrink-0 gap-2">
                   <button
                     (click)="startBacklogItem(item.id)"
-                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                    [disabled]="actions.busy()"
+                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Add to currently watching
                   </button>
                   <button
                     (click)="dropBacklogItem(item.id)"
-                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                    [disabled]="actions.busy()"
+                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Drop
                   </button>
@@ -181,13 +196,15 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
                 <div class="flex shrink-0 gap-2">
                   <button
                     (click)="resumePausedItem(item.id)"
-                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                    [disabled]="actions.busy()"
+                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Resume
                   </button>
                   <button
                     (click)="dropPausedItem(item.id)"
-                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                    [disabled]="actions.busy()"
+                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Drop
                   </button>
@@ -210,6 +227,7 @@ export class HomeComponent {
   private roundRobinService = inject(RoundRobinService);
   private watchListService = inject(WatchListService);
   private providerSettings = inject(ProviderSettingsService);
+  readonly actions = new WatchActionFeedback();
 
   nextSeries = this.roundRobinService.nextSeries;
   nextMovie = this.roundRobinService.nextMovie;
@@ -242,29 +260,37 @@ export class HomeComponent {
   markItem(
     getter: () => Item | null | undefined,
     action: 'watched' | 'completed' | 'dropped' | 'paused',
-  ): void {
+  ) {
     const item = getter();
     if (!item) return;
-    if (action === 'watched') this.watchListService.markWatched(item.id);
-    else if (action === 'completed') this.watchListService.markCompleted(item.id);
-    else if (action === 'dropped') this.watchListService.markDropped(item.id);
-    else this.watchListService.markPaused(item.id);
+    return this.actions.run(() => {
+      if (action === 'watched') return this.watchListService.markWatched(item.id);
+      if (action === 'completed') return this.watchListService.markCompleted(item.id);
+      if (action === 'dropped') return this.watchListService.markDropped(item.id);
+      return this.watchListService.markPaused(item.id);
+    }, 'Could not save the watch action.');
   }
 
-  startBacklogItem(itemId: string): void {
-    this.watchListService.markStarted(itemId);
+  startBacklogItem(itemId: string) {
+    return this.actions.run(
+      () => this.watchListService.markStarted(itemId),
+      'Could not start the item.',
+    );
   }
 
-  dropBacklogItem(itemId: string): void {
-    this.watchListService.markDropped(itemId);
+  dropBacklogItem(itemId: string) {
+    return this.actions.run(
+      () => this.watchListService.markDropped(itemId),
+      'Could not drop the item.',
+    );
   }
 
-  resumePausedItem(itemId: string): void {
-    this.watchListService.markStarted(itemId);
+  resumePausedItem(itemId: string) {
+    return this.startBacklogItem(itemId);
   }
 
-  dropPausedItem(itemId: string): void {
-    this.watchListService.markDropped(itemId);
+  dropPausedItem(itemId: string) {
+    return this.dropBacklogItem(itemId);
   }
 
   private hasItemType(type: ItemType): boolean {
