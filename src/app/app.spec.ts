@@ -7,6 +7,7 @@ import { Subject } from 'rxjs';
 import { afterEach, vi } from 'vitest';
 import { App } from './app';
 import { StorageService } from './services/storage.service';
+import { ImageStorageService } from './services/image-storage.service';
 import { CURRENT_SCHEMA_VERSION } from './models/storage.model';
 import { createDefaultStorageData } from './domain/storage-schema';
 import { routes } from './app.routes';
@@ -108,15 +109,113 @@ describe('App update notification', () => {
 describe('App storage warning', () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it('offers a protected Retry screen for a blocked upgrade and loads the existing collection after retry', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
+    });
+    Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: new IDBFactory() });
+    const legacy = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 2);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('storage');
+        request.result.createObjectStore('images', { keyPath: 'id' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const original = createDefaultStorageData();
+    original.groups['existing'] = { id: 'existing', name: 'Existing collection', order: 1 };
+    const transaction = legacy.transaction('storage', 'readwrite');
+    transaction.objectStore('storage').put(original, 'watch-list-data');
+    await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
+    const storage = TestBed.inject(StorageService);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      await storage.initialize();
+      const fixture = TestBed.createComponent(App);
+      fixture.detectChanges();
+      const root = fixture.nativeElement as HTMLElement;
+
+      expect(root.querySelector('main [role="alert"]')?.textContent).toContain(
+        'Close other Watch List tabs',
+      );
+      expect(root.querySelector('router-outlet')).toBeNull();
+      expect(root.textContent).not.toContain('Changes are only kept in memory');
+      expect(root.querySelector<HTMLButtonElement>('main button')?.textContent?.trim()).toBe(
+        'Retry',
+      );
+
+      legacy.close();
+      expect(await TestBed.inject(ImageStorageService).exportImages()).toEqual([]);
+      fixture.detectChanges();
+      expect(root.querySelector('router-outlet')).toBeNull();
+      expect(root.querySelector<HTMLButtonElement>('main button')?.textContent?.trim()).toBe(
+        'Retry',
+      );
+      root.querySelector<HTMLButtonElement>('main button')?.click();
+      fixture.detectChanges();
+      expect(root.querySelector('router-outlet')).toBeNull();
+      await storage.initialize();
+      fixture.detectChanges();
+
+      expect(storage.getData()).toEqual(original);
+      expect(root.querySelector('router-outlet')).not.toBeNull();
+      expect(root.querySelector('main [role="alert"]')).toBeNull();
+    } finally {
+      legacy.close();
+    }
+  });
+
+  it('replaces editable routes with a Reload action when another tab upgrades the database', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
+    });
+    Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: new IDBFactory() });
+    const reload = vi.fn();
+    TestBed.overrideComponent(App, {
+      add: { providers: [{ provide: DOCUMENT, useValue: { location: { reload } } }] },
+    });
+    const storage = TestBed.inject(StorageService);
+    await storage.initialize();
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('router-outlet')).not.toBeNull();
+
+    const future = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 4);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('Obsolete connection blocked the upgrade'));
+    });
+    try {
+      fixture.detectChanges();
+      expect(root.querySelector('router-outlet')).toBeNull();
+      expect(root.querySelector('main [role="alert"]')?.textContent).toContain('Reload Watch List');
+      expect(root.textContent).toContain('Collection changes are disabled');
+      expect(root.textContent).not.toContain('Download original document');
+      expect(root.textContent).not.toContain('was reverted');
+      const button = root.querySelector<HTMLButtonElement>('main button');
+      expect(button?.textContent?.trim()).toBe('Reload');
+      button?.click();
+      expect(reload).toHaveBeenCalledOnce();
+    } finally {
+      future.close();
+    }
+  });
+
   it('keeps incompatible collections behind an actionable message and downloads the original document', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes), { provide: PLATFORM_ID, useValue: 'server' }],
+    });
     Object.defineProperty(globalThis, 'indexedDB', {
       configurable: true,
       value: new IDBFactory(),
     });
-    const initial = new StorageService();
+    const initial = TestBed.runInInjectionContext(() => new StorageService());
     await initial.initialize();
     const database = await new Promise<IDBDatabase>((resolve) => {
-      const request = indexedDB.open('watch-list', 2);
+      const request = indexedDB.open('watch-list');
       request.onsuccess = () => resolve(request.result);
     });
     const raw = {
@@ -128,9 +227,6 @@ describe('App storage warning', () => {
     const transaction = database.transaction('storage', 'readwrite');
     transaction.objectStore('storage').put(raw, 'watch-list-data');
     await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
-    TestBed.configureTestingModule({
-      providers: [provideRouter(routes), { provide: PLATFORM_ID, useValue: 'server' }],
-    });
     const storage = TestBed.inject(StorageService);
     await storage.initialize();
     const fixture = TestBed.createComponent(App);
@@ -232,14 +328,17 @@ describe('App storage warning', () => {
   it.each(unsupportedRecoveryValues)(
     'explains why a future document containing %s cannot be downloaded losslessly as JSON',
     async (_, createValue) => {
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
+      });
       Object.defineProperty(globalThis, 'indexedDB', {
         configurable: true,
         value: new IDBFactory(),
       });
-      const initial = new StorageService();
+      const initial = TestBed.runInInjectionContext(() => new StorageService());
       await initial.initialize();
       const database = await new Promise<IDBDatabase>((resolve) => {
-        const request = indexedDB.open('watch-list', 2);
+        const request = indexedDB.open('watch-list');
         request.onsuccess = () => resolve(request.result);
       });
       const raw = {
@@ -249,9 +348,6 @@ describe('App storage warning', () => {
       const transaction = database.transaction('storage', 'readwrite');
       transaction.objectStore('storage').put(raw, 'watch-list-data');
       await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
-      TestBed.configureTestingModule({
-        providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
-      });
       const storage = TestBed.inject(StorageService);
       await storage.initialize();
       const fixture = TestBed.createComponent(App);
@@ -277,7 +373,7 @@ describe('App storage warning', () => {
     },
   );
 
-  it('keeps the session-only warning visible after edits and imports until storage recovers', async () => {
+  it('keeps session edits and their warning after edits, imports, and connection recovery', async () => {
     Object.defineProperty(globalThis, 'indexedDB', {
       configurable: true,
       value: new IDBFactory(),
@@ -299,7 +395,9 @@ describe('App storage warning', () => {
     expect(warning()).toContain('Changes are only kept in memory and will be lost on reload.');
     expect(warning()).not.toContain('was reverted');
 
-    await storage.saveData(storage.getData());
+    const edited = storage.getData();
+    edited.groups['session'] = { id: 'session', name: 'Session edit', order: 1 };
+    await storage.saveData(edited);
     fixture.detectChanges();
     expect(warning()).toContain('will be lost on reload');
 
@@ -307,8 +405,10 @@ describe('App storage warning', () => {
     fixture.detectChanges();
     expect(warning()).toContain('will be lost on reload');
 
+    const session = storage.getData();
     await storage.initialize();
     fixture.detectChanges();
-    expect(root.querySelector('[role="alert"]')).toBeNull();
+    expect(storage.getData()).toEqual(session);
+    expect(warning()).toContain('will be lost on reload');
   });
 });

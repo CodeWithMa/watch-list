@@ -6,6 +6,7 @@ import { Item } from '../models/item.model';
 import { createDefaultStorageData } from '../domain/storage-schema';
 import { ImageStorageService } from './image-storage.service';
 import { TestBed } from '@angular/core/testing';
+import { WatchListDatabase } from './watch-list-database.service';
 
 describe('StorageService', () => {
   beforeEach(() => {
@@ -17,10 +18,11 @@ describe('StorageService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('creates a default dataset when storage is empty', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     const data = service.getData();
 
@@ -31,11 +33,10 @@ describe('StorageService', () => {
   });
 
   it('allows initialization to be retried after an open failure', async () => {
-    const service = new StorageService();
-    const storage = service as unknown as {
-      openDatabase: () => Promise<IDBDatabase>;
-    };
-    vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
+    const service = createStorageService();
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('Unavailable');
+    });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     await expect(service.initialize()).resolves.toBeUndefined();
@@ -47,56 +48,271 @@ describe('StorageService', () => {
     expect(service.getInMemorySessionSignal()()).toBe(false);
   });
 
+  it('does not publish an empty session when an older tab blocks the database upgrade', async () => {
+    const legacy = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 2);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('storage');
+        request.result.createObjectStore('images', { keyPath: 'id' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const original = dataWithMovie();
+    await writeRecord(legacy, original);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const service = createStorageService();
+    try {
+      await service.initialize();
+
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      await expect(service.saveData(createDefaultStorageData())).rejects.toThrow(/another.*tab/);
+      expect(await readRecord(legacy, 'watch-list-data')).toEqual(original);
+
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const retry = service.initialize();
+      expect(service.getLoadingSignal()()).toBe(true);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await retry;
+      expect(service.getLoadingSignal()()).toBe(false);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getDatabaseErrorSignal()()?.message).toContain('timed out');
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      vi.useRealTimers();
+    } finally {
+      legacy.close();
+    }
+
+    await service.initialize();
+    expect(service.getData()).toEqual(original);
+    await service.saveData(withGroup(service.getData(), 'saved-after-retry'));
+    const reloaded = createStorageService();
+    await reloaded.initialize();
+    expect(reloaded.getData().groups['saved-after-retry'].name).toBe('saved-after-retry');
+  });
+
+  it.each(['synchronous', 'asynchronous'])(
+    'falls back to a writable session when a blocked retry fails with an unrelated %s error',
+    async (failure) => {
+      const legacy = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('watch-list', 2);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore('storage');
+          request.result.createObjectStore('images', { keyPath: 'id' });
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const original = dataWithMovie();
+      await writeRecord(legacy, original);
+      const service = createStorageService();
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      try {
+        await service.initialize();
+        expect(service.getDatabaseErrorSignal()()?.recovery).toBe('retry');
+      } finally {
+        legacy.close();
+      }
+
+      const error = new DOMException('Storage unavailable', 'UnknownError');
+      const request = { error, onerror: null } as unknown as IDBOpenDBRequest;
+      vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+        if (failure === 'synchronous') throw error;
+        return request;
+      });
+      const retry = service.initialize();
+      if (failure === 'asynchronous') request.onerror!(new Event('error'));
+      await retry;
+
+      expect(service.getDatabaseErrorSignal()()).toBeNull();
+      expect(service.getInMemorySessionSignal()()).toBe(true);
+      await service.saveData(withGroup(service.getData(), 'session-edit'));
+      expect(service.getData().groups['session-edit'].name).toBe('session-edit');
+      const reloaded = createStorageService();
+      await reloaded.initialize();
+      expect(reloaded.getData()).toEqual(original);
+    },
+  );
+
+  it('invalidates the loaded collection before a newer tab upgrades the database', async () => {
+    const service = createStorageService();
+    await service.initialize();
+    await service.saveData(dataWithMovie());
+    const snapshot = service.getData();
+    let collectionVisibleDuringUpgrade = true;
+    const future = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 4);
+      request.onupgradeneeded = () => {
+        collectionVisibleDuringUpgrade = service.getDataSignal()() !== null;
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('Obsolete connection blocked the upgrade'));
+    });
+    try {
+      expect(collectionVisibleDuringUpgrade).toBe(false);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(() => service.getData()).toThrow(/reload/i);
+      await expect(service.saveData(withGroup(snapshot, 'stale'))).rejects.toThrow(/reload/i);
+      await expect(service.importData(snapshot)).rejects.toThrow(/reload/i);
+      await expect(service.importDataWithImages(snapshot, [])).rejects.toThrow(/reload/i);
+      const writePosters = vi.fn();
+      await expect(service.writeImages(writePosters)).rejects.toThrow(/reload/i);
+      expect(writePosters).not.toHaveBeenCalled();
+      await service.initialize();
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getSaveErrorSignal()()).toBeNull();
+      expect(await readRecord(future, 'watch-list-data')).toEqual(snapshot);
+    } finally {
+      future.close();
+    }
+  });
+
+  it('requires an updated app instead of session defaults when a newer database exists at startup', async () => {
+    const future = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 4);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('storage');
+        request.result.createObjectStore('images', { keyPath: 'id' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const original = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, future: ['preserve'] };
+    await writeRecord(future, original);
+    const service = createStorageService();
+    try {
+      await service.initialize();
+
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getDatabaseErrorSignal()()?.recovery).toBe('reload');
+      expect(service.getDatabaseErrorSignal()()?.message).toContain('newer version');
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      await expect(service.saveData(createDefaultStorageData())).rejects.toThrow(/newer version/i);
+      await service.initialize();
+      expect(service.getDataSignal()()).toBeNull();
+      expect(await readRecord(future, 'watch-list-data')).toEqual(original);
+    } finally {
+      future.close();
+    }
+  });
+
+  it('retries a connection timeout even after metadata initialization previously succeeded', async () => {
+    const service = createStorageService();
+    await service.initialize();
+    await service.saveData(dataWithMovie());
+    const snapshot = service.getData();
+    TestBed.inject(WatchListDatabase).close();
+    const blocker = await openTestDatabase();
+    const upgradeRequest = indexedDB.open('watch-list', 4);
+    const blocked = new Promise<void>((resolve) => (upgradeRequest.onblocked = () => resolve()));
+    const upgraded = new Promise<IDBDatabase>((resolve, reject) => {
+      upgradeRequest.onsuccess = () => resolve(upgradeRequest.result);
+      upgradeRequest.onerror = () => reject(upgradeRequest.error);
+    });
+    await blocked;
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const read = expect(TestBed.inject(ImageStorageService).exportImages()).rejects.toThrow(
+        /timed out/,
+      );
+      await vi.advanceTimersByTimeAsync(10_000);
+      await read;
+      expect(service.getDataSignal()()).toBeNull();
+
+      const retry = service.initialize();
+      expect(service.getLoadingSignal()()).toBe(true);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await retry;
+      expect(service.getDatabaseErrorSignal()()?.recovery).toBe('retry');
+      expect(service.getDataSignal()()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      blocker.close();
+    }
+    const future = await upgraded;
+    try {
+      await service.initialize();
+      expect(service.getDatabaseErrorSignal()()?.recovery).toBe('reload');
+      expect(await readRecord(future, 'watch-list-data')).toEqual(snapshot);
+    } finally {
+      future.close();
+    }
+  });
+
+  it.each([false, true])(
+    'preserves session edits after independent poster recovery (reopen fails: %s)',
+    async (reopenFails) => {
+      const service = TestBed.inject(StorageService);
+      const images = TestBed.inject(ImageStorageService);
+      vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+        throw new Error('Unavailable');
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      await service.initialize();
+      await service.saveData(withGroup(service.getData(), 'session-edit'));
+      const session = service.getData();
+      const legacy = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('watch-list', 2);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore('storage');
+          request.result.createObjectStore('images', { keyPath: 'id' });
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const original = dataWithMovie();
+      await writeRecord(legacy, original);
+      try {
+        await expect(images.exportImages()).rejects.toThrow(/blocked/);
+      } finally {
+        legacy.close();
+      }
+
+      expect(await images.exportImages()).toEqual([]);
+      if (reopenFails) {
+        TestBed.inject(WatchListDatabase).close();
+        vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+          throw new Error('Unavailable again');
+        });
+      }
+      await expect(images.delete('missing-poster')).rejects.toThrow(
+        'Persistent storage is unavailable',
+      );
+      expect(service.getData()).toEqual(session);
+      await service.initialize();
+      expect(service.getData()).toEqual(session);
+      expect(service.getInMemorySessionSignal()()).toBe(true);
+      const database = await openTestDatabase();
+      try {
+        expect(await readRecord(database, 'watch-list-data')).toEqual(original);
+      } finally {
+        database.close();
+      }
+    },
+  );
+
   it('closes an opened database when initialization fails', async () => {
-    const service = new StorageService();
-    const database = { close: vi.fn() } as unknown as IDBDatabase;
-    const storage = service as unknown as {
-      openDatabase: () => Promise<IDBDatabase>;
-      readData: () => Promise<unknown | undefined>;
-      writeData: (data: unknown) => Promise<void>;
-    };
-    vi.spyOn(storage, 'openDatabase').mockResolvedValue(database);
-    vi.spyOn(storage, 'readData').mockResolvedValue(undefined);
-    vi.spyOn(storage, 'writeData').mockRejectedValue(new Error('Disk full'));
+    const service = createStorageService();
+    const put = vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(() => {
+      throw new Error('Disk full');
+    });
 
     await expect(service.initialize()).resolves.toBeUndefined();
 
-    expect(database.close).toHaveBeenCalledOnce();
     expect(service.getInMemorySessionSignal()()).toBe(true);
-  });
-
-  it('rejects a blocked open request without reading its unavailable result', async () => {
-    const service = new StorageService();
-    const database = { close: vi.fn() } as unknown as IDBDatabase;
-    let resultAvailable = false;
-    const request = {
-      onupgradeneeded: null,
-      onsuccess: null,
-      onerror: null,
-      onblocked: null,
-      get result(): IDBDatabase {
-        if (!resultAvailable) {
-          throw new DOMException('The request is still pending', 'InvalidStateError');
-        }
-        return database;
-      },
-    } as unknown as IDBOpenDBRequest;
-    vi.spyOn(indexedDB, 'open').mockReturnValue(request);
-
-    const opening = (
-      service as unknown as { openDatabase: () => Promise<IDBDatabase> }
-    ).openDatabase();
-    request.onblocked!({} as IDBVersionChangeEvent);
-
-    await expect(opening).rejects.toThrowError('IndexedDB open request is blocked');
-    resultAvailable = true;
-    request.onsuccess!(new Event('success'));
-
-    expect(database.close).toHaveBeenCalledOnce();
+    put.mockRestore();
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.deleteDatabase('watch-list');
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('Failed connection was not closed'));
+    });
   });
 
   it('loads data persisted by an earlier service instance', async () => {
-    const firstService = new StorageService();
+    const firstService = createStorageService();
     await firstService.initialize();
     await firstService.importData({
       schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -106,7 +322,7 @@ describe('StorageService', () => {
       deletedItems: {},
     });
 
-    const secondService = new StorageService();
+    const secondService = createStorageService();
     await secondService.initialize();
 
     expect(secondService.getData().lastModifiedAt).not.toBe('2026-04-01T10:00:00.000Z');
@@ -114,7 +330,7 @@ describe('StorageService', () => {
   });
 
   it('retains season delay through reload and portable JSON import, including legacy imports', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     const item: Item = {
       id: 'delayed',
@@ -132,7 +348,7 @@ describe('StorageService', () => {
       },
     };
     await service.saveData({ ...service.getData(), items: { delayed: item } });
-    const reloaded = new StorageService();
+    const reloaded = createStorageService();
     await reloaded.initialize();
     expect(reloaded.getData().items['delayed']).toEqual(item);
     const portable: unknown = JSON.parse(JSON.stringify(reloaded.getData()));
@@ -148,14 +364,14 @@ describe('StorageService', () => {
   });
 
   it('replaces malformed persisted data with the default dataset', async () => {
-    const firstService = new StorageService();
+    const firstService = createStorageService();
     await firstService.initialize();
-    const database = (firstService as unknown as { database: IDBDatabase }).database;
+    const database = await openTestDatabase();
     const corruptData = { invalid: true };
     await writeRecord(database, corruptData);
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    const secondService = new StorageService();
+    const secondService = createStorageService();
     await secondService.initialize();
 
     expect(secondService.getData()).toMatchObject({
@@ -170,7 +386,7 @@ describe('StorageService', () => {
   it.each([false, true])(
     'preserves a newer document and stays locked instead of recovering to writable defaults (changed shape: %s)',
     async (changedShape) => {
-      const initial = new StorageService();
+      const initial = createStorageService();
       await initial.initialize();
       const database = await openTestDatabase();
       const supported = dataWithMovie();
@@ -192,7 +408,7 @@ describe('StorageService', () => {
         throw new Error('Writes unavailable');
       });
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      const service = new StorageService();
+      const service = createStorageService();
 
       await expect(service.initialize()).resolves.toBeUndefined();
       expect(service.getDataSignal()()).toBeNull();
@@ -217,14 +433,14 @@ describe('StorageService', () => {
   );
 
   it('backs up unreadable data to a timestamped key', async () => {
-    const firstService = new StorageService();
+    const firstService = createStorageService();
     await firstService.initialize();
-    const database = (firstService as unknown as { database: IDBDatabase }).database;
+    const database = await openTestDatabase();
     const corruptData = { invalid: true };
     await writeRecord(database, corruptData);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    const secondService = new StorageService();
+    const secondService = createStorageService();
     await secondService.initialize();
 
     const backups = await secondService.getRecoveryBackups();
@@ -237,7 +453,7 @@ describe('StorageService', () => {
   it.each(['save', 'import', 'portable'] as const)(
     'locks an initialized collection instead of overwriting a newer cross-tab document during %s',
     async (operation) => {
-      const service = new StorageService();
+      const service = createStorageService();
       await service.initialize();
       const snapshot = service.getData();
       const database = await openTestDatabase();
@@ -278,7 +494,7 @@ describe('StorageService', () => {
   it.each(['empty', 'corrupt', 'legacy'] as const)(
     'stays locked when another tab upgrades an %s collection between startup read and write',
     async (state) => {
-      const initial = new StorageService();
+      const initial = createStorageService();
       await initial.initialize();
       const database = await openTestDatabase();
       await writeRecord(
@@ -292,7 +508,7 @@ describe('StorageService', () => {
       const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
       const upgrade = upgradeAfterNextRead(database, raw);
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      const service = new StorageService();
+      const service = createStorageService();
 
       await service.initialize();
       await upgrade;
@@ -307,7 +523,7 @@ describe('StorageService', () => {
   );
 
   it('commits its version check and save atomically with another tab upgrading the collection', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     const database = await openTestDatabase();
     const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
@@ -322,7 +538,7 @@ describe('StorageService', () => {
   });
 
   it('blocks poster changes even when the image service is used before storage initialization', async () => {
-    const initial = new StorageService();
+    const initial = createStorageService();
     await initial.initialize();
     const database = await openTestDatabase();
     const raw = { ...dataWithMovie(), schemaVersion: CURRENT_SCHEMA_VERSION + 1 };
@@ -356,7 +572,7 @@ describe('StorageService', () => {
   });
 
   it('refuses document replacement when a write is attempted before initialization', async () => {
-    const initial = new StorageService();
+    const initial = createStorageService();
     await initial.initialize();
     const database = await openTestDatabase();
     const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: [{ value: 'keep' }] };
@@ -364,7 +580,7 @@ describe('StorageService', () => {
     const supported = dataWithMovie();
 
     for (const operation of ['save', 'import', 'portable'] as const) {
-      const service = new StorageService();
+      const service = createStorageService();
       const write =
         operation === 'save'
           ? service.saveData(supported)
@@ -382,7 +598,7 @@ describe('StorageService', () => {
   it.each(['groups', 'items', 'deletedItems'] as const)(
     'backs up the original dataset when startup drops invalid %s',
     async (collection) => {
-      const firstService = new StorageService();
+      const firstService = createStorageService();
       await firstService.initialize();
       const database = await openTestDatabase();
       const valid = dataWithMovie();
@@ -390,7 +606,7 @@ describe('StorageService', () => {
       await writeRecord(database, raw);
       vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-      const recovered = new StorageService();
+      const recovered = createStorageService();
       await recovered.initialize();
 
       expect(recovered.getData().items['movie'].title).toBe('Movie');
@@ -398,7 +614,7 @@ describe('StorageService', () => {
       expect(backups).toHaveLength(1);
       await expect(recovered.getRecoveryBackupByKey(backups[0].key)).resolves.toEqual(raw);
 
-      const reloaded = new StorageService();
+      const reloaded = createStorageService();
       await reloaded.initialize();
       expect(reloaded.getData()).toEqual(recovered.getData());
       expect(await reloaded.getRecoveryBackups()).toHaveLength(1);
@@ -407,21 +623,21 @@ describe('StorageService', () => {
   );
 
   it('backs up original persisted data before repairing a missing group without dropping records', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     const database = await openTestDatabase();
     const raw = dataWithMovie();
     raw.items.movie.groupId = 'missing';
     await writeRecord(database, raw);
 
-    const recovered = new StorageService();
+    const recovered = createStorageService();
     await recovered.initialize();
 
     expect(recovered.getData().items['movie'].groupId).toBe('ungrouped');
     const backups = await recovered.getRecoveryBackups();
     expect(backups).toHaveLength(1);
     await expect(recovered.getRecoveryBackupByKey(backups[0].key)).resolves.toEqual(raw);
-    const reloaded = new StorageService();
+    const reloaded = createStorageService();
     await reloaded.initialize();
     expect(reloaded.getData()).toEqual(recovered.getData());
     expect(await reloaded.getRecoveryBackups()).toHaveLength(1);
@@ -429,7 +645,7 @@ describe('StorageService', () => {
   });
 
   it('backs up malformed own prototype-named records before omitting them during startup', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     const database = await openTestDatabase();
     const valid = dataWithMovie();
@@ -442,7 +658,7 @@ describe('StorageService', () => {
     };
     await writeRecord(database, raw);
 
-    const recovered = new StorageService();
+    const recovered = createStorageService();
     await recovered.initialize();
 
     expect(recovered.getData().items).toEqual(valid.items);
@@ -457,7 +673,7 @@ describe('StorageService', () => {
   it.each(['title', 'identity', 'date', 'group'])(
     'rejects unsafe normal saves (%s) without publishing or persisting partial recovery',
     async (invalid) => {
-      const service = new StorageService();
+      const service = createStorageService();
       await service.initialize();
       const original = service.getData();
       const unsafe = dataWithMovie();
@@ -473,7 +689,7 @@ describe('StorageService', () => {
       ).rejects.toThrow(/Invalid/);
 
       expect(service.getData()).toEqual(original);
-      const reloaded = new StorageService();
+      const reloaded = createStorageService();
       await reloaded.initialize();
       expect(reloaded.getData()).toEqual(original);
       expect(await reloaded.getRecoveryBackups()).toEqual([]);
@@ -483,7 +699,7 @@ describe('StorageService', () => {
   it.each(['omission', 'reference repair'])(
     'preserves recoverable raw data when its backup fails (%s), even after session edits',
     async (recovery) => {
-      const firstService = new StorageService();
+      const firstService = createStorageService();
       await firstService.initialize();
       const database = await openTestDatabase();
       const valid = dataWithMovie();
@@ -505,7 +721,7 @@ describe('StorageService', () => {
         return put.call(this, value, key);
       });
 
-      const recovered = new StorageService();
+      const recovered = createStorageService();
       await recovered.initialize();
       expect(recovered.getData().items['movie'].title).toBe('Movie');
       expect(recovered.getInMemorySessionSignal()()).toBe(true);
@@ -513,7 +729,7 @@ describe('StorageService', () => {
       expect(recovered.getInMemorySessionSignal()()).toBe(true);
       failure.mockRestore();
 
-      const reloaded = new StorageService();
+      const reloaded = createStorageService();
       await reloaded.initialize();
       const backups = await reloaded.getRecoveryBackups();
       expect(backups).toHaveLength(1);
@@ -524,16 +740,16 @@ describe('StorageService', () => {
   );
 
   it('returns recovery backups sorted newest first', async () => {
-    const firstService = new StorageService();
+    const firstService = createStorageService();
     await firstService.initialize();
-    const database = (firstService as unknown as { database: IDBDatabase }).database;
+    const database = await openTestDatabase();
 
     const oldTimestamp = 1000000000000;
     const newTimestamp = 1000000001000;
     await writeRecord(database, { old: true }, `watch-list-data-backup-${oldTimestamp}`);
     await writeRecord(database, { new: true }, `watch-list-data-backup-${newTimestamp}`);
 
-    const secondService = new StorageService();
+    const secondService = createStorageService();
     await secondService.initialize();
 
     const backups = await secondService.getRecoveryBackups();
@@ -543,9 +759,9 @@ describe('StorageService', () => {
   });
 
   it('prunes old backups beyond the limit', async () => {
-    const firstService = new StorageService();
+    const firstService = createStorageService();
     await firstService.initialize();
-    const database = (firstService as unknown as { database: IDBDatabase }).database;
+    const database = await openTestDatabase();
 
     for (let i = 0; i < 12; i++) {
       await writeRecord(database, { index: i }, `watch-list-data-backup-${1000000000000 + i}`);
@@ -553,7 +769,7 @@ describe('StorageService', () => {
     await writeRecord(database, { invalid: true });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    const secondService = new StorageService();
+    const secondService = createStorageService();
     await secondService.initialize();
 
     const backups = await secondService.getRecoveryBackups();
@@ -562,7 +778,7 @@ describe('StorageService', () => {
   });
 
   it('throws when getting a backup by invalid key', async () => {
-    const firstService = new StorageService();
+    const firstService = createStorageService();
     await firstService.initialize();
 
     await expect(firstService.getRecoveryBackupByKey('invalid-key')).rejects.toThrow(
@@ -571,7 +787,7 @@ describe('StorageService', () => {
   });
 
   it('throws when getting a backup by key that does not exist', async () => {
-    const firstService = new StorageService();
+    const firstService = createStorageService();
     await firstService.initialize();
 
     await expect(
@@ -580,13 +796,13 @@ describe('StorageService', () => {
   });
 
   it('does not overwrite unreadable data when creating its backup fails', async () => {
-    const firstService = new StorageService();
+    const firstService = createStorageService();
     await firstService.initialize();
-    const database = (firstService as unknown as { database: IDBDatabase }).database;
+    const database = await openTestDatabase();
     const corruptData = { invalid: true };
     await writeRecord(database, corruptData);
 
-    const secondService = new StorageService();
+    const secondService = createStorageService();
     const storage = secondService as unknown as {
       backupRawData: (data: unknown) => Promise<void>;
     };
@@ -599,9 +815,9 @@ describe('StorageService', () => {
   });
 
   it('writes normalization defaults back to storage', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
-    const database = (service as unknown as { database: IDBDatabase }).database;
+    const database = await openTestDatabase();
     await writeRecord(database, {
       schemaVersion: CURRENT_SCHEMA_VERSION,
       lastModifiedAt: '2026-04-01T10:00:00.000Z',
@@ -609,7 +825,7 @@ describe('StorageService', () => {
       items: {},
     });
 
-    const reloadedService = new StorageService();
+    const reloadedService = createStorageService();
     await reloadedService.initialize();
 
     const persisted = await readRecord<Record<string, unknown>>(database, 'watch-list-data');
@@ -620,7 +836,7 @@ describe('StorageService', () => {
   });
 
   it('migrates v2 data with totalEpisodes to the current seasons array', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
 
     await service.importData({
@@ -670,7 +886,7 @@ describe('StorageService', () => {
   });
 
   it('clears legacy remote poster URLs during the offline-image migration', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
 
     await service.importData({
@@ -698,7 +914,7 @@ describe('StorageService', () => {
   });
 
   it('rejects invalid imports', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
 
     await expect(
@@ -712,7 +928,7 @@ describe('StorageService', () => {
   });
 
   it('quarantines series with duplicate season numbers instead of rejecting the import', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
 
     await service.importData({
@@ -757,7 +973,7 @@ describe('StorageService', () => {
   });
 
   it('rejects an import when every item is invalid', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
 
     await expect(
@@ -790,7 +1006,7 @@ describe('StorageService', () => {
   });
 
   it('remaps items of dropped groups to the default group', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
 
     await service.importData({
@@ -820,7 +1036,7 @@ describe('StorageService', () => {
   });
 
   it('accepts v4 series seasons with a first episode air date', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
 
     await service.importData({
@@ -852,7 +1068,7 @@ describe('StorageService', () => {
   });
 
   it('restores the last persisted data when an import cannot be written', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     const persistedData = service.getData();
     const storage = service as unknown as {
@@ -876,7 +1092,7 @@ describe('StorageService', () => {
   });
 
   it('restores an unmodified nested snapshot when a mutated update cannot be written', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     const storage = service as unknown as {
       writeData: (data: unknown) => Promise<void>;
@@ -892,7 +1108,7 @@ describe('StorageService', () => {
   });
 
   it('keeps a newer queued update when an earlier write fails', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     const persistedData = service.getData();
     const storage = service as unknown as {
@@ -924,7 +1140,7 @@ describe('StorageService', () => {
     ])(
       'keeps committed data and posters when writes succeed: $firstSucceeds, $secondSucceeds',
       async ({ firstSucceeds, secondSucceeds }) => {
-        const service = new StorageService();
+        const service = createStorageService();
         await service.initialize();
         await service.importDataWithImages(withGroup(service.getData(), 'committed'), [
           poster('committed'),
@@ -960,7 +1176,7 @@ describe('StorageService', () => {
         } else {
           expect(service.getSaveErrorSignal()()).toEqual(expect.any(String));
         }
-        const reloaded = new StorageService();
+        const reloaded = createStorageService();
         await reloaded.initialize();
         expect(reloaded.getData()).toEqual(service.getData());
 
@@ -986,7 +1202,7 @@ describe('StorageService', () => {
   });
 
   it('restores a newly committed save after two later portable imports abort and accepts further saves', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     const initial = service.getData();
     abortStorageWrites([true, false, false]);
@@ -1000,7 +1216,7 @@ describe('StorageService', () => {
 
     expect(results.map((result) => result.status)).toEqual(['fulfilled', 'rejected', 'rejected']);
     expect(service.getData().groups).toEqual(withGroup(initial, 'committed').groups);
-    const reloaded = new StorageService();
+    const reloaded = createStorageService();
     await reloaded.initialize();
     expect(reloaded.getData()).toEqual(service.getData());
 
@@ -1009,35 +1225,28 @@ describe('StorageService', () => {
     expect(service.getData().groups).toEqual(
       withGroup(withGroup(initial, 'committed'), 'recovered').groups,
     );
-    const recovered = new StorageService();
+    const recovered = createStorageService();
     await recovered.initialize();
     expect(recovered.getData()).toEqual(service.getData());
   });
 
   it('rejects when a read transaction is aborted', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
+    const getAllKeys = FakeIDBObjectStore.prototype.getAllKeys;
+    vi.spyOn(FakeIDBObjectStore.prototype, 'getAllKeys').mockImplementation(function (
+      this: IDBObjectStore,
+    ) {
+      const request = getAllKeys.call(this);
+      request.addEventListener('success', () => this.transaction.abort());
+      return request;
+    });
 
-    const database = (service as unknown as { database: IDBDatabase }).database;
-    const fakeTransaction = {
-      objectStore: () => ({ getAllKeys: () => ({}) }),
-      oncomplete: null,
-      onerror: null,
-      onabort: null,
-    } as unknown as IDBTransaction;
-
-    const spy = vi.spyOn(database, 'transaction').mockReturnValue(fakeTransaction);
-
-    const promise = service.getRecoveryBackups();
-    fakeTransaction.onabort!({} as Event);
-
-    await expect(promise).rejects.toThrowError('Failed to list backup keys');
-
-    spy.mockRestore();
+    await expect(service.getRecoveryBackups()).rejects.toThrow();
   });
 
   it('keeps edits in memory and the non-persistent indicator active when IndexedDB is unavailable', async () => {
-    const service = new StorageService();
+    const service = createStorageService();
     vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
       throw new Error('Unavailable');
     });
@@ -1061,11 +1270,10 @@ describe('StorageService', () => {
   });
 
   it('imports data without images in memory without clearing the non-persistent indicator', async () => {
-    const service = new StorageService();
-    const storage = service as unknown as {
-      openDatabase: () => Promise<IDBDatabase>;
-    };
-    vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
+    const service = createStorageService();
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('Unavailable');
+    });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     await service.initialize();
@@ -1092,7 +1300,7 @@ describe('StorageService', () => {
       throw new Error('Unavailable');
     });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const service = new StorageService();
+    const service = createStorageService();
     await service.initialize();
     await service.saveData(withGroup(service.getData(), 'session'));
     const previous = service.getData();
@@ -1112,11 +1320,10 @@ describe('StorageService', () => {
   });
 
   it('returns no recovery backups when IndexedDB is unavailable', async () => {
-    const service = new StorageService();
-    const storage = service as unknown as {
-      openDatabase: () => Promise<IDBDatabase>;
-    };
-    vi.spyOn(storage, 'openDatabase').mockRejectedValueOnce(new Error('Unavailable'));
+    const service = createStorageService();
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('Unavailable');
+    });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     await service.initialize();
@@ -1127,6 +1334,10 @@ describe('StorageService', () => {
     );
   });
 });
+
+function createStorageService() {
+  return TestBed.runInInjectionContext(() => new StorageService());
+}
 
 function upgradeAfterNextRead(database: IDBDatabase, raw: unknown) {
   return new Promise<void>((resolve, reject) => {
@@ -1193,7 +1404,7 @@ function dataWithMovie() {
 
 function openTestDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('watch-list', 2);
+    const request = indexedDB.open('watch-list');
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });

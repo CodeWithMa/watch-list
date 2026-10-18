@@ -1,10 +1,11 @@
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBObjectStore as FakeIDBObjectStore } from 'fake-indexeddb';
 import { vi, afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { ImageStorageService } from './image-storage.service';
 import { imageVersion, imagesInvalidated } from './image-invalidation';
 import { TestBed } from '@angular/core/testing';
 import { StorageService } from './storage.service';
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
+import { WatchListDatabase } from './watch-list-database.service';
 
 function createImageBlob(content = 'fake-image', type = 'image/png', size?: number): Blob {
   const blob = new Blob([content], { type });
@@ -163,6 +164,183 @@ describe('ImageStorageService', () => {
     expect(URL.createObjectURL).toHaveBeenCalled();
   });
 
+  it.each(['getUrl', 'exportImages'] as const)(
+    'supports persistent collection edits when %s initializes the database first',
+    async (read) => {
+      const images = TestBed.inject(ImageStorageService);
+      if (read === 'getUrl') expect(await images.getUrl('missing-poster')).toBeNull();
+      else expect(await images.exportImages()).toEqual([]);
+
+      const storage = TestBed.inject(StorageService);
+      await storage.initialize();
+      expect(storage.getInMemorySessionSignal()()).toBe(false);
+      const data = storage.getData();
+      data.groups['saved'] = { id: 'saved', name: 'Saved', order: 1 };
+      await storage.saveData(data);
+      const id = await images.storeFile(createImageBlob());
+
+      const reloaded = TestBed.runInInjectionContext(() => new StorageService());
+      await reloaded.initialize();
+      expect(reloaded.getData().groups['saved'].name).toBe('Saved');
+      expect(await images.getUrl(id)).toBe('blob:mock-url');
+    },
+  );
+
+  it('retries poster access after an open failure without poisoning the URL cache', async () => {
+    const images = TestBed.inject(ImageStorageService);
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('Storage unavailable');
+    });
+
+    await expect(images.getUrl('missing')).rejects.toThrow('Storage unavailable');
+    expect(await images.getUrl('missing')).toBeNull();
+    expect(await images.exportImages()).toEqual([]);
+    const storage = TestBed.inject(StorageService);
+    await storage.initialize();
+    expect(storage.getInMemorySessionSignal()()).toBe(false);
+  });
+
+  it('blocks poster changes before downloading or decoding when another tab upgrades the database', async () => {
+    const storage = TestBed.inject(StorageService);
+    const images = TestBed.inject(ImageStorageService);
+    await storage.initialize();
+    const future = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 4);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('Obsolete connection blocked the upgrade'));
+    });
+    try {
+      await expect(images.storeUrl('https://example.com/poster.png')).rejects.toThrow(/reload/i);
+      await expect(images.storeFile(createImageBlob())).rejects.toThrow(/reload/i);
+      await expect(images.delete('existing')).rejects.toThrow(/reload/i);
+      await expect(images.replaceImages([])).rejects.toThrow(/reload/i);
+      expect(fetch).not.toHaveBeenCalled();
+      expect(createImageBitmap).not.toHaveBeenCalled();
+    } finally {
+      future.close();
+    }
+  });
+
+  it('reacquires the shared connection for metadata and posters after invalidation', async () => {
+    const storage = TestBed.inject(StorageService);
+    const images = TestBed.inject(ImageStorageService);
+    await storage.initialize();
+    const id = await images.storeFile(createImageBlob());
+    const data = storage.getData();
+    data.groups['saved'] = { id: 'saved', name: 'Saved', order: 1 };
+
+    TestBed.inject(WatchListDatabase).close();
+
+    await storage.saveData(data);
+    expect(await images.getUrl(id)).toBe('blob:mock-url');
+    const reloaded = TestBed.runInInjectionContext(() => new StorageService());
+    await reloaded.initialize();
+    expect(reloaded.getData().groups['saved'].name).toBe('Saved');
+  });
+
+  it('rejects a poster read aborted after its request succeeds and allows retry', async () => {
+    const images = TestBed.inject(ImageStorageService);
+    const id = await images.storeFile(createImageBlob());
+    const get = FakeIDBObjectStore.prototype.get;
+    const spy = vi.spyOn(FakeIDBObjectStore.prototype, 'get').mockImplementation(function (
+      this: IDBObjectStore,
+      key,
+    ) {
+      const request = get.call(this, key);
+      if (this.name === 'images') {
+        request.addEventListener('success', () => this.transaction.abort());
+      }
+      return request;
+    });
+
+    await expect(images.getUrl(id)).rejects.toThrow();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    spy.mockRestore();
+    expect(await images.getUrl(id)).toBe('blob:mock-url');
+  });
+
+  it.each(['store', 'delete', 'replace'] as const)(
+    'resolves poster %s only after its transaction commits',
+    async (operation) => {
+      const images = TestBed.inject(ImageStorageService);
+      const id = await images.storeFile(createImageBlob());
+      let committed = false;
+      observePosterRequests((transaction) => {
+        transaction.addEventListener('complete', () => (committed = true));
+      });
+
+      if (operation === 'store') await images.storeFile(createImageBlob('updated'));
+      if (operation === 'delete') await images.delete(id);
+      if (operation === 'replace') {
+        await images.replaceImages([{ id: 'replacement', type: 'image/png', data: btoa('new') }]);
+      }
+
+      expect(committed).toBe(true);
+    },
+  );
+
+  it.each(['store', 'delete', 'replace'] as const)(
+    'rejects poster %s when its transaction aborts after request success',
+    async (operation) => {
+      const images = TestBed.inject(ImageStorageService);
+      const id = await images.storeFile(createImageBlob());
+      const before = await images.exportImages();
+      let requestSucceeded = false;
+      observePosterRequests((transaction, request) => {
+        request.addEventListener('success', () => {
+          requestSucceeded = true;
+          transaction.abort();
+        });
+      });
+
+      const write =
+        operation === 'store'
+          ? images.storeFile(createImageBlob('updated'))
+          : operation === 'delete'
+            ? images.delete(id)
+            : images.replaceImages([{ id: 'replacement', type: 'image/png', data: btoa('new') }]);
+      await expect(write).rejects.toThrow();
+
+      expect(requestSucceeded).toBe(true);
+      expect(await images.exportImages()).toEqual(before);
+    },
+  );
+
+  it('preserves metadata and posters when a portable import aborts after poster request success', async () => {
+    const storage = TestBed.inject(StorageService);
+    const images = TestBed.inject(ImageStorageService);
+    await storage.initialize();
+    await images.storeFile(createImageBlob());
+    const before = storage.getData();
+    const posters = await images.exportImages();
+    const changed = storage.getData();
+    changed.groups['imported'] = { id: 'imported', name: 'Imported', order: 1 };
+    const put = FakeIDBObjectStore.prototype.put;
+    vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(function (
+      this: IDBObjectStore,
+      value,
+      key,
+    ) {
+      const request = put.call(this, value, key);
+      if (this.name === 'images') {
+        request.addEventListener('success', () => this.transaction.abort());
+      }
+      return request;
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(
+      storage.importDataWithImages(changed, [{ id: 'new', blob: createImageBlob() }]),
+    ).rejects.toThrow();
+
+    expect(storage.getData()).toEqual(before);
+    const reloaded = TestBed.runInInjectionContext(() => new StorageService());
+    await reloaded.initialize();
+    expect(reloaded.getData()).toEqual(before);
+    expect(await images.exportImages()).toEqual(posters);
+  });
+
   it.each(['delete', 'replace', 'file', 'url'] as const)(
     'preserves newer cross-tab posters when an initialized tab attempts %s',
     async (operation) => {
@@ -170,7 +348,7 @@ describe('ImageStorageService', () => {
       await storage.initialize();
       const service = TestBed.inject(ImageStorageService);
       const database = await new Promise<IDBDatabase>((resolve) => {
-        const request = indexedDB.open('watch-list', 2);
+        const request = indexedDB.open('watch-list');
         request.onsuccess = () => resolve(request.result);
       });
       const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
@@ -371,3 +549,27 @@ describe('ImageStorageService', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith(uniqueUrl);
   });
 });
+
+function observePosterRequests(
+  observe: (transaction: IDBTransaction, request: EventTarget) => void,
+) {
+  const put = FakeIDBObjectStore.prototype.put;
+  vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(function (
+    this: IDBObjectStore,
+    value,
+    key,
+  ) {
+    const request = put.call(this, value, key);
+    if (this.name === 'images') observe(this.transaction, request);
+    return request;
+  });
+  const remove = FakeIDBObjectStore.prototype.delete;
+  vi.spyOn(FakeIDBObjectStore.prototype, 'delete').mockImplementation(function (
+    this: IDBObjectStore,
+    key,
+  ) {
+    const request = remove.call(this, key);
+    if (this.name === 'images') observe(this.transaction, request);
+    return request;
+  });
+}

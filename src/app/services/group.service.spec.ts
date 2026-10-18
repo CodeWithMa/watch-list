@@ -145,7 +145,7 @@ describe('GroupService', () => {
         await expect(save.mock.results[0].value).resolves.toBeUndefined();
         save.mockRestore();
 
-        const reloaded = new StorageService();
+        const reloaded = TestBed.runInInjectionContext(() => new StorageService());
         await reloaded.initialize();
         expect(Object.hasOwn(reloaded.getData().groups, '__proto__')).toBe(true);
         expect(reloaded.getData().groups['__proto__']).toEqual({

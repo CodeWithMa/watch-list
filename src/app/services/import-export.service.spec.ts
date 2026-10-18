@@ -42,7 +42,7 @@ describe('import version compatibility', () => {
       const preferences = settings.exportSettings();
       const persistedPreferences = localStorage.getItem('suggestionProviders');
       const database = await new Promise<IDBDatabase>((resolve) => {
-        const request = indexedDB.open('watch-list', 2);
+        const request = indexedDB.open('watch-list');
         request.onsuccess = () => resolve(request.result);
       });
       const image = { id: 'existing-poster', bytes: [1, 2, 3], metadata: { keep: true } };
@@ -79,7 +79,7 @@ describe('import version compatibility', () => {
       );
 
       expect(storage.getData()).toEqual(original);
-      const reloaded = new StorageService();
+      const reloaded = TestBed.runInInjectionContext(() => new StorageService());
       await reloaded.initialize();
       expect(reloaded.getData()).toEqual(original);
       expect(storage.getCompatibilityErrorSignal()()).toBeNull();
