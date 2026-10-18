@@ -6,7 +6,7 @@ export function toPositiveNumber(
     return fallback;
   }
   const parsed = Number(value);
-  if (Number.isNaN(parsed) || parsed < 1) {
+  if (Number.isNaN(parsed) || parsed <= 0) {
     return fallback;
   }
   return parsed;
@@ -19,7 +19,7 @@ export function toOptionalPositiveNumber(
     return undefined;
   }
   const parsed = Number(value);
-  if (Number.isNaN(parsed) || parsed < 1) {
+  if (Number.isNaN(parsed) || parsed <= 0) {
     return undefined;
   }
   return parsed;

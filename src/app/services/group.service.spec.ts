@@ -6,6 +6,7 @@ import { Group } from '../models/group.model';
 import { Item } from '../models/item.model';
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { DEFAULT_GROUP_ID } from '../domain/item.constants';
+import { vi } from 'vitest';
 
 describe('GroupService', () => {
   let storageService: StorageService;
@@ -21,6 +22,8 @@ describe('GroupService', () => {
     await storageService.initialize();
     service = TestBed.inject(GroupService);
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   describe('groups', () => {
     it('returns only the ungrouped group by default', () => {
@@ -116,6 +119,47 @@ describe('GroupService', () => {
   });
 
   describe('reorderGroups', () => {
+    it.each([
+      [false, true],
+      [true, true],
+      [false, false],
+      [true, false],
+    ])(
+      'preserves an imported __proto__ group through reorder and reload (member item: %s, listed: %s)',
+      async (hasMember, listed) => {
+        await storageService.importDataWithImages(
+          {
+            ...storageService.getData(),
+            groups: {
+              ...storageService.getData().groups,
+              ['__proto__']: { id: '__proto__', name: 'Special', order: 1 },
+            },
+            items: hasMember ? { movie: createItem({ id: 'movie', groupId: '__proto__' }) } : {},
+          },
+          [],
+        );
+        const save = vi.spyOn(storageService, 'saveData');
+
+        service.reorderGroups(listed ? ['__proto__', DEFAULT_GROUP_ID] : [DEFAULT_GROUP_ID]);
+        // The current group API is fire-and-forget; await the real write it started.
+        await expect(save.mock.results[0].value).resolves.toBeUndefined();
+        save.mockRestore();
+
+        const reloaded = new StorageService();
+        await reloaded.initialize();
+        expect(Object.hasOwn(reloaded.getData().groups, '__proto__')).toBe(true);
+        expect(reloaded.getData().groups['__proto__']).toEqual({
+          id: '__proto__',
+          name: 'Special',
+          order: listed ? 0 : 1,
+        });
+        expect(reloaded.getData().groups[DEFAULT_GROUP_ID].order).toBe(listed ? 1 : 0);
+        expect(reloaded.getData().items).toEqual(
+          hasMember ? { movie: createItem({ id: 'movie', groupId: '__proto__' }) } : {},
+        );
+      },
+    );
+
     it('reassigns order from the provided id list', () => {
       saveData({
         groups: {
