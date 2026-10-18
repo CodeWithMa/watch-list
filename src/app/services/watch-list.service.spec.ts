@@ -78,7 +78,7 @@ describe('WatchListService', () => {
 
     it('does nothing when the item does not exist', () => {
       saveData({ items: {} });
-      const saveSpy = vi.spyOn(storageService, 'saveData');
+      const saveSpy = vi.spyOn(storageService, 'saveItemChanges');
 
       service.deleteItem('missing');
 
@@ -280,7 +280,7 @@ describe('WatchListService', () => {
       saveData({
         items: { i1: createItem({ id: 'i1', status: 'in-progress', isAdult: false }) },
       });
-      const saveSpy = vi.spyOn(storageService, 'saveData');
+      const saveSpy = vi.spyOn(storageService, 'saveItemChanges');
 
       service.markCompleted('missing');
       service.markDropped('missing');
@@ -417,7 +417,7 @@ describe('WatchListService', () => {
         ),
       ]) {
         await saveData({ items: { snoozed: item } });
-        const spy = vi.spyOn(storageService, 'saveData');
+        const spy = vi.spyOn(storageService, 'saveItemChanges');
         await service.snoozeOneWeek('snoozed');
         await service.snoozeOneWeek('missing');
         expect(spy).not.toHaveBeenCalled();

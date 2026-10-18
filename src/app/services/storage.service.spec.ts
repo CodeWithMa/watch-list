@@ -1147,8 +1147,8 @@ describe('StorageService', () => {
     expect(service.getData().groups['session']).toBeDefined();
   });
 
-  describe.each(['save', 'import', 'portable'] as const)(
-    'coexisting legacy %s and intent writes',
+  describe.each(['items', 'import', 'portable'] as const)(
+    'coexisting %s and intent writes',
     (kind) => {
       describe.each([false, true])('intent invoked first: %s', (intentFirst) => {
         it.each([
@@ -1167,8 +1167,11 @@ describe('StorageService', () => {
             const legacy = () => {
               const snapshot = withGroup(initial, 'legacy');
               switch (kind) {
-                case 'save':
-                  return service.saveData(snapshot);
+                case 'items':
+                  return service.saveItemChanges({
+                    items: dataWithMovie().items,
+                    deletedItems: {},
+                  });
                 case 'import':
                   return service.importData(snapshot);
                 case 'portable':
@@ -1187,11 +1190,16 @@ describe('StorageService', () => {
               secondSucceeds ? 'fulfilled' : 'rejected',
             ]);
             expect(Object.hasOwn(service.getData().groups, 'legacy')).toBe(
-              intentFirst ? secondSucceeds : firstSucceeds,
+              kind !== 'items' && (intentFirst ? secondSucceeds : firstSucceeds),
             );
             expect(Object.hasOwn(service.getData().groups, 'intent')).toBe(
-              intentFirst ? firstSucceeds && !secondSucceeds : secondSucceeds,
+              intentFirst ? firstSucceeds && (kind === 'items' || !secondSucceeds) : secondSucceeds,
             );
+            if (kind === 'items') {
+              expect(Object.hasOwn(service.getData().items, 'movie')).toBe(
+                intentFirst ? secondSucceeds : firstSucceeds,
+              );
+            }
             const reloaded = createStorageService();
             await reloaded.initialize();
             expect(reloaded.getData()).toEqual(service.getData());

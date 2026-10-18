@@ -49,8 +49,8 @@ export class WatchListService {
       watchHistory: [],
     };
 
-    await this.storageService.saveData({
-      ...data,
+    await this.storageService.saveItemChanges({
+      deletedItems: data.deletedItems,
       items: {
         ...data.items,
         [id]: newItem,
@@ -61,8 +61,8 @@ export class WatchListService {
   async updateItem(item: Item): Promise<void> {
     const data = this.storageService.getData();
     const previousPosterId = data.items[item.id]?.posterId;
-    await this.storageService.saveData({
-      ...data,
+    await this.storageService.saveItemChanges({
+      deletedItems: data.deletedItems,
       items: {
         ...data.items,
         [item.id]: item,
@@ -92,8 +92,7 @@ export class WatchListService {
       },
     };
 
-    await this.storageService.saveData({
-      ...data,
+    await this.storageService.saveItemChanges({
       items,
       deletedItems,
     });

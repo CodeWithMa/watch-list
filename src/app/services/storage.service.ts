@@ -104,11 +104,18 @@ export class StorageService {
   }
 
   async saveData(data: StorageData): Promise<void> {
-    const normalized = normalizeStorageData(data);
-    if (requiresRecovery(normalized)) {
-      throw new Error('Invalid collection data. No changes were saved.');
-    }
-    return this.persistData(normalized.data);
+    return this.persistData(validateSaveData(data));
+  }
+
+  /**
+   * Legacy item workflows still publish optimistically until their intent migration.
+   * Only their item/history snapshots are accepted here. At the queue slot, retain the
+   * latest settled groups and repair references to groups deleted by preceding commands.
+   * Import/recovery remain explicit whole-collection replacement operations.
+   */
+  async saveItemChanges({ items, deletedItems }: Pick<StorageData, 'items' | 'deletedItems'>) {
+    const data = validateSaveData({ ...this.getData(), items, deletedItems });
+    return this.persistData(data, { preserveGroups: true });
   }
 
   /**
@@ -116,7 +123,8 @@ export class StorageService {
    * An intent edits a detached draft of the latest successful state after earlier writes settle.
    * Keep the callback synchronous and side-effect free. Rejection discards its entire draft;
    * success publishes only after transaction completion (or explicitly as session-only).
-   * Legacy saves still replace whole snapshots and may publish optimistically until migrated.
+   * Legacy item saves preserve settled groups; explicit snapshot saves/imports replace them.
+   * Both legacy paths may publish optimistically until migrated.
    */
   mutate<T>(intent: (draft: StorageData) => T): Promise<MutationResult<T>> {
     const revision = this.optimisticRevision;
@@ -126,11 +134,7 @@ export class StorageService {
       this.assertWritable();
       const draft = cloneStorageData(this.settledData ?? this.getData());
       const value = intent(draft);
-      const normalized = normalizeStorageData(draft);
-      if (requiresRecovery(normalized)) {
-        throw new Error('Invalid collection data. No changes were saved.');
-      }
-      const updated = { ...normalized.data, lastModifiedAt: new Date().toISOString() };
+      const updated = { ...validateSaveData(draft), lastModifiedAt: new Date().toISOString() };
       if (this.persistentStorage) await this.writeData(updated);
       this.recordSuccessfulWrite(updated);
       // A later legacy save may already have published its optimistic snapshot.
@@ -146,7 +150,7 @@ export class StorageService {
 
   async importDataWithImages(data: unknown, images: StoredImage[]): Promise<NormalizationResult> {
     const normalized = normalizeStorageData(data);
-    await this.persistData(normalized.data, images);
+    await this.persistData(normalized.data, { images });
     return { ...normalized, data: this.getData() };
   }
 
@@ -210,14 +214,17 @@ export class StorageService {
     return backup;
   }
 
-  private persistData(data: StorageData, images?: StoredImage[]): Promise<void> {
+  private persistData(
+    data: StorageData,
+    { images, preserveGroups }: { images?: StoredImage[]; preserveGroups?: boolean } = {},
+  ): Promise<void> {
     this.assertWritable();
     assertSupportedStorageVersion(data);
     const updated: StorageData = {
       ...cloneStorageData(data),
       lastModifiedAt: new Date().toISOString(),
     };
-    const writeSnapshot = cloneStorageData(updated);
+    let writeSnapshot = cloneStorageData(updated);
     const publish = (visible = true) => {
       this.assertWritable();
       if (!this.persistentStorage && images && images.length > 0) {
@@ -240,6 +247,12 @@ export class StorageService {
         publish(this.optimisticRevision === revision);
       }
       this.assertWritable();
+      if (preserveGroups) {
+        writeSnapshot = normalizeStorageData({
+          ...writeSnapshot,
+          groups: this.settledData?.groups ?? this.getData().groups,
+        }).data;
+      }
       if (!this.persistentStorage) return;
       await (images === undefined
         ? this.writeData(writeSnapshot)
@@ -248,6 +261,9 @@ export class StorageService {
     this.writeQueue = write.then(
       () => {
         this.recordSuccessfulWrite(writeSnapshot);
+        if (preserveGroups && this.optimisticRevision === revision) {
+          this.data.set(cloneStorageData(writeSnapshot));
+        }
         if (images !== undefined) imagesInvalidated.next();
       },
       (error: unknown) => {
@@ -519,6 +535,14 @@ export class StorageService {
 
 function cloneStorageData(data: StorageData): StorageData {
   return structuredClone(data);
+}
+
+function validateSaveData(data: StorageData) {
+  const normalized = normalizeStorageData(data);
+  if (requiresRecovery(normalized)) {
+    throw new Error('Invalid collection data. No changes were saved.');
+  }
+  return normalized.data;
 }
 
 function requiresRecovery(report: NormalizationReport) {
