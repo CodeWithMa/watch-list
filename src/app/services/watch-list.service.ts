@@ -59,6 +59,9 @@ export class WatchListService {
 
   async updateItem(item: Item): Promise<void> {
     const data = this.storageService.getData();
+    if (!Object.hasOwn(data.items, item.id)) {
+      throw new Error('The edited item no longer exists. Refresh the item list and try again.');
+    }
     const previousPosterId = data.items[item.id]?.posterId;
     await this.storageService.saveItemChanges({
       deletedItems: data.deletedItems,

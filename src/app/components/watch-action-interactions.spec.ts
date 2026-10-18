@@ -8,7 +8,7 @@ import { ItemViewComponent } from './item-view/item-view.component';
 import { of } from 'rxjs';
 import type { ItemStatus } from '../models/item.model';
 import { WatchListService } from '../services/watch-list.service';
-import { controlStorageWrites } from '../services/indexeddb-write.test-utils';
+import { controlStorageWrites, holdStorageWrite } from '../services/indexeddb-write.test-utils';
 
 const screens = [
   { component: HomeComponent, name: 'Home' },
@@ -53,6 +53,34 @@ describe('Settled watch interactions', () => {
   );
 
   describe.each(screens)('$name', ({ component }) => {
+    it('shows committed progress before a later title edit completes', async () => {
+      await setup();
+      const watch = TestBed.inject(WatchListService);
+      const fixture = TestBed.createComponent<HomeComponent | ItemViewComponent>(component);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const element = fixture.nativeElement as HTMLElement;
+      let edit: Promise<void> | undefined;
+      const held = holdStorageWrite(1, (index) => {
+        if (index === 0)
+          edit = watch.updateItem({ ...watch.getItemById('series')!, title: 'Edited title' });
+      });
+      element.querySelector('button')!.click();
+      try {
+        await held.started;
+        await vi.waitFor(() => expect(fixture.componentInstance.actions.busy()).toBe(false));
+        fixture.detectChanges();
+        expect(element.textContent).toContain('Edited title');
+        expect(element.textContent).toContain('S1E2');
+        expect(element.querySelector('button')?.disabled).toBe(false);
+        if (component === ItemViewComponent)
+          expect(element.querySelectorAll('ol li')).toHaveLength(1);
+      } finally {
+        held.release();
+        await edit;
+      }
+    });
+
     const scenarios: { label: string; status: ItemStatus; expectedStatus: ItemStatus }[] = [
       { label: 'Mark Watched', status: 'in-progress', expectedStatus: 'in-progress' },
       { label: 'Pause', status: 'in-progress', expectedStatus: 'paused' },

@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 /** Observe request success or abort selected collection writes before transaction completion. */
 export function controlStorageWrites(
   outcomes: boolean[] = [],
-  onRequestSuccess?: (index: number) => void,
+  onRequestSuccess?: (index: number, store: IDBObjectStore) => void,
 ) {
   const put = IDBObjectStore.prototype.put;
   let index = 0;
@@ -17,10 +17,37 @@ export function controlStorageWrites(
     if (this.name === 'storage') {
       const current = index++;
       request.addEventListener('success', () => {
-        onRequestSuccess?.(current);
+        onRequestSuccess?.(current, this);
         if (outcomes[current] === false) this.transaction.abort();
       });
     }
     return request;
   });
+}
+
+/** Keep a real transaction pending until release, without mocking application persistence. */
+export function holdStorageWrite(index: number, onRequestSuccess?: (index: number) => void) {
+  let released = false;
+  let signalStarted: () => void = () => undefined;
+  const started = new Promise<void>((resolve) => {
+    signalStarted = resolve;
+  });
+  controlStorageWrites([], (current, store) => {
+    onRequestSuccess?.(current);
+    if (current !== index) return;
+    const keepAlive = () => {
+      const request = store.get('watch-list-data');
+      request.addEventListener('success', () => {
+        if (!released) keepAlive();
+      });
+    };
+    keepAlive();
+    signalStarted();
+  });
+  return {
+    started,
+    release: () => {
+      released = true;
+    },
+  };
 }

@@ -1,7 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { StorageData } from '../models/storage.model';
-import { Item } from '../models/item.model';
+import { Item, SeasonInfo } from '../models/item.model';
 import { Group } from '../models/group.model';
+import { isEpisodicType } from '../domain/item.constants';
 import {
   assertSupportedStorageVersion,
   createDefaultStorageData,
@@ -51,7 +52,10 @@ export class StorageService {
   private persistentStorage = false;
   private lastPersistedData: StorageData | null = null;
   private settledData: StorageData | null = null;
-  private optimisticRevision = 0;
+  private readonly pendingSaves = new Set<{
+    apply: (settled: StorageData) => StorageData;
+    requiresImages: boolean;
+  }>();
   private initialization: Promise<void> | null = null;
   private writeQueue: Promise<void> = Promise.resolve();
 
@@ -111,7 +115,8 @@ export class StorageService {
    * Legacy item workflows still publish optimistically until their intent migration.
    * Capture only the item/history field changes relative to the visible snapshot. At
    * the queue slot, rebase those changes onto settled state, retaining preceding watch
-   * commands and groups. Deletion archives the latest settled item's history.
+   * commands and groups, including nested progress and seasons keyed by season number.
+   * Edits whose base disappeared reject; deletion archives the latest settled history.
    * Group references deleted by preceding commands are repaired during normalization.
    * Import/recovery remain explicit whole-collection replacement operations.
    */
@@ -127,12 +132,12 @@ export class StorageService {
    * Intents and legacy snapshot writes share invocation order in this service instance.
    * An intent edits a detached draft of the latest successful state after earlier writes settle.
    * Keep the callback synchronous and side-effect free. Rejection discards its entire draft;
-   * success publishes only after transaction completion (or explicitly as session-only).
+   * Success republishes committed state after transaction completion (or explicitly as
+   * session-only), projecting remaining legacy edits without withholding settled changes.
    * Legacy item saves rebase their changed fields; snapshot saves/imports replace the collection.
    * Both legacy paths may publish optimistically until migrated.
    */
   mutate<T>(intent: (draft: StorageData) => T): Promise<MutationResult<T>> {
-    const revision = this.optimisticRevision;
     const mutation = this.writeQueue.then(async () => {
       this.assertWritable();
       if (this.loading() || !this.data()) await this.initialize();
@@ -142,8 +147,7 @@ export class StorageService {
       const updated = { ...validateSaveData(draft), lastModifiedAt: new Date().toISOString() };
       if (this.persistentStorage) await this.writeData(updated);
       this.recordSuccessfulWrite(updated);
-      // A later legacy save may already have published its optimistic snapshot.
-      if (this.optimisticRevision === revision) this.data.set(cloneStorageData(updated));
+      this.publishPendingData();
       return { value, durability: this.persistentStorage ? 'persistent' : 'session-only' } as const;
     });
     this.writeQueue = mutation.then(
@@ -235,35 +239,34 @@ export class StorageService {
       ...cloneStorageData(data),
       lastModifiedAt: new Date().toISOString(),
     };
-    let writeSnapshot = cloneStorageData(updated);
-    const publish = (visible = true) => {
-      this.assertWritable();
+    const pending = {
+      apply: (settled: StorageData) =>
+        rebaseItems ? { ...rebaseItems(settled), lastModifiedAt: updated.lastModifiedAt } : updated,
+      requiresImages: !!images?.length,
+    };
+    const assertImagesAvailable = () => {
       if (!this.persistentStorage && images && images.length > 0) {
         throw new Error(
           'Cannot import posters while persistent storage is unavailable. No data was imported.',
         );
       }
-      if (visible) {
-        this.saveError.set(null);
-        this.data.set(updated);
-      }
     };
     const ready = !this.loading() && !!this.data();
-    if (ready) publish();
-    const revision = ++this.optimisticRevision;
+    if (ready) assertImagesAvailable();
+    this.pendingSaves.add(pending);
+    if (ready) {
+      this.saveError.set(null);
+      this.publishPendingData();
+    }
+    let writeSnapshot = cloneStorageData(updated);
     // Reserve the queue slot before awaiting startup, just as mutate does.
     const write = this.writeQueue.then(async () => {
-      if (!ready) {
-        if (this.loading() || !this.data()) await this.initialize();
-        publish(this.optimisticRevision === revision);
-      }
+      if (this.loading() || !this.data()) await this.initialize();
       this.assertWritable();
-      if (rebaseItems) {
-        writeSnapshot = {
-          ...rebaseItems(this.settledData ?? this.getData()),
-          lastModifiedAt: updated.lastModifiedAt,
-        };
-      }
+      assertImagesAvailable();
+      if (!ready) this.saveError.set(null);
+      this.publishPendingData();
+      writeSnapshot = pending.apply(this.settledData ?? this.getData());
       if (!this.persistentStorage) return;
       await (images === undefined
         ? this.writeData(writeSnapshot)
@@ -271,16 +274,14 @@ export class StorageService {
     });
     this.writeQueue = write.then(
       () => {
+        this.pendingSaves.delete(pending);
         this.recordSuccessfulWrite(writeSnapshot);
-        if (rebaseItems && this.optimisticRevision === revision) {
-          this.data.set(cloneStorageData(writeSnapshot));
-        }
+        this.publishPendingData();
         if (images !== undefined) imagesInvalidated.next();
       },
       (error: unknown) => {
-        if (this.optimisticRevision === revision && !this.compatibilityError()) {
-          this.data.set(this.settledData && cloneStorageData(this.settledData));
-        }
+        this.pendingSaves.delete(pending);
+        this.publishPendingData();
         this.reportSaveFailure(
           error,
           images === undefined
@@ -305,6 +306,23 @@ export class StorageService {
     this.saveError.set(null);
   }
 
+  private publishPendingData() {
+    if (!this.settledData || this.compatibilityError()) return;
+    let visible = this.settledData;
+    // Reapply only pending legacy intent over each new committed state. Explicit
+    // replacements still supersede earlier state; item edits retain unrelated changes.
+    for (const pending of this.pendingSaves) {
+      if (pending.requiresImages && !this.persistentStorage) continue;
+      try {
+        visible = pending.apply(visible);
+      } catch {
+        // A dependent edit may have lost its base. It must neither resurrect it in
+        // the UI nor hide settled commands; its own queue slot will reject the write.
+      }
+    }
+    this.data.set(cloneStorageData(visible));
+  }
+
   private reportSaveFailure(error: unknown, message = 'Failed to save watch-list data:') {
     this.saveError.set(
       this.compatibilityError() ? null : error instanceof Error ? error.message : String(error),
@@ -315,7 +333,7 @@ export class StorageService {
   private publishLoadedData(data: StorageData) {
     this.lastPersistedData = cloneStorageData(data);
     this.settledData = cloneStorageData(data);
-    this.data.set(cloneStorageData(data));
+    this.publishPendingData();
   }
 
   getDataSignal() {
@@ -549,7 +567,7 @@ function cloneStorageData(data: StorageData): StorageData {
 }
 
 function rebaseItemChanges(before: StorageData, after: StorageData, settled: StorageData) {
-  const items = applyRecordChanges(before.items, after.items, settled.items);
+  const items = applyRecordChanges(before.items, after.items, settled.items, rebaseItem);
   const deletedItems = applyRecordChanges(
     before.deletedItems ?? {},
     after.deletedItems ?? {},
@@ -573,6 +591,7 @@ function applyRecordChanges<T extends object>(
   before: Record<string, T>,
   after: Record<string, T>,
   settled: Record<string, T>,
+  merge: (before: T, after: T, settled: T) => T = applyChangedFields,
 ) {
   const result = new Map(Object.entries(settled));
   for (const id of new Set([...Object.keys(before), ...Object.keys(after)])) {
@@ -581,17 +600,47 @@ function applyRecordChanges<T extends object>(
     } else if (!Object.hasOwn(before, id)) {
       result.set(id, after[id]);
     } else if (!storageDataEqual(before[id], after[id])) {
-      const entry = { ...(result.get(id) ?? before[id]) };
-      const fields = Object.keys({ ...before[id], ...after[id] }) as (keyof T)[];
-      for (const field of fields) {
-        if (storageDataEqual(before[id][field], after[id][field])) continue;
-        if (Object.hasOwn(after[id], field)) entry[field] = after[id][field];
-        else delete entry[field];
+      const current = result.get(id);
+      if (!current) {
+        throw new Error('The edited item no longer exists. Refresh the item list and try again.');
       }
-      result.set(id, entry);
+      result.set(id, merge(before[id], after[id], current));
     }
   }
   return Object.fromEntries(result);
+}
+
+function applyChangedFields<T extends object>(before: T, after: T, settled: T) {
+  const result = { ...settled };
+  const fields = Object.keys({ ...before, ...after }) as (keyof T)[];
+  for (const field of fields) {
+    if (storageDataEqual(before[field], after[field])) continue;
+    if (Object.hasOwn(after, field)) result[field] = after[field];
+    else delete result[field];
+  }
+  return result;
+}
+
+function rebaseItem(before: Item, after: Item, settled: Item) {
+  const result = applyChangedFields(before, after, settled);
+  const previousProgress =
+    before.progress ??
+    (isEpisodicType(before.type) ? { season: 1, episode: 1, seasons: [] } : undefined);
+  if (previousProgress && after.progress && settled.progress) {
+    result.progress = applyChangedFields(previousProgress, after.progress, settled.progress);
+    result.progress.seasons = Object.values(
+      applyRecordChanges(
+        seasonRecords(previousProgress.seasons),
+        seasonRecords(after.progress.seasons),
+        seasonRecords(settled.progress.seasons),
+      ),
+    );
+  }
+  return result;
+}
+
+function seasonRecords(seasons: SeasonInfo[]) {
+  return Object.fromEntries(seasons.map((season) => [season.seasonNumber, season]));
 }
 
 function validateSaveData(data: StorageData) {
