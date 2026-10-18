@@ -98,8 +98,10 @@ describe('import version compatibility', () => {
 });
 
 describe('ImportExportService', () => {
+  const importContext = Symbol('import-context');
   let importExportService: ImportExportService;
   let storageService: {
+    captureImportContext: ReturnType<typeof vi.fn>;
     getData: ReturnType<typeof vi.fn>;
     getRecoveryBackups: ReturnType<typeof vi.fn>;
     getRecoveryBackupByKey: ReturnType<typeof vi.fn>;
@@ -124,6 +126,7 @@ describe('ImportExportService', () => {
 
   beforeEach(() => {
     storageService = {
+      captureImportContext: vi.fn().mockReturnValue(importContext),
       getData: vi.fn(),
       getRecoveryBackups: vi.fn(),
       getRecoveryBackupByKey: vi.fn(),
@@ -307,7 +310,7 @@ describe('ImportExportService', () => {
       await importExportService.importData(file);
 
       expect(imageStorage.parseExportedImages).toHaveBeenCalledWith([]);
-      expect(storageService.importDataWithImages).toHaveBeenCalledWith({ a: 1 }, []);
+      expect(storageService.importDataWithImages).toHaveBeenCalledWith({ a: 1 }, [], importContext);
     });
 
     it('imports portable data together with its parsed images', async () => {
@@ -324,7 +327,11 @@ describe('ImportExportService', () => {
       );
 
       expect(imageStorage.parseExportedImages).toHaveBeenCalledWith(exportedImages);
-      expect(storageService.importDataWithImages).toHaveBeenCalledWith({ items: [] }, parsedImages);
+      expect(storageService.importDataWithImages).toHaveBeenCalledWith(
+        { items: [] },
+        parsedImages,
+        importContext,
+      );
     });
 
     it('throws a friendly error for invalid JSON', async () => {
@@ -353,7 +360,11 @@ describe('ImportExportService', () => {
       await importExportService.importData(file);
 
       expect(providerSettings.importSettings).not.toHaveBeenCalled();
-      expect(storageService.importDataWithImages).toHaveBeenCalledWith({ items: [] }, []);
+      expect(storageService.importDataWithImages).toHaveBeenCalledWith(
+        { items: [] },
+        [],
+        importContext,
+      );
     });
 
     it('imports legacy raw data without preferences', async () => {
@@ -373,7 +384,7 @@ describe('ImportExportService', () => {
       await importExportService.importData(file);
 
       expect(providerSettings.importSettings).not.toHaveBeenCalled();
-      expect(storageService.importDataWithImages).toHaveBeenCalledWith(raw, []);
+      expect(storageService.importDataWithImages).toHaveBeenCalledWith(raw, [], importContext);
     });
 
     it('restores providerSettings when preferences are present', async () => {
@@ -400,7 +411,11 @@ describe('ImportExportService', () => {
       await importExportService.importData(file);
 
       expect(providerSettings.importSettings).toHaveBeenCalledWith(providerSettingsPayload);
-      expect(storageService.importDataWithImages).toHaveBeenCalledWith({ items: [] }, []);
+      expect(storageService.importDataWithImages).toHaveBeenCalledWith(
+        { items: [] },
+        [],
+        importContext,
+      );
     });
 
     it('ignores invalid preferences without failing the import', async () => {
@@ -423,7 +438,11 @@ describe('ImportExportService', () => {
         dropped: { groups: 0, items: 0, deletedItems: 0 },
         repairedGroupReferences: 0,
       });
-      expect(storageService.importDataWithImages).toHaveBeenCalledWith({ items: [] }, []);
+      expect(storageService.importDataWithImages).toHaveBeenCalledWith(
+        { items: [] },
+        [],
+        importContext,
+      );
       expect(providerSettings.importSettings).toHaveBeenCalled();
     });
 

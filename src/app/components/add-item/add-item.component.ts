@@ -15,6 +15,7 @@ import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { SearchProviderSelectComponent } from '../search-provider-select/search-provider-select.component';
 import { ItemMutationFeedback } from '../item-mutation-feedback';
+import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
 interface SelectedSuggestionRef {
   source: SuggestionSource;
@@ -23,10 +24,11 @@ interface SelectedSuggestionRef {
 
 @Component({
   selector: 'app-add-item',
-  imports: [ItemFormComponent, SearchProviderSelectComponent],
+  imports: [ItemFormComponent, SearchProviderSelectComponent, ConflictRecoveryComponent],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Add New Item</h1>
+      <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
 
       <app-item-form
         [groups]="groups()"

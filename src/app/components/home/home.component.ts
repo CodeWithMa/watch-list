@@ -8,13 +8,15 @@ import { Item, ItemType } from '../../models/item.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { WatchActionFeedback } from '../watch-action-feedback';
+import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
 @Component({
   selector: 'app-home',
-  imports: [ItemCardComponent, CommonModule, RouterLink],
+  imports: [ItemCardComponent, CommonModule, RouterLink, ConflictRecoveryComponent],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">What should I watch now?</h1>
+      <app-conflict-recovery [disabled]="actions.busy()" (recovered)="actions.error.set(null)" />
       @if (actions.error()) {
         <p role="alert" class="mb-4 text-sm text-accent-danger">{{ actions.error() }}</p>
       }

@@ -11,6 +11,7 @@ import { getMostRecentWatchDate } from '../../utils/progress.utils';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { isEpisodicType } from '../../domain/item.constants';
 import { WatchActionFeedback } from '../watch-action-feedback';
+import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 import {
   canSnoozeCurrentSeason,
   getCurrentSeason,
@@ -21,9 +22,10 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
 
 @Component({
   selector: 'app-item-view',
-  imports: [DatePipe, RouterLink, TimeAgoComponent],
+  imports: [DatePipe, RouterLink, TimeAgoComponent, ConflictRecoveryComponent],
   template: `
     <div>
+      <app-conflict-recovery [disabled]="actions.busy()" (recovered)="actions.error.set(null)" />
       @if (item(); as currentItem) {
         <div class="flex items-center justify-between mb-6">
           <h1 class="m-0">{{ currentItem.title }}</h1>

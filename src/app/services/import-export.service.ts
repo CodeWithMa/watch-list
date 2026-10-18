@@ -75,6 +75,8 @@ export class ImportExportService {
   }
 
   async importData(file: File): Promise<NormalizationReport> {
+    // Confirmation belongs to the currently reviewed context, before async file preparation.
+    const context = this.storageService.captureImportContext();
     try {
       const text = await file.text();
       const payload: unknown = JSON.parse(text);
@@ -88,6 +90,7 @@ export class ImportExportService {
       const { dropped, repairedGroupReferences } = await this.storageService.importDataWithImages(
         data,
         images,
+        context,
       );
       this.applyPreferencesIfPresent(payload);
       return { dropped, repairedGroupReferences };

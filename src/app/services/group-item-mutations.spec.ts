@@ -5,6 +5,7 @@ import { GroupService } from './group.service';
 import { StorageService } from './storage.service';
 import { WatchListService } from './watch-list.service';
 import type { Item } from '../models/item.model';
+import { controlStorageWrites } from './indexeddb-write.test-utils';
 
 describe('Group and item mutation coexistence', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -100,19 +101,7 @@ describe('Group and item mutation coexistence', () => {
         'preserves settled group/item outcomes and reloads (%s, %s)',
         async (groupSucceeds, itemSucceeds) => {
           const { storage, groups, items, movie } = await setup();
-          const outcomes = [groupSucceeds, itemSucceeds];
-          const put = IDBObjectStore.prototype.put;
-          vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
-            this: IDBObjectStore,
-            value,
-            key,
-          ) {
-            const request = put.call(this, value, key);
-            if (this.name === 'storage' && outcomes.shift() === false) {
-              request.addEventListener('success', () => this.transaction.abort());
-            }
-            return request;
-          });
+          controlStorageWrites([groupSucceeds, itemSucceeds]);
           vi.spyOn(console, 'error').mockImplementation(() => undefined);
           const deletion = groups.deleteGroup('films');
           const itemWrite = runItemCommand(items, action, movie);
