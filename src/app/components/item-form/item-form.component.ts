@@ -409,10 +409,6 @@ export class ItemFormComponent {
     });
   }
 
-  commitDrafts(): void {
-    this.posterPicker?.commitDrafts();
-  }
-
   clearDrafts(): void {
     this.posterPicker?.clearDrafts();
   }

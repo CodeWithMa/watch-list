@@ -169,13 +169,12 @@ export class PosterPickerComponent {
   private posterRequestId = 0;
   private readonly draftPosterIds = new Set<string>();
   private destroyed = false;
-  private skipDraftCleanup = false;
 
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
       this.posterRequestId++;
-      if (!this.skipDraftCleanup) this.deleteDraftPosters();
+      this.deleteDraftPosters();
     });
 
     effect(() => {
@@ -203,7 +202,9 @@ export class PosterPickerComponent {
 
   selectPosterSuggestion(suggestion: Suggestion): void {
     if (suggestion.posterUrl) {
-      void this.storePoster(this.imageStorage.storeUrl(suggestion.posterUrl));
+      void this.storePoster(
+        this.imageStorage.storeUrl(suggestion.posterUrl, { provisional: true }),
+      );
     }
     this.search.dismiss();
     this.showPosterSearch.set(false);
@@ -211,7 +212,7 @@ export class PosterPickerComponent {
 
   storeFromUrl(posterUrl: string | null | undefined): void {
     if (posterUrl) {
-      void this.storePoster(this.imageStorage.storeUrl(posterUrl));
+      void this.storePoster(this.imageStorage.storeUrl(posterUrl, { provisional: true }));
     }
   }
 
@@ -220,7 +221,7 @@ export class PosterPickerComponent {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    await this.storePoster(this.imageStorage.storeFile(file));
+    await this.storePoster(this.imageStorage.storeFile(file, { provisional: true }));
   }
 
   clearPoster(): void {
@@ -228,10 +229,6 @@ export class PosterPickerComponent {
     this.deleteDraftPoster(this.posterId());
     this.posterIdChange.emit(undefined);
     this.setLoading(false);
-  }
-
-  commitDrafts(): void {
-    this.skipDraftCleanup = true;
   }
 
   clearDrafts(): void {
@@ -248,7 +245,7 @@ export class PosterPickerComponent {
     try {
       const posterId = await request;
       if (this.destroyed || requestId !== this.posterRequestId) {
-        void this.imageStorage.delete(posterId);
+        this.imageStorage.discardDraft(posterId);
         return;
       }
       const previousPosterId = this.posterId();
@@ -277,11 +274,11 @@ export class PosterPickerComponent {
   }
 
   private deleteDraftPoster(posterId: string | undefined): void {
-    if (posterId && this.draftPosterIds.delete(posterId)) void this.imageStorage.delete(posterId);
+    if (posterId && this.draftPosterIds.delete(posterId)) this.imageStorage.discardDraft(posterId);
   }
 
   private deleteDraftPosters(): void {
-    for (const posterId of this.draftPosterIds) void this.imageStorage.delete(posterId);
+    for (const posterId of this.draftPosterIds) this.imageStorage.discardDraft(posterId);
     this.draftPosterIds.clear();
   }
 

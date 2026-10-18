@@ -33,7 +33,7 @@ describe('PosterPickerComponent', () => {
             getUrl: vi.fn(() => Promise.resolve(null)),
             storeUrl: vi.fn(() => Promise.resolve('image-1')),
             storeFile: vi.fn(() => Promise.resolve('image-1')),
-            delete: vi.fn(() => Promise.resolve()),
+            discardDraft: vi.fn(),
             version: signal(0).asReadonly(),
           },
         },
@@ -381,7 +381,7 @@ describe('PosterPickerComponent', () => {
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
     expect(focus).toHaveBeenCalledOnce();
-    expect(imageStorage.storeFile).toHaveBeenCalledWith(file);
+    expect(imageStorage.storeFile).toHaveBeenCalledWith(file, { provisional: true });
     expect(changed).not.toHaveBeenCalled();
 
     resolvePoster('image-1');
@@ -455,7 +455,7 @@ describe('PosterPickerComponent', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(imageStorage.delete).toHaveBeenCalledWith('late-poster');
+    expect(imageStorage.discardDraft).toHaveBeenCalledWith('late-poster');
   });
 
   it('re-triggers poster search when re-typing the same query after selection', async () => {
@@ -573,7 +573,7 @@ describe('PosterPickerComponent', () => {
 
     await fixture.componentInstance.uploadPoster(event);
 
-    expect(imageStorage.storeFile).toHaveBeenCalledWith(file);
+    expect(imageStorage.storeFile).toHaveBeenCalledWith(file, { provisional: true });
     expect(input.value).toBe('');
   });
 
@@ -607,13 +607,13 @@ describe('PosterPickerComponent', () => {
     fixture.componentInstance.loadingChange.subscribe((v) => loading.push(v));
 
     fixture.componentInstance.clearPoster();
-    expect(imageStorage.delete).toHaveBeenCalledWith('image-1');
+    expect(imageStorage.discardDraft).toHaveBeenCalledWith('image-1');
     expect(emitted.at(-1)).toBeUndefined();
     expect(fixture.componentInstance.posterLoading()).toBe(false);
     expect(loading.at(-1)).toBe(false);
   });
 
-  it('commits drafts prevents cleanup on destroy', async () => {
+  it('releases drafts on destroy without deciding persistent ownership', async () => {
     const fixture = TestBed.createComponent(PosterPickerComponent);
     const imageStorage = TestBed.inject(ImageStorageService);
     fixture.detectChanges();
@@ -622,11 +622,8 @@ describe('PosterPickerComponent', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    fixture.componentInstance.commitDrafts();
-    vi.mocked(imageStorage.delete).mockClear();
     fixture.destroy();
-    // Should not delete because skipDraftCleanup true
-    expect(imageStorage.delete).not.toHaveBeenCalled();
+    expect(imageStorage.discardDraft).toHaveBeenCalledWith('image-1');
   });
 
   it('clearDrafts deletes all drafts and emits', async () => {
@@ -642,7 +639,7 @@ describe('PosterPickerComponent', () => {
     fixture.componentInstance.posterIdChange.subscribe((v) => emitted.push(v));
 
     fixture.componentInstance.clearDrafts();
-    expect(imageStorage.delete).toHaveBeenCalled();
+    expect(imageStorage.discardDraft).toHaveBeenCalled();
     expect(emitted.at(-1)).toBeUndefined();
   });
 
@@ -709,7 +706,7 @@ describe('PosterPickerComponent', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(imageStorage.delete).toHaveBeenCalledWith('old-id');
+    expect(imageStorage.discardDraft).toHaveBeenCalledWith('old-id');
   });
 
   it('loads poster preview on input change', async () => {
@@ -802,8 +799,8 @@ describe('PosterPickerComponent', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    vi.mocked(imageStorage.delete).mockClear();
+    vi.mocked(imageStorage.discardDraft).mockClear();
     fixture.destroy();
-    expect(imageStorage.delete).toHaveBeenCalled();
+    expect(imageStorage.discardDraft).toHaveBeenCalled();
   });
 });

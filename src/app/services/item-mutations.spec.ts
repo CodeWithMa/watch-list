@@ -7,9 +7,13 @@ import { controlStorageWrites, holdStorageWrite } from './indexeddb-write.test-u
 import { buildItemEditInput, createItemFormValue } from '../domain/item-form';
 import { GroupService } from './group.service';
 import { ItemMutationInput } from '../domain/item-form';
+import { ImageStorageService } from './image-storage.service';
 
 describe('Settled item mutations', () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
 
   it('publishes an addition only after transaction completion and returns its durable identity', async () => {
     Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: new IDBFactory() });
@@ -241,7 +245,11 @@ describe('Settled item mutations', () => {
     'does not report a committed %s as failed when later poster cleanup rejects',
     async (command) => {
       const { storage, watch, item } = await setup();
-      await watch.updateItem(item.id, { posterId: 'old-poster' });
+      vi.stubGlobal('createImageBitmap', async () => ({ close: vi.fn() }));
+      const posterId = await TestBed.inject(ImageStorageService).storeFile(
+        new Blob(['poster'], { type: 'image/png' }),
+      );
+      await watch.updateItem(item.id, { posterId });
       const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const remove = IDBObjectStore.prototype.delete;
       vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(function (
@@ -259,6 +267,7 @@ describe('Settled item mutations', () => {
       expect(result).toEqual({ value: undefined, durability: 'persistent' });
       expect(watch.getItemById(item.id)?.title).toBe(command === 'update' ? 'Saved' : undefined);
       expect(log).toHaveBeenCalledWith('Failed to remove unused poster:', expect.any(Error));
+      expect(storage.getSaveErrorSignal()()).toBeNull();
       await expectReload(storage);
     },
   );

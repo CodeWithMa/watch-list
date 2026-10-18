@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { of, Subject, switchMap } from 'rxjs';
@@ -61,7 +61,6 @@ interface SelectedSuggestionRef {
   `,
 })
 export class AddItemComponent {
-  @ViewChild(ItemFormComponent) private form?: ItemFormComponent;
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
   private suggestionSearchService = inject(SuggestionSearchService);
@@ -159,7 +158,6 @@ export class AddItemComponent {
       'Unable to add this item.',
     );
     if (result) {
-      this.form?.commitDrafts();
       this.router.navigate(['/items']);
     }
   }
