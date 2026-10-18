@@ -105,6 +105,7 @@ describe('Collection context conflicts', () => {
     await stale.initialize();
     const originalId = await images.storeFile(new Blob(['original poster'], { type: 'image/png' }));
     const originalPreferences = preferences.exportSettings();
+    await first.refresh();
     await first.mutate((draft) => {
       draft.groups['ungrouped'].name = 'External edit';
     });

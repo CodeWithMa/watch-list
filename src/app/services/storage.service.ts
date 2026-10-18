@@ -198,13 +198,23 @@ export class StorageService {
   async writeImages(write: (store: IDBObjectStore) => void) {
     this.assertMutationReady();
     this.assertWritable();
-    await this.initialize();
-    this.assertWritable();
-    await this.writeTransaction(
-      [STORE_NAME, IMAGE_STORE_NAME],
-      (transaction) => write(transaction.objectStore(IMAGE_STORE_NAME)),
-      'Failed to update posters',
+    // Reserve the same queue as collection commands before awaiting initialization.
+    const mutation = this.writeQueue.then(async () => {
+      if (this.conflict()) throw new CollectionConflictError();
+      await this.initialize();
+      this.assertWritable();
+      await this.writeTransaction(
+        [STORE_NAME, IMAGE_STORE_NAME],
+        (transaction) => write(transaction.objectStore(IMAGE_STORE_NAME)),
+        'Failed to update posters',
+      );
+      this.saveError.set(null);
+    });
+    this.writeQueue = mutation.then(
+      () => undefined,
+      (error: unknown) => this.reportSaveFailure(error, 'Failed to update posters:'),
     );
+    return mutation;
   }
 
   getSaveErrorSignal() {
@@ -589,7 +599,6 @@ export class StorageService {
       [STORE_NAME],
       (transaction) => transaction.objectStore(STORE_NAME).put(data, DATA_KEY),
       'Failed to write to IndexedDB',
-      true,
     );
   }
 
@@ -603,7 +612,6 @@ export class StorageService {
         for (const image of images) imageStore.put(image);
       },
       'Failed to import watch-list data',
-      true,
     );
   }
 
@@ -611,7 +619,6 @@ export class StorageService {
     stores: string[],
     write: (transaction: IDBTransaction) => void,
     message: string,
-    advancesRevision = false,
   ): Promise<void> {
     if (!this.persistentStorage) {
       throw new Error('Persistent storage is unavailable');
@@ -619,10 +626,10 @@ export class StorageService {
     const database = await this.databaseOwner.open();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(stores, 'readwrite');
-      const nextRevision = advancesRevision ? crypto.randomUUID() : this.revision;
+      const nextRevision = crypto.randomUUID();
       let failure: unknown;
       transaction.oncomplete = () => {
-        if (advancesRevision) this.revision = nextRevision;
+        this.revision = nextRevision;
         resolve();
       };
       transaction.onerror = () => reject(failure ?? transaction.error ?? new Error(message));
@@ -647,9 +654,7 @@ export class StorageService {
             throw new CollectionConflictError();
           }
           write(transaction);
-          if (advancesRevision) {
-            transaction.objectStore(STORE_NAME).put(nextRevision, REVISION_KEY);
-          }
+          transaction.objectStore(STORE_NAME).put(nextRevision, REVISION_KEY);
         } catch (error) {
           failure = error;
           transaction.abort();
