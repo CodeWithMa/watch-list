@@ -1067,6 +1067,198 @@ describe('StorageService', () => {
     );
   });
 
+  it.each([
+    [false, false],
+    [false, true],
+    [true, false],
+    [true, true],
+  ])('settles intents without leaking failed changes (%s, %s)', async (first, second) => {
+    const service = createStorageService();
+    await service.initialize();
+    abortStorageWrites([first, second]);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const results = await Promise.allSettled([
+      service.mutate((data) => {
+        data.groups['first'] = { id: 'first', name: 'First', order: 1 };
+        return 'created-first';
+      }),
+      service.mutate((data) => {
+        data.groups['second'] = { id: 'second', name: 'Second', order: 2 };
+      }),
+    ]);
+
+    expect(results.map((result) => result.status)).toEqual([
+      first ? 'fulfilled' : 'rejected',
+      second ? 'fulfilled' : 'rejected',
+    ]);
+    if (first)
+      expect(results[0]).toMatchObject({
+        value: { value: 'created-first', durability: 'persistent' },
+      });
+    expect(Object.hasOwn(service.getData().groups, 'first')).toBe(first);
+    expect(Object.hasOwn(service.getData().groups, 'second')).toBe(second);
+    const reloaded = createStorageService();
+    await reloaded.initialize();
+    expect(reloaded.getData()).toEqual(service.getData());
+  });
+
+  it.each([false, true])(
+    'orders legacy saves and intents before initialization (session: %s)',
+    async (session) => {
+      const service = createStorageService();
+      if (session) {
+        vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+          throw new Error('Unavailable');
+        });
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      }
+      const first = service.saveData(withGroup(createDefaultStorageData(), 'legacy'));
+      const second = service.mutate((data) => {
+        data.groups['intent'] = { id: 'intent', name: 'Intent', order: 2 };
+      });
+      await first;
+      expect(await second).toEqual({
+        value: undefined,
+        durability: session ? 'session-only' : 'persistent',
+      });
+      expect(Object.keys(service.getData().groups).sort()).toEqual([
+        'intent',
+        'legacy',
+        'ungrouped',
+      ]);
+      expect(service.getInMemorySessionSignal()()).toBe(session);
+    },
+  );
+
+  it('publishes a committed intent when a later poster import is rejected in session-only mode', async () => {
+    const service = createStorageService();
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('Unavailable');
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await service.initialize();
+    const mutation = service.mutate((data) => {
+      data.groups['session'] = { id: 'session', name: 'Session', order: 1 };
+    });
+    const rejected = service.importDataWithImages(createDefaultStorageData(), [poster('poster')]);
+    await expect(rejected).rejects.toThrow(/Cannot import posters/);
+    await mutation;
+    expect(service.getData().groups['session']).toBeDefined();
+  });
+
+  describe.each(['save', 'import', 'portable'] as const)(
+    'coexisting legacy %s and intent writes',
+    (kind) => {
+      describe.each([false, true])('intent invoked first: %s', (intentFirst) => {
+        it.each([
+          [false, false],
+          [false, true],
+          [true, false],
+          [true, true],
+        ])(
+          'settles success/failure combinations without provisional leakage (%s, %s)',
+          async (firstSucceeds, secondSucceeds) => {
+            const service = createStorageService();
+            await service.initialize();
+            const initial = service.getData();
+            abortStorageWrites([firstSucceeds, secondSucceeds]);
+            vi.spyOn(console, 'error').mockImplementation(() => undefined);
+            const legacy = () => {
+              const snapshot = withGroup(initial, 'legacy');
+              switch (kind) {
+                case 'save':
+                  return service.saveData(snapshot);
+                case 'import':
+                  return service.importData(snapshot);
+                case 'portable':
+                  return service.importDataWithImages(snapshot, []);
+              }
+            };
+            const intent = () =>
+              service.mutate((data) => {
+                data.groups['intent'] = { id: 'intent', name: 'Intent', order: 2 };
+              });
+            const first = intentFirst ? intent() : legacy();
+            const second = intentFirst ? legacy() : intent();
+            const results = await Promise.allSettled([first, second]);
+            expect(results.map((result) => result.status)).toEqual([
+              firstSucceeds ? 'fulfilled' : 'rejected',
+              secondSucceeds ? 'fulfilled' : 'rejected',
+            ]);
+            expect(Object.hasOwn(service.getData().groups, 'legacy')).toBe(
+              intentFirst ? secondSucceeds : firstSucceeds,
+            );
+            expect(Object.hasOwn(service.getData().groups, 'intent')).toBe(
+              intentFirst ? firstSucceeds && !secondSucceeds : secondSucceeds,
+            );
+            const reloaded = createStorageService();
+            await reloaded.initialize();
+            expect(reloaded.getData()).toEqual(service.getData());
+          },
+        );
+      });
+    },
+  );
+
+  it.each(['throw', 'invalid'] as const)(
+    'discards a draft that fails by %s and continues the queue',
+    async (failure) => {
+      const service = createStorageService();
+      await service.initialize();
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const failed = service.mutate((data) => {
+        data.groups['leaked'] = { id: 'leaked', name: 'Leaked', order: 1 };
+        if (failure === 'throw') throw new Error('Intent failed');
+        data.groups['ungrouped'].id = 'invalid-identity';
+      });
+      const successful = service.mutate((data) => {
+        data.groups['kept'] = { id: 'kept', name: 'Kept', order: 1 };
+      });
+      expect(
+        (await Promise.allSettled([failed, successful])).map((result) => result.status),
+      ).toEqual(['rejected', 'fulfilled']);
+      expect(Object.keys(service.getData().groups)).toEqual(['ungrouped', 'kept']);
+      expect(service.getSaveErrorSignal()()).toBeNull();
+      const reloaded = createStorageService();
+      await reloaded.initialize();
+      expect(reloaded.getData()).toEqual(service.getData());
+    },
+  );
+
+  it.each([
+    [false, false],
+    [false, true],
+    [true, false],
+    [true, true],
+  ])(
+    'keeps publication ordered across startup when saves settle (%s, %s)',
+    async (firstSucceeds, secondSucceeds) => {
+      const service = createStorageService();
+      // The first queued save must wait for startup; the next can publish immediately.
+      const first = service.saveData(withGroup(createDefaultStorageData(), 'first'));
+      await service.initialize();
+      abortStorageWrites([firstSucceeds, secondSucceeds]);
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const second = service.saveData(withGroup(createDefaultStorageData(), 'second'));
+      const results = await Promise.allSettled([first, second]);
+      expect(results.map((result) => result.status)).toEqual([
+        firstSucceeds ? 'fulfilled' : 'rejected',
+        secondSucceeds ? 'fulfilled' : 'rejected',
+      ]);
+      expect(Object.keys(service.getData().groups).sort()).toEqual(
+        secondSucceeds
+          ? ['second', 'ungrouped']
+          : firstSucceeds
+            ? ['first', 'ungrouped']
+            : ['ungrouped'],
+      );
+      const reloaded = createStorageService();
+      await reloaded.initialize();
+      expect(reloaded.getData()).toEqual(service.getData());
+    },
+  );
+
   it('restores the last persisted data when an import cannot be written', async () => {
     const service = createStorageService();
     await service.initialize();

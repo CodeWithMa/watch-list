@@ -22,6 +22,11 @@ const DATA_KEY = 'watch-list-data';
 const BACKUP_PREFIX = 'watch-list-data-backup-';
 const BACKUP_LIMIT = 10;
 
+export interface MutationResult<T> {
+  value: T;
+  durability: 'persistent' | 'session-only';
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -45,6 +50,8 @@ export class StorageService {
   private unsupportedData: unknown;
   private persistentStorage = false;
   private lastPersistedData: StorageData | null = null;
+  private settledData: StorageData | null = null;
+  private optimisticRevision = 0;
   private initialization: Promise<void> | null = null;
   private writeQueue: Promise<void> = Promise.resolve();
 
@@ -75,8 +82,7 @@ export class StorageService {
           console.error('Storage initialization failed, falling back to in-memory session:', error);
           if (preserveSession) return;
           const defaults = createDefaultStorageData();
-          this.lastPersistedData = cloneStorageData(defaults);
-          this.data.set(cloneStorageData(defaults));
+          this.publishLoadedData(defaults);
         })
         .finally(() => this.loading.set(false));
     }
@@ -103,6 +109,39 @@ export class StorageService {
       throw new Error('Invalid collection data. No changes were saved.');
     }
     return this.persistData(normalized.data);
+  }
+
+  /**
+   * Intents and legacy snapshot writes share invocation order in this service instance.
+   * An intent edits a detached draft of the latest successful state after earlier writes settle.
+   * Keep the callback synchronous and side-effect free. Rejection discards its entire draft;
+   * success publishes only after transaction completion (or explicitly as session-only).
+   * Legacy saves still replace whole snapshots and may publish optimistically until migrated.
+   */
+  mutate<T>(intent: (draft: StorageData) => T): Promise<MutationResult<T>> {
+    const revision = this.optimisticRevision;
+    const mutation = this.writeQueue.then(async () => {
+      this.assertWritable();
+      if (this.loading() || !this.data()) await this.initialize();
+      this.assertWritable();
+      const draft = cloneStorageData(this.settledData ?? this.getData());
+      const value = intent(draft);
+      const normalized = normalizeStorageData(draft);
+      if (requiresRecovery(normalized)) {
+        throw new Error('Invalid collection data. No changes were saved.');
+      }
+      const updated = { ...normalized.data, lastModifiedAt: new Date().toISOString() };
+      if (this.persistentStorage) await this.writeData(updated);
+      this.recordSuccessfulWrite(updated);
+      // A later legacy save may already have published its optimistic snapshot.
+      if (this.optimisticRevision === revision) this.data.set(cloneStorageData(updated));
+      return { value, durability: this.persistentStorage ? 'persistent' : 'session-only' } as const;
+    });
+    this.writeQueue = mutation.then(
+      () => undefined,
+      (error: unknown) => this.reportSaveFailure(error),
+    );
+    return mutation;
   }
 
   async importDataWithImages(data: unknown, images: StoredImage[]): Promise<NormalizationResult> {
@@ -171,48 +210,55 @@ export class StorageService {
     return backup;
   }
 
-  private async persistData(data: StorageData, images?: StoredImage[]): Promise<void> {
-    this.assertWritable();
-    if (this.loading() || !this.data()) await this.initialize();
+  private persistData(data: StorageData, images?: StoredImage[]): Promise<void> {
     this.assertWritable();
     assertSupportedStorageVersion(data);
-    if (!this.persistentStorage && images && images.length > 0) {
-      throw new Error(
-        'Cannot import posters while persistent storage is unavailable. No data was imported.',
-      );
-    }
     const updated: StorageData = {
       ...cloneStorageData(data),
       lastModifiedAt: new Date().toISOString(),
     };
     const writeSnapshot = cloneStorageData(updated);
-    this.saveError.set(null);
-    this.data.set(updated);
-    if (!this.persistentStorage) {
-      return Promise.resolve();
-    }
-    const write = this.writeQueue.then(() =>
-      images === undefined
+    const publish = (visible = true) => {
+      this.assertWritable();
+      if (!this.persistentStorage && images && images.length > 0) {
+        throw new Error(
+          'Cannot import posters while persistent storage is unavailable. No data was imported.',
+        );
+      }
+      if (visible) {
+        this.saveError.set(null);
+        this.data.set(updated);
+      }
+    };
+    const ready = !this.loading() && !!this.data();
+    if (ready) publish();
+    const revision = ++this.optimisticRevision;
+    // Reserve the queue slot before awaiting startup, just as mutate does.
+    const write = this.writeQueue.then(async () => {
+      if (!ready) {
+        if (this.loading() || !this.data()) await this.initialize();
+        publish(this.optimisticRevision === revision);
+      }
+      this.assertWritable();
+      if (!this.persistentStorage) return;
+      await (images === undefined
         ? this.writeData(writeSnapshot)
-        : this.writeDataWithImages(writeSnapshot, images),
-    );
+        : this.writeDataWithImages(writeSnapshot, images));
+    });
     this.writeQueue = write.then(
       () => {
-        this.lastPersistedData = cloneStorageData(writeSnapshot);
-        this.saveError.set(null);
+        this.recordSuccessfulWrite(writeSnapshot);
         if (images !== undefined) imagesInvalidated.next();
       },
       (error: unknown) => {
-        if (this.data() === updated) {
-          this.data.set(this.lastPersistedData && cloneStorageData(this.lastPersistedData));
+        if (this.optimisticRevision === revision && !this.compatibilityError()) {
+          this.data.set(this.settledData && cloneStorageData(this.settledData));
         }
-        const message = error instanceof Error ? error.message : String(error);
-        this.saveError.set(this.compatibilityError() ? null : message);
-        console.error(
+        this.reportSaveFailure(
+          error,
           images === undefined
             ? 'Failed to save watch-list data:'
             : 'Failed to import watch-list data:',
-          error,
         );
       },
     );
@@ -224,6 +270,25 @@ export class StorageService {
     const data = this.accessibleData();
     if (!data) throw new Error('The collection is still opening. Please try again.');
     return cloneStorageData(data);
+  }
+
+  private recordSuccessfulWrite(data: StorageData) {
+    this.settledData = cloneStorageData(data);
+    if (this.persistentStorage) this.lastPersistedData = cloneStorageData(data);
+    this.saveError.set(null);
+  }
+
+  private reportSaveFailure(error: unknown, message = 'Failed to save watch-list data:') {
+    this.saveError.set(
+      this.compatibilityError() ? null : error instanceof Error ? error.message : String(error),
+    );
+    console.error(message, error);
+  }
+
+  private publishLoadedData(data: StorageData) {
+    this.lastPersistedData = cloneStorageData(data);
+    this.settledData = cloneStorageData(data);
+    this.data.set(cloneStorageData(data));
   }
 
   getDataSignal() {
@@ -261,8 +326,7 @@ export class StorageService {
           console.error('Failed to load stored watch-list data:', error);
           const defaults = createDefaultStorageData();
           await this.writeInitialData(defaults, storedSnapshot);
-          this.lastPersistedData = cloneStorageData(defaults);
-          this.data.set(cloneStorageData(defaults));
+          this.publishLoadedData(defaults);
           return;
         }
 
@@ -272,22 +336,19 @@ export class StorageService {
             requiresRecovery(normalized) ? storedSnapshot : undefined,
           );
         }
-        this.lastPersistedData = cloneStorageData(normalized.data);
-        this.data.set(cloneStorageData(normalized.data));
+        this.publishLoadedData(normalized.data);
         return;
       }
 
       const defaults = createDefaultStorageData();
       await this.writeInitialData(defaults);
-      this.lastPersistedData = cloneStorageData(defaults);
-      this.data.set(cloneStorageData(defaults));
+      this.publishLoadedData(defaults);
     } catch (error) {
       if (this.compatibilityError()) return;
       if (this.databaseError()) throw error;
       this.useInMemorySession();
       const defaults = createDefaultStorageData();
-      this.lastPersistedData = cloneStorageData(defaults);
-      this.data.set(cloneStorageData(defaults));
+      this.publishLoadedData(defaults);
     }
   }
 
