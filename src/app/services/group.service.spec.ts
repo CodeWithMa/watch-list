@@ -294,7 +294,7 @@ describe('GroupService', () => {
   });
 
   function saveData(data?: Partial<ReturnType<StorageService['getData']>>) {
-    return storageService.saveData({
+    return storageService.replaceData({
       schemaVersion: CURRENT_SCHEMA_VERSION,
       lastModifiedAt: '2026-04-01T10:00:00.000Z',
       groups: {

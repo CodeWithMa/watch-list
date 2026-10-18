@@ -1,3 +1,7 @@
+import { DeepReadonly } from './readonly';
+
+export type ReadonlyItem = DeepReadonly<Item>;
+
 export type ItemType = 'series' | 'movie' | 'ova' | 'ona';
 export type ItemStatus = 'not-started' | 'in-progress' | 'paused' | 'completed' | 'dropped';
 

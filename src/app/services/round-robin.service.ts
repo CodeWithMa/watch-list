@@ -1,7 +1,7 @@
 import { DestroyRef, Injectable, NgZone, inject, computed, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { WatchListService } from './watch-list.service';
-import { Item } from '../models/item.model';
+import { ReadonlyItem as Item } from '../models/item.model';
 import { getMostRecentWatchDate } from '../utils/progress.utils';
 import { getCurrentEpisodeAirDate, startOfLocalDay } from '../domain/episode-release';
 
@@ -85,7 +85,7 @@ export class RoundRobinService {
     })[0];
   });
 
-  private canSuggestSeries(seriesId: string, series: Item[]): boolean {
+  private canSuggestSeries(seriesId: string, series: readonly Item[]): boolean {
     if (series.length <= 1) {
       return true;
     }

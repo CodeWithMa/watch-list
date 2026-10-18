@@ -1,4 +1,4 @@
-import { Item, ItemStatus } from '../models/item.model';
+import { ReadonlyItem as Item, ItemStatus } from '../models/item.model';
 import { getMostRecentWatchDate } from './progress.utils';
 
 export type SortField = 'title' | 'createdAt' | 'lastWatched' | 'status';
@@ -85,6 +85,6 @@ function compareByStatus(a: Item, b: Item, direction: SortDirection): number {
   return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
 }
 
-export function sortItems(items: Item[], field: SortField, direction: SortDirection): Item[] {
+export function sortItems(items: readonly Item[], field: SortField, direction: SortDirection) {
   return [...items].sort((a, b) => compareItems(a, b, field, direction));
 }

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { StorageService } from './storage.service';
+import { MutationResult, StorageService } from './storage.service';
 import { ImageStorageService } from './image-storage.service';
 import { ProviderSettings, ProviderSettingsService } from './provider-settings.service';
 import { assertSupportedStorageVersion, NormalizationReport } from '../domain/storage-schema';
@@ -7,6 +7,8 @@ import { assertSupportedStorageVersion, NormalizationReport } from '../domain/st
 export interface ExportPreferences {
   providerSettings: ProviderSettings;
 }
+
+export type ImportReport = NormalizationReport & Pick<MutationResult<void>, 'durability'>;
 
 export interface PortableExport {
   data: unknown;
@@ -74,7 +76,7 @@ export class ImportExportService {
     URL.revokeObjectURL(url);
   }
 
-  async importData(file: File): Promise<NormalizationReport> {
+  async importData(file: File): Promise<ImportReport> {
     // Confirmation belongs to the currently reviewed context, before async file preparation.
     const context = this.storageService.captureImportContext();
     try {
@@ -87,13 +89,10 @@ export class ImportExportService {
       const images = await this.imageStorage.parseExportedImages(
         isPortableExport(payload) ? payload.images : [],
       );
-      const { dropped, repairedGroupReferences } = await this.storageService.importDataWithImages(
-        data,
-        images,
-        context,
-      );
+      const { dropped, repairedGroupReferences, durability } =
+        await this.storageService.importDataWithImages(data, images, context);
       this.applyPreferencesIfPresent(payload);
-      return { dropped, repairedGroupReferences };
+      return { dropped, repairedGroupReferences, durability };
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file', { cause: error });

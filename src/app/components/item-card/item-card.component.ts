@@ -1,7 +1,7 @@
 import { Component, input, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Item } from '../../models/item.model';
+import { ReadonlyItem as Item } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { calculateProgress, getMostRecentWatchDate } from '../../utils/progress.utils';
 import { statusLineColor } from '../../utils/status.utils';

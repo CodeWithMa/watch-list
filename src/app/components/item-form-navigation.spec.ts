@@ -146,7 +146,7 @@ describe('Item form navigation with pending saves', () => {
 
 async function addOtherItem(storage: StorageService) {
   const data = storage.getData();
-  await storage.saveData({
+  await storage.replaceData({
     ...data,
     items: { ...data.items, other: { ...data.items['series'], id: 'other', title: 'Other item' } },
   });
@@ -200,7 +200,7 @@ async function setup() {
   });
   const storage = TestBed.inject(StorageService);
   await storage.initialize();
-  await storage.saveData({
+  await storage.replaceData({
     ...storage.getData(),
     items: {
       series: {

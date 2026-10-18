@@ -294,7 +294,7 @@ export class ItemFormComponent {
   @ViewChild('posterPicker') private posterPicker?: PosterPickerComponent;
   private readonly titleInput = viewChild.required<ElementRef<HTMLInputElement>>('titleInput');
 
-  readonly groups = input.required<Group[]>();
+  readonly groups = input.required<readonly Readonly<Group>[]>();
   readonly initialValue = input<ItemFormValue>(createDefaultItemFormValue());
   readonly focusTitleOnOpen = input(false);
   readonly submitLabel = input('Save');

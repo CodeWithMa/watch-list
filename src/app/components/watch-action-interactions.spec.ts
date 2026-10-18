@@ -199,7 +199,7 @@ async function setup({
   });
   const storage = TestBed.inject(StorageService);
   await storage.initialize();
-  await storage.saveData({
+  await storage.replaceData({
     ...storage.getData(),
     items: {
       series: {

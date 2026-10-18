@@ -91,7 +91,9 @@ describe('import version compatibility', () => {
       });
       expect(images).toEqual([image]);
       // Rejection must not lock an otherwise compatible collection.
-      await expect(storage.saveData(original)).resolves.toBeUndefined();
+      await expect(storage.replaceData(original)).resolves.toMatchObject({
+        durability: 'persistent',
+      });
       database.close();
     },
   );
@@ -303,6 +305,7 @@ describe('ImportExportService', () => {
       const file = mockFile('{"a":1}');
       imageStorage.parseExportedImages.mockResolvedValue([]);
       storageService.importDataWithImages.mockResolvedValue({
+        durability: 'persistent',
         dropped: { groups: 0, items: 0, deletedItems: 0 },
         repairedGroupReferences: 0,
       });
@@ -318,6 +321,7 @@ describe('ImportExportService', () => {
       const parsedImages = [{ id: 'poster-1', blob: new Blob(['image'], { type: 'image/png' }) }];
       imageStorage.parseExportedImages.mockResolvedValue(parsedImages);
       storageService.importDataWithImages.mockResolvedValue({
+        durability: 'persistent',
         dropped: { groups: 0, items: 0, deletedItems: 0 },
         repairedGroupReferences: 0,
       });
@@ -353,6 +357,7 @@ describe('ImportExportService', () => {
       const file = mockFile(JSON.stringify({ data: { items: [] }, images: [] }));
       imageStorage.parseExportedImages.mockResolvedValue([]);
       storageService.importDataWithImages.mockResolvedValue({
+        durability: 'persistent',
         dropped: { groups: 0, items: 0, deletedItems: 0 },
         repairedGroupReferences: 0,
       });
@@ -377,6 +382,7 @@ describe('ImportExportService', () => {
       const file = mockFile(JSON.stringify(raw));
       imageStorage.parseExportedImages.mockResolvedValue([]);
       storageService.importDataWithImages.mockResolvedValue({
+        durability: 'persistent',
         dropped: { groups: 0, items: 0, deletedItems: 0 },
         repairedGroupReferences: 0,
       });
@@ -403,6 +409,7 @@ describe('ImportExportService', () => {
       };
       const file = mockFile(JSON.stringify(payload));
       storageService.importDataWithImages.mockResolvedValue({
+        durability: 'persistent',
         dropped: { groups: 0, items: 0, deletedItems: 0 },
         repairedGroupReferences: 0,
       });
@@ -429,12 +436,14 @@ describe('ImportExportService', () => {
         throw new Error('invalid');
       });
       storageService.importDataWithImages.mockResolvedValue({
+        durability: 'persistent',
         dropped: { groups: 0, items: 0, deletedItems: 0 },
         repairedGroupReferences: 0,
       });
       imageStorage.parseExportedImages.mockResolvedValue([]);
 
       await expect(importExportService.importData(file)).resolves.toEqual({
+        durability: 'persistent',
         dropped: { groups: 0, items: 0, deletedItems: 0 },
         repairedGroupReferences: 0,
       });
@@ -450,7 +459,7 @@ describe('ImportExportService', () => {
       const file = mockFile(JSON.stringify({ data: { items: [] }, images: [] }));
       const dropped = { groups: 1, items: 2, deletedItems: 0 };
       imageStorage.parseExportedImages.mockResolvedValue([]);
-      const report = { dropped, repairedGroupReferences: 3 };
+      const report = { dropped, repairedGroupReferences: 3, durability: 'session-only' };
       storageService.importDataWithImages.mockResolvedValue(report);
 
       await expect(importExportService.importData(file)).resolves.toEqual(report);
@@ -475,6 +484,7 @@ describe('ImportExportService', () => {
       };
       const file = mockFile(JSON.stringify(payload));
       storageService.importDataWithImages.mockResolvedValue({
+        durability: 'persistent',
         dropped: { groups: 0, items: 0, deletedItems: 0 },
         repairedGroupReferences: 0,
       });

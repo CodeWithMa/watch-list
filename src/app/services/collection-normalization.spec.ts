@@ -94,6 +94,7 @@ describe('normalized collections at domain consumer boundaries', () => {
         await expect(
           TestBed.inject(ImportExportService).importData(jsonFile(payload)),
         ).resolves.toEqual({
+          durability: 'persistent',
           dropped: { groups: 1, items: 2, deletedItems: 1 },
           repairedGroupReferences: 1,
         });

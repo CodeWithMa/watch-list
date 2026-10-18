@@ -21,7 +21,7 @@ describe('Collection context conflicts', () => {
     vi.unstubAllGlobals();
   });
 
-  it.each(['intent', 'snapshot', 'item snapshot', 'raw import', 'posters'])(
+  it.each(['intent', 'replacement', 'raw import', 'posters'])(
     'rejects a stale %s writer without overwriting a committed change',
     async (action) => {
       const first = createContext();
@@ -36,17 +36,15 @@ describe('Collection context conflicts', () => {
       snapshot.groups['ungrouped'].name = 'Stale writer';
       const writePosters = vi.fn();
       const write =
-        action === 'snapshot'
-          ? stale.saveData(snapshot)
-          : action === 'item snapshot'
-            ? stale.saveItemChanges(snapshot)
-            : action === 'raw import'
-              ? stale.importData(snapshot)
-              : action === 'posters'
-                ? stale.writeImages(writePosters)
-                : stale.mutate((draft) => {
-                    draft.groups['ungrouped'].name = 'Stale writer';
-                  });
+        action === 'replacement'
+          ? stale.replaceData(snapshot)
+          : action === 'raw import'
+            ? stale.importData(snapshot)
+            : action === 'posters'
+              ? stale.writeImages(writePosters)
+              : stale.mutate((draft) => {
+                  draft.groups['ungrouped'].name = 'Stale writer';
+                });
       await expect(write).rejects.toBeInstanceOf(CollectionConflictError);
       expect(writePosters).not.toHaveBeenCalled();
 
@@ -152,7 +150,7 @@ describe('Collection context conflicts', () => {
       draft.groups['ungrouped'].name = 'Keep external edit';
     });
     const refreshing = stale.refresh();
-    await expect(stale.saveData(snapshot)).rejects.toThrow(/refresh/i);
+    await expect(stale.replaceData(snapshot)).rejects.toThrow(/refresh/i);
     await refreshing;
     const reloaded = createContext();
     await reloaded.initialize();

@@ -21,8 +21,8 @@ describe('RoundRobinService', () => {
     service = TestBed.inject(RoundRobinService);
   });
 
-  it('skips a series when the current episode has not aired yet', () => {
-    saveItems([
+  it('skips a series when the current episode has not aired yet', async () => {
+    await saveItems([
       createSeries({
         id: 'future',
         title: 'Future Show',
@@ -40,8 +40,8 @@ describe('RoundRobinService', () => {
     expect(service.nextSeries()?.id).toBe('available');
   });
 
-  it('returns null when every in-progress series is waiting for an unaired episode', () => {
-    saveItems([
+  it('returns null when every in-progress series is waiting for an unaired episode', async () => {
+    await saveItems([
       createSeries({
         id: 'future-1',
         title: 'Future Show 1',
@@ -59,13 +59,13 @@ describe('RoundRobinService', () => {
     expect(service.nextSeries()).toBeNull();
   });
 
-  it('keeps series without air-date metadata suggestible', () => {
+  it('keeps series without air-date metadata suggestible', async () => {
     const series = createSeries({
       id: 'legacy',
       title: 'Legacy Show',
       createdAt: '2026-01-01T10:00:00.000Z',
     });
-    saveItems([series]);
+    await saveItems([series]);
 
     expect(service.nextSeries()?.id).toBe('legacy');
   });
@@ -83,13 +83,13 @@ describe('RoundRobinService', () => {
     expect(service.hasAiredCurrentEpisode(series, new Date(2026, 4, 15))).toBe(true);
   });
 
-  it('returns null when no in-progress series', () => {
-    saveItems([]);
+  it('returns null when no in-progress series', async () => {
+    await saveItems([]);
     expect(service.nextSeries()).toBeNull();
   });
 
-  it('returns oldest unwatched series first (sorted by last watched date)', () => {
-    saveItems([
+  it('returns oldest unwatched series first (sorted by last watched date)', async () => {
+    await saveItems([
       createSeries({
         id: 'a',
         title: 'A',
@@ -107,12 +107,12 @@ describe('RoundRobinService', () => {
     expect(service.nextSeries()?.id).toBe('b');
   });
 
-  it('implements round-robin when all others have been watched', () => {
+  it('implements round-robin when all others have been watched', async () => {
     // Two series, 'a' oldest but 'b' has no watch history, so canSuggest for 'b' is false, for 'a' is true? Let's craft
     // canSuggest checks if all otherSeries have watchHistory length >0
     // If b has empty history, then for target a, other=b has empty => allOthersWatched false => canSuggest false for a
     // For target b, other=a has history => true => canSuggest true for b => b should be returned
-    saveItems([
+    await saveItems([
       createSeries({
         id: 'a',
         title: 'A',
@@ -134,10 +134,10 @@ describe('RoundRobinService', () => {
     expect(service.nextSeries()?.id).toBe('b');
   });
 
-  it('falls back to first watchable when no series can be suggested', () => {
+  it('falls back to first watchable when no series can be suggested', async () => {
     // Both have empty history, so for each, allOthersWatched is false (other has empty)
     // No canSuggest true, should return watchable[0] (oldest)
-    saveItems([
+    await saveItems([
       createSeries({
         id: 'a',
         title: 'A',
@@ -159,8 +159,8 @@ describe('RoundRobinService', () => {
     expect(result?.id).toBe('a');
   });
 
-  it('handles single series case (canSuggest always true)', () => {
-    saveItems([
+  it('handles single series case (canSuggest always true)', async () => {
+    await saveItems([
       createSeries({
         id: 'only',
         title: 'Only',
@@ -171,11 +171,11 @@ describe('RoundRobinService', () => {
     expect(service.nextSeries()?.id).toBe('only');
   });
 
-  it('nextMovie returns null when no movies and sorted oldest first', () => {
-    saveItems([]);
+  it('nextMovie returns null when no movies and sorted oldest first', async () => {
+    await saveItems([]);
     expect(service.nextMovie()).toBeNull();
 
-    saveItems([
+    await saveItems([
       {
         id: 'm1',
         title: 'Movie 1',
@@ -309,7 +309,7 @@ describe('RoundRobinService', () => {
       vi.restoreAllMocks();
     });
 
-    function waitingUntilTomorrow() {
+    async function waitingUntilTomorrow() {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
       vi.setSystemTime(new Date(2026, 9, 21, 23, 59, 59));
       window.dispatchEvent(new Event('focus'));
@@ -321,29 +321,32 @@ describe('RoundRobinService', () => {
         episode: 3,
       });
       item.progress!.seasons[0].snoozeCount = 1;
-      saveItems([item]);
+      await saveItems([item]);
       expect(service.nextSeries()).toBeNull();
     }
 
-    it('invalidates a cached recommendation at local midnight without a write', () => {
-      waitingUntilTomorrow();
+    it('invalidates a cached recommendation at local midnight without a write', async () => {
+      await waitingUntilTomorrow();
       vi.advanceTimersByTime(1000);
       expect(service.nextSeries()?.id).toBe('delayed');
     });
 
-    it.each(['focus', 'visibilitychange'])('refreshes when the app resumes via %s', (event) => {
-      waitingUntilTomorrow();
-      vi.setSystemTime(new Date(2026, 9, 23, 12));
-      if (event === 'focus') window.dispatchEvent(new Event(event));
-      else {
-        vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-        document.dispatchEvent(new Event(event));
-      }
-      expect(service.nextSeries()?.id).toBe('delayed');
-    });
+    it.each(['focus', 'visibilitychange'])(
+      'refreshes when the app resumes via %s',
+      async (event) => {
+        await waitingUntilTomorrow();
+        vi.setSystemTime(new Date(2026, 9, 23, 12));
+        if (event === 'focus') window.dispatchEvent(new Event(event));
+        else {
+          vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+          document.dispatchEvent(new Event(event));
+        }
+        expect(service.nextSeries()?.id).toBe('delayed');
+      },
+    );
 
-    it('cleans up its timer and foreground listeners when destroyed', () => {
-      waitingUntilTomorrow();
+    it('cleans up its timer and foreground listeners when destroyed', async () => {
+      await waitingUntilTomorrow();
       expect(vi.getTimerCount()).toBe(1);
       TestBed.resetTestingModule();
       expect(vi.getTimerCount()).toBe(0);
@@ -353,8 +356,8 @@ describe('RoundRobinService', () => {
     });
   });
 
-  function saveItems(items: Item[]): void {
-    storageService.saveData({
+  function saveItems(items: Item[]) {
+    return storageService.replaceData({
       schemaVersion: CURRENT_SCHEMA_VERSION,
       lastModifiedAt: '2026-04-01T10:00:00.000Z',
       groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },

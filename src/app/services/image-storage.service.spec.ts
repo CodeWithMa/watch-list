@@ -176,7 +176,7 @@ describe('ImageStorageService', () => {
       expect(storage.getInMemorySessionSignal()()).toBe(false);
       const data = storage.getData();
       data.groups['saved'] = { id: 'saved', name: 'Saved', order: 1 };
-      await storage.saveData(data);
+      await storage.replaceData(data);
       const id = await images.storeFile(createImageBlob());
 
       const reloaded = TestBed.runInInjectionContext(() => new StorageService());
@@ -232,7 +232,7 @@ describe('ImageStorageService', () => {
 
     TestBed.inject(WatchListDatabase).close();
 
-    await storage.saveData(data);
+    await storage.replaceData(data);
     expect(await images.getUrl(id)).toBe('blob:mock-url');
     const reloaded = TestBed.runInInjectionContext(() => new StorageService());
     await reloaded.initialize();

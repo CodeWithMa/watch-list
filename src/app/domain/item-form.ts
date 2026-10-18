@@ -1,4 +1,4 @@
-import { Item, ItemStatus, ItemType, SeasonInfo } from '../models/item.model';
+import { Item, ReadonlyItem, ItemStatus, ItemType, SeasonInfo } from '../models/item.model';
 import { DEFAULT_GROUP_ID, isEpisodicType } from './item.constants';
 import { createItemEdit } from './item-edit';
 
@@ -32,7 +32,7 @@ export function createDefaultItemFormValue(): ItemFormValue {
   };
 }
 
-export function createItemFormValue(item: Item): ItemFormValue {
+export function createItemFormValue(item: ReadonlyItem): ItemFormValue {
   return {
     title: item.title,
     type: item.type,
@@ -40,7 +40,7 @@ export function createItemFormValue(item: Item): ItemFormValue {
     status: item.status,
     season: item.progress?.season ?? 1,
     episode: item.progress?.episode ?? 1,
-    seasons: item.progress?.seasons ?? [],
+    seasons: item.progress?.seasons.map((season) => ({ ...season })) ?? [],
     startImmediately: item.status === 'in-progress',
     posterId: item.posterId,
     isAdult: item.isAdult ?? false,

@@ -7,7 +7,7 @@ export interface CalendarGroup {
 }
 
 export function groupHistoryEntries(
-  entries: HistoryEntry[],
+  entries: readonly HistoryEntry[],
   locale = 'en-US',
   now = new Date(),
 ): CalendarGroup[] {

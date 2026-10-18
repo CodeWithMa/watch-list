@@ -2,9 +2,9 @@ import { Component, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
-import { ImportExportService } from '../../services/import-export.service';
+import { ImportExportService, ImportReport } from '../../services/import-export.service';
 import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
-import { NormalizationReport, UnsupportedSchemaVersionError } from '../../domain/storage-schema';
+import { UnsupportedSchemaVersionError } from '../../domain/storage-schema';
 import {
   AdultDisplayMode,
   DEFAULT_TITLE_PREFERENCE,
@@ -684,15 +684,23 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 }
 
-function describeImportResult({ dropped, repairedGroupReferences }: NormalizationReport): string {
+function describeImportResult({
+  dropped,
+  repairedGroupReferences,
+  durability,
+}: ImportReport): string {
+  const session =
+    durability === 'session-only'
+      ? ' Data is kept only in this session and will be lost on reload.'
+      : '';
   const total = dropped.groups + dropped.items + dropped.deletedItems;
   if (total === 0 && repairedGroupReferences === 0) {
-    return 'Data imported successfully';
+    return `Data imported successfully${session}`;
   }
   const details = [];
   if (total > 0) details.push(`${total} invalid record(s) omitted`);
   if (repairedGroupReferences > 0) {
     details.push(`${repairedGroupReferences} missing group reference(s) repaired to Ungrouped`);
   }
-  return `Import completed with ${details.join(' and ')}.`;
+  return `Import completed with ${details.join(' and ')}.${session}`;
 }

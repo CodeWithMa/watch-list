@@ -71,7 +71,7 @@ import { HistoryEntry } from '../../../models/storage.model';
   `,
 })
 export class StatsDailyActivityComponent {
-  readonly historyEntries = input.required<HistoryEntry[]>();
+  readonly historyEntries = input.required<readonly Readonly<HistoryEntry>[]>();
   readonly hours = Array.from({ length: 24 }, (_, hour) => hour);
   readonly hasActivity = computed(() =>
     this.counts().some((day) => day.some((count) => count > 0)),

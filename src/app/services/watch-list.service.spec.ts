@@ -137,7 +137,7 @@ describe('WatchListService', () => {
         createdAt: '2026-04-01T10:00:00.000Z',
       };
 
-      await storageService.saveData({
+      await storageService.replaceData({
         schemaVersion: CURRENT_SCHEMA_VERSION,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
@@ -172,7 +172,7 @@ describe('WatchListService', () => {
         createdAt: '2026-04-01T10:00:00.000Z',
       };
 
-      await storageService.saveData({
+      await storageService.replaceData({
         schemaVersion: CURRENT_SCHEMA_VERSION,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
@@ -208,7 +208,7 @@ describe('WatchListService', () => {
         createdAt: '2026-04-01T10:00:00.000Z',
       };
 
-      await storageService.saveData({
+      await storageService.replaceData({
         schemaVersion: CURRENT_SCHEMA_VERSION,
         lastModifiedAt: '2026-04-01T10:00:00.000Z',
         groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },
@@ -447,9 +447,9 @@ describe('WatchListService', () => {
   });
 
   describe('getItemById', () => {
-    it('returns the matching item', () => {
+    it('returns the matching item', async () => {
       const item = createItem({ id: 'i1', title: 'Found' });
-      saveData({ items: { i1: item } });
+      await saveData({ items: { i1: item } });
 
       expect(service.getItemById('i1')).toEqual(item);
     });
@@ -460,8 +460,8 @@ describe('WatchListService', () => {
   });
 
   describe('getAllWatchHistory', () => {
-    it('combines active and deleted item history sorted newest first', () => {
-      saveData({
+    it('combines active and deleted item history sorted newest first', async () => {
+      await saveData({
         items: {
           active: createItem({
             id: 'active',
@@ -490,8 +490,8 @@ describe('WatchListService', () => {
   });
 
   describe('computed signals', () => {
-    it('items exposes all stored items', () => {
-      saveData({
+    it('items exposes all stored items', async () => {
+      await saveData({
         items: {
           a: createItem({ id: 'a' }),
           b: createItem({ id: 'b' }),
@@ -506,8 +506,8 @@ describe('WatchListService', () => {
       ).toEqual(['a', 'b']);
     });
 
-    it('inProgressSeries only includes in-progress series', () => {
-      saveData({
+    it('inProgressSeries only includes in-progress series', async () => {
+      await saveData({
         items: {
           series: createItem({
             id: 'series',
@@ -523,8 +523,8 @@ describe('WatchListService', () => {
       expect(service.inProgressSeries().map((i) => i.id)).toEqual(['series']);
     });
 
-    it('inProgressMovies only includes in-progress movies', () => {
-      saveData({
+    it('inProgressMovies only includes in-progress movies', async () => {
+      await saveData({
         items: {
           series: createItem({
             id: 'series',
@@ -543,8 +543,8 @@ describe('WatchListService', () => {
   function saveData(data?: {
     items?: Record<string, Item>;
     deletedItems?: Record<string, DeletedItemHistory>;
-  }): Promise<void> {
-    return storageService.saveData({
+  }) {
+    return storageService.replaceData({
       schemaVersion: 3,
       lastModifiedAt: '2026-04-01T10:00:00.000Z',
       groups: { ungrouped: { id: 'ungrouped', name: 'Ungrouped', order: 0 } },

@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { ItemCardComponent } from '../item-card/item-card.component';
-import { Item, ItemType } from '../../models/item.model';
+import { ReadonlyItem as Item, ItemType } from '../../models/item.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { WatchActionFeedback } from '../watch-action-feedback';

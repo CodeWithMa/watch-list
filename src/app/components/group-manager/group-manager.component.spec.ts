@@ -204,7 +204,7 @@ describe('GroupManagerComponent settled interactions', () => {
       TestBed.configureTestingModule({});
       const storage = TestBed.inject(StorageService);
       await storage.initialize();
-      await storage.saveData({
+      await storage.replaceData({
         ...storage.getData(),
         groups: {
           ...storage.getData().groups,
