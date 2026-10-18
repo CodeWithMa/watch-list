@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { StorageData } from '../models/storage.model';
 import { Item } from '../models/item.model';
 import { Group } from '../models/group.model';
@@ -13,6 +13,7 @@ import type { StoredImage } from './image-storage.service';
 import { imagesInvalidated } from './image-invalidation';
 import {
   WatchListDatabase,
+  DatabaseAccessError,
   STORAGE_STORE_NAME as STORE_NAME,
   IMAGE_STORE_NAME,
 } from './watch-list-database.service';
@@ -26,8 +27,19 @@ const BACKUP_LIMIT = 10;
 })
 export class StorageService {
   private readonly databaseOwner = inject(WatchListDatabase);
+  private readonly initializationError = signal<DatabaseAccessError | null>(null);
+  private readonly databaseError = computed(
+    () => this.databaseOwner.getAccessErrorSignal()() ?? this.initializationError(),
+  );
   private readonly data = signal<StorageData | null>(null);
+  private readonly accessibleData = computed(() =>
+    this.loading() || this.databaseError() ? null : this.data(),
+  );
+  private readonly loading = signal(false);
   private readonly saveError = signal<string | null>(null);
+  private readonly visibleSaveError = computed(() =>
+    this.databaseError() ? null : this.saveError(),
+  );
   private readonly inMemorySession = signal(false);
   private readonly compatibilityError = signal<UnsupportedSchemaVersionError | null>(null);
   private unsupportedData: unknown;
@@ -37,16 +49,46 @@ export class StorageService {
   private writeQueue: Promise<void> = Promise.resolve();
 
   initialize(): Promise<void> {
-    this.initialization ??= this.loadData().catch((error: unknown) => {
-      if (this.compatibilityError()) return;
-      this.initialization = null;
-      this.useInMemorySession();
-      console.error('Storage initialization failed, falling back to in-memory session:', error);
-      const defaults = createDefaultStorageData();
-      this.lastPersistedData = cloneStorageData(defaults);
-      this.data.set(cloneStorageData(defaults));
-    });
+    const retryingAccess = this.databaseError()?.recovery === 'retry';
+    if (retryingAccess && !this.loading()) this.initialization = null;
+    if (!this.initialization) {
+      this.loading.set(true);
+      this.initializationError.set(null);
+      // Poster reads can recover independently, so preserve edits even after their error clears.
+      const preserveSession =
+        this.inMemorySession() &&
+        this.data() &&
+        (retryingAccess || !storageDataEqual(this.data(), this.lastPersistedData));
+      const initialization = preserveSession
+        ? this.databaseOwner.open().then(() => undefined)
+        : this.loadData();
+      this.initialization = initialization
+        .catch((error: unknown) => {
+          if (this.compatibilityError()) return;
+          this.initialization = null;
+          const accessError = error instanceof DatabaseAccessError ? error : this.databaseError();
+          if (accessError) {
+            this.initializationError.set(accessError);
+            return;
+          }
+          this.useInMemorySession();
+          console.error('Storage initialization failed, falling back to in-memory session:', error);
+          if (preserveSession) return;
+          const defaults = createDefaultStorageData();
+          this.lastPersistedData = cloneStorageData(defaults);
+          this.data.set(cloneStorageData(defaults));
+        })
+        .finally(() => this.loading.set(false));
+    }
     return this.initialization;
+  }
+
+  getDatabaseErrorSignal() {
+    return this.databaseError;
+  }
+
+  getLoadingSignal() {
+    return this.loading.asReadonly();
   }
 
   async importData(data: unknown): Promise<StorageData> {
@@ -70,6 +112,7 @@ export class StorageService {
   }
 
   async writeImages(write: (store: IDBObjectStore) => void) {
+    this.assertWritable();
     await this.initialize();
     this.assertWritable();
     await this.writeTransaction(
@@ -80,7 +123,7 @@ export class StorageService {
   }
 
   getSaveErrorSignal() {
-    return this.saveError.asReadonly();
+    return this.visibleSaveError;
   }
 
   getInMemorySessionSignal() {
@@ -97,7 +140,7 @@ export class StorageService {
   }
 
   assertWritable() {
-    const error = this.compatibilityError();
+    const error = this.compatibilityError() ?? this.databaseError();
     if (error) throw error;
   }
 
@@ -129,7 +172,8 @@ export class StorageService {
   }
 
   private async persistData(data: StorageData, images?: StoredImage[]): Promise<void> {
-    if (!this.data()) await this.initialize();
+    this.assertWritable();
+    if (this.loading() || !this.data()) await this.initialize();
     this.assertWritable();
     assertSupportedStorageVersion(data);
     if (!this.persistentStorage && images && images.length > 0) {
@@ -177,11 +221,13 @@ export class StorageService {
 
   getData(): StorageData {
     this.assertWritable();
-    return cloneStorageData(this.data()!);
+    const data = this.accessibleData();
+    if (!data) throw new Error('The collection is still opening. Please try again.');
+    return cloneStorageData(data);
   }
 
   getDataSignal() {
-    return this.data.asReadonly();
+    return this.accessibleData;
   }
 
   getItems(): Item[] {
@@ -235,8 +281,9 @@ export class StorageService {
       await this.writeInitialData(defaults);
       this.lastPersistedData = cloneStorageData(defaults);
       this.data.set(cloneStorageData(defaults));
-    } catch {
+    } catch (error) {
       if (this.compatibilityError()) return;
+      if (this.databaseError()) throw error;
       this.useInMemorySession();
       const defaults = createDefaultStorageData();
       this.lastPersistedData = cloneStorageData(defaults);
@@ -255,7 +302,7 @@ export class StorageService {
       if (backup !== undefined) await this.backupRawData(backup);
       await this.writeData(data);
     } catch (error) {
-      if (error instanceof UnsupportedSchemaVersionError) throw error;
+      if (error instanceof UnsupportedSchemaVersionError || this.databaseError()) throw error;
       this.useInMemorySession();
     }
   }

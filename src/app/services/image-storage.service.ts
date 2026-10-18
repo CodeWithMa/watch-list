@@ -100,6 +100,7 @@ export class ImageStorageService {
   }
 
   private async ensureWritable() {
+    this.storageService.assertWritable();
     await this.storageService.initialize();
     this.storageService.assertWritable();
   }

@@ -27,7 +27,7 @@ describe('WatchListDatabase', () => {
     database.close();
   });
 
-  it('releases an obsolete connection on version change and acquires a new one', async () => {
+  it('releases an obsolete connection and requires reload after a version change', async () => {
     const owner = new WatchListDatabase();
     const original = await owner.open();
     try {
@@ -39,10 +39,13 @@ describe('WatchListDatabase', () => {
       });
       expect(() => original.transaction('storage')).toThrow();
 
-      const replacement = await owner.open();
+      expect(owner.getAccessErrorSignal()()?.recovery).toBe('reload');
+      await expect(owner.open()).rejects.toThrow(/reload/i);
+      const reloadedOwner = new WatchListDatabase();
+      const replacement = await reloadedOwner.open();
       expect(replacement).not.toBe(original);
       expect([...replacement.objectStoreNames]).toEqual(['images', 'storage']);
-      replacement.close();
+      reloadedOwner.close();
     } finally {
       original.close();
     }

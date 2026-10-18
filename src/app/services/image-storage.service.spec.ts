@@ -200,6 +200,28 @@ describe('ImageStorageService', () => {
     expect(storage.getInMemorySessionSignal()()).toBe(false);
   });
 
+  it('blocks poster changes before downloading or decoding when another tab upgrades the database', async () => {
+    const storage = TestBed.inject(StorageService);
+    const images = TestBed.inject(ImageStorageService);
+    await storage.initialize();
+    const future = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 4);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('Obsolete connection blocked the upgrade'));
+    });
+    try {
+      await expect(images.storeUrl('https://example.com/poster.png')).rejects.toThrow(/reload/i);
+      await expect(images.storeFile(createImageBlob())).rejects.toThrow(/reload/i);
+      await expect(images.delete('existing')).rejects.toThrow(/reload/i);
+      await expect(images.replaceImages([])).rejects.toThrow(/reload/i);
+      expect(fetch).not.toHaveBeenCalled();
+      expect(createImageBitmap).not.toHaveBeenCalled();
+    } finally {
+      future.close();
+    }
+  });
+
   it('reacquires the shared connection for metadata and posters after invalidation', async () => {
     const storage = TestBed.inject(StorageService);
     const images = TestBed.inject(ImageStorageService);

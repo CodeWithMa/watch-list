@@ -6,6 +6,7 @@ import { Item } from '../models/item.model';
 import { createDefaultStorageData } from '../domain/storage-schema';
 import { ImageStorageService } from './image-storage.service';
 import { TestBed } from '@angular/core/testing';
+import { WatchListDatabase } from './watch-list-database.service';
 
 describe('StorageService', () => {
   beforeEach(() => {
@@ -17,6 +18,7 @@ describe('StorageService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('creates a default dataset when storage is empty', async () => {
@@ -45,6 +47,208 @@ describe('StorageService', () => {
     await service.initialize();
     expect(service.getInMemorySessionSignal()()).toBe(false);
   });
+
+  it('does not publish an empty session when an older tab blocks the database upgrade', async () => {
+    const legacy = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 2);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('storage');
+        request.result.createObjectStore('images', { keyPath: 'id' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const original = dataWithMovie();
+    await writeRecord(legacy, original);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const service = createStorageService();
+    try {
+      await service.initialize();
+
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      await expect(service.saveData(createDefaultStorageData())).rejects.toThrow(/another.*tab/);
+      expect(await readRecord(legacy, 'watch-list-data')).toEqual(original);
+
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const retry = service.initialize();
+      expect(service.getLoadingSignal()()).toBe(true);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await retry;
+      expect(service.getLoadingSignal()()).toBe(false);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getDatabaseErrorSignal()()?.message).toContain('timed out');
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      vi.useRealTimers();
+    } finally {
+      legacy.close();
+    }
+
+    await service.initialize();
+    expect(service.getData()).toEqual(original);
+    await service.saveData(withGroup(service.getData(), 'saved-after-retry'));
+    const reloaded = createStorageService();
+    await reloaded.initialize();
+    expect(reloaded.getData().groups['saved-after-retry'].name).toBe('saved-after-retry');
+  });
+
+  it('invalidates the loaded collection before a newer tab upgrades the database', async () => {
+    const service = createStorageService();
+    await service.initialize();
+    await service.saveData(dataWithMovie());
+    const snapshot = service.getData();
+    let collectionVisibleDuringUpgrade = true;
+    const future = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 4);
+      request.onupgradeneeded = () => {
+        collectionVisibleDuringUpgrade = service.getDataSignal()() !== null;
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('Obsolete connection blocked the upgrade'));
+    });
+    try {
+      expect(collectionVisibleDuringUpgrade).toBe(false);
+      expect(service.getDataSignal()()).toBeNull();
+      expect(() => service.getData()).toThrow(/reload/i);
+      await expect(service.saveData(withGroup(snapshot, 'stale'))).rejects.toThrow(/reload/i);
+      await expect(service.importData(snapshot)).rejects.toThrow(/reload/i);
+      await expect(service.importDataWithImages(snapshot, [])).rejects.toThrow(/reload/i);
+      const writePosters = vi.fn();
+      await expect(service.writeImages(writePosters)).rejects.toThrow(/reload/i);
+      expect(writePosters).not.toHaveBeenCalled();
+      await service.initialize();
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getSaveErrorSignal()()).toBeNull();
+      expect(await readRecord(future, 'watch-list-data')).toEqual(snapshot);
+    } finally {
+      future.close();
+    }
+  });
+
+  it('requires an updated app instead of session defaults when a newer database exists at startup', async () => {
+    const future = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('watch-list', 4);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore('storage');
+        request.result.createObjectStore('images', { keyPath: 'id' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const original = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, future: ['preserve'] };
+    await writeRecord(future, original);
+    const service = createStorageService();
+    try {
+      await service.initialize();
+
+      expect(service.getDataSignal()()).toBeNull();
+      expect(service.getDatabaseErrorSignal()()?.recovery).toBe('reload');
+      expect(service.getDatabaseErrorSignal()()?.message).toContain('newer version');
+      expect(service.getInMemorySessionSignal()()).toBe(false);
+      await expect(service.saveData(createDefaultStorageData())).rejects.toThrow(/newer version/i);
+      await service.initialize();
+      expect(service.getDataSignal()()).toBeNull();
+      expect(await readRecord(future, 'watch-list-data')).toEqual(original);
+    } finally {
+      future.close();
+    }
+  });
+
+  it('retries a connection timeout even after metadata initialization previously succeeded', async () => {
+    const service = createStorageService();
+    await service.initialize();
+    await service.saveData(dataWithMovie());
+    const snapshot = service.getData();
+    TestBed.inject(WatchListDatabase).close();
+    const blocker = await openTestDatabase();
+    const upgradeRequest = indexedDB.open('watch-list', 4);
+    const blocked = new Promise<void>((resolve) => (upgradeRequest.onblocked = () => resolve()));
+    const upgraded = new Promise<IDBDatabase>((resolve, reject) => {
+      upgradeRequest.onsuccess = () => resolve(upgradeRequest.result);
+      upgradeRequest.onerror = () => reject(upgradeRequest.error);
+    });
+    await blocked;
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const read = expect(TestBed.inject(ImageStorageService).exportImages()).rejects.toThrow(
+        /timed out/,
+      );
+      await vi.advanceTimersByTimeAsync(10_000);
+      await read;
+      expect(service.getDataSignal()()).toBeNull();
+
+      const retry = service.initialize();
+      expect(service.getLoadingSignal()()).toBe(true);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await retry;
+      expect(service.getDatabaseErrorSignal()()?.recovery).toBe('retry');
+      expect(service.getDataSignal()()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      blocker.close();
+    }
+    const future = await upgraded;
+    try {
+      await service.initialize();
+      expect(service.getDatabaseErrorSignal()()?.recovery).toBe('reload');
+      expect(await readRecord(future, 'watch-list-data')).toEqual(snapshot);
+    } finally {
+      future.close();
+    }
+  });
+
+  it.each([false, true])(
+    'preserves session edits after independent poster recovery (reopen fails: %s)',
+    async (reopenFails) => {
+      const service = TestBed.inject(StorageService);
+      const images = TestBed.inject(ImageStorageService);
+      vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+        throw new Error('Unavailable');
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      await service.initialize();
+      await service.saveData(withGroup(service.getData(), 'session-edit'));
+      const session = service.getData();
+      const legacy = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('watch-list', 2);
+        request.onupgradeneeded = () => {
+          request.result.createObjectStore('storage');
+          request.result.createObjectStore('images', { keyPath: 'id' });
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const original = dataWithMovie();
+      await writeRecord(legacy, original);
+      try {
+        await expect(images.exportImages()).rejects.toThrow(/blocked/);
+      } finally {
+        legacy.close();
+      }
+
+      expect(await images.exportImages()).toEqual([]);
+      if (reopenFails) {
+        TestBed.inject(WatchListDatabase).close();
+        vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+          throw new Error('Unavailable again');
+        });
+      }
+      await expect(images.delete('missing-poster')).rejects.toThrow(
+        'Persistent storage is unavailable',
+      );
+      expect(service.getData()).toEqual(session);
+      await service.initialize();
+      expect(service.getData()).toEqual(session);
+      expect(service.getInMemorySessionSignal()()).toBe(true);
+      const database = await openTestDatabase();
+      try {
+        expect(await readRecord(database, 'watch-list-data')).toEqual(original);
+      } finally {
+        database.close();
+      }
+    },
+  );
 
   it('closes an opened database when initialization fails', async () => {
     const service = createStorageService();

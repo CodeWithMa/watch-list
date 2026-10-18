@@ -25,6 +25,8 @@ export class App {
   protected readonly saveError = this.storageService.getSaveErrorSignal();
   protected readonly inMemorySession = this.storageService.getInMemorySessionSignal();
   protected readonly compatibilityError = this.storageService.getCompatibilityErrorSignal();
+  protected readonly databaseError = this.storageService.getDatabaseErrorSignal();
+  protected readonly storageLoading = this.storageService.getLoadingSignal();
   protected readonly downloadError = signal<string | null>(null);
   protected readonly updateReady = toSignal(
     (this.updates?.isEnabled ? this.updates.versionUpdates : EMPTY).pipe(
@@ -36,6 +38,10 @@ export class App {
 
   protected reload() {
     this.document.location.reload();
+  }
+
+  protected retryStorage() {
+    void this.storageService.initialize();
   }
 
   protected downloadOriginal() {

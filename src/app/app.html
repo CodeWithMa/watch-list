@@ -110,6 +110,40 @@
           <p class="mt-4">{{ downloadError() }}</p>
         }
       </section>
+    } @else if (databaseError(); as error) {
+      <section
+        role="alert"
+        class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark p-6 rounded border border-error-border-light dark:border-error-border-dark"
+      >
+        <h1 class="text-2xl mb-4">
+          {{ error.recovery === 'retry' ? 'Cannot open your collection yet' : 'Reload Watch List' }}
+        </h1>
+        <p>{{ error.message }}</p>
+        <p class="my-4">
+          Collection changes are disabled to protect your data and posters. Do not clear this app's
+          storage.
+        </p>
+        @if (error.recovery === 'retry') {
+          <button
+            type="button"
+            (click)="retryStorage()"
+            [disabled]="storageLoading()"
+            class="px-4 py-2 rounded border border-current font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50"
+          >
+            {{ storageLoading() ? 'Retrying…' : 'Retry' }}
+          </button>
+        } @else {
+          <button
+            type="button"
+            (click)="reload()"
+            class="px-4 py-2 rounded border border-current font-medium hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            Reload
+          </button>
+        }
+      </section>
+    } @else if (storageLoading()) {
+      <p role="status">Opening your collection…</p>
     } @else {
       <router-outlet />
     }
