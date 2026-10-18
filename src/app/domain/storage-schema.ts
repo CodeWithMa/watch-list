@@ -4,9 +4,15 @@ import { CURRENT_SCHEMA_VERSION, DeletedItemHistory, StorageData } from '../mode
 import { Group } from '../models/group.model';
 import { Item } from '../models/item.model';
 
+const PositiveIntegerSchema = z.number().int().positive();
+const NonblankStringSchema = z.string().refine((value) => value.trim().length > 0);
+// History and creation dates must be real dates. Release metadata deliberately
+// retains its older, more permissive YYYY-MM-DD contract below.
+const DateSchema = z.union([z.iso.date(), z.iso.datetime({ offset: true, local: true })]);
+
 const SeasonInfoSchema = z.object({
-  seasonNumber: z.number(),
-  totalEpisodes: z.number().optional(),
+  seasonNumber: PositiveIntegerSchema,
+  totalEpisodes: PositiveIntegerSchema.optional(),
   snoozeCount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
   firstEpisodeAirDate: z
     .string()
@@ -16,8 +22,8 @@ const SeasonInfoSchema = z.object({
 
 const SeriesProgressSchema = z
   .object({
-    season: z.number(),
-    episode: z.number(),
+    season: PositiveIntegerSchema,
+    episode: PositiveIntegerSchema,
     seasons: z.array(SeasonInfoSchema),
   })
   .refine(
@@ -33,45 +39,50 @@ const SeriesProgressSchema = z
   );
 
 const WatchHistoryEntrySchema = z.object({
-  date: z.string(),
-  season: z.number().optional(),
-  episode: z.number().optional(),
+  date: DateSchema,
+  season: PositiveIntegerSchema.optional(),
+  episode: PositiveIntegerSchema.optional(),
 });
 
 const ItemSchema = z.object({
-  id: z.string(),
+  id: NonblankStringSchema,
   type: z.enum(['series', 'movie', 'ova', 'ona']),
-  title: z.string(),
+  title: NonblankStringSchema,
   groupId: z.string(),
   status: z.enum(['not-started', 'in-progress', 'paused', 'completed', 'dropped']),
   progress: SeriesProgressSchema.optional(),
   watchHistory: z.array(WatchHistoryEntrySchema),
-  createdAt: z.string(),
+  createdAt: DateSchema,
   posterId: z.string().optional(),
   isAdult: z.boolean(),
 });
 
 const GroupSchema = z.object({
-  id: z.string(),
+  id: NonblankStringSchema,
   name: z.string(),
   order: z.number(),
 });
 
 const DeletedItemHistorySchema = z.object({
-  itemId: z.string(),
-  itemTitle: z.string(),
+  itemId: NonblankStringSchema,
+  itemTitle: NonblankStringSchema,
   itemType: z.enum(['series', 'movie', 'ova', 'ona']),
   watchHistory: z.array(WatchHistoryEntrySchema),
-  deletedAt: z.string(),
+  deletedAt: DateSchema,
 });
 
-const StorageDataSchema = z.object({
-  schemaVersion: z.number(),
+// Migration handles untrusted records, not domain objects. Only parsing each
+// record below grants it a domain type.
+// Keep all own keys: z.record discards __proto__ before recovery can count it.
+const UntrustedRecordsSchema = z.custom<Record<string, unknown>>(isRecord);
+const StorageEnvelopeSchema = z.object({
+  schemaVersion: z.number().int().nonnegative(),
   lastModifiedAt: z.string(),
-  groups: z.record(z.string(), GroupSchema),
-  items: z.record(z.string(), ItemSchema),
-  deletedItems: z.record(z.string(), DeletedItemHistorySchema).optional(),
+  groups: UntrustedRecordsSchema,
+  items: UntrustedRecordsSchema,
+  deletedItems: UntrustedRecordsSchema.optional(),
 });
+type StorageEnvelope = z.infer<typeof StorageEnvelopeSchema>;
 
 export function createDefaultStorageData(): StorageData {
   const now = new Date().toISOString();
@@ -96,9 +107,13 @@ export interface DroppedRecords {
   deletedItems: number;
 }
 
-export interface NormalizationResult {
-  data: StorageData;
+export interface NormalizationReport {
   dropped: DroppedRecords;
+  repairedGroupReferences: number;
+}
+
+export interface NormalizationResult extends NormalizationReport {
+  data: StorageData;
 }
 
 export class UnsupportedSchemaVersionError extends Error {
@@ -124,81 +139,63 @@ export function assertSupportedStorageVersion(data: unknown) {
 
 export function normalizeStorageData(data: unknown): NormalizationResult {
   assertSupportedStorageVersion(data);
-  if (!isStorageDataShape(data)) {
+  const envelope = StorageEnvelopeSchema.safeParse(data);
+  if (!envelope.success) {
     throw new Error('Invalid data format');
   }
 
-  const migrated = migrateStorageData(data);
-  const normalized = applyStorageDefaults(migrated);
-
-  const result = StorageDataSchema.safeParse(normalized);
-  if (result.success) {
-    return { data: result.data as StorageData, dropped: { groups: 0, items: 0, deletedItems: 0 } };
-  }
-
-  const quarantined = quarantineInvalidRecords(normalized);
-  const retry = StorageDataSchema.safeParse(quarantined.data);
-  if (!retry.success) {
-    throw new Error('Invalid migrated data');
-  }
-
-  return { data: retry.data as StorageData, dropped: quarantined.dropped };
+  return quarantineInvalidRecords(migrateStorageData(envelope.data));
 }
 
-function quarantineInvalidRecords(data: StorageData): NormalizationResult {
-  const inputItemCount = Object.keys(data.items ?? {}).length;
+function quarantineInvalidRecords(data: StorageEnvelope): NormalizationResult {
+  const inputItemCount = Object.keys(data.items).length;
 
-  const groups: Record<string, Group> = {};
+  const groups = new Map<string, Group>();
   let droppedGroups = 0;
   for (const [id, group] of Object.entries(data.groups ?? {})) {
     const parsed = GroupSchema.safeParse(group);
-    if (parsed.success) {
-      groups[id] = parsed.data;
+    if (parsed.success && parsed.data.id === id) {
+      groups.set(id, parsed.data);
     } else {
       droppedGroups++;
     }
   }
 
-  const items: Record<string, Item> = {};
+  const items = new Map<string, Item>();
   let droppedItems = 0;
   for (const [id, item] of Object.entries(data.items ?? {})) {
     const parsed = ItemSchema.safeParse(item);
-    if (parsed.success) {
-      items[id] = parsed.data as Item;
+    if (parsed.success && parsed.data.id === id) {
+      items.set(id, parsed.data);
     } else {
       droppedItems++;
     }
   }
 
-  const deletedItems: Record<string, DeletedItemHistory> = {};
+  const deletedItems = new Map<string, DeletedItemHistory>();
   let droppedDeleted = 0;
   for (const [id, entry] of Object.entries(data.deletedItems ?? {})) {
     const parsed = DeletedItemHistorySchema.safeParse(entry);
-    if (parsed.success) {
-      deletedItems[id] = parsed.data;
+    if (parsed.success && parsed.data.itemId === id) {
+      deletedItems.set(id, parsed.data);
     } else {
       droppedDeleted++;
     }
   }
 
-  if (inputItemCount > 0 && Object.keys(items).length === 0) {
+  if (inputItemCount > 0 && items.size === 0) {
     throw new Error('Invalid migrated data');
   }
 
-  const withDefaults = applyStorageDefaults({
-    ...data,
-    groups,
-    items,
-    deletedItems,
-  });
+  if (!groups.has(DEFAULT_GROUP_ID)) {
+    groups.set(DEFAULT_GROUP_ID, createDefaultStorageData().groups[DEFAULT_GROUP_ID]);
+  }
 
-  // Items pointing at a dropped group fall back to the default group
-  // instead of keeping a dangling reference. The own-key check matters:
-  // a plain lookup would find inherited Object.prototype members (e.g. an
-  // item with groupId 'toString') and keep the dangling reference.
-  for (const item of Object.values(withDefaults.items)) {
-    if (!Object.hasOwn(withDefaults.groups, item.groupId)) {
+  let repairedGroupReferences = 0;
+  for (const item of items.values()) {
+    if (!groups.has(item.groupId)) {
       item.groupId = DEFAULT_GROUP_ID;
+      repairedGroupReferences++;
     }
   }
 
@@ -210,44 +207,23 @@ function quarantineInvalidRecords(data: StorageData): NormalizationResult {
   }
 
   return {
-    data: withDefaults,
+    data: {
+      ...data,
+      groups: Object.fromEntries(groups),
+      items: Object.fromEntries(items),
+      deletedItems: Object.fromEntries(deletedItems),
+    },
     dropped: { groups: droppedGroups, items: droppedItems, deletedItems: droppedDeleted },
+    repairedGroupReferences,
   };
 }
 
-function isStorageDataShape(data: unknown): data is StorageData {
-  if (!data || typeof data !== 'object') {
-    return false;
-  }
-
-  const candidate = data as Record<string, unknown>;
-
-  if (
-    typeof candidate['schemaVersion'] !== 'number' ||
-    typeof candidate['lastModifiedAt'] !== 'string' ||
-    !candidate['groups'] ||
-    !candidate['items']
-  ) {
-    return false;
-  }
-
-  if (!isRecord(candidate['groups']) || !isRecord(candidate['items'])) {
-    return false;
-  }
-
-  if (candidate['deletedItems'] !== undefined && !isRecord(candidate['deletedItems'])) {
-    return false;
-  }
-
-  return true;
-}
-
-function migrateStorageData(data: StorageData): StorageData {
+function migrateStorageData(data: StorageEnvelope): StorageEnvelope {
   if (data.schemaVersion >= CURRENT_SCHEMA_VERSION) {
     return structuredClone(data);
   }
 
-  const migrated: StorageData = structuredClone(data);
+  const migrated = structuredClone(data);
 
   if (migrated.schemaVersion < 3) {
     for (const item of Object.values(migrated.items)) {
@@ -258,7 +234,7 @@ function migrateStorageData(data: StorageData): StorageData {
       }
       if (item['type'] === 'series' && isRecord(item['progress'])) {
         const progress = item['progress'];
-        if (typeof progress['totalEpisodes'] === 'number') {
+        if (progress['totalEpisodes'] !== undefined) {
           progress['seasons'] = [
             {
               seasonNumber: progress['season'],
@@ -266,7 +242,7 @@ function migrateStorageData(data: StorageData): StorageData {
             },
           ];
           delete progress['totalEpisodes'];
-        } else if (!progress['seasons']) {
+        } else if (progress['seasons'] === undefined) {
           progress['seasons'] = [];
         }
         delete progress['totalSeasons'];
@@ -334,21 +310,6 @@ function migrateStorageData(data: StorageData): StorageData {
   }
 
   return migrated;
-}
-
-function applyStorageDefaults(data: StorageData): StorageData {
-  return {
-    ...data,
-    groups: {
-      [DEFAULT_GROUP_ID]: data.groups[DEFAULT_GROUP_ID] ?? {
-        id: DEFAULT_GROUP_ID,
-        name: 'Ungrouped',
-        order: 0,
-      },
-      ...data.groups,
-    },
-    deletedItems: data.deletedItems ?? {},
-  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

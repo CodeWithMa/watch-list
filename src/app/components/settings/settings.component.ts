@@ -4,7 +4,7 @@ import { DatePipe } from '@angular/common';
 
 import { ImportExportService } from '../../services/import-export.service';
 import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
-import { DroppedRecords, UnsupportedSchemaVersionError } from '../../domain/storage-schema';
+import { NormalizationReport, UnsupportedSchemaVersionError } from '../../domain/storage-schema';
 import {
   AdultDisplayMode,
   DEFAULT_TITLE_PREFERENCE,
@@ -638,9 +638,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.importInProgress.set(true);
 
     try {
-      const dropped = await this.importExportService.importData(file);
+      const report = await this.importExportService.importData(file);
       this.syncProviderSignals();
-      this.successMessage.set(describeImportResult(dropped));
+      this.successMessage.set(describeImportResult(report));
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
@@ -675,10 +675,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 }
 
-function describeImportResult(dropped: DroppedRecords): string {
+function describeImportResult({ dropped, repairedGroupReferences }: NormalizationReport): string {
   const total = dropped.groups + dropped.items + dropped.deletedItems;
-  if (total === 0) {
+  if (total === 0 && repairedGroupReferences === 0) {
     return 'Data imported successfully';
   }
-  return `Import completed with ${total} invalid record(s) omitted.`;
+  const details = [];
+  if (total > 0) details.push(`${total} invalid record(s) omitted`);
+  if (repairedGroupReferences > 0) {
+    details.push(`${repairedGroupReferences} missing group reference(s) repaired to Ungrouped`);
+  }
+  return `Import completed with ${details.join(' and ')}.`;
 }

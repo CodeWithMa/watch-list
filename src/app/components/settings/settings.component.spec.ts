@@ -3,14 +3,17 @@ import { environment } from '../../../environments/environment';
 import { ImportExportService } from '../../services/import-export.service';
 import { TmdbCredential, TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
-import { DroppedRecords } from '../../domain/storage-schema';
+import { NormalizationReport, createDefaultStorageData } from '../../domain/storage-schema';
 import { SettingsComponent } from './settings.component';
 import { vi, afterEach, beforeEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { StorageService } from '../../services/storage.service';
 import { CURRENT_SCHEMA_VERSION } from '../../models/storage.model';
 
-const CLEAN_IMPORT: DroppedRecords = { groups: 0, items: 0, deletedItems: 0 };
+const CLEAN_IMPORT: NormalizationReport = {
+  dropped: { groups: 0, items: 0, deletedItems: 0 },
+  repairedGroupReferences: 0,
+};
 
 describe('SettingsComponent', () => {
   let origHash: string;
@@ -364,9 +367,9 @@ describe('SettingsComponent', () => {
   it('runs only one import when confirm is triggered twice while in progress', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    let resolveImport!: (value: DroppedRecords) => void;
+    let resolveImport!: (value: NormalizationReport) => void;
     vi.mocked(exportService.importData).mockReturnValue(
-      new Promise<DroppedRecords>((resolve) => {
+      new Promise<NormalizationReport>((resolve) => {
         resolveImport = resolve;
       }),
     );
@@ -400,10 +403,10 @@ describe('SettingsComponent', () => {
   it('keeps a file selected during an import pending after the import finishes', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    let resolveFirst!: (value: DroppedRecords) => void;
+    let resolveFirst!: (value: NormalizationReport) => void;
     vi.mocked(exportService.importData)
       .mockReturnValueOnce(
-        new Promise<DroppedRecords>((resolve) => {
+        new Promise<NormalizationReport>((resolve) => {
           resolveFirst = resolve;
         }),
       )
@@ -509,9 +512,8 @@ describe('SettingsComponent', () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
     vi.mocked(exportService.importData).mockResolvedValue({
-      groups: 1,
-      items: 2,
-      deletedItems: 0,
+      dropped: { groups: 1, items: 2, deletedItems: 0 },
+      repairedGroupReferences: 0,
     });
     const fixture = TestBed.createComponent(SettingsComponent);
     const target = {
@@ -529,6 +531,49 @@ describe('SettingsComponent', () => {
     );
     expect(fixture.componentInstance.errorMessage()).toBeNull();
   });
+
+  it.each([false, true])(
+    'reports repaired references in a real import (also omitted: %s)',
+    async (omit) => {
+      Object.defineProperty(globalThis, 'indexedDB', {
+        configurable: true,
+        value: new IDBFactory(),
+      });
+      const storage = TestBed.inject(StorageService);
+      await storage.initialize();
+      const fixture = TestBed.createComponent(SettingsComponent);
+      fixture.detectChanges();
+      const movie = {
+        id: 'movie',
+        title: 'Movie',
+        type: 'movie',
+        status: 'completed',
+        isAdult: false,
+        groupId: 'missing',
+        createdAt: '2026-01-01',
+        watchHistory: [],
+      };
+      const payload = {
+        ...createDefaultStorageData(),
+        items: { movie, ...(omit ? { bad: { ...movie, id: 'bad', title: ' ' } } : {}) },
+      };
+      const file = new File([], 'recovery.json');
+      Object.defineProperty(file, 'text', { value: async () => JSON.stringify(payload) });
+      const target = { files: [file], value: '' };
+
+      await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+      await fixture.componentInstance.confirmImport();
+      fixture.detectChanges();
+
+      const expected = omit
+        ? 'Import completed with 1 invalid record(s) omitted and 1 missing group reference(s) repaired to Ungrouped.'
+        : 'Import completed with 1 missing group reference(s) repaired to Ungrouped.';
+      expect(fixture.componentInstance.successMessage()).toBe(expected);
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(expected);
+      expect(storage.getData().items['movie'].groupId).toBe('ungrouped');
+      expect(Object.keys(storage.getData().items)).toEqual(['movie']);
+    },
+  );
 
   it('shows an error message when a confirmed import fails', async () => {
     configure({ token: '', key: '', credential: null });

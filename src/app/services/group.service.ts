@@ -76,28 +76,28 @@ export class GroupService {
 
   reorderGroups(groupIds: string[]): void {
     const data = this.storageService.getData();
-    const groups: Record<string, Group> = {};
+    const groups = new Map<string, Group>();
 
     groupIds.forEach((id, index) => {
       const group = data.groups[id];
-      if (group) {
-        groups[id] = {
+      if (Object.hasOwn(data.groups, id)) {
+        groups.set(id, {
           ...group,
           order: index,
-        };
+        });
       }
     });
 
     // Keep any groups not in the reorder list
     Object.values(data.groups).forEach((group) => {
-      if (!groups[group.id]) {
-        groups[group.id] = group;
+      if (!groups.has(group.id)) {
+        groups.set(group.id, group);
       }
     });
 
     this.storageService.saveData({
       ...data,
-      groups,
+      groups: Object.fromEntries(groups),
     });
   }
 

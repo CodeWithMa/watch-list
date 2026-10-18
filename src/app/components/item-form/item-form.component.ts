@@ -248,6 +248,11 @@ export interface ItemFormAutofillPatch {
             [seasons]="formValue().seasons"
             (seasonsChange)="updateSeasons($event)"
           />
+          @if (hasInvalidProgress()) {
+            <div role="alert" class="text-accent-danger text-sm mt-2">
+              Season and episode values must be positive whole numbers within the supported range.
+            </div>
+          }
         </div>
       }
 
@@ -323,8 +328,19 @@ export class ItemFormComponent {
     return JSON.stringify(current) !== JSON.stringify(initial);
   });
 
+  readonly hasInvalidProgress = computed(() => {
+    const value = this.formValue();
+    if (!isEpisodicType(value.type)) return false;
+    const numbers = [value.season, value.episode];
+    for (const season of value.seasons) {
+      numbers.push(season.seasonNumber);
+      if (season.totalEpisodes !== undefined) numbers.push(season.totalEpisodes);
+    }
+    return numbers.some((number) => !Number.isSafeInteger(number) || number < 1);
+  });
+
   readonly isSubmitDisabled = computed(() => {
-    if (!this.formValue().title.trim() || this.posterLoading()) {
+    if (!this.formValue().title.trim() || this.posterLoading() || this.hasInvalidProgress()) {
       return true;
     }
 
@@ -367,7 +383,7 @@ export class ItemFormComponent {
 
   submit(): void {
     const value = this.formValue();
-    if (!value.title.trim() || this.posterLoading()) {
+    if (this.isSubmitDisabled()) {
       return;
     }
 

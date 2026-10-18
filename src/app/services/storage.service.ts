@@ -8,7 +8,7 @@ import {
   normalizeStorageData,
   UnsupportedSchemaVersionError,
 } from '../domain/storage-schema';
-import type { DroppedRecords, NormalizationResult } from '../domain/storage-schema';
+import type { NormalizationReport, NormalizationResult } from '../domain/storage-schema';
 import type { StoredImage } from './image-storage.service';
 import { imagesInvalidated } from './image-invalidation';
 
@@ -53,17 +53,18 @@ export class StorageService {
     return this.getData();
   }
 
-  saveData(data: StorageData): Promise<void> {
-    return this.persistData(data);
+  async saveData(data: StorageData): Promise<void> {
+    const normalized = normalizeStorageData(data);
+    if (requiresRecovery(normalized)) {
+      throw new Error('Invalid collection data. No changes were saved.');
+    }
+    return this.persistData(normalized.data);
   }
 
-  async importDataWithImages(
-    data: unknown,
-    images: StoredImage[],
-  ): Promise<{ data: StorageData; dropped: DroppedRecords }> {
+  async importDataWithImages(data: unknown, images: StoredImage[]): Promise<NormalizationResult> {
     const normalized = normalizeStorageData(data);
     await this.persistData(normalized.data, images);
-    return { data: this.getData(), dropped: normalized.dropped };
+    return { ...normalized, data: this.getData() };
   }
 
   async writeImages(write: (store: IDBObjectStore) => void) {
@@ -217,10 +218,9 @@ export class StorageService {
         }
 
         if (!storageDataEqual(normalized.data, storedSnapshot)) {
-          const { groups, items, deletedItems } = normalized.dropped;
           await this.writeInitialData(
             normalized.data,
-            groups + items + deletedItems > 0 ? storedSnapshot : undefined,
+            requiresRecovery(normalized) ? storedSnapshot : undefined,
           );
         }
         this.lastPersistedData = cloneStorageData(normalized.data);
@@ -432,6 +432,11 @@ export class StorageService {
 
 function cloneStorageData(data: StorageData): StorageData {
   return structuredClone(data);
+}
+
+function requiresRecovery(report: NormalizationReport) {
+  const { groups, items, deletedItems } = report.dropped;
+  return groups + items + deletedItems + report.repairedGroupReferences > 0;
 }
 
 function storageDataEqual(

@@ -5,6 +5,7 @@ import { createSuggestionProviders } from '../../services/suggestion-search.test
 import { ImageStorageService } from '../../services/image-storage.service';
 import { ItemFormComponent } from './item-form.component';
 import { vi } from 'vitest';
+import { createDefaultItemFormValue } from '../../domain/item-form';
 
 describe('ItemFormComponent', () => {
   const groups: Group[] = [
@@ -87,6 +88,82 @@ describe('ItemFormComponent', () => {
     ) as HTMLButtonElement;
     expect(submitButton.disabled).toBe(true);
   });
+
+  it.each([
+    ['#season', '1.5'],
+    ['#episode', '1.5'],
+    ['#seasonNumber0', '1.5'],
+    ['#seasonEpisodes0', '1.5'],
+    ['#season', '0.5'],
+    ['#episode', '0.5'],
+    ['#seasonNumber0', '0.5'],
+    ['#seasonEpisodes0', '0.5'],
+  ])(
+    'blocks fractional input in %s (%s) with visible feedback and allows correction',
+    async (selector, fractional) => {
+      const fixture = TestBed.createComponent(ItemFormComponent);
+      fixture.componentRef.setInput('groups', groups);
+      fixture.componentRef.setInput('initialValue', {
+        ...createDefaultItemFormValue(),
+        title: 'A series',
+        seasons: [{ seasonNumber: 1, totalEpisodes: 12 }],
+      });
+      const submitted = vi.fn();
+      fixture.componentInstance.submitted.subscribe(submitted);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const root = fixture.nativeElement as HTMLElement;
+      const input = root.querySelector<HTMLInputElement>(selector)!;
+
+      input.value = fractional;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.componentInstance.submit();
+
+      expect(submitted).not.toHaveBeenCalled();
+      expect(root.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+      expect(root.querySelector('[role="alert"]')?.textContent).toContain('positive whole numbers');
+      expect(root.querySelector<HTMLInputElement>(selector)?.value).toBe(fractional);
+
+      const currentInput = root.querySelector<HTMLInputElement>(selector)!;
+      currentInput.value = '2';
+      currentInput.dispatchEvent(new Event('input', { bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(root.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
+      expect(root.querySelector('[role="alert"]')).toBeNull();
+      root
+        .querySelector('form')!
+        .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      expect(submitted).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([Number.MAX_SAFE_INTEGER + 1, Infinity, NaN])(
+    'blocks unsafe numeric form values %s even when supplied as an initial value',
+    async (episode) => {
+      const fixture = TestBed.createComponent(ItemFormComponent);
+      fixture.componentRef.setInput('groups', groups);
+      fixture.componentRef.setInput('initialValue', {
+        ...createDefaultItemFormValue(),
+        title: 'A series',
+        episode,
+      });
+      const submitted = vi.fn();
+      fixture.componentInstance.submitted.subscribe(submitted);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      fixture.componentInstance.submit();
+
+      expect(submitted).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.isSubmitDisabled()).toBe(true);
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent,
+      ).toContain('positive whole numbers');
+    },
+  );
 
   it('shows the duplicate title hint when provided', async () => {
     const fixture = TestBed.createComponent(ItemFormComponent);

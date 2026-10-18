@@ -11,7 +11,7 @@ describe('toPositiveNumber', () => {
     expect(toPositiveNumber('abc', 5)).toBe(5);
   });
 
-  it('returns the fallback for numbers below 1', () => {
+  it('returns the fallback for non-positive numbers', () => {
     expect(toPositiveNumber(0, 5)).toBe(5);
     expect(toPositiveNumber('-3', 5)).toBe(5);
   });
@@ -34,7 +34,7 @@ describe('toOptionalPositiveNumber', () => {
     expect(toOptionalPositiveNumber('abc')).toBeUndefined();
   });
 
-  it('returns undefined for numbers below 1', () => {
+  it('returns undefined for non-positive numbers', () => {
     expect(toOptionalPositiveNumber(0)).toBeUndefined();
     expect(toOptionalPositiveNumber('-3')).toBeUndefined();
   });
