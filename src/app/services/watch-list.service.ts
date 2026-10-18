@@ -2,6 +2,7 @@ import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Item, ItemStatus, SeriesProgress } from '../models/item.model';
 import { HistoryEntry } from '../models/storage.model';
+import { freezeReadModel } from '../models/readonly';
 import { ImageStorageService } from './image-storage.service';
 import { DEFAULT_GROUP_ID, isEpisodicType } from '../domain/item.constants';
 import { applyItemEdit, ItemEdit } from '../domain/item-edit';
@@ -169,12 +170,11 @@ export class WatchListService {
     });
   }
 
-  getItemById(itemId: string): Item | undefined {
-    const data = this.storageService.getData();
-    return data.items[itemId];
+  getItemById(itemId: string) {
+    return this.storageService.getItems().find((item) => item.id === itemId);
   }
 
-  getAllWatchHistory(): HistoryEntry[] {
+  getAllWatchHistory() {
     return this.history();
   }
 
@@ -184,21 +184,23 @@ export class WatchListService {
 
   items = computed(() => {
     const data = this.storageService.getDataSignal()();
-    return data ? Object.values(data.items) : [];
+    return freezeReadModel(data ? Object.values(data.items) : []);
   });
 
   inProgressSeries = computed(() =>
-    this.items().filter((i) => isEpisodicType(i.type) && i.status === 'in-progress'),
+    freezeReadModel(
+      this.items().filter((i) => isEpisodicType(i.type) && i.status === 'in-progress'),
+    ),
   );
 
   inProgressMovies = computed(() =>
-    this.items().filter((i) => i.type === 'movie' && i.status === 'in-progress'),
+    freezeReadModel(this.items().filter((i) => i.type === 'movie' && i.status === 'in-progress')),
   );
 
   history = computed(() => {
     const data = this.storageService.getDataSignal()();
     if (!data) {
-      return [];
+      return freezeReadModel([]);
     }
 
     const history: HistoryEntry[] = [];
@@ -226,6 +228,8 @@ export class WatchListService {
       }
     }
 
-    return history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return freezeReadModel(
+      history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    );
   });
 }

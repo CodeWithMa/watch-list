@@ -1,4 +1,4 @@
-import { Item } from '../models/item.model';
+import { ReadonlyItem as Item } from '../models/item.model';
 import { isEpisodicType } from '../domain/item.constants';
 
 export function calculateProgress(item: Item): number | null {

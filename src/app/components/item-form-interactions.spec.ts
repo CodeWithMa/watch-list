@@ -375,7 +375,7 @@ async function expectReload(storage: StorageService) {
 }
 
 async function seedSeries(storage: StorageService) {
-  await storage.saveData({
+  await storage.replaceData({
     ...storage.getData(),
     items: {
       series: {

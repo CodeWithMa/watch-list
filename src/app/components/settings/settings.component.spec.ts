@@ -1,16 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
-import { ImportExportService } from '../../services/import-export.service';
+import { ImportExportService, ImportReport } from '../../services/import-export.service';
 import { TmdbCredential, TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
-import { NormalizationReport, createDefaultStorageData } from '../../domain/storage-schema';
+import { createDefaultStorageData } from '../../domain/storage-schema';
 import { SettingsComponent } from './settings.component';
 import { vi, afterEach, beforeEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { StorageService } from '../../services/storage.service';
 import { CURRENT_SCHEMA_VERSION } from '../../models/storage.model';
 
-const CLEAN_IMPORT: NormalizationReport = {
+const CLEAN_IMPORT: ImportReport = {
+  durability: 'persistent',
   dropped: { groups: 0, items: 0, deletedItems: 0 },
   repairedGroupReferences: 0,
 };
@@ -65,6 +66,30 @@ describe('SettingsComponent', () => {
 
     return tmdbSettingsService;
   }
+
+  it('identifies a completed import as session-only when storage is unavailable', async () => {
+    Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: new IDBFactory() });
+    vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+      throw new Error('Unavailable');
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const storage = TestBed.inject(StorageService);
+    await storage.initialize();
+    const fixture = TestBed.createComponent(SettingsComponent);
+    const data = createDefaultStorageData();
+    data.groups['ungrouped'].name = 'Imported in memory';
+    const file = new File([], 'collection.json');
+    Object.defineProperty(file, 'text', { value: async () => JSON.stringify(data) });
+    fixture.componentInstance.pendingImportFile.set(file);
+
+    await fixture.componentInstance.confirmImport();
+    fixture.detectChanges();
+
+    expect(storage.getGroups()[0].name).toBe('Imported in memory');
+    expect(fixture.nativeElement.textContent).toContain('only in this session');
+    expect(fixture.nativeElement.textContent).toContain('lost on reload');
+    expect(fixture.componentInstance.errorMessage()).toBeNull();
+  });
 
   it('keeps a clear explanation visible when an import requires a newer app version', async () => {
     Object.defineProperty(globalThis, 'indexedDB', {
@@ -367,9 +392,9 @@ describe('SettingsComponent', () => {
   it('runs only one import when confirm is triggered twice while in progress', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    let resolveImport!: (value: NormalizationReport) => void;
+    let resolveImport!: (value: ImportReport) => void;
     vi.mocked(exportService.importData).mockReturnValue(
-      new Promise<NormalizationReport>((resolve) => {
+      new Promise<ImportReport>((resolve) => {
         resolveImport = resolve;
       }),
     );
@@ -403,10 +428,10 @@ describe('SettingsComponent', () => {
   it('keeps a file selected during an import pending after the import finishes', async () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
-    let resolveFirst!: (value: NormalizationReport) => void;
+    let resolveFirst!: (value: ImportReport) => void;
     vi.mocked(exportService.importData)
       .mockReturnValueOnce(
-        new Promise<NormalizationReport>((resolve) => {
+        new Promise<ImportReport>((resolve) => {
           resolveFirst = resolve;
         }),
       )
@@ -512,6 +537,7 @@ describe('SettingsComponent', () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
     vi.mocked(exportService.importData).mockResolvedValue({
+      durability: 'persistent',
       dropped: { groups: 1, items: 2, deletedItems: 0 },
       repairedGroupReferences: 0,
     });

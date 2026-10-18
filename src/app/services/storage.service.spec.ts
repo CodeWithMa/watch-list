@@ -1,12 +1,15 @@
-import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
+import { CURRENT_SCHEMA_VERSION, StorageData } from '../models/storage.model';
 import { StorageService } from './storage.service';
 import { IDBFactory, IDBObjectStore as FakeIDBObjectStore } from 'fake-indexeddb';
-import { vi, afterEach } from 'vitest';
-import { Item } from '../models/item.model';
+import { vi, afterEach, expectTypeOf } from 'vitest';
+import { Item, ReadonlyItem } from '../models/item.model';
+import { DeepReadonly } from '../models/readonly';
 import { createDefaultStorageData } from '../domain/storage-schema';
 import { ImageStorageService } from './image-storage.service';
 import { TestBed } from '@angular/core/testing';
 import { WatchListDatabase } from './watch-list-database.service';
+import { WatchListService } from './watch-list.service';
+import { GroupService } from './group.service';
 
 describe('StorageService', () => {
   beforeEach(() => {
@@ -30,6 +33,93 @@ describe('StorageService', () => {
     expect(data.groups['ungrouped'].name).toBe('Ungrouped');
     expect(data.deletedItems).toEqual({});
     expect(service.getInMemorySessionSignal()()).toBe(false);
+  });
+
+  it('protects nested reactive state without cloning on reads', async () => {
+    const service = createStorageService();
+    await service.initialize();
+    const data = dataWithMovie();
+    data.items['movie'].type = 'series';
+    data.items['movie'].progress = {
+      season: 1,
+      episode: 1,
+      seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
+    };
+    data.items['movie'].watchHistory = [{ date: '2026-01-01', season: 1, episode: 1 }];
+    await service.importData(data);
+    const view = service.getDataSignal()()!;
+    const clone = vi.spyOn(globalThis, 'structuredClone');
+
+    expect(service.getDataSignal()()).toBe(view);
+    expect(clone).not.toHaveBeenCalled();
+    expect(() => Object.assign(view.groups['ungrouped'], { name: 'Bypass' })).toThrow();
+    expect(() =>
+      Object.assign(view.items['movie'].watchHistory, { 0: { date: 'invalid' } }),
+    ).toThrow();
+    expect(() => Object.assign(view.items, { bypass: view.items['movie'] })).toThrow();
+    expect(() => Object.assign(view.items['movie'].watchHistory[0], { date: 'invalid' })).toThrow();
+    expect(() => Object.assign(view.items['movie'].progress!, { episode: 99 })).toThrow();
+    expect(() =>
+      Object.assign(view.items['movie'].progress!.seasons[0], { totalEpisodes: 99 }),
+    ).toThrow();
+    expect(service.getData().groups['ungrouped'].name).toBe('Ungrouped');
+  });
+
+  it('exposes only settled mutations and deeply readonly reactive queries', () => {
+    const service = createStorageService();
+    const watch = TestBed.inject(WatchListService);
+    expect(service).not.toHaveProperty('saveData');
+    expect(service).not.toHaveProperty('saveItemChanges');
+    expectTypeOf(service).not.toHaveProperty('saveData');
+    expectTypeOf(service).not.toHaveProperty('saveItemChanges');
+    expectTypeOf(service.getDataSignal()()).toEqualTypeOf<DeepReadonly<StorageData> | null>();
+    expectTypeOf(watch.items()).toEqualTypeOf<readonly ReadonlyItem[]>();
+    expectTypeOf(watch.inProgressSeries()).toEqualTypeOf<readonly ReadonlyItem[]>();
+  });
+
+  it('publishes imports only after settlement and never seeds later commands with a rejected replacement', async () => {
+    const service = createStorageService();
+    await service.initialize();
+    const initial = service.getDataSignal()();
+    abortStorageWrites([false, true]);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const replacement = service.importData(withGroup(service.getData(), 'rejected'));
+    expect(service.getDataSignal()()).toBe(initial);
+    const command = service.mutate((draft) => {
+      draft.groups['kept'] = { id: 'kept', name: 'Kept', order: 1 };
+    });
+    expect((await Promise.allSettled([replacement, command])).map((r) => r.status)).toEqual([
+      'rejected',
+      'fulfilled',
+    ]);
+    expect(Object.keys(service.getData().groups)).toEqual(['ungrouped', 'kept']);
+    const reloaded = createStorageService();
+    await reloaded.initialize();
+    expect(reloaded.getData()).toEqual(service.getData());
+  });
+
+  it('protects entity and array query results while commands still edit detached drafts', async () => {
+    const service = TestBed.inject(StorageService);
+    await service.initialize();
+    await service.importData(dataWithMovie());
+    const watch = TestBed.inject(WatchListService);
+    const groups = TestBed.inject(GroupService);
+    for (const array of [
+      watch.items(),
+      watch.inProgressMovies(),
+      watch.inProgressSeries(),
+      watch.history(),
+      groups.groups(),
+      service.getItems(),
+      service.getGroups(),
+    ]) {
+      expect(Object.isFrozen(array)).toBe(true);
+    }
+    expect(Object.isFrozen(watch.getItemById('movie')!.watchHistory)).toBe(true);
+    expect(Object.isFrozen(groups.getGroupById('ungrouped'))).toBe(true);
+    await watch.markCompleted('movie');
+    expect(watch.items()[0].status).toBe('completed');
   });
 
   it('allows initialization to be retried after an open failure', async () => {
@@ -67,7 +157,7 @@ describe('StorageService', () => {
 
       expect(service.getDataSignal()()).toBeNull();
       expect(service.getInMemorySessionSignal()()).toBe(false);
-      await expect(service.saveData(createDefaultStorageData())).rejects.toThrow(/another.*tab/);
+      await expect(service.replaceData(createDefaultStorageData())).rejects.toThrow(/another.*tab/);
       expect(await readRecord(legacy, 'watch-list-data')).toEqual(original);
 
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -86,7 +176,7 @@ describe('StorageService', () => {
 
     await service.initialize();
     expect(service.getData()).toEqual(original);
-    await service.saveData(withGroup(service.getData(), 'saved-after-retry'));
+    await service.replaceData(withGroup(service.getData(), 'saved-after-retry'));
     const reloaded = createStorageService();
     await reloaded.initialize();
     expect(reloaded.getData().groups['saved-after-retry'].name).toBe('saved-after-retry');
@@ -127,7 +217,7 @@ describe('StorageService', () => {
 
       expect(service.getDatabaseErrorSignal()()).toBeNull();
       expect(service.getInMemorySessionSignal()()).toBe(true);
-      await service.saveData(withGroup(service.getData(), 'session-edit'));
+      await service.replaceData(withGroup(service.getData(), 'session-edit'));
       expect(service.getData().groups['session-edit'].name).toBe('session-edit');
       const reloaded = createStorageService();
       await reloaded.initialize();
@@ -138,7 +228,7 @@ describe('StorageService', () => {
   it('invalidates the loaded collection before a newer tab upgrades the database', async () => {
     const service = createStorageService();
     await service.initialize();
-    await service.saveData(dataWithMovie());
+    await service.replaceData(dataWithMovie());
     const snapshot = service.getData();
     let collectionVisibleDuringUpgrade = true;
     const future = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -154,7 +244,7 @@ describe('StorageService', () => {
       expect(collectionVisibleDuringUpgrade).toBe(false);
       expect(service.getDataSignal()()).toBeNull();
       expect(() => service.getData()).toThrow(/reload/i);
-      await expect(service.saveData(withGroup(snapshot, 'stale'))).rejects.toThrow(/reload/i);
+      await expect(service.replaceData(withGroup(snapshot, 'stale'))).rejects.toThrow(/reload/i);
       await expect(service.importData(snapshot)).rejects.toThrow(/reload/i);
       await expect(service.importDataWithImages(snapshot, [])).rejects.toThrow(/reload/i);
       const writePosters = vi.fn();
@@ -189,7 +279,9 @@ describe('StorageService', () => {
       expect(service.getDatabaseErrorSignal()()?.recovery).toBe('reload');
       expect(service.getDatabaseErrorSignal()()?.message).toContain('newer version');
       expect(service.getInMemorySessionSignal()()).toBe(false);
-      await expect(service.saveData(createDefaultStorageData())).rejects.toThrow(/newer version/i);
+      await expect(service.replaceData(createDefaultStorageData())).rejects.toThrow(
+        /newer version/i,
+      );
       await service.initialize();
       expect(service.getDataSignal()()).toBeNull();
       expect(await readRecord(future, 'watch-list-data')).toEqual(original);
@@ -201,7 +293,7 @@ describe('StorageService', () => {
   it('retries a connection timeout even after metadata initialization previously succeeded', async () => {
     const service = createStorageService();
     await service.initialize();
-    await service.saveData(dataWithMovie());
+    await service.replaceData(dataWithMovie());
     const snapshot = service.getData();
     TestBed.inject(WatchListDatabase).close();
     const blocker = await openTestDatabase();
@@ -251,7 +343,7 @@ describe('StorageService', () => {
       });
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
       await service.initialize();
-      await service.saveData(withGroup(service.getData(), 'session-edit'));
+      await service.replaceData(withGroup(service.getData(), 'session-edit'));
       const session = service.getData();
       const legacy = await new Promise<IDBDatabase>((resolve, reject) => {
         const request = indexedDB.open('watch-list', 2);
@@ -347,7 +439,7 @@ describe('StorageService', () => {
         seasons: [{ seasonNumber: 1, firstEpisodeAirDate: '2026-10-01', snoozeCount: 2 }],
       },
     };
-    await service.saveData({ ...service.getData(), items: { delayed: item } });
+    await service.replaceData({ ...service.getData(), items: { delayed: item } });
     const reloaded = createStorageService();
     await reloaded.initialize();
     expect(reloaded.getData().items['delayed']).toEqual(item);
@@ -416,7 +508,7 @@ describe('StorageService', () => {
       expect(service.getCompatibilityErrorSignal()()?.version).toBe(CURRENT_SCHEMA_VERSION + 1);
       expect(service.getUnsupportedData()).toEqual(raw);
       expect(() => service.getData()).toThrow(/newer version of Watch List/);
-      await expect(service.saveData(supported)).rejects.toThrow(/newer version of Watch List/);
+      await expect(service.replaceData(supported)).rejects.toThrow(/newer version of Watch List/);
       await expect(service.importData(supported)).rejects.toThrow(/newer version of Watch List/);
       await expect(service.importDataWithImages(supported, [])).rejects.toThrow(
         /newer version of Watch List/,
@@ -467,7 +559,7 @@ describe('StorageService', () => {
 
       const writes = [1, 2].map(() =>
         operation === 'save'
-          ? service.saveData(snapshot)
+          ? service.replaceData(snapshot)
           : operation === 'import'
             ? service.importData(snapshot)
             : service.importDataWithImages(snapshot, [poster('replacement')]),
@@ -486,7 +578,7 @@ describe('StorageService', () => {
         images.onsuccess = () => resolve(images.result);
       });
       expect(remaining).toEqual([image]);
-      await expect(service.saveData(snapshot)).rejects.toThrow(/newer version of Watch List/);
+      await expect(service.replaceData(snapshot)).rejects.toThrow(/newer version of Watch List/);
       database.close();
     },
   );
@@ -530,7 +622,7 @@ describe('StorageService', () => {
     // A separate preflight read would let the upgrade commit before the stale save.
     const upgrade = upgradeAfterNextRead(database, raw);
 
-    await service.saveData(withGroup(service.getData(), 'edited'));
+    await service.replaceData(withGroup(service.getData(), 'edited'));
     await upgrade;
 
     expect(await readRecord(database, 'watch-list-data')).toEqual(raw);
@@ -583,7 +675,7 @@ describe('StorageService', () => {
       const service = createStorageService();
       const write =
         operation === 'save'
-          ? service.saveData(supported)
+          ? service.replaceData(supported)
           : operation === 'import'
             ? service.importData(supported)
             : service.importDataWithImages(supported, [poster('replacement')]);
@@ -685,7 +777,7 @@ describe('StorageService', () => {
       if (invalid === 'group') movie.groupId = 'missing';
 
       await expect(
-        service.saveData({ ...unsafe, items: { ...unsafe.items, other } }),
+        service.replaceData({ ...unsafe, items: { ...unsafe.items, other } }),
       ).rejects.toThrow(/Invalid/);
 
       expect(service.getData()).toEqual(original);
@@ -725,7 +817,7 @@ describe('StorageService', () => {
       await recovered.initialize();
       expect(recovered.getData().items['movie'].title).toBe('Movie');
       expect(recovered.getInMemorySessionSignal()()).toBe(true);
-      await recovered.saveData(withGroup(recovered.getData(), 'session-only'));
+      await recovered.replaceData(withGroup(recovered.getData(), 'session-only'));
       expect(recovered.getInMemorySessionSignal()()).toBe(true);
       failure.mockRestore();
 
@@ -1104,7 +1196,7 @@ describe('StorageService', () => {
   });
 
   it.each([false, true])(
-    'orders legacy saves and intents before initialization (session: %s)',
+    'orders replacements and intents before initialization (session: %s)',
     async (session) => {
       const service = createStorageService();
       if (session) {
@@ -1113,7 +1205,7 @@ describe('StorageService', () => {
         });
         vi.spyOn(console, 'error').mockImplementation(() => undefined);
       }
-      const first = service.saveData(withGroup(createDefaultStorageData(), 'legacy'));
+      const first = service.replaceData(withGroup(createDefaultStorageData(), 'replacement'));
       const second = service.mutate((data) => {
         data.groups['intent'] = { id: 'intent', name: 'Intent', order: 2 };
       });
@@ -1124,7 +1216,7 @@ describe('StorageService', () => {
       });
       expect(Object.keys(service.getData().groups).sort()).toEqual([
         'intent',
-        'legacy',
+        'replacement',
         'ungrouped',
       ]);
       expect(service.getInMemorySessionSignal()()).toBe(session);
@@ -1164,13 +1256,13 @@ describe('StorageService', () => {
             const initial = service.getData();
             abortStorageWrites([firstSucceeds, secondSucceeds]);
             vi.spyOn(console, 'error').mockImplementation(() => undefined);
-            const legacy = () => {
-              const snapshot = withGroup(initial, 'legacy');
+            const replace = () => {
+              const snapshot = withGroup(initial, 'replacement');
               switch (kind) {
                 case 'items':
-                  return service.saveItemChanges({
-                    items: dataWithMovie().items,
-                    deletedItems: {},
+                  return service.mutate((draft) => {
+                    draft.items = dataWithMovie().items;
+                    draft.deletedItems = {};
                   });
                 case 'import':
                   return service.importData(snapshot);
@@ -1182,14 +1274,14 @@ describe('StorageService', () => {
               service.mutate((data) => {
                 data.groups['intent'] = { id: 'intent', name: 'Intent', order: 2 };
               });
-            const first = intentFirst ? intent() : legacy();
-            const second = intentFirst ? legacy() : intent();
+            const first = intentFirst ? intent() : replace();
+            const second = intentFirst ? replace() : intent();
             const results = await Promise.allSettled([first, second]);
             expect(results.map((result) => result.status)).toEqual([
               firstSucceeds ? 'fulfilled' : 'rejected',
               secondSucceeds ? 'fulfilled' : 'rejected',
             ]);
-            expect(Object.hasOwn(service.getData().groups, 'legacy')).toBe(
+            expect(Object.hasOwn(service.getData().groups, 'replacement')).toBe(
               kind !== 'items' && (intentFirst ? secondSucceeds : firstSucceeds),
             );
             expect(Object.hasOwn(service.getData().groups, 'intent')).toBe(
@@ -1243,12 +1335,12 @@ describe('StorageService', () => {
     'keeps publication ordered across startup when saves settle (%s, %s)',
     async (firstSucceeds, secondSucceeds) => {
       const service = createStorageService();
-      // The first queued save must wait for startup; the next can publish immediately.
-      const first = service.saveData(withGroup(createDefaultStorageData(), 'first'));
+      // Replacements reserve their place before startup, publishing only once settled.
+      const first = service.replaceData(withGroup(createDefaultStorageData(), 'first'));
       await service.initialize();
       abortStorageWrites([firstSucceeds, secondSucceeds]);
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      const second = service.saveData(withGroup(createDefaultStorageData(), 'second'));
+      const second = service.replaceData(withGroup(createDefaultStorageData(), 'second'));
       const results = await Promise.allSettled([first, second]);
       expect(results.map((result) => result.status)).toEqual([
         firstSucceeds ? 'fulfilled' : 'rejected',
@@ -1351,14 +1443,16 @@ describe('StorageService', () => {
         vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:poster');
 
         const firstWrite = write(firstKind, 'first');
-        expect(service.getData().groups).toEqual(withGroup(committed, 'first').groups);
+        expect(service.getData()).toEqual(committed);
         const secondWrite = write(secondKind, 'second');
         const secondSnapshot = service.getData();
-        expect(secondSnapshot.groups).toEqual(withGroup(committed, 'second').groups);
+        expect(secondSnapshot).toEqual(committed);
         const settled = Promise.allSettled([firstWrite, secondWrite]);
 
         await Promise.allSettled([firstWrite]);
-        expect(service.getData()).toEqual(secondSnapshot);
+        expect(service.getData().groups).toEqual(
+          firstSucceeds ? withGroup(committed, 'first').groups : committed.groups,
+        );
         const results = await settled;
         expect(results.map((result) => result.status)).toEqual([
           firstSucceeds ? 'fulfilled' : 'rejected',
@@ -1394,7 +1488,7 @@ describe('StorageService', () => {
         function write(kind: typeof firstKind, id: string) {
           const data = withGroup(committed, id);
           return kind === 'save'
-            ? service.saveData(data)
+            ? service.replaceData(data)
             : service.importDataWithImages(data, [poster(id)]);
         }
       },
@@ -1409,7 +1503,7 @@ describe('StorageService', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const results = await Promise.allSettled([
-      service.saveData(withGroup(initial, 'committed')),
+      service.replaceData(withGroup(initial, 'committed')),
       service.importDataWithImages(withGroup(initial, 'failed-first'), []),
       service.importDataWithImages(withGroup(initial, 'failed-second'), []),
     ]);
@@ -1420,7 +1514,7 @@ describe('StorageService', () => {
     await reloaded.initialize();
     expect(reloaded.getData()).toEqual(service.getData());
 
-    await service.saveData(withGroup(service.getData(), 'recovered'));
+    await service.replaceData(withGroup(service.getData(), 'recovered'));
     expect(service.getSaveErrorSignal()()).toBeNull();
     expect(service.getData().groups).toEqual(
       withGroup(withGroup(initial, 'committed'), 'recovered').groups,
@@ -1462,7 +1556,9 @@ describe('StorageService', () => {
         test: { id: 'test', name: 'Test', order: 1 },
       },
     };
-    await expect(service.saveData(updated)).resolves.toBeUndefined();
+    await expect(service.replaceData(updated)).resolves.toMatchObject({
+      durability: 'session-only',
+    });
 
     expect(service.getData().groups['test']).toMatchObject({ name: 'Test' });
     expect(service.getSaveErrorSignal()()).toBeNull();
@@ -1502,7 +1598,7 @@ describe('StorageService', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const service = createStorageService();
     await service.initialize();
-    await service.saveData(withGroup(service.getData(), 'session'));
+    await service.replaceData(withGroup(service.getData(), 'session'));
     const previous = service.getData();
     const imported = dataWithMovie();
 

@@ -1,6 +1,7 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { StorageService } from './storage.service';
 import { Group } from '../models/group.model';
+import { freezeReadModel } from '../models/readonly';
 import { DEFAULT_GROUP_ID } from '../domain/item.constants';
 
 @Injectable({
@@ -11,7 +12,9 @@ export class GroupService {
 
   groups = computed(() => {
     const data = this.storageService.getDataSignal()();
-    return data ? [...Object.values(data.groups)].sort((a, b) => a.order - b.order) : [];
+    return freezeReadModel(
+      data ? Object.values(data.groups).sort((a, b) => a.order - b.order) : [],
+    );
   });
 
   createGroup(name: string) {
@@ -73,8 +76,7 @@ export class GroupService {
     });
   }
 
-  getGroupById(groupId: string): Group | undefined {
-    const data = this.storageService.getData();
-    return data.groups[groupId];
+  getGroupById(groupId: string) {
+    return this.storageService.getGroups().find((group) => group.id === groupId);
   }
 }

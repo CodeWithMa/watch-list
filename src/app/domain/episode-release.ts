@@ -1,7 +1,9 @@
-import { Item, SeasonInfo } from '../models/item.model';
+import { Item, ReadonlyItem, SeasonInfo } from '../models/item.model';
 import { isEpisodicType } from './item.constants';
 
-export function getCurrentSeason(item: Item) {
+export function getCurrentSeason(item: Item): SeasonInfo | undefined;
+export function getCurrentSeason(item: ReadonlyItem): Readonly<SeasonInfo> | undefined;
+export function getCurrentSeason(item: ReadonlyItem) {
   return isEpisodicType(item.type)
     ? item.progress?.seasons.find((season) => season.seasonNumber === item.progress?.season)
     : undefined;
@@ -31,12 +33,12 @@ export function getEpisodeAirDate(season: SeasonInfo, episode: number): Date | n
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
-export function getCurrentEpisodeAirDate(item: Item) {
+export function getCurrentEpisodeAirDate(item: ReadonlyItem) {
   const season = getCurrentSeason(item);
   return season && item.progress ? getEpisodeAirDate(season, item.progress.episode) : null;
 }
 
-export function canSnoozeCurrentSeason(item: Item) {
+export function canSnoozeCurrentSeason(item: ReadonlyItem) {
   const season = getCurrentSeason(item);
   return (
     item.status === 'in-progress' &&

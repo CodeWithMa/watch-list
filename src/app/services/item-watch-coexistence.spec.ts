@@ -111,7 +111,7 @@ describe('Item edits coexisting with settled watch commands', () => {
   it('rebases season fields by season number when the form reorders, adds and removes seasons', async () => {
     const { storage, watch } = await setup();
     const original = storage.getData();
-    await storage.saveData({
+    await storage.replaceData({
       ...original,
       items: {
         ...original.items,
@@ -366,6 +366,6 @@ async function setup() {
       ],
     },
   };
-  await storage.saveData({ ...storage.getData(), items: { series } });
+  await storage.replaceData({ ...storage.getData(), items: { series } });
   return { storage, watch };
 }

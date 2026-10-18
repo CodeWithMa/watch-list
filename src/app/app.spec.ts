@@ -109,6 +109,42 @@ describe('App update notification', () => {
 describe('App storage warning', () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it.each(['rejection', 'conflict'] as const)(
+    'reports %s without claiming changes were reverted',
+    async (failure) => {
+      Object.defineProperty(globalThis, 'indexedDB', {
+        configurable: true,
+        value: new IDBFactory(),
+      });
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const storage = TestBed.inject(StorageService);
+      await storage.initialize();
+      const fixture = TestBed.createComponent(App);
+      if (failure === 'conflict') {
+        const other = TestBed.runInInjectionContext(() => new StorageService());
+        await other.initialize();
+        await other.mutate((draft) => {
+          draft.groups['ungrouped'].name = 'External edit';
+        });
+      }
+      await expect(
+        storage.mutate((draft) => {
+          draft.groups['ungrouped'].name = 'Rejected edit';
+          if (failure === 'rejection') throw new Error('Invalid command');
+        }),
+      ).rejects.toThrow(failure === 'conflict' ? /another tab/ : /Invalid command/);
+      fixture.detectChanges();
+      const text = (fixture.nativeElement as HTMLElement).textContent;
+      expect(text).toContain(failure === 'conflict' ? 'Refresh the collection' : 'Invalid command');
+      expect(text).not.toContain('was reverted');
+      expect(text).not.toContain('saved successfully');
+      expect(storage.getGroups()[0].name).toBe('Ungrouped');
+    },
+  );
+
   it('offers a protected Retry screen for a blocked upgrade and loads the existing collection after retry', async () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
@@ -278,7 +314,7 @@ describe('App storage warning', () => {
       reader.readAsText(blob);
     });
     expect(JSON.parse(json)).toEqual(raw);
-    await expect(storage.saveData(createDefaultStorageData())).rejects.toThrow(
+    await expect(storage.replaceData(createDefaultStorageData())).rejects.toThrow(
       /newer version of Watch List/,
     );
     fixture.detectChanges();
@@ -397,7 +433,7 @@ describe('App storage warning', () => {
 
     const edited = storage.getData();
     edited.groups['session'] = { id: 'session', name: 'Session edit', order: 1 };
-    await storage.saveData(edited);
+    await storage.replaceData(edited);
     fixture.detectChanges();
     expect(warning()).toContain('will be lost on reload');
 

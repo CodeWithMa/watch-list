@@ -239,7 +239,7 @@ describe('Settled watch actions', () => {
       async (groupSucceeds, watchedSucceeds) => {
         const { storage, watch } = await setup();
         const original = storage.getData();
-        await storage.saveData({
+        await storage.replaceData({
           ...original,
           groups: { ...original.groups, films: { id: 'films', name: 'Films', order: 1 } },
           items: { series: { ...original.items['series'], groupId: 'films' } },
@@ -275,7 +275,7 @@ describe('Settled watch actions', () => {
     const { storage, watch } = await setup();
     const previous = { date: '2026-01-01T10:00:00Z' };
     const data = storage.getData();
-    await storage.saveData({
+    await storage.replaceData({
       ...data,
       items: {
         movie: {
@@ -321,7 +321,7 @@ describe('Settled watch actions', () => {
               type: 'movie',
               progress: undefined,
             };
-            await storage.saveData({ ...original, items: { ...original.items, other } });
+            await storage.replaceData({ ...original, items: { ...original.items, other } });
             const saveItem = () =>
               itemAction === 'add'
                 ? watch.addItem({
@@ -447,6 +447,6 @@ async function setup() {
       ],
     },
   };
-  await storage.saveData({ ...storage.getData(), items: { series } });
+  await storage.replaceData({ ...storage.getData(), items: { series } });
   return { storage, watch };
 }

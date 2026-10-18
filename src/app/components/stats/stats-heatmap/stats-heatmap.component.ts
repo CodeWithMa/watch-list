@@ -80,7 +80,7 @@ interface MonthLabel {
   `,
 })
 export class StatsHeatmapComponent {
-  historyEntries = input.required<HistoryEntry[]>();
+  historyEntries = input.required<readonly Readonly<HistoryEntry>[]>();
 
   dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 

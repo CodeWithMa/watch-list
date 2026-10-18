@@ -185,7 +185,7 @@ async function setup(session = false) {
     createdAt: '2026-01-01',
   };
   const target: Item = { ...movie, id: 'target', title: 'Before', groupId: 'ungrouped' };
-  await storage.saveData({
+  await storage.replaceData({
     ...storage.getData(),
     groups: { ...storage.getData().groups, films: { id: 'films', name: 'Films', order: 1 } },
     items: { movie, target },
