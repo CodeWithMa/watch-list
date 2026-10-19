@@ -56,3 +56,11 @@ bunx prek install -t commit-msg
 ## Privacy
 
 Watch-list data is stored locally in your browser using IndexedDB. Nothing is ever sent to a server. Your watch history stays on your device. Export your data before upgrading from versions that used localStorage if you want to keep it.
+
+## Releases
+
+1. Update `package.json`, merge into `dev`, and wait for CI to pass.
+2. Tag that commit with the matching `v<major>.<minor>.<patch>` and push the tag.
+
+GitHub Actions publishes the stable release with desktop installers. The version appears in
+**Settings → About**. GitHub Pages deploys from `dev`.
