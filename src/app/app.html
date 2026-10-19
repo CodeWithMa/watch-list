@@ -72,6 +72,25 @@
     class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark px-8 py-3 text-center border-b border-error-border-light dark:border-error-border-dark"
   >
     Persistent storage is unavailable. Changes are only kept in memory and will be lost on reload.
+    <a routerLink="/settings" class="underline">Export your session in Settings</a> before
+    reloading. Reconnecting does not save this session or replace it with disk data. To recover,
+    export first, reload when storage is available, then import the export after reviewing the disk
+    collection.
+  </div>
+}
+
+@if (settingsUnavailable()) {
+  <div role="alert" class="px-8 py-3 text-center">
+    Browser settings storage is unavailable for some preferences or credentials. Changes apply to
+    this session, but could not all be read or saved. Previously stored values may return on reload.
+    Retry saving when browser storage is available.
+  </div>
+}
+
+@if (postersUnavailable()) {
+  <div role="alert" class="px-8 py-3 text-center">
+    Some posters are unavailable. Placeholders are shown; collection metadata is still usable.
+    Exports identify any omitted posters.
   </div>
 }
 

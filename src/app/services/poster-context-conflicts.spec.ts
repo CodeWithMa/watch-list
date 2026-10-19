@@ -6,6 +6,7 @@ import { CollectionConflictError, StorageService } from './storage.service';
 import { ImageStorageService } from './image-storage.service';
 import { ImportExportService } from './import-export.service';
 import { ProviderSettingsService } from './provider-settings.service';
+import { BrowserSettingsStorage } from './browser-settings-storage.service';
 import { WatchListDatabase } from './watch-list-database.service';
 
 describe('Poster-only context conflicts', () => {
@@ -207,6 +208,7 @@ function createPosterContext() {
       ImageStorageService,
       ImportExportService,
       ProviderSettingsService,
+      BrowserSettingsStorage,
     ],
   });
   return {

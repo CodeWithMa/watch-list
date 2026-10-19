@@ -191,6 +191,7 @@ describe('ImportExportService', () => {
       expect(JSON.parse(text)).toEqual({
         data: exportPayload,
         images: [{ id: 'poster-1', type: 'image/png', data: 'base64-data' }],
+        posters: { included: 1, omittedIds: [], unavailable: false },
         preferences: {
           providerSettings: {
             tmdb: false,

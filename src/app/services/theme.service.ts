@@ -1,5 +1,6 @@
 import { Injectable, signal, effect, inject, PLATFORM_ID, OnDestroy } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { BrowserSettingsStorage } from './browser-settings-storage.service';
 
 export type Theme = 'system' | 'light' | 'dark';
 
@@ -10,6 +11,7 @@ export class ThemeService implements OnDestroy {
   private readonly STORAGE_KEY = 'theme';
   private readonly platformId = inject(PLATFORM_ID);
   private readonly document = inject(DOCUMENT);
+  private readonly settingsStorage = inject(BrowserSettingsStorage);
 
   theme = signal<Theme>('system');
 
@@ -18,7 +20,7 @@ export class ThemeService implements OnDestroy {
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
-      const stored = localStorage.getItem(this.STORAGE_KEY) as Theme | null;
+      const stored = this.settingsStorage.read(this.STORAGE_KEY) as Theme | null;
       if (stored && ['system', 'light', 'dark'].includes(stored)) {
         this.theme.set(stored);
       }
@@ -42,7 +44,7 @@ export class ThemeService implements OnDestroy {
   setTheme(newTheme: Theme): void {
     this.theme.set(newTheme);
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.setItem(this.STORAGE_KEY, newTheme);
+      this.settingsStorage.write(this.STORAGE_KEY, newTheme);
     }
   }
 

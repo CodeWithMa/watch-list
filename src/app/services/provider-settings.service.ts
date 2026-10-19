@@ -1,5 +1,6 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { SuggestionSource } from '../models/suggestion.model';
+import { BrowserSettingsStorage } from './browser-settings-storage.service';
 
 const PROVIDER_SETTINGS_KEY = 'suggestionProviders';
 
@@ -41,6 +42,7 @@ const PROVIDER_SOURCES: readonly SuggestionSource[] = ['tmdb', 'jikan', 'anilist
   providedIn: 'root',
 })
 export class ProviderSettingsService {
+  private readonly settingsStorage = inject(BrowserSettingsStorage);
   private readonly enabled = signal<ProviderSettings>(this.load());
 
   readonly settings = this.enabled.asReadonly();
@@ -128,7 +130,7 @@ export class ProviderSettingsService {
 
   private load(): ProviderSettings {
     try {
-      const raw = localStorage.getItem(PROVIDER_SETTINGS_KEY);
+      const raw = this.settingsStorage.read(PROVIDER_SETTINGS_KEY);
       if (!raw) {
         return {
           ...DEFAULT_PROVIDER_SETTINGS,
@@ -184,10 +186,6 @@ export class ProviderSettingsService {
   }
 
   private save(settings: ProviderSettings): void {
-    try {
-      localStorage.setItem(PROVIDER_SETTINGS_KEY, JSON.stringify(settings));
-    } catch {
-      // Retain in-memory state even if persistence fails (quota, private mode, etc.).
-    }
+    this.settingsStorage.write(PROVIDER_SETTINGS_KEY, JSON.stringify(settings));
   }
 }

@@ -6,6 +6,7 @@ import { WatchListDatabase } from './watch-list-database.service';
 import { ImportExportService } from './import-export.service';
 import { ImageStorageService } from './image-storage.service';
 import { ProviderSettingsService } from './provider-settings.service';
+import { BrowserSettingsStorage } from './browser-settings-storage.service';
 import { createDefaultStorageData } from '../domain/storage-schema';
 import { controlStorageWrites } from './indexeddb-write.test-utils';
 
@@ -95,6 +96,7 @@ describe('Collection context conflicts', () => {
         ImportExportService,
         ImageStorageService,
         ProviderSettingsService,
+        BrowserSettingsStorage,
       ],
     });
     const stale = injector.get(StorageService);
@@ -167,6 +169,7 @@ describe('Collection context conflicts', () => {
         ImportExportService,
         ImageStorageService,
         ProviderSettingsService,
+        BrowserSettingsStorage,
       ],
     });
     const stale = injector.get(StorageService);
@@ -200,6 +203,7 @@ describe('Collection context conflicts', () => {
         ImportExportService,
         ImageStorageService,
         ProviderSettingsService,
+        BrowserSettingsStorage,
       ],
     });
     const stale = injector.get(StorageService);

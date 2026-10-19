@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { imageVersion, imagesInvalidated } from './image-invalidation';
 import { StorageService } from './storage.service';
 import { WatchListDatabase, IMAGE_STORE_NAME as STORE_NAME } from './watch-list-database.service';
@@ -24,6 +24,8 @@ export class ImageStorageService {
   private readonly databaseOwner = inject(WatchListDatabase);
   private readonly posterUrls: PosterUrlCache = new Map();
   readonly version = imageVersion.asReadonly();
+  private readonly missingPosters = signal(false);
+  readonly unavailablePosters = this.missingPosters.asReadonly();
 
   constructor() {
     imagesInvalidated.subscribe(() => this.refreshCache());
@@ -63,10 +65,12 @@ export class ImageStorageService {
     if (existing) return existing;
 
     const urlPromise = this.get(id).then((image) => {
+      if (!image) this.missingPosters.set(true);
       return image ? URL.createObjectURL(image.blob) : null;
     });
     this.posterUrls.set(id, urlPromise);
     void urlPromise.catch(() => {
+      this.missingPosters.set(true);
       if (this.posterUrls.get(id) === urlPromise) this.posterUrls.delete(id);
     });
     return urlPromise;

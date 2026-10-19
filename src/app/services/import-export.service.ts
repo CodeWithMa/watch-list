@@ -1,19 +1,30 @@
 import { Injectable, inject } from '@angular/core';
 import { MutationResult, StorageService } from './storage.service';
-import { ImageStorageService } from './image-storage.service';
+import { ExportedImage, ImageStorageService } from './image-storage.service';
 import { ProviderSettings, ProviderSettingsService } from './provider-settings.service';
 import { assertSupportedStorageVersion, NormalizationReport } from '../domain/storage-schema';
+import { removeUnavailablePosterReferences } from '../domain/poster-references';
 
 export interface ExportPreferences {
   providerSettings: ProviderSettings;
 }
 
-export type ImportReport = NormalizationReport & Pick<MutationResult<void>, 'durability'>;
+export interface PosterCoverage {
+  included: number;
+  omittedIds: string[];
+  unavailable: boolean;
+}
+
+export type ImportReport = NormalizationReport &
+  Pick<MutationResult<void>, 'durability'> & {
+    posters?: PosterCoverage;
+  };
 
 export interface PortableExport {
   data: unknown;
   images: unknown;
   preferences?: ExportPreferences;
+  posters?: PosterCoverage;
 }
 
 export class UnsupportedRecoveryFormatError extends Error {
@@ -34,10 +45,22 @@ export class ImportExportService {
   private imageStorage = inject(ImageStorageService);
   private providerSettings = inject(ProviderSettingsService);
 
-  async exportData(): Promise<void> {
+  async exportData(): Promise<PosterCoverage> {
+    const data = this.storageService.getData();
+    let images: ExportedImage[] = [];
+    let unavailable = false;
+    try {
+      images = await this.imageStorage.exportImages();
+    } catch {
+      unavailable = true;
+    }
+    const availableIds = new Set(images.map((image) => image.id));
+    const omittedIds = removeUnavailablePosterReferences(data.items, availableIds);
+    const posters = { included: images.length, omittedIds, unavailable };
     const payload: PortableExport = {
-      data: this.storageService.getData(),
-      images: await this.imageStorage.exportImages(),
+      data,
+      images,
+      posters,
       preferences: {
         providerSettings: this.providerSettings.exportSettings(),
       },
@@ -46,6 +69,7 @@ export class ImportExportService {
     // providerSettings (tmdb/jikan/anilist, includeAdult, titlePreference, adultDisplayMode)
     // is safe to share; tmdbReadAccessToken/apiKey from tmdb-settings.service.ts:3 are never read here.
     this.downloadJson(payload, 'watch-list-export');
+    return posters;
   }
 
   async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
@@ -89,10 +113,23 @@ export class ImportExportService {
       const images = await this.imageStorage.parseExportedImages(
         isPortableExport(payload) ? payload.images : [],
       );
-      const { dropped, repairedGroupReferences, durability } =
-        await this.storageService.importDataWithImages(data, images, context);
+      const {
+        dropped,
+        repairedGroupReferences,
+        durability,
+        omittedPosterIds = [],
+      } = await this.storageService.importDataWithImages(data, images, context);
       this.applyPreferencesIfPresent(payload);
-      return { dropped, repairedGroupReferences, durability };
+      const coverage = readPosterCoverage(payload);
+      const posters =
+        coverage || omittedPosterIds.length
+          ? {
+              included: images.length,
+              omittedIds: [...new Set([...(coverage?.omittedIds ?? []), ...omittedPosterIds])],
+              unavailable: coverage?.unavailable ?? false,
+            }
+          : undefined;
+      return { dropped, repairedGroupReferences, durability, ...(posters ? { posters } : {}) };
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file', { cause: error });
@@ -113,6 +150,20 @@ export class ImportExportService {
       // Invalid preferences must never break the data import.
     }
   }
+}
+
+function readPosterCoverage(payload: unknown): PosterCoverage | undefined {
+  if (!isPortableExport(payload)) return;
+  const value = payload.posters;
+  if (
+    !value ||
+    !Array.isArray(value.omittedIds) ||
+    !value.omittedIds.every((id) => typeof id === 'string') ||
+    typeof value.unavailable !== 'boolean' ||
+    typeof value.included !== 'number'
+  )
+    return;
+  return value;
 }
 
 function assertLosslessJson(value: unknown, seen = new WeakSet<object>()): void {

@@ -1,6 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
-import { ImportExportService, ImportReport } from '../../services/import-export.service';
+import {
+  ImportExportService,
+  ImportReport,
+  PosterCoverage,
+} from '../../services/import-export.service';
 import { TmdbCredential, TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { createDefaultStorageData } from '../../domain/storage-schema';
@@ -42,8 +46,8 @@ describe('SettingsComponent', () => {
       token: vi.fn(() => credentials.token),
       key: vi.fn(() => credentials.key),
       getCredential: vi.fn(() => credentials.credential),
-      saveCredentials: vi.fn(),
-      clearCredentials: vi.fn(),
+      saveCredentials: vi.fn().mockReturnValue(true),
+      clearCredentials: vi.fn().mockReturnValue(true),
     };
 
     TestBed.configureTestingModule({
@@ -287,10 +291,10 @@ describe('SettingsComponent', () => {
   it('shows success feedback when exporting data', async () => {
     vi.useFakeTimers();
     configure({ token: '', key: '', credential: null });
-    let resolveExport!: () => void;
+    let resolveExport!: (report: PosterCoverage) => void;
     const exportService = TestBed.inject(ImportExportService);
     vi.spyOn(exportService, 'exportData').mockReturnValue(
-      new Promise<void>((resolve) => {
+      new Promise<PosterCoverage>((resolve) => {
         resolveExport = resolve;
       }),
     );
@@ -299,11 +303,30 @@ describe('SettingsComponent', () => {
     const exporting = fixture.componentInstance.exportData();
 
     expect(fixture.componentInstance.successMessage()).toBeNull();
-    resolveExport();
+    resolveExport({ included: 1, omittedIds: [], unavailable: false });
     await exporting;
 
     expect(fixture.componentInstance.successMessage()).toBe('Data exported successfully');
     expect(fixture.componentInstance.errorMessage()).toBeNull();
+  });
+
+  it('keeps incomplete poster export and recovery import feedback explicit', async () => {
+    configure({ token: '', key: '', credential: null });
+    const service = TestBed.inject(ImportExportService);
+    const posters = { included: 0, omittedIds: ['missing'], unavailable: true };
+    vi.spyOn(service, 'exportData').mockResolvedValue(posters);
+    vi.spyOn(service, 'importData').mockResolvedValue({ ...CLEAN_IMPORT, posters });
+    const fixture = TestBed.createComponent(SettingsComponent);
+    await fixture.componentInstance.exportData();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('not a complete poster backup');
+    expect(fixture.nativeElement.textContent).toContain('1 unavailable poster(s) omitted');
+    expect(fixture.nativeElement.textContent).not.toContain('Data exported successfully');
+    fixture.componentInstance.pendingImportFile.set(new File([], 'recovery.json'));
+    await fixture.componentInstance.confirmImport();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('0 poster image(s) included');
+    expect(fixture.nativeElement.textContent).toContain('1 unavailable poster(s) omitted');
   });
 
   it('shows an error when exporting data fails', () => {

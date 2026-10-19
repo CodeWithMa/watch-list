@@ -1,4 +1,5 @@
 import { TmdbSettingsService } from './tmdb-settings.service';
+import { TestBed } from '@angular/core/testing';
 
 describe('TmdbSettingsService', () => {
   let store: Record<string, string>;
@@ -25,7 +26,7 @@ describe('TmdbSettingsService', () => {
   });
 
   it('saves trimmed credentials locally', () => {
-    const service = new TmdbSettingsService();
+    const service = TestBed.inject(TmdbSettingsService);
 
     service.saveCredentials('  token-value  ', '  api-key-value  ');
 
@@ -37,7 +38,7 @@ describe('TmdbSettingsService', () => {
   });
 
   it('clears credentials when saved values are blank', () => {
-    const service = new TmdbSettingsService();
+    const service = TestBed.inject(TmdbSettingsService);
 
     service.saveCredentials('token-value', 'api-key-value');
     service.saveCredentials('   ', '   ');
@@ -49,7 +50,7 @@ describe('TmdbSettingsService', () => {
   });
 
   it('clears existing credentials', () => {
-    const service = new TmdbSettingsService();
+    const service = TestBed.inject(TmdbSettingsService);
 
     service.saveCredentials('token-value', 'api-key-value');
     service.clearCredentials();
@@ -61,7 +62,7 @@ describe('TmdbSettingsService', () => {
   });
 
   it('prefers the read access token when both credentials exist', () => {
-    const service = new TmdbSettingsService();
+    const service = TestBed.inject(TmdbSettingsService);
 
     service.saveCredentials('token-value', 'api-key-value');
 
@@ -69,7 +70,7 @@ describe('TmdbSettingsService', () => {
   });
 
   it('falls back to the API key when no read access token exists', () => {
-    const service = new TmdbSettingsService();
+    const service = TestBed.inject(TmdbSettingsService);
 
     service.saveCredentials('', 'api-key-value');
 
