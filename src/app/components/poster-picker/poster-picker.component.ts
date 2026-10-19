@@ -1,17 +1,9 @@
-import {
-  Component,
-  DestroyRef,
-  computed,
-  effect,
-  inject,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ImageStorageService } from '../../services/image-storage.service';
+import { injectPosterUrl } from '../../services/poster-reader';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { FilePickerFocusDirective } from '../../directives/file-picker-focus.directive';
 import { SearchProviderSelectComponent } from '../search-provider-select/search-provider-select.component';
@@ -163,7 +155,7 @@ export class PosterPickerComponent {
   readonly showPosterSearch = signal(false);
   readonly posterLoading = signal(false);
   readonly posterError = signal('');
-  readonly posterPreviewUrl = signal<string | null>(null);
+  readonly posterPreviewUrl = injectPosterUrl(this.posterId);
   readonly posterPlaceholderUrl = signal(getPlaceholderUrl());
 
   private posterRequestId = 0;
@@ -175,12 +167,6 @@ export class PosterPickerComponent {
       this.destroyed = true;
       this.posterRequestId++;
       this.deleteDraftPosters();
-    });
-
-    effect(() => {
-      const posterId = this.posterId();
-      const version = this.imageStorage.version();
-      void this.loadPosterPreview(posterId, version);
     });
   }
 
@@ -257,18 +243,6 @@ export class PosterPickerComponent {
     } finally {
       if (!this.destroyed && requestId === this.posterRequestId) this.setLoading(false);
     }
-  }
-
-  private async loadPosterPreview(
-    posterId: string | undefined,
-    loadedVersion: number,
-  ): Promise<void> {
-    const url = await this.imageStorage.getUrl(posterId).catch(() => null);
-    if (this.destroyed || posterId !== this.posterId()) {
-      return;
-    }
-    if (loadedVersion !== this.imageStorage.version()) return;
-    this.posterPreviewUrl.set(url);
   }
 
   private deleteDraftPoster(posterId: string | undefined): void {

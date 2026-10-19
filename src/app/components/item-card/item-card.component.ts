@@ -1,4 +1,4 @@
-import { Component, input, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { Component, input, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ReadonlyItem as Item } from '../../models/item.model';
@@ -6,7 +6,7 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { calculateProgress, getMostRecentWatchDate } from '../../utils/progress.utils';
 import { statusLineColor } from '../../utils/status.utils';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
-import { ImageStorageService } from '../../services/image-storage.service';
+import { injectPosterUrl } from '../../services/poster-reader';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
 
 @Component({
@@ -77,13 +77,10 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
   `,
 })
 export class ItemCardComponent {
-  private imageStorage = inject(ImageStorageService);
   private providerSettings = inject(ProviderSettingsService);
-  private destroyRef = inject(DestroyRef);
-  private destroyed = false;
   item = input.required<Item>();
 
-  posterUrl = signal<string | null>(null);
+  readonly posterUrl = injectPosterUrl(() => this.item().posterId);
   placeholderUrl = computed(() => getPlaceholderUrl());
   statusColorClass = computed(() => statusLineColor(this.item().status));
   revealed = signal(false);
@@ -103,28 +100,10 @@ export class ItemCardComponent {
   });
 
   constructor() {
-    this.destroyRef.onDestroy(() => {
-      this.destroyed = true;
-    });
-
-    effect(() => {
-      const version = this.imageStorage.version();
-      void this.loadPoster(this.item().posterId, version);
-    });
-
     effect(() => {
       // Reset click-to-reveal when item identity changes
       void this.item().id;
       this.revealed.set(false);
     });
-  }
-
-  private async loadPoster(id: string | undefined, loadedVersion: number): Promise<void> {
-    const url = await this.imageStorage.getUrl(id).catch(() => null);
-    if (this.destroyed || id !== this.item().posterId) {
-      return;
-    }
-    if (loadedVersion !== this.imageStorage.version()) return;
-    this.posterUrl.set(url);
   }
 }

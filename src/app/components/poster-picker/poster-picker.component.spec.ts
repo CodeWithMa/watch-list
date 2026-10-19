@@ -709,85 +709,34 @@ describe('PosterPickerComponent', () => {
     expect(imageStorage.discardDraft).toHaveBeenCalledWith('old-id');
   });
 
-  it('loads poster preview on input change', async () => {
-    const versionSignal = signal(0);
-    TestBed.resetTestingModule();
-    const getUrl = vi.fn(() => Promise.resolve('blob:preview'));
-    TestBed.configureTestingModule({
-      providers: [
-        ...suggestionSearchService.providers,
-        {
-          provide: ImageStorageService,
-          useValue: {
-            getUrl,
-            storeUrl: vi.fn(() => Promise.resolve('image-1')),
-            storeFile: vi.fn(() => Promise.resolve('image-1')),
-            delete: vi.fn(() => Promise.resolve()),
-            version: versionSignal.asReadonly(),
-          },
-        },
-      ],
-    });
+  it('renders the selected preview, retains it while loading, and falls back for a missing poster', async () => {
+    const images = TestBed.inject(ImageStorageService);
+    const getUrl = vi.mocked(images.getUrl).mockResolvedValue('blob:preview');
     const fixture = TestBed.createComponent(PosterPickerComponent);
     fixture.componentRef.setInput('posterId', 'p1');
     fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    await Promise.resolve();
+    await vi.waitFor(() =>
+      expect(fixture.componentInstance.posterPreviewUrl()).toBe('blob:preview'),
+    );
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
     expect(getUrl).toHaveBeenCalledWith('p1');
-    expect(fixture.componentInstance.posterPreviewUrl()).toBe('blob:preview');
+    expect(root.querySelector('img')?.getAttribute('src')).toBe('blob:preview');
+    expect(root.querySelector('img')?.alt).toBe('Poster preview');
 
-    // change version triggers reload
-    versionSignal.set(1);
+    let finish!: (url: string | null) => void;
+    getUrl.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    fixture.componentRef.setInput('posterId', 'missing');
     fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    expect(getUrl).toHaveBeenCalledTimes(2);
-  });
-
-  it('does not set preview if destroyed or stale version', async () => {
-    let resolveUrl!: (v: string | null) => void;
-    const versionSignal = signal(0);
-    TestBed.resetTestingModule();
-    const getUrl = vi.fn(() => new Promise<string | null>((res) => (resolveUrl = res)));
-    TestBed.configureTestingModule({
-      providers: [
-        ...suggestionSearchService.providers,
-        {
-          provide: ImageStorageService,
-          useValue: {
-            getUrl,
-            storeUrl: vi.fn(() => Promise.resolve('image-1')),
-            storeFile: vi.fn(() => Promise.resolve('image-1')),
-            delete: vi.fn(() => Promise.resolve()),
-            version: versionSignal.asReadonly(),
-          },
-        },
-      ],
-    });
-    const fixture = TestBed.createComponent(PosterPickerComponent);
-    fixture.componentRef.setInput('posterId', 'p1');
+    expect(getUrl).toHaveBeenLastCalledWith('missing');
+    expect(root.querySelector('img')?.getAttribute('src')).toBe('blob:preview');
+    finish(null);
+    await vi.waitFor(() => expect(fixture.componentInstance.posterPreviewUrl()).toBeNull());
     fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-
-    // stale version
-    versionSignal.set(99);
-    resolveUrl('blob:p1');
-    await Promise.resolve();
-    await new Promise((r) => setTimeout(r, 0));
-    // second load with new version will be triggered, but we only resolved first, so first is stale and should not set
-    // Need to resolve second as well to get final value, but first should not set
-    // For this test, we check that after stale resolve, preview is still null until second resolves
-    expect(fixture.componentInstance.posterPreviewUrl()).toBeNull();
-
-    // now destroy case
-    const fixture2 = TestBed.createComponent(PosterPickerComponent);
-    fixture2.componentRef.setInput('posterId', 'p2');
-    fixture2.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    fixture2.destroy();
-    resolveUrl('blob:p2');
-    await Promise.resolve();
-    await new Promise((r) => setTimeout(r, 0));
-    expect(fixture2.componentInstance.posterPreviewUrl()).toBeNull();
+    expect(root.querySelector('img')?.getAttribute('src')).toBe(
+      fixture.componentInstance.posterPlaceholderUrl(),
+    );
+    expect(root.querySelector('img')?.alt).toBe('No poster');
   });
 
   it('cleans up drafts on destroy', async () => {

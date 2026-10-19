@@ -1,10 +1,10 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
-import { ImageStorageService } from '../../services/image-storage.service';
+import { injectPosterUrl } from '../../services/poster-reader';
 import { ReadonlyItem as Item, ItemStatus } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { getMostRecentWatchDate } from '../../utils/progress.utils';
@@ -170,11 +170,8 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
 })
 export class ItemViewComponent {
   private route = inject(ActivatedRoute);
-  private imageStorage = inject(ImageStorageService);
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
-  private destroyRef = inject(DestroyRef);
-  private destroyed = false;
 
   private readonly quickActionsByStatus: Record<
     ItemStatus,
@@ -215,7 +212,8 @@ export class ItemViewComponent {
     return item && this.hasWatchHistory() ? getMostRecentWatchDate(item) : '';
   });
   readonly hasWatchHistory = computed(() => (this.item()?.watchHistory.length ?? 0) > 0);
-  readonly posterUrl = signal(getPlaceholderUrl());
+  private readonly storedPosterUrl = injectPosterUrl(() => this.item()?.posterId);
+  readonly posterUrl = computed(() => this.storedPosterUrl() ?? getPlaceholderUrl());
   readonly watchHistory = computed(() =>
     [...(this.item()?.watchHistory ?? [])].sort(
       (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime(),
@@ -245,16 +243,6 @@ export class ItemViewComponent {
   );
   readonly actions = new WatchActionFeedback();
 
-  constructor() {
-    effect(() => {
-      const version = this.imageStorage.version();
-      void this.loadPoster(this.item()?.posterId, version);
-    });
-    this.destroyRef.onDestroy(() => {
-      this.destroyed = true;
-    });
-  }
-
   runAction(action: QuickAction) {
     const item = this.item();
     if (!item) return;
@@ -278,15 +266,5 @@ export class ItemViewComponent {
           : this.watchListService.removeOneWeekDelay(item.id),
       'Could not save the release delay.',
     );
-  }
-
-  private async loadPoster(id: string | undefined, loadedVersion: number): Promise<void> {
-    const url = await this.imageStorage.getUrl(id).catch(() => null);
-    if (this.destroyed || id !== this.item()?.posterId) {
-      return;
-    }
-    if (loadedVersion !== this.imageStorage.version()) return;
-
-    this.posterUrl.set(url ?? getPlaceholderUrl());
   }
 }

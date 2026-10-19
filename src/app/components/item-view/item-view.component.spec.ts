@@ -91,6 +91,32 @@ describe('ItemViewComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No watch history yet.');
   });
 
+  it('renders the item poster, retains it while loading, and falls back for a missing poster', async () => {
+    const watchList = configure([{ ...item, posterId: 'selected' }]);
+    const getUrl = vi.mocked(TestBed.inject(ImageStorageService).getUrl);
+    getUrl.mockResolvedValue('blob:selected');
+    const fixture = TestBed.createComponent(ItemViewComponent);
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(fixture.componentInstance.posterUrl()).toBe('blob:selected'));
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(getUrl).toHaveBeenCalledWith('selected');
+    expect(root.querySelector('img')?.getAttribute('src')).toBe('blob:selected');
+
+    let finish!: (url: string | null) => void;
+    getUrl.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    watchList.items.set([{ ...item, posterId: 'missing' }]);
+    fixture.detectChanges();
+    expect(getUrl).toHaveBeenLastCalledWith('missing');
+    expect(root.querySelector('img')?.getAttribute('src')).toBe('blob:selected');
+    finish(null);
+    await vi.waitFor(() =>
+      expect(fixture.componentInstance.posterUrl()).toContain('data:image/svg+xml;base64,'),
+    );
+    fixture.detectChanges();
+    expect(root.querySelector('img')?.getAttribute('src')).toContain('data:image/svg+xml;base64,');
+  });
+
   it('shows not found for a missing item', async () => {
     configure([]);
     const fixture = TestBed.createComponent(ItemViewComponent);
