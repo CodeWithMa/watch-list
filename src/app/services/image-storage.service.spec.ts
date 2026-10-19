@@ -7,6 +7,12 @@ import { StorageService } from './storage.service';
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { WatchListDatabase } from './watch-list-database.service';
 import { WatchListService } from './watch-list.service';
+import {
+  EnvironmentInjector,
+  createEnvironmentInjector,
+  runInInjectionContext,
+} from '@angular/core';
+import { injectPosterUrl } from './poster-reader';
 
 async function persistImage(blob = createImageBlob()) {
   const images = TestBed.inject(ImageStorageService);
@@ -545,6 +551,30 @@ describe('ImageStorageService', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     const url2 = await service.getUrl(id);
     expect(url2).toBeNull();
+  });
+
+  it('keeps cached URLs shared when a pending poster reader is destroyed', async () => {
+    const images = TestBed.inject(ImageStorageService);
+    const id = await images.storeFile(createImageBlob());
+    const parent = TestBed.inject(EnvironmentInjector);
+    const first = createEnvironmentInjector([], parent);
+    const second = createEnvironmentInjector([], parent);
+    const firstUrl = runInInjectionContext(first, () => injectPosterUrl(() => id));
+    const secondUrl = runInInjectionContext(second, () => injectPosterUrl(() => id));
+    TestBed.tick();
+    first.destroy();
+
+    await vi.waitFor(() => expect(secondUrl()).toBe('blob:mock-url'));
+    expect(firstUrl()).toBeNull();
+    expect(URL.createObjectURL).toHaveBeenCalledOnce();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+    second.destroy();
+    await expect(images.getUrl(id)).resolves.toBe('blob:mock-url');
+    expect(URL.createObjectURL).toHaveBeenCalledOnce();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    images.discardDraft(id);
+    await vi.waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url'));
   });
 
   it('exports images as base64', async () => {

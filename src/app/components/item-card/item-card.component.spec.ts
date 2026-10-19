@@ -5,6 +5,7 @@ import { vi } from 'vitest';
 import { ItemCardComponent } from './item-card.component';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { Item } from '../../models/item.model';
+import { ProviderSettingsService } from '../../services/provider-settings.service';
 
 function createItem(overrides: Partial<Item> = {}): Item {
   return {
@@ -56,114 +57,50 @@ describe('ItemCardComponent', () => {
     expect(instance.lastWatchedDate()).toBe('2026-04-02T10:00:00.000Z');
   });
 
-  it('loads poster on init and on version change', async () => {
+  it('renders the selected poster, retains it while loading, and falls back for a missing poster', async () => {
     const fixture = TestBed.createComponent(ItemCardComponent);
     fixture.componentRef.setInput('item', createItem({ posterId: 'p1' }));
     fixture.detectChanges();
-    await Promise.resolve();
-    await Promise.resolve();
-    // allow effect to run
-    await new Promise((r) => setTimeout(r, 0));
+    await vi.waitFor(() => expect(fixture.componentInstance.posterUrl()).toBe('blob:p1'));
+    fixture.detectChanges();
 
+    expect(fixture.componentInstance.posterUrl()).toBe('blob:p1');
     expect(getUrlMock).toHaveBeenCalledWith('p1');
-    expect(fixture.componentInstance.posterUrl()).toBe('blob:p1');
-
-    // change version should reload
-    versionSignal.set(1);
-    fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    await Promise.resolve();
-
-    expect(getUrlMock).toHaveBeenCalledTimes(2);
-    expect(getUrlMock).toHaveBeenLastCalledWith('p1');
-  });
-
-  it('renders poster or placeholder based on posterUrl', async () => {
-    const fixture = TestBed.createComponent(ItemCardComponent);
-    fixture.componentRef.setInput('item', createItem({ posterId: 'p1' }));
-    fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.posterUrl()).toBe('blob:p1');
     expect(fixture.nativeElement.querySelector('img')?.getAttribute('src')).toBe('blob:p1');
+
+    let finish!: (url: string | null) => void;
+    getUrlMock.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    fixture.componentRef.setInput('item', createItem({ posterId: 'missing' }));
+    fixture.detectChanges();
+    expect(getUrlMock).toHaveBeenLastCalledWith('missing');
+    expect(fixture.nativeElement.querySelector('img')?.getAttribute('src')).toBe('blob:p1');
+    finish(null);
+    await vi.waitFor(() => expect(fixture.componentInstance.posterUrl()).toBeNull());
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('img')?.getAttribute('src')).toBe(
+      fixture.componentInstance.placeholderUrl(),
+    );
   });
 
-  it('does not set posterUrl if destroyed before load completes', async () => {
-    let resolveUrl!: (v: string | null) => void;
-    getUrlMock.mockImplementation(() => new Promise<string | null>((res) => (resolveUrl = res)));
-
+  it('keeps adult posters blurred until revealed and resets reveal for another item', async () => {
+    TestBed.inject(ProviderSettingsService).setAdultDisplayMode('blur');
     const fixture = TestBed.createComponent(ItemCardComponent);
-    fixture.componentRef.setInput('item', createItem({ posterId: 'p1' }));
+    fixture.componentRef.setInput('item', createItem({ posterId: 'adult', isAdult: true }));
     fixture.detectChanges();
-
-    fixture.destroy();
-    resolveUrl('blob:p1');
-    await Promise.resolve();
-    await new Promise((r) => setTimeout(r, 0));
-
-    expect(fixture.componentInstance.posterUrl()).toBeNull();
-  });
-
-  it('does not set posterUrl if item posterId changed before load completes', async () => {
-    const resolvers = new Map<string, (v: string | null) => void>();
-    getUrlMock.mockImplementation((id: string | undefined) => {
-      return new Promise<string | null>((res) => {
-        if (id) resolvers.set(id, res);
-        else res(null);
-      });
-    });
-
-    const fixture = TestBed.createComponent(ItemCardComponent);
-    fixture.componentRef.setInput('item', createItem({ posterId: 'p1' }));
+    await vi.waitFor(() => expect(fixture.componentInstance.posterUrl()).toBe('blob:adult'));
     fixture.detectChanges();
-
-    // trigger second load with p2
-    fixture.componentRef.setInput('item', createItem({ posterId: 'p2' }));
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('img')?.style.filter).toBe('blur(12px)');
+    root.querySelector<HTMLButtonElement>('button[aria-label="Reveal adult poster"]')!.click();
     fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
+    expect(root.querySelector('img')?.style.filter).toBe('');
 
-    // resolve p1 first
-    resolvers.get('p1')?.('blob:p1');
-    await Promise.resolve();
-    await new Promise((r) => setTimeout(r, 0));
-    // should still be null because p1 is stale
-    expect(fixture.componentInstance.posterUrl()).toBeNull();
-
-    // resolve p2
-    resolvers.get('p2')?.('blob:p2');
-    await Promise.resolve();
-    await new Promise((r) => setTimeout(r, 0));
-    expect(fixture.componentInstance.posterUrl()).toBe('blob:p2');
-  });
-
-  it('ignores stale version loads but allows fresh version load', async () => {
-    const resolvers: ((v: string | null) => void)[] = [];
-    getUrlMock.mockImplementation(() => new Promise<string | null>((res) => resolvers.push(res)));
-
-    const fixture = TestBed.createComponent(ItemCardComponent);
-    fixture.componentRef.setInput('item', createItem({ posterId: 'p1' }));
+    fixture.componentRef.setInput(
+      'item',
+      createItem({ id: 'another', posterId: 'adult', isAdult: true }),
+    );
     fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-
-    // version changes triggers second load
-    versionSignal.set(99);
-    fixture.detectChanges();
-    await new Promise((r) => setTimeout(r, 0));
-
-    expect(getUrlMock).toHaveBeenCalledTimes(2);
-    // resolve first (stale)
-    resolvers[0]('blob:p1');
-    await Promise.resolve();
-    await new Promise((r) => setTimeout(r, 0));
-    expect(fixture.componentInstance.posterUrl()).toBeNull();
-
-    // resolve second (fresh)
-    resolvers[1]('blob:p1');
-    await Promise.resolve();
-    await new Promise((r) => setTimeout(r, 0));
-    expect(fixture.componentInstance.posterUrl()).toBe('blob:p1');
+    expect(root.querySelector('img')?.style.filter).toBe('blur(12px)');
   });
 
   it('shows placeholder when item has no posterId', async () => {
@@ -174,6 +111,9 @@ describe('ItemCardComponent', () => {
     await fixture.whenStable();
     await new Promise((r) => setTimeout(r, 0));
     expect(fixture.componentInstance.posterUrl()).toBeNull();
+    expect(fixture.nativeElement.querySelector('img')?.getAttribute('src')).toBe(
+      fixture.componentInstance.placeholderUrl(),
+    );
     expect(fixture.nativeElement.textContent).toContain('Test Show');
   });
 
