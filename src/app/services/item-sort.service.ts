@@ -1,5 +1,6 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { isSortDirection, isSortField, SortDirection, SortField } from '../utils/sort.utils';
+import { BrowserSettingsStorage } from './browser-settings-storage.service';
 
 const SORT_FIELD_KEY = 'itemSortField';
 const SORT_DIRECTION_KEY = 'itemSortDirection';
@@ -11,6 +12,7 @@ const DEFAULT_SORT_DIRECTION: SortDirection = 'desc';
   providedIn: 'root',
 })
 export class ItemSortService {
+  private readonly settingsStorage = inject(BrowserSettingsStorage);
   private readonly fieldSignal = signal<SortField>(this.loadField());
   private readonly directionSignal = signal<SortDirection>(this.loadDirection());
 
@@ -33,7 +35,7 @@ export class ItemSortService {
 
   private loadField(): SortField {
     try {
-      const raw = localStorage.getItem(SORT_FIELD_KEY);
+      const raw = this.settingsStorage.read(SORT_FIELD_KEY);
       if (raw && isSortField(raw)) {
         return raw;
       }
@@ -45,7 +47,7 @@ export class ItemSortService {
 
   private loadDirection(): SortDirection {
     try {
-      const raw = localStorage.getItem(SORT_DIRECTION_KEY);
+      const raw = this.settingsStorage.read(SORT_DIRECTION_KEY);
       if (raw && isSortDirection(raw)) {
         return raw;
       }
@@ -56,18 +58,10 @@ export class ItemSortService {
   }
 
   private saveField(field: SortField): void {
-    try {
-      localStorage.setItem(SORT_FIELD_KEY, field);
-    } catch {
-      // Retain in-memory state even if persistence fails (quota, private mode).
-    }
+    this.settingsStorage.write(SORT_FIELD_KEY, field);
   }
 
   private saveDirection(direction: SortDirection): void {
-    try {
-      localStorage.setItem(SORT_DIRECTION_KEY, direction);
-    } catch {
-      // Retain in-memory state even if persistence fails.
-    }
+    this.settingsStorage.write(SORT_DIRECTION_KEY, direction);
   }
 }

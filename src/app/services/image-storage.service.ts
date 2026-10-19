@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { imageVersion, imagesInvalidated } from './image-invalidation';
 import { StorageService } from './storage.service';
 import { WatchListDatabase, IMAGE_STORE_NAME as STORE_NAME } from './watch-list-database.service';
@@ -24,6 +24,16 @@ export class ImageStorageService {
   private readonly databaseOwner = inject(WatchListDatabase);
   private readonly posterUrls: PosterUrlCache = new Map();
   readonly version = imageVersion.asReadonly();
+  private readonly missingPosters = signal(new Set<string>());
+  readonly unavailablePosters = computed(() => {
+    const missing = this.missingPosters();
+    const data = this.storageService.getDataSignal()();
+    return (
+      Object.values(data?.items ?? {}).some(
+        (item) => item.posterId && missing.has(item.posterId),
+      ) || [...missing].some((id) => this.storageService.getProvisionalImage(id))
+    );
+  });
 
   constructor() {
     imagesInvalidated.subscribe(() => this.refreshCache());
@@ -53,7 +63,10 @@ export class ImageStorageService {
 
   /** Releasing a UI draft never deletes persistent images or committed ownership. */
   discardDraft(id: string): void {
-    if (this.storageService.discardProvisionalImage(id)) void this.revokeUrl(id);
+    if (this.storageService.discardProvisionalImage(id)) {
+      this.setPosterMissing(id, false);
+      void this.revokeUrl(id);
+    }
   }
 
   async getUrl(id: string | undefined): Promise<string | null> {
@@ -63,11 +76,19 @@ export class ImageStorageService {
     if (existing) return existing;
 
     const urlPromise = this.get(id).then((image) => {
-      return image ? URL.createObjectURL(image.blob) : null;
+      const url = image ? URL.createObjectURL(image.blob) : null;
+      if (this.posterUrls.get(id) === urlPromise) {
+        this.setPosterMissing(id, !url);
+        if (!url) this.posterUrls.delete(id);
+      }
+      return url;
     });
     this.posterUrls.set(id, urlPromise);
     void urlPromise.catch(() => {
-      if (this.posterUrls.get(id) === urlPromise) this.posterUrls.delete(id);
+      if (this.posterUrls.get(id) === urlPromise) {
+        this.setPosterMissing(id, true);
+        this.posterUrls.delete(id);
+      }
     });
     return urlPromise;
   }
@@ -79,7 +100,7 @@ export class ImageStorageService {
     if (removed) await this.revokeUrl(id);
   }
 
-  async exportImages(): Promise<ExportedImage[]> {
+  async exportImages(ids?: ReadonlySet<string>): Promise<ExportedImage[]> {
     const db = await this.databaseOwner.open();
     const transaction = db.transaction(STORE_NAME, 'readonly');
     const images = await this.request<StoredImage[]>(
@@ -87,7 +108,9 @@ export class ImageStorageService {
       transaction.objectStore(STORE_NAME).getAll(),
     );
     return Promise.all(
-      images.map(async ({ id, blob }) => ({ id, type: blob.type, data: await blobToBase64(blob) })),
+      images
+        .filter(({ id }) => !ids || ids.has(id))
+        .map(async ({ id, blob }) => ({ id, type: blob.type, data: await blobToBase64(blob) })),
     );
   }
 
@@ -113,8 +136,19 @@ export class ImageStorageService {
   }
 
   private refreshCache(): void {
+    this.missingPosters.set(new Set());
     for (const id of [...this.posterUrls.keys()]) void this.revokeUrl(id);
     imageVersion.update((version) => version + 1);
+  }
+
+  private setPosterMissing(id: string, missing: boolean) {
+    this.missingPosters.update((current) => {
+      if (current.has(id) === missing) return current;
+      const next = new Set(current);
+      if (missing) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   }
 
   async parseExportedImages(images: unknown): Promise<StoredImage[]> {

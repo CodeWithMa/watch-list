@@ -333,7 +333,8 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             Export Data
           </button>
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Download your watch list and locally stored poster images as a JSON file
+            Download your current watch list and available poster images as a JSON file. Unavailable
+            posters are listed in the export; metadata can be recovered even without images.
           </p>
         </div>
         <div class="mb-4 last:mb-0">
@@ -503,17 +504,25 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   saveTmdbToken(): void {
-    this.tmdbSettingsService.saveCredentials(this.tmdbToken(), this.tmdbApiKey());
+    const saved = this.tmdbSettingsService.saveCredentials(this.tmdbToken(), this.tmdbApiKey());
     this.tmdbToken.set(this.tmdbSettingsService.token());
     this.tmdbApiKey.set(this.tmdbSettingsService.key());
-    this.tmdbSettingsMessage.set(this.getTmdbSettingsMessage());
+    this.tmdbSettingsMessage.set(
+      saved
+        ? this.getTmdbSettingsMessage()
+        : 'TMDB credentials apply to this session but could not be saved completely. Retry saving when browser storage is available.',
+    );
   }
 
   clearTmdbToken(): void {
-    this.tmdbSettingsService.clearCredentials();
+    const cleared = this.tmdbSettingsService.clearCredentials();
     this.tmdbToken.set('');
     this.tmdbApiKey.set('');
-    this.tmdbSettingsMessage.set('TMDB credentials cleared.');
+    this.tmdbSettingsMessage.set(
+      cleared
+        ? 'TMDB credentials cleared.'
+        : 'TMDB credentials cleared for this session only. Stored credentials could not all be removed and may return on reload. Retry clearing when browser storage is available.',
+    );
   }
 
   toggleProvider(source: SuggestionSource, event: Event): void {
@@ -584,8 +593,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   async exportData(): Promise<void> {
+    this.setError(null);
+    this.successMessage.set(null);
     try {
-      await this.importExportService.exportData();
+      const posters = await this.importExportService.exportData();
+      if (posters.unavailable || posters.omittedIds.length) {
+        this.successMessage.set(
+          `Metadata exported with ${posters.included} poster image(s) included; ${posters.omittedIds.length} unavailable poster(s) omitted. This is not a complete poster backup.${posters.unavailable ? ' Poster storage could not be read.' : ''}`,
+        );
+        return;
+      }
       this.successMessage.set('Data exported successfully');
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch {
@@ -688,11 +705,19 @@ function describeImportResult({
   dropped,
   repairedGroupReferences,
   durability,
+  posters,
+  posterCleanupSkipped,
 }: ImportReport): string {
   const session =
-    durability === 'session-only'
+    (posters
+      ? ` ${posters.included} poster image(s) included; ${posters.omittedIds.length} unavailable poster(s) omitted.`
+      : '') +
+    (durability === 'session-only'
       ? ' Data is kept only in this session and will be lost on reload.'
-      : '';
+      : '') +
+    (posterCleanupSkipped
+      ? ' Poster cleanup was unavailable; unreferenced local files may remain and are excluded from exports.'
+      : '');
   const total = dropped.groups + dropped.items + dropped.deletedItems;
   if (total === 0 && repairedGroupReferences === 0) {
     return `Data imported successfully${session}`;

@@ -120,7 +120,7 @@ export class ItemCardComponent {
   }
 
   private async loadPoster(id: string | undefined, loadedVersion: number): Promise<void> {
-    const url = await this.imageStorage.getUrl(id);
+    const url = await this.imageStorage.getUrl(id).catch(() => null);
     if (this.destroyed || id !== this.item().posterId) {
       return;
     }

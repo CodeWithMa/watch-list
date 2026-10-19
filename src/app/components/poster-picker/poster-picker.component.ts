@@ -265,7 +265,7 @@ export class PosterPickerComponent {
     posterId: string | undefined,
     loadedVersion: number,
   ): Promise<void> {
-    const url = await this.imageStorage.getUrl(posterId);
+    const url = await this.imageStorage.getUrl(posterId).catch(() => null);
     if (this.destroyed || posterId !== this.posterId()) {
       return;
     }

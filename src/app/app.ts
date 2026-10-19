@@ -5,6 +5,8 @@ import { SwUpdate } from '@angular/service-worker';
 import { EMPTY, filter, map } from 'rxjs';
 import { ThemeSwitcherComponent } from './components/theme-switcher/theme-switcher.component';
 import { StorageService } from './services/storage.service';
+import { BrowserSettingsStorage } from './services/browser-settings-storage.service';
+import { ImageStorageService } from './services/image-storage.service';
 import {
   ImportExportService,
   UnsupportedRecoveryFormatError,
@@ -24,6 +26,8 @@ export class App {
   protected readonly title = signal('watch-list');
   protected readonly saveError = this.storageService.getSaveErrorSignal();
   protected readonly inMemorySession = this.storageService.getInMemorySessionSignal();
+  protected readonly settingsUnavailable = inject(BrowserSettingsStorage).unavailable;
+  protected readonly postersUnavailable = inject(ImageStorageService).unavailablePosters;
   protected readonly compatibilityError = this.storageService.getCompatibilityErrorSignal();
   protected readonly databaseError = this.storageService.getDatabaseErrorSignal();
   protected readonly storageLoading = this.storageService.getLoadingSignal();
