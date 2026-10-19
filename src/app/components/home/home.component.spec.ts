@@ -61,7 +61,11 @@ describe('HomeComponent', () => {
         provideRouter([]),
         {
           provide: RoundRobinService,
-          useValue: { nextSeries: signal(nextSeries), nextMovie: signal(nextMovie) },
+          useValue: {
+            nextSeries: signal(nextSeries),
+            nextMovie: signal(nextMovie),
+            allDeferredUntil: signal(null),
+          },
         },
         {
           provide: WatchListService,

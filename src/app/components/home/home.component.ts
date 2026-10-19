@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
@@ -10,6 +10,7 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
 import { watchActionFailure } from '../watch-action-feedback';
 import { MutationFeedback } from '../mutation-feedback';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
+import { deferralReturnDate } from '../../domain/availability-deferral';
 
 @Component({
   selector: 'app-home',
@@ -45,6 +46,14 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   Mark Watched
                 </button>
                 <button
+                  type="button"
+                  (click)="openDeferral()"
+                  [disabled]="actions.busy()"
+                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded text-xs cursor-pointer disabled:opacity-50"
+                >
+                  Not available yet
+                </button>
+                <button
                   (click)="markItem(nextSeries, 'paused')"
                   [disabled]="actions.busy()"
                   class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -64,7 +73,10 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             <p
               class="w-full p-6 text-center text-sm rounded-lg border border-dashed border-light-border dark:border-dark-border text-light-font-muted dark:text-dark-font-muted"
             >
-              @if (hasSeries()) {
+              @if (allDeferredUntil(); as until) {
+                All aired episodes are temporarily deferred. Earliest return:
+                {{ until | date: 'short' }} (local time).
+              } @else if (hasSeries()) {
                 @if (hasInProgressSeries()) {
                   No aired series episodes available
                 } @else {
@@ -74,6 +86,47 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                 No series in your watch list
               }
             </p>
+          }
+          @if (deferringItem(); as target) {
+            <div class="mt-4 p-4 border border-light-border dark:border-dark-border rounded">
+              <p class="text-sm mb-3">Defer {{ target.title }}'s current episode</p>
+              <label for="deferral-hours" class="block text-sm mb-1">Hours</label>
+              <input
+                #hoursInput
+                id="deferral-hours"
+                type="number"
+                min="1"
+                step="1"
+                [value]="deferralHours()"
+                (input)="deferralHours.set(hoursInput.value)"
+                [disabled]="actions.busy()"
+                aria-describedby="deferral-preview"
+                class="w-full p-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary"
+              />
+              <p id="deferral-preview" aria-live="polite" class="text-sm my-3">
+                @if (returnDate(); as until) {
+                  Returns {{ until | date: 'short' }} (local time)
+                } @else {
+                  Enter positive whole hours with a valid return date.
+                }
+              </p>
+              <button
+                type="button"
+                (click)="confirmDeferral()"
+                [disabled]="actions.busy() || !returnDate()"
+                class="px-3 py-1.5 mr-2 rounded bg-accent-primary text-white text-sm cursor-pointer disabled:opacity-50"
+              >
+                Confirm deferral
+              </button>
+              <button
+                type="button"
+                (click)="deferringItem.set(null)"
+                [disabled]="actions.busy()"
+                class="px-3 py-1.5 border rounded text-sm cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
           }
         </div>
 
@@ -234,6 +287,47 @@ export class HomeComponent {
 
   nextSeries = this.roundRobinService.nextSeries;
   nextMovie = this.roundRobinService.nextMovie;
+  readonly allDeferredUntil = this.roundRobinService.allDeferredUntil;
+  readonly deferringItem = signal<Item | null>(null);
+  readonly deferralHours = signal('1');
+  private readonly durationHours = computed(() =>
+    /^\d+$/.test(this.deferralHours()) ? Number(this.deferralHours()) : NaN,
+  );
+  private readonly previewNow = signal(Date.now());
+  readonly returnDate = computed(() => deferralReturnDate(this.durationHours(), this.previewNow()));
+
+  constructor() {
+    effect((onCleanup) => {
+      if (!this.deferringItem()) return;
+      // Keep the preview accurate if the duration chooser is left open.
+      const timer = setInterval(() => this.previewNow.set(Date.now()), 1000);
+      onCleanup(() => clearInterval(timer));
+    });
+  }
+
+  openDeferral() {
+    const item = this.nextSeries();
+    if (!item || this.actions.busy()) return;
+    this.deferralHours.set('1');
+    this.previewNow.set(Date.now());
+    this.deferringItem.set(item);
+  }
+
+  async confirmDeferral() {
+    const item = this.deferringItem();
+    const hours = this.durationHours();
+    if (!item || !deferralReturnDate(hours)) return;
+    const result = await this.actions.run(
+      () =>
+        this.watchListService.deferEpisode(
+          item.id,
+          hours,
+          item.progress ?? { season: 1, episode: 1 },
+        ),
+      'Could not save the availability deferral.',
+    );
+    if (result) this.deferringItem.set(null);
+  }
   backlogItems = computed(() => {
     const adultMode = this.providerSettings.settings().adultDisplayMode;
     let items = this.watchListService.items().filter((item) => item.status === 'not-started');

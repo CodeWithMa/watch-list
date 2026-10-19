@@ -5,6 +5,7 @@ import { HistoryEntry } from '../models/storage.model';
 import { freezeReadModel } from '../models/readonly';
 import { DEFAULT_GROUP_ID, isEpisodicType } from '../domain/item.constants';
 import { applyItemEdit, ItemEdit } from '../domain/item-edit';
+import { deferralReturnDate, isCurrentEpisode } from '../domain/availability-deferral';
 import {
   canSnoozeCurrentSeason,
   getCurrentSeason,
@@ -65,6 +66,12 @@ export class WatchListService {
       }
       const current = draft.items[itemId];
       const updated = applyItemEdit(current, edit);
+      if (
+        current.type !== updated.type ||
+        !isEpisodicType(updated.type) ||
+        !isCurrentEpisode(updated, current.progress ?? { season: 1, episode: 1 })
+      )
+        delete updated.availabilityDeferral;
       if (!Object.hasOwn(draft.groups, updated.groupId)) updated.groupId = DEFAULT_GROUP_ID;
       draft.items[itemId] = updated;
     }, edit.posterId);
@@ -96,6 +103,7 @@ export class WatchListService {
       }
 
       const progress = item.progress || { season: 1, episode: 1, seasons: [] };
+      delete item.availabilityDeferral;
       const { progress: newProgress, completed } = advanceSeriesProgress(progress);
       item.status = completed ? 'completed' : 'in-progress';
       item.progress = newProgress;
@@ -105,6 +113,38 @@ export class WatchListService {
 
   snoozeOneWeek(itemId: string) {
     return this.changeReleaseDelay(itemId, 1);
+  }
+
+  deferEpisode(
+    itemId: string,
+    hours: number,
+    expectedEpisode = this.getItemById(itemId)?.progress ?? { season: 1, episode: 1 },
+  ) {
+    const { season, episode } = expectedEpisode;
+    return this.storageService.mutate((draft) => {
+      const item = Object.hasOwn(draft.items, itemId) ? draft.items[itemId] : undefined;
+      if (!item) throw new Error('The item no longer exists.');
+      const until = deferralReturnDate(hours);
+      if (!until)
+        throw new Error('Enter a positive whole number of hours with a valid return date.');
+      if (!isEpisodicType(item.type) || item.status !== 'in-progress') {
+        throw new Error('Only a currently watched episode can be deferred.');
+      }
+      if (!isCurrentEpisode(item, { season, episode })) {
+        throw new Error('The current episode changed. Review the recommendation and try again.');
+      }
+      item.availabilityDeferral = {
+        season,
+        episode,
+        until: until.toISOString(),
+      };
+    });
+  }
+
+  clearDeferral(itemId: string) {
+    return this.mutateItem(itemId, (item) => {
+      delete item.availabilityDeferral;
+    });
   }
 
   removeOneWeekDelay(itemId: string) {

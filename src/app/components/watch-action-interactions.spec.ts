@@ -44,9 +44,7 @@ describe('Settled watch interactions', () => {
       );
       await storage.mutate(() => undefined);
       fixture.detectChanges();
-      expect(disabledBeforeCommit).toEqual(
-        component === HomeComponent ? [true, true, true] : [true, true, true, true],
-      );
+      expect(disabledBeforeCommit).toEqual([true, true, true, true]);
       expect(storage.getData().items['series'].watchHistory).toHaveLength(1);
       expect(watched.disabled).toBe(false);
     },
