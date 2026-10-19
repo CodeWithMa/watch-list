@@ -11,7 +11,8 @@ import {
   createItemFormValue,
   ItemFormValue,
 } from '../../domain/item-form';
-import { ItemMutationFeedback } from '../item-mutation-feedback';
+import { itemMutationFailure } from '../item-mutation-feedback';
+import { MutationFeedback } from '../mutation-feedback';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
 @Component({
@@ -88,7 +89,7 @@ export class ItemDetailComponent {
   private groupService = inject(GroupService);
 
   readonly groups = this.groupService.groups;
-  readonly mutation = new ItemMutationFeedback();
+  readonly mutation = new MutationFeedback(itemMutationFailure);
 
   // Capture a baseline per routed item; live collection updates must not reset an open draft.
   readonly item = toSignal(

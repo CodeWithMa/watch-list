@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { GroupService } from '../../services/group.service';
 import { Group } from '../../models/group.model';
 import { DEFAULT_GROUP_ID } from '../../domain/item.constants';
-import type { MutationResult } from '../../services/storage.service';
+import { MutationFeedback } from '../mutation-feedback';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
 @Component({
@@ -178,19 +178,21 @@ export class GroupManagerComponent {
   editGroupName = '';
   newGroupName = '';
   pendingDeleteGroupId = signal<string | null>(null);
-  readonly busy = signal(false);
-  readonly operationError = signal<string | null>(null);
-  readonly sessionSuccess = signal(false);
+  private readonly mutation = new MutationFeedback((error, action) => {
+    const detail = error instanceof Error ? error.message : `Failed to ${action}`;
+    return `${detail} Please try again.`;
+  });
+  readonly busy = this.mutation.busy;
+  readonly operationError = this.mutation.error;
+  readonly sessionSuccess = this.mutation.sessionSuccess;
 
   async createGroup() {
-    if (this.busy() || !this.newGroupName.trim()) return;
-    await this.run(
-      'create group',
+    if (!this.newGroupName.trim()) return;
+    const result = await this.mutation.run(
       () => this.groupService.createGroup(this.newGroupName.trim()),
-      () => {
-        this.newGroupName = '';
-      },
+      'create group',
     );
+    if (result) this.newGroupName = '';
   }
 
   editGroup(group: Group): void {
@@ -202,19 +204,19 @@ export class GroupManagerComponent {
 
   async saveEdit() {
     const group = this.editingGroup();
-    if (this.busy() || !group || !this.editGroupName.trim()) return;
-    await this.run(
-      'rename group',
+    if (!group || !this.editGroupName.trim()) return;
+    const result = await this.mutation.run(
       () =>
         this.groupService.updateGroup({
           id: group.id,
           name: this.editGroupName.trim(),
         }),
-      () => {
-        this.editingGroup.set(null);
-        this.editGroupName = '';
-      },
+      'rename group',
     );
+    if (result) {
+      this.editingGroup.set(null);
+      this.editGroupName = '';
+    }
   }
 
   cancelEdit(): void {
@@ -237,15 +239,15 @@ export class GroupManagerComponent {
   }
 
   async confirmDeleteGroup(groupId: string) {
-    if (this.busy() || this.pendingDeleteGroupId() !== groupId) return;
-    await this.run(
-      'delete group',
+    if (this.pendingDeleteGroupId() !== groupId) return;
+    const result = await this.mutation.run(
       () => this.groupService.deleteGroup(groupId),
-      () => {
-        this.pendingDeleteGroupId.set(null);
-        this.newGroupInput().nativeElement.focus();
-      },
+      'delete group',
     );
+    if (result) {
+      this.pendingDeleteGroupId.set(null);
+      this.newGroupInput().nativeElement.focus();
+    }
   }
 
   moveUp(groupId: string) {
@@ -257,33 +259,12 @@ export class GroupManagerComponent {
   }
 
   private async move(groupId: string, direction: number) {
-    if (this.busy()) return;
     const sorted = this.groups();
     const index = sorted.findIndex((g) => g.id === groupId);
     const target = index + direction;
     if (index < 0 || target < 0 || target >= sorted.length) return;
     const groupIds = sorted.map((g) => g.id);
     [groupIds[index], groupIds[target]] = [groupIds[target], groupIds[index]];
-    await this.run('reorder groups', () => this.groupService.reorderGroups(groupIds));
-  }
-
-  private async run(
-    action: string,
-    operation: () => Promise<MutationResult<unknown>>,
-    onSuccess?: () => void,
-  ) {
-    this.busy.set(true);
-    this.operationError.set(null);
-    this.sessionSuccess.set(false);
-    try {
-      const result = await operation();
-      this.sessionSuccess.set(result.durability === 'session-only');
-      onSuccess?.();
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : `Failed to ${action}`;
-      this.operationError.set(`${detail} Please try again.`);
-    } finally {
-      this.busy.set(false);
-    }
+    await this.mutation.run(() => this.groupService.reorderGroups(groupIds), 'reorder groups');
   }
 }

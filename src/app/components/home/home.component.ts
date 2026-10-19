@@ -7,7 +7,8 @@ import { ItemCardComponent } from '../item-card/item-card.component';
 import { ReadonlyItem as Item, ItemType } from '../../models/item.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
-import { WatchActionFeedback } from '../watch-action-feedback';
+import { watchActionFailure } from '../watch-action-feedback';
+import { MutationFeedback } from '../mutation-feedback';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
 @Component({
@@ -229,7 +230,7 @@ export class HomeComponent {
   private roundRobinService = inject(RoundRobinService);
   private watchListService = inject(WatchListService);
   private providerSettings = inject(ProviderSettingsService);
-  readonly actions = new WatchActionFeedback();
+  readonly actions = new MutationFeedback(watchActionFailure);
 
   nextSeries = this.roundRobinService.nextSeries;
   nextMovie = this.roundRobinService.nextMovie;

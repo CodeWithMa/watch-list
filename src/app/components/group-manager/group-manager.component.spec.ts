@@ -232,12 +232,12 @@ describe('GroupManagerComponent settled interactions', () => {
       });
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-      if (operation === 'create') component.newGroupName = 'New Group';
+      component.newGroupName = operation === 'create' ? 'New Group' : 'Unrelated draft';
+      component.requestDeleteGroup('films');
       if (operation === 'rename') {
         component.editGroup(original.groups['films']);
         component.editGroupName = 'Renamed';
       }
-      if (operation === 'delete') component.requestDeleteGroup('films');
       const submit = () => {
         switch (operation) {
           case 'create':
@@ -272,10 +272,17 @@ describe('GroupManagerComponent settled interactions', () => {
       await submit();
       fixture.detectChanges();
       expect(root.querySelector('[role="alert"]')).toBeNull();
+      expect(root.querySelector('[role="status"]')).toBeNull();
+      expect(component.newGroupName).toBe(operation === 'create' ? '' : 'Unrelated draft');
+      expect(component.pendingDeleteGroupId()).toBe(operation === 'delete' ? null : 'films');
       const groups = Object.values(storage.getData().groups);
       if (operation === 'create')
         expect(groups.map((group) => group.name)).toEqual(['Ungrouped', 'Films', 'New Group']);
-      if (operation === 'rename') expect(storage.getData().groups['films'].name).toBe('Renamed');
+      if (operation === 'rename') {
+        expect(storage.getData().groups['films'].name).toBe('Renamed');
+        expect(component.editingGroup()).toBeNull();
+        expect(component.editGroupName).toBe('');
+      }
       if (operation === 'delete') expect(storage.getData().groups['films']).toBeUndefined();
       if (operation === 'reorder')
         expect(storage.getGroups().map((group) => group.id)).toEqual(['films', 'ungrouped']);
