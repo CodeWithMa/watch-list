@@ -3,7 +3,6 @@ import { StorageService } from './storage.service';
 import { Item, ItemStatus, SeriesProgress } from '../models/item.model';
 import { HistoryEntry } from '../models/storage.model';
 import { freezeReadModel } from '../models/readonly';
-import { ImageStorageService } from './image-storage.service';
 import { DEFAULT_GROUP_ID, isEpisodicType } from '../domain/item.constants';
 import { applyItemEdit, ItemEdit } from '../domain/item-edit';
 import {
@@ -36,7 +35,6 @@ function advanceSeriesProgress(progress: SeriesProgress): {
 })
 export class WatchListService {
   private storageService = inject(StorageService);
-  private imageStorage = inject(ImageStorageService);
 
   addItem(item: Omit<Item, 'id' | 'createdAt' | 'watchHistory'>) {
     const id = this.generateId();
@@ -59,9 +57,9 @@ export class WatchListService {
     }, newItem.posterId);
   }
 
-  async updateItem(itemId: string, changes: ItemEdit) {
+  updateItem(itemId: string, changes: ItemEdit) {
     const edit = structuredClone(changes);
-    const result = await this.storageService.mutateWithPoster((draft) => {
+    return this.storageService.mutateWithPoster((draft) => {
       if (!Object.hasOwn(draft.items, itemId)) {
         throw new Error('The edited item no longer exists. Refresh the item list and try again.');
       }
@@ -69,14 +67,11 @@ export class WatchListService {
       const updated = applyItemEdit(current, edit);
       if (!Object.hasOwn(draft.groups, updated.groupId)) updated.groupId = DEFAULT_GROUP_ID;
       draft.items[itemId] = updated;
-      return current.posterId !== updated.posterId ? current.posterId : undefined;
     }, edit.posterId);
-    await this.cleanupPoster(result.value);
-    return { ...result, value: undefined };
   }
 
-  async deleteItem(itemId: string) {
-    const result = await this.storageService.mutate((draft) => {
+  deleteItem(itemId: string) {
+    return this.storageService.mutate((draft) => {
       if (!Object.hasOwn(draft.items, itemId)) return;
       const removed = draft.items[itemId];
       draft.deletedItems ??= {};
@@ -88,20 +83,7 @@ export class WatchListService {
         deletedAt: new Date().toISOString(),
       };
       delete draft.items[itemId];
-      return removed.posterId;
     });
-    await this.cleanupPoster(result.value);
-    return { ...result, value: undefined };
-  }
-
-  private async cleanupPoster(posterId: string | undefined) {
-    if (!posterId) return;
-    // Collection success is not undone by a later poster-cleanup failure.
-    try {
-      await this.imageStorage.delete(posterId);
-    } catch (error) {
-      console.error('Failed to remove unused poster:', error);
-    }
   }
 
   markWatched(itemId: string) {

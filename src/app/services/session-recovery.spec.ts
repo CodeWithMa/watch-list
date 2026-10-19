@@ -213,12 +213,12 @@ describe('session metadata recovery', () => {
       vi.stubGlobal('indexedDB', new IDBFactory());
       const storage = TestBed.inject(StorageService);
       await storage.initialize();
-      await storage.writeImages((store) =>
-        store.put({
+      await storage.importDataWithImages(storage.getData(), [
+        {
           id: 'old-poster',
           blob: new Blob(['old'], { type: 'image/png' }),
-        }),
-      );
+        },
+      ]);
       const data = storage.getData();
       data.groups['ungrouped'].name = 'Replacement';
       if (failure === 'synchronous')

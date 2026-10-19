@@ -247,9 +247,6 @@ describe('StorageService', () => {
       await expect(service.replaceData(withGroup(snapshot, 'stale'))).rejects.toThrow(/reload/i);
       await expect(service.importData(snapshot)).rejects.toThrow(/reload/i);
       await expect(service.importDataWithImages(snapshot, [])).rejects.toThrow(/reload/i);
-      const writePosters = vi.fn();
-      await expect(service.writeImages(writePosters)).rejects.toThrow(/reload/i);
-      expect(writePosters).not.toHaveBeenCalled();
       await service.initialize();
       expect(service.getDataSignal()()).toBeNull();
       expect(service.getSaveErrorSignal()()).toBeNull();
@@ -369,9 +366,11 @@ describe('StorageService', () => {
           throw new Error('Unavailable again');
         });
       }
-      await expect(images.delete('missing-poster')).rejects.toThrow(
-        'Persistent storage is unavailable',
-      );
+      await expect(
+        service.importDataWithImages(session, [
+          { id: 'poster', blob: new Blob(['poster'], { type: 'image/png' }) },
+        ]),
+      ).rejects.toThrow(/persistent storage is unavailable/);
       expect(service.getData()).toEqual(session);
       await service.initialize();
       expect(service.getData()).toEqual(session);
@@ -643,8 +642,9 @@ describe('StorageService', () => {
     const images = TestBed.inject(ImageStorageService);
     const fetch = vi.spyOn(globalThis, 'fetch');
 
-    await expect(images.delete('future-poster')).rejects.toThrow(/newer version of Watch List/);
-    await expect(images.replaceImages([])).rejects.toThrow(/newer version of Watch List/);
+    await expect(service.importDataWithImages(dataWithMovie(), [])).rejects.toThrow(
+      /newer version of Watch List/,
+    );
     await expect(images.storeFile(new Blob(['poster'], { type: 'image/png' }))).rejects.toThrow(
       /newer version of Watch List/,
     );

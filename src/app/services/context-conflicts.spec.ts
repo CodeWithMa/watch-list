@@ -35,19 +35,17 @@ describe('Collection context conflicts', () => {
 
       const snapshot = stale.getData();
       snapshot.groups['ungrouped'].name = 'Stale writer';
-      const writePosters = vi.fn();
       const write =
         action === 'replacement'
           ? stale.replaceData(snapshot)
           : action === 'raw import'
             ? stale.importData(snapshot)
             : action === 'posters'
-              ? stale.writeImages(writePosters)
+              ? stale.importDataWithImages(snapshot, [])
               : stale.mutate((draft) => {
                   draft.groups['ungrouped'].name = 'Stale writer';
                 });
       await expect(write).rejects.toBeInstanceOf(CollectionConflictError);
-      expect(writePosters).not.toHaveBeenCalled();
 
       const reloaded = createContext();
       await reloaded.initialize();
@@ -104,6 +102,10 @@ describe('Collection context conflicts', () => {
     const preferences = injector.get(ProviderSettingsService);
     await stale.initialize();
     const originalId = await images.storeFile(new Blob(['original poster'], { type: 'image/png' }));
+    await stale.importDataWithImages(stale.getData(), [
+      { id: originalId, blob: new Blob(['original poster'], { type: 'image/png' }) },
+    ]);
+    images.discardDraft(originalId);
     const originalPreferences = preferences.exportSettings();
     await first.refresh();
     await first.mutate((draft) => {

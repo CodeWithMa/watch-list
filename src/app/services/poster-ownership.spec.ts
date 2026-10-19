@@ -5,7 +5,7 @@ import { afterEach, vi } from 'vitest';
 import { StorageService } from './storage.service';
 import { ImageStorageService } from './image-storage.service';
 import { WatchListService } from './watch-list.service';
-import { holdStorageWrite } from './indexeddb-write.test-utils';
+import { holdPosterCleanup, holdStorageWrite } from './indexeddb-write.test-utils';
 import { WatchListDatabase } from './watch-list-database.service';
 
 describe('Committed poster ownership', () => {
@@ -17,7 +17,7 @@ describe('Committed poster ownership', () => {
   it('rejects a released or missing poster instead of committing a broken reference', async () => {
     const { storage, images, watch } = await setup();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const posterId = await images.storeFile(image(), { provisional: true });
+    const posterId = await images.storeFile(image());
     images.discardDraft(posterId);
     await expect(watch.addItem({ ...movie, posterId })).rejects.toThrow(/poster.*available/i);
     const reloaded = TestBed.runInInjectionContext(() => new StorageService());
@@ -34,7 +34,7 @@ describe('Committed poster ownership', () => {
       const oldPoster = await images.storeFile(image());
       const { value: existing } = await watch.addItem({ ...movie, posterId: oldPoster });
       const previous = storage.getData();
-      const posterId = await images.storeFile(image(), { provisional: true });
+      const posterId = await images.storeFile(image());
       const put = IDBObjectStore.prototype.put;
       const failure = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
         this: IDBObjectStore,
@@ -76,7 +76,7 @@ describe('Committed poster ownership', () => {
 
   it('captures a provisional image before an earlier write settles and its form releases it', async () => {
     const { storage, images, watch } = await setup();
-    const posterId = await images.storeFile(image(), { provisional: true });
+    const posterId = await images.storeFile(image());
     const held = holdStorageWrite(0);
     const earlier = storage.mutate((draft) => {
       draft.groups['ungrouped'].name = 'Before save';
@@ -108,7 +108,7 @@ describe('Committed poster ownership', () => {
     const peer = injector.get(StorageService);
     try {
       await peer.initialize();
-      const posterId = await images.storeFile(image(), { provisional: true });
+      const posterId = await images.storeFile(image());
       await peer.mutate((draft) => {
         draft.groups['ungrouped'].name = 'Other window';
       });
@@ -155,6 +155,103 @@ describe('Committed poster ownership', () => {
       expect(await afterDeletion.getUrl(posterId)).toBeNull();
     },
   );
+
+  it('cleans up removed references through the collection interface after publishing the commit', async () => {
+    const { storage, images, watch } = await setup();
+    const posterId = await images.storeFile(image());
+    const { value: item } = await watch.addItem({ ...movie, posterId });
+    await images.getUrl(posterId);
+    const held = holdPosterCleanup();
+    let settled = false;
+    const removal = storage
+      .mutate((draft) => {
+        delete draft.items[item.id];
+      })
+      .then(() => {
+        settled = true;
+      });
+    try {
+      expect(
+        await Promise.race([
+          held.started.then(() => 'cleanup pending'),
+          removal.then(() => 'finished'),
+        ]),
+      ).toBe('cleanup pending');
+      expect(storage.getItems()).toEqual([]);
+      expect(settled).toBe(false);
+      const addition = watch.addItem(movie);
+      held.release();
+      await addition;
+    } finally {
+      held.release();
+    }
+    await removal;
+    expect(settled).toBe(true);
+    expect(await images.getUrl(posterId)).toBeNull();
+    expect(await persistentImages().getUrl(posterId)).toBeNull();
+  });
+
+  it('rechecks ownership after an already queued command reuses a removed poster', async () => {
+    const { storage, images, watch } = await setup();
+    const posterId = await images.storeFile(image());
+    const { value: first } = await watch.addItem({ ...movie, posterId });
+    await images.getUrl(posterId);
+    vi.mocked(URL.revokeObjectURL).mockClear();
+
+    const removal = watch.deleteItem(first.id);
+    const addition = watch.addItem({ ...movie, title: 'New owner', posterId });
+    await Promise.all([removal, addition]);
+
+    expect(storage.getItems()).toMatchObject([{ title: 'New owner', posterId }]);
+    expect(await persistentImages().getUrl(posterId)).toBe('blob:poster');
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    await watch.updateItem((await addition).value.id, { title: 'Still current' });
+  });
+
+  it('preserves a peer’s new poster ownership when cleanup encounters a newer revision', async () => {
+    const { storage, images, watch } = await setup();
+    const posterId = await images.storeFile(image());
+    const { value: first } = await watch.addItem({ ...movie, posterId });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const owner = TestBed.inject(WatchListDatabase);
+    const database = await owner.open();
+    let startCleanup = () => undefined as void;
+    const started = new Promise<void>((resolve) => (startCleanup = resolve));
+    let releaseCleanup = () => undefined as void;
+    const released = new Promise<void>((resolve) => (releaseCleanup = resolve));
+    const open = vi.spyOn(owner, 'open').mockImplementation(async () => {
+      if (!storage.getItems().length) {
+        startCleanup();
+        await released;
+      }
+      return database;
+    });
+    const injector = Injector.create({
+      providers: [StorageService, WatchListDatabase, WatchListService],
+    });
+    const removal = watch.deleteItem(first.id);
+    try {
+      await started;
+      const peer = injector.get(StorageService);
+      await peer.initialize();
+      await injector.get(WatchListService).addItem({ ...movie, title: 'Peer owner', posterId });
+      releaseCleanup();
+      await expect(removal).resolves.toEqual({ value: undefined, durability: 'persistent' });
+      expect(storage.getSaveErrorSignal()()).toBeNull();
+      expect(storage.getConflictSignal()()).toBe(false);
+      open.mockRestore();
+      expect(await persistentImages().getUrl(posterId)).toBe('blob:poster');
+      await expect(watch.addItem(movie)).rejects.toThrow(/another tab or window/);
+      expect(storage.getConflictSignal()()).toBe(true);
+      await storage.refresh();
+      expect(storage.getItems()).toMatchObject([{ title: 'Peer owner', posterId }]);
+    } finally {
+      releaseCleanup();
+      open.mockRestore();
+      injector.get(WatchListDatabase).close();
+      injector.destroy();
+    }
+  });
 });
 
 const movie = {
