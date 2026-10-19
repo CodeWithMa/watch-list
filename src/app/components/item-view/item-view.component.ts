@@ -10,7 +10,8 @@ import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { getMostRecentWatchDate } from '../../utils/progress.utils';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { isEpisodicType } from '../../domain/item.constants';
-import { WatchActionFeedback } from '../watch-action-feedback';
+import { watchActionFailure } from '../watch-action-feedback';
+import { MutationFeedback } from '../mutation-feedback';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 import {
   canSnoozeCurrentSeason,
@@ -241,7 +242,7 @@ export class ItemViewComponent {
   readonly canRemoveDelay = computed(
     () => isValidSnoozeCount(this.snoozeCount()) && this.snoozeCount() > 0,
   );
-  readonly actions = new WatchActionFeedback();
+  readonly actions = new MutationFeedback(watchActionFailure);
 
   runAction(action: QuickAction) {
     const item = this.item();

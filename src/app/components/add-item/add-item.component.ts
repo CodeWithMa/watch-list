@@ -14,7 +14,8 @@ import {
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { SearchProviderSelectComponent } from '../search-provider-select/search-provider-select.component';
-import { ItemMutationFeedback } from '../item-mutation-feedback';
+import { itemMutationFailure } from '../item-mutation-feedback';
+import { MutationFeedback } from '../mutation-feedback';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
 interface SelectedSuggestionRef {
@@ -72,7 +73,7 @@ export class AddItemComponent {
   private selectedEpisodicRef = new Subject<SelectedSuggestionRef | null>();
 
   readonly groups = this.groupService.groups;
-  readonly mutation = new ItemMutationFeedback();
+  readonly mutation = new MutationFeedback(itemMutationFailure);
   readonly enabledSources = this.search.enabledSources;
   readonly selectedSource = this.search.selectedSource;
   readonly initialValue = createDefaultItemFormValue();
