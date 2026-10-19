@@ -57,3 +57,36 @@ export function holdStorageWrite(index: number, onRequestSuccess?: (index: numbe
     },
   };
 }
+
+/** Hold ownership cleanup after its delete request succeeds but before it commits. */
+export function holdPosterCleanup() {
+  let released = false;
+  let signalStarted = () => undefined as void;
+  const started = new Promise<void>((resolve) => (signalStarted = resolve));
+  const remove = IDBObjectStore.prototype.delete;
+  vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(function (
+    this: IDBObjectStore,
+    key,
+  ) {
+    const request = remove.call(this, key);
+    if (this.name === 'images') {
+      request.addEventListener('success', () => {
+        const keepAlive = () => {
+          const read = this.get(key);
+          read.addEventListener('success', () => {
+            if (!released) keepAlive();
+          });
+        };
+        keepAlive();
+        signalStarted();
+      });
+    }
+    return request;
+  });
+  return {
+    started,
+    release: () => {
+      released = true;
+    },
+  };
+}

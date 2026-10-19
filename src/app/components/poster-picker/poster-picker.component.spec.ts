@@ -381,7 +381,7 @@ describe('PosterPickerComponent', () => {
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
     expect(focus).toHaveBeenCalledOnce();
-    expect(imageStorage.storeFile).toHaveBeenCalledWith(file, { provisional: true });
+    expect(imageStorage.storeFile).toHaveBeenCalledWith(file);
     expect(changed).not.toHaveBeenCalled();
 
     resolvePoster('image-1');
@@ -573,7 +573,7 @@ describe('PosterPickerComponent', () => {
 
     await fixture.componentInstance.uploadPoster(event);
 
-    expect(imageStorage.storeFile).toHaveBeenCalledWith(file, { provisional: true });
+    expect(imageStorage.storeFile).toHaveBeenCalledWith(file);
     expect(input.value).toBe('');
   });
 

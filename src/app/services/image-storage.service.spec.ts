@@ -6,6 +6,21 @@ import { TestBed } from '@angular/core/testing';
 import { StorageService } from './storage.service';
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
 import { WatchListDatabase } from './watch-list-database.service';
+import { WatchListService } from './watch-list.service';
+
+async function persistImage(blob = createImageBlob()) {
+  const images = TestBed.inject(ImageStorageService);
+  const id = await images.storeFile(blob);
+  await TestBed.inject(WatchListService).addItem({
+    title: 'Movie',
+    type: 'movie',
+    status: 'not-started',
+    groupId: 'ungrouped',
+    isAdult: false,
+    posterId: id,
+  });
+  return id;
+}
 
 function createImageBlob(content = 'fake-image', type = 'image/png', size?: number): Blob {
   const blob = new Blob([content], { type });
@@ -132,9 +147,6 @@ describe('ImageStorageService', () => {
       MockFileReader as unknown as typeof FileReader;
 
     if (!globalThis.crypto) (globalThis as unknown as { crypto: Crypto }).crypto = {} as Crypto;
-    vi.spyOn(crypto as unknown as { randomUUID: () => string }, 'randomUUID').mockReturnValue(
-      'test-uuid-1234',
-    );
     const fetchResponseBlob = new Blob(['img'], { type: 'image/png' });
     vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
       Promise.resolve({
@@ -153,12 +165,12 @@ describe('ImageStorageService', () => {
     globalThis.FileReader = origFileReader;
   });
 
-  it('stores a valid image file and returns generated id', async () => {
+  it('prepares a valid image draft without persisting it', async () => {
     const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
-    expect(id).toBe('image-test-uuid-1234');
-    expect(crypto.randomUUID).toHaveBeenCalled();
+    expect(id).toMatch(/^image-/);
+    expect(await service.exportImages()).toEqual([]);
     const url = await service.getUrl(id);
     expect(url).toBe('blob:mock-url');
     expect(URL.createObjectURL).toHaveBeenCalled();
@@ -177,7 +189,7 @@ describe('ImageStorageService', () => {
       const data = storage.getData();
       data.groups['saved'] = { id: 'saved', name: 'Saved', order: 1 };
       await storage.replaceData(data);
-      const id = await images.storeFile(createImageBlob());
+      const id = await persistImage();
 
       const reloaded = TestBed.runInInjectionContext(() => new StorageService());
       await reloaded.initialize();
@@ -204,8 +216,9 @@ describe('ImageStorageService', () => {
     'clears a %s poster warning after a successful retry',
     async (failure) => {
       const images = TestBed.inject(ImageStorageService);
-      const id = await images.storeFile(createImageBlob());
+      const id = failure === 'missing' ? 'missing-poster' : await persistImage();
       const storage = TestBed.inject(StorageService);
+      await storage.initialize();
       const data = storage.getData();
       data.items['movie'] = {
         id: 'movie',
@@ -219,7 +232,6 @@ describe('ImageStorageService', () => {
         posterId: id,
       };
       await storage.replaceData(data);
-      if (failure === 'missing') await images.replaceImages([]);
       const fault =
         failure === 'rejected'
           ? vi.spyOn(FakeIDBObjectStore.prototype, 'get').mockImplementationOnce(() => {
@@ -232,7 +244,7 @@ describe('ImageStorageService', () => {
 
       fault?.mockRestore();
       if (failure === 'missing')
-        await storage.writeImages((store) => store.put({ id, blob: createImageBlob() }));
+        await storage.importDataWithImages(data, [{ id, blob: createImageBlob() }]);
       expect(await images.getUrl(id)).toBe('blob:mock-url');
       expect(images.unavailablePosters()).toBe(false);
     },
@@ -258,7 +270,11 @@ describe('ImageStorageService', () => {
     const images = TestBed.inject(ImageStorageService);
     expect(await images.getUrl('first')).toBeNull();
     expect(await images.getUrl('second')).toBeNull();
-    await storage.writeImages((store) => store.put({ id: 'first', blob: createImageBlob() }));
+    const firstOnly = storage.getData();
+    delete firstOnly.items['second'].posterId;
+    await storage.importDataWithImages(firstOnly, [{ id: 'first', blob: createImageBlob() }]);
+    await storage.replaceData(data);
+    expect(await images.getUrl('second')).toBeNull();
     expect(await images.getUrl('first')).toBe('blob:mock-url');
     expect(images.unavailablePosters()).toBe(true);
 
@@ -279,18 +295,21 @@ describe('ImageStorageService', () => {
 
   it('exports only requested posters, without attempting to encode unrelated blobs', async () => {
     const images = TestBed.inject(ImageStorageService);
-    const id = await images.storeFile(createImageBlob());
-    await TestBed.inject(StorageService).writeImages((store) =>
-      store.put({ id: 'unrelated', blob: null }),
-    );
+    const id = await persistImage();
+    const storage = TestBed.inject(StorageService);
+    await storage.importDataWithImages(storage.getData(), [
+      { id, blob: createImageBlob() },
+      // A damaged unrelated blob must never be read by a selected export.
+      { id: 'unrelated', blob: null as unknown as Blob },
+    ]);
 
     const exported = await images.exportImages(new Set([id]));
-    expect(exported.map((image) => image.id)).toEqual(['image-test-uuid-1234']);
+    expect(exported.map((image) => image.id)).toEqual([id]);
   });
 
   it('ignores a failed poster read invalidated before it settles', async () => {
     const images = TestBed.inject(ImageStorageService);
-    const id = await images.storeFile(createImageBlob());
+    const id = await persistImage();
     const storage = TestBed.inject(StorageService);
     const data = storage.getData();
     data.items['movie'] = {
@@ -339,8 +358,6 @@ describe('ImageStorageService', () => {
     try {
       await expect(images.storeUrl('https://example.com/poster.png')).rejects.toThrow(/reload/i);
       await expect(images.storeFile(createImageBlob())).rejects.toThrow(/reload/i);
-      await expect(images.delete('existing')).rejects.toThrow(/reload/i);
-      await expect(images.replaceImages([])).rejects.toThrow(/reload/i);
       expect(fetch).not.toHaveBeenCalled();
       expect(createImageBitmap).not.toHaveBeenCalled();
     } finally {
@@ -352,7 +369,7 @@ describe('ImageStorageService', () => {
     const storage = TestBed.inject(StorageService);
     const images = TestBed.inject(ImageStorageService);
     await storage.initialize();
-    const id = await images.storeFile(createImageBlob());
+    const id = await persistImage();
     const data = storage.getData();
     data.groups['saved'] = { id: 'saved', name: 'Saved', order: 1 };
 
@@ -367,7 +384,7 @@ describe('ImageStorageService', () => {
 
   it('rejects a poster read aborted after its request succeeds and allows retry', async () => {
     const images = TestBed.inject(ImageStorageService);
-    const id = await images.storeFile(createImageBlob());
+    const id = await persistImage();
     const get = FakeIDBObjectStore.prototype.get;
     const spy = vi.spyOn(FakeIDBObjectStore.prototype, 'get').mockImplementation(function (
       this: IDBObjectStore,
@@ -386,58 +403,11 @@ describe('ImageStorageService', () => {
     expect(await images.getUrl(id)).toBe('blob:mock-url');
   });
 
-  it.each(['store', 'delete', 'replace'] as const)(
-    'resolves poster %s only after its transaction commits',
-    async (operation) => {
-      const images = TestBed.inject(ImageStorageService);
-      const id = await images.storeFile(createImageBlob());
-      let committed = false;
-      observePosterRequests((transaction) => {
-        transaction.addEventListener('complete', () => (committed = true));
-      });
-
-      if (operation === 'store') await images.storeFile(createImageBlob('updated'));
-      if (operation === 'delete') await images.delete(id);
-      if (operation === 'replace') {
-        await images.replaceImages([{ id: 'replacement', type: 'image/png', data: btoa('new') }]);
-      }
-
-      expect(committed).toBe(true);
-    },
-  );
-
-  it.each(['store', 'delete', 'replace'] as const)(
-    'rejects poster %s when its transaction aborts after request success',
-    async (operation) => {
-      const images = TestBed.inject(ImageStorageService);
-      const id = await images.storeFile(createImageBlob());
-      const before = await images.exportImages();
-      let requestSucceeded = false;
-      observePosterRequests((transaction, request) => {
-        request.addEventListener('success', () => {
-          requestSucceeded = true;
-          transaction.abort();
-        });
-      });
-
-      const write =
-        operation === 'store'
-          ? images.storeFile(createImageBlob('updated'))
-          : operation === 'delete'
-            ? images.delete(id)
-            : images.replaceImages([{ id: 'replacement', type: 'image/png', data: btoa('new') }]);
-      await expect(write).rejects.toThrow();
-
-      expect(requestSucceeded).toBe(true);
-      expect(await images.exportImages()).toEqual(before);
-    },
-  );
-
   it('preserves metadata and posters when a portable import aborts after poster request success', async () => {
     const storage = TestBed.inject(StorageService);
     const images = TestBed.inject(ImageStorageService);
     await storage.initialize();
-    await images.storeFile(createImageBlob());
+    await persistImage();
     const before = storage.getData();
     const posters = await images.exportImages();
     const changed = storage.getData();
@@ -467,7 +437,7 @@ describe('ImageStorageService', () => {
     expect(await images.exportImages()).toEqual(posters);
   });
 
-  it.each(['delete', 'replace', 'file', 'url'] as const)(
+  it.each(['item', 'import'] as const)(
     'preserves newer cross-tab posters when an initialized tab attempts %s',
     async (operation) => {
       const storage = TestBed.inject(StorageService);
@@ -485,13 +455,16 @@ describe('ImageStorageService', () => {
       await new Promise<void>((resolve) => (transaction.oncomplete = () => resolve()));
 
       const write =
-        operation === 'delete'
-          ? service.delete(image.id)
-          : operation === 'replace'
-            ? service.replaceImages([])
-            : operation === 'file'
-              ? service.storeFile(createImageBlob())
-              : service.storeUrl('https://example.com/poster.png');
+        operation === 'import'
+          ? storage.importDataWithImages(storage.getData(), [])
+          : TestBed.inject(WatchListService).addItem({
+              title: 'Movie',
+              type: 'movie',
+              status: 'not-started',
+              groupId: 'ungrouped',
+              isAdult: false,
+              posterId: await service.storeFile(createImageBlob()),
+            });
       await expect(write).rejects.toThrow(/newer version of Watch List/);
 
       expect(storage.getCompatibilityErrorSignal()()?.version).toBe(CURRENT_SCHEMA_VERSION + 1);
@@ -531,7 +504,7 @@ describe('ImageStorageService', () => {
     const service = TestBed.inject(ImageStorageService);
     const id = await service.storeUrl('https://example.com/poster.jpg');
     expect(fetch).toHaveBeenCalledWith('https://example.com/poster.jpg');
-    expect(id).toBe('image-test-uuid-1234');
+    expect(id).toMatch(/^image-/);
   });
 
   it('throws when fetch fails or response not ok', async () => {
@@ -562,41 +535,22 @@ describe('ImageStorageService', () => {
     await expect(service.getUrl(id)).resolves.toBe('blob:mock-url');
   });
 
-  it('getUrl removes cache on failure', async () => {
-    const service = TestBed.inject(ImageStorageService);
-    const blob = createImageBlob('abc', 'image/png');
-    const id = await service.storeFile(blob);
-    // manually inject failing promise via get id that not exists and throw? easier to force get to fail
-    // Instead, we test that deleting after URL resolves cleans up
-    const url = await service.getUrl(id);
-    expect(url).toBe('blob:mock-url');
-    // Ensure revoke path: we can test delete
-  });
-
-  it('deletes image and revokes url', async () => {
+  it('discards a draft and revokes its preview URL', async () => {
     const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
     await service.getUrl(id);
-    await service.delete(id);
+    service.discardDraft(id);
+    await Promise.resolve();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
-    // subsequent getUrl should try to fetch from DB and return null since deleted
-    // clear cache: need to handle? After delete, getUrl will fetch again
-    // Our mock createObjectURL still returns blob:mock-url but DB is empty, so get returns undefined -> null
-    // First, we need to clear internal map? delete already did. So new getUrl should result in null
     const url2 = await service.getUrl(id);
     expect(url2).toBeNull();
-  });
-
-  it('delete does nothing for undefined', async () => {
-    const service = TestBed.inject(ImageStorageService);
-    await expect(service.delete(undefined)).resolves.toBeUndefined();
   });
 
   it('exports images as base64', async () => {
     const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('hello', 'image/png');
-    const id = await service.storeFile(blob);
+    const id = await persistImage(blob);
     const exported = await service.exportImages();
     expect(exported).toHaveLength(1);
     expect(exported[0].id).toBe(id);
@@ -604,15 +558,19 @@ describe('ImageStorageService', () => {
     expect(typeof exported[0].data).toBe('string');
   });
 
-  it('replaceImages parses and stores exported images', async () => {
+  it('imports parsed images with collection replacement and invalidates cached URLs', async () => {
     const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('old', 'image/png');
-    const oldId = await service.storeFile(blob);
+    const oldId = await persistImage(blob);
     await service.getUrl(oldId);
 
     const before = imageVersion();
     const newImages = [{ id: 'image-new', type: 'image/png', data: btoa('newdata') }];
-    await service.replaceImages(newImages);
+    const storage = TestBed.inject(StorageService);
+    await storage.importDataWithImages(
+      storage.getData(),
+      await service.parseExportedImages(newImages),
+    );
 
     expect(URL.revokeObjectURL).toHaveBeenCalled();
     expect(imageVersion()).toBeGreaterThan(before);
@@ -655,10 +613,9 @@ describe('ImageStorageService', () => {
     URL.revokeObjectURL = vi.fn(() => {
       throw new Error('revoke fail');
     }) as unknown as typeof URL.revokeObjectURL;
-    await service.delete(id);
+    service.discardDraft(id);
     await expect(urlPromise).resolves.toBe('blob:mock-url');
-    // delete should not throw despite revoke error
-    await expect(service.delete(id)).resolves.toBeUndefined();
+    expect(() => service.discardDraft(id)).not.toThrow();
   });
 
   it('handles imageVersion subscription', async () => {
@@ -675,27 +632,3 @@ describe('ImageStorageService', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith(uniqueUrl);
   });
 });
-
-function observePosterRequests(
-  observe: (transaction: IDBTransaction, request: EventTarget) => void,
-) {
-  const put = FakeIDBObjectStore.prototype.put;
-  vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(function (
-    this: IDBObjectStore,
-    value,
-    key,
-  ) {
-    const request = put.call(this, value, key);
-    if (this.name === 'images') observe(this.transaction, request);
-    return request;
-  });
-  const remove = FakeIDBObjectStore.prototype.delete;
-  vi.spyOn(FakeIDBObjectStore.prototype, 'delete').mockImplementation(function (
-    this: IDBObjectStore,
-    key,
-  ) {
-    const request = remove.call(this, key);
-    if (this.name === 'images') observe(this.transaction, request);
-    return request;
-  });
-}

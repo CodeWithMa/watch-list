@@ -202,9 +202,7 @@ export class PosterPickerComponent {
 
   selectPosterSuggestion(suggestion: Suggestion): void {
     if (suggestion.posterUrl) {
-      void this.storePoster(
-        this.imageStorage.storeUrl(suggestion.posterUrl, { provisional: true }),
-      );
+      void this.storePoster(this.imageStorage.storeUrl(suggestion.posterUrl));
     }
     this.search.dismiss();
     this.showPosterSearch.set(false);
@@ -212,7 +210,7 @@ export class PosterPickerComponent {
 
   storeFromUrl(posterUrl: string | null | undefined): void {
     if (posterUrl) {
-      void this.storePoster(this.imageStorage.storeUrl(posterUrl, { provisional: true }));
+      void this.storePoster(this.imageStorage.storeUrl(posterUrl));
     }
   }
 
@@ -221,7 +219,7 @@ export class PosterPickerComponent {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    await this.storePoster(this.imageStorage.storeFile(file, { provisional: true }));
+    await this.storePoster(this.imageStorage.storeFile(file));
   }
 
   clearPoster(): void {

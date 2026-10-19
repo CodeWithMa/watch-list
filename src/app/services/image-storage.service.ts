@@ -36,20 +36,20 @@ export class ImageStorageService {
   });
 
   constructor() {
-    imagesInvalidated.subscribe(() => this.refreshCache());
+    imagesInvalidated.subscribe((id) => this.refreshCache(id));
   }
 
-  async storeFile(file: Blob, { provisional = false } = {}): Promise<string> {
+  /** Prepare a UI draft; only a collection command can persist it with an item reference. */
+  async storeFile(file: Blob): Promise<string> {
     await this.ensureWritable();
     await this.validateImage(file);
     const id = `image-${crypto.randomUUID()}`;
     const image = { id, blob: file };
-    if (provisional) this.storageService.stageImage(image);
-    else await this.put(image);
+    this.storageService.stageImage(image);
     return id;
   }
 
-  async storeUrl(url: string, { provisional = false } = {}): Promise<string> {
+  async storeUrl(url: string): Promise<string> {
     await this.ensureWritable();
     let response: Response;
     try {
@@ -58,7 +58,7 @@ export class ImageStorageService {
       throw new Error('Could not download the poster. Check the URL and your connection.');
     }
     if (!response.ok) throw new Error('Could not download the poster.');
-    return this.storeFile(await response.blob(), { provisional });
+    return this.storeFile(await response.blob());
   }
 
   /** Releasing a UI draft never deletes persistent images or committed ownership. */
@@ -93,13 +93,6 @@ export class ImageStorageService {
     return urlPromise;
   }
 
-  async delete(id: string | undefined): Promise<void> {
-    if (!id) return;
-    await this.ensureWritable();
-    const removed = await this.storageService.deleteUnreferencedImage(id);
-    if (removed) await this.revokeUrl(id);
-  }
-
   async exportImages(ids?: ReadonlySet<string>): Promise<ExportedImage[]> {
     const db = await this.databaseOwner.open();
     const transaction = db.transaction(STORE_NAME, 'readonly');
@@ -114,17 +107,6 @@ export class ImageStorageService {
     );
   }
 
-  async replaceImages(images: unknown): Promise<void> {
-    await this.ensureWritable();
-    const parsed = await this.parseExportedImages(images);
-    for (const id of [...this.posterUrls.keys()]) await this.revokeUrl(id);
-    await this.storageService.writeImages((store) => {
-      store.clear();
-      for (const image of parsed) store.put(image);
-    });
-    this.invalidateAll();
-  }
-
   invalidateAll(): void {
     imagesInvalidated.next();
   }
@@ -135,9 +117,14 @@ export class ImageStorageService {
     this.storageService.assertWritable();
   }
 
-  private refreshCache(): void {
-    this.missingPosters.set(new Set());
-    for (const id of [...this.posterUrls.keys()]) void this.revokeUrl(id);
+  private refreshCache(id: string | void): void {
+    if (id) {
+      this.setPosterMissing(id, false);
+      void this.revokeUrl(id);
+    } else {
+      this.missingPosters.set(new Set());
+      for (const id of [...this.posterUrls.keys()]) void this.revokeUrl(id);
+    }
     imageVersion.update((version) => version + 1);
   }
 
@@ -189,11 +176,6 @@ export class ImageStorageService {
     const db = await this.databaseOwner.open();
     const transaction = db.transaction(STORE_NAME, 'readonly');
     return this.request(transaction, transaction.objectStore(STORE_NAME).get(id));
-  }
-
-  private async put(image: StoredImage): Promise<void> {
-    await this.revokeUrl(image.id);
-    await this.storageService.writeImages((store) => store.put(image));
   }
 
   private async revokeUrl(id: string): Promise<void> {

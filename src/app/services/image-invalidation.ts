@@ -3,4 +3,4 @@ import { Subject } from 'rxjs';
 
 export const imageVersion = signal(0);
 
-export const imagesInvalidated = new Subject<void>();
+export const imagesInvalidated = new Subject<string | void>();

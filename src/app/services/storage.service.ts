@@ -118,7 +118,7 @@ export class StorageService {
     return this.getData();
   }
 
-  /** Explicit validated collection replacement for import/recovery, retaining existing posters. */
+  /** Explicit validated collection replacement for import/recovery, retaining owned posters. */
   async replaceData(data: StorageData) {
     return this.enqueueMutation(() => undefined, {
       replacement: validateSaveData(data),
@@ -175,14 +175,27 @@ export class StorageService {
     } = {},
   ): Promise<MutationResult<T> & { posterCleanupSkipped?: boolean }> {
     this.assertMutationReady();
+    let removedPosters: string[] = [];
     const mutation = this.writeQueue.then(async () => {
       if (this.conflict()) throw new CollectionConflictError();
       this.assertWritable();
       if (this.loading() || !this.data()) await this.initialize();
       this.assertWritable();
-      const draft = cloneStorageData(replacement ?? this.settledData ?? this.getData());
+      const previous = this.settledData ?? this.getData();
+      const draft = cloneStorageData(replacement ?? previous);
       const value = intent(draft);
       const updated = { ...validateSaveData(draft), lastModifiedAt: new Date().toISOString() };
+      const ownedPosters = new Set(Object.values(updated.items).map((item) => item.posterId));
+      removedPosters =
+        images === undefined
+          ? [
+              ...new Set(
+                Object.values(previous.items).flatMap((item) =>
+                  item.posterId && !ownedPosters.has(item.posterId) ? [item.posterId] : [],
+                ),
+              ),
+            ]
+          : [];
       if (posterId && !this.persistentStorage) {
         throw new Error(
           'Cannot save a poster while persistent storage is unavailable. Please retry.',
@@ -218,7 +231,17 @@ export class StorageService {
       () => undefined,
       (error: unknown) => this.reportSaveFailure(error),
     );
-    return mutation;
+    const result = await mutation;
+    // Publication and the collection queue settle at commit. Await cleanup outside that
+    // queue entry: commands already queued must be able to run before ownership is rechecked.
+    if (removedPosters.length && this.persistentStorage) {
+      try {
+        await this.cleanupPosters(removedPosters);
+      } catch (error) {
+        console.error('Failed to remove unused poster:', error);
+      }
+    }
+    return result;
   }
 
   /** Bind asynchronous file preparation to the context in which import was confirmed. */
@@ -253,46 +276,32 @@ export class StorageService {
     };
   }
 
-  writeImages(write: (store: IDBObjectStore) => void) {
-    return this.enqueueImageWrite(write, true);
-  }
-
-  private async enqueueImageWrite<T>(write: (store: IDBObjectStore) => T, reportFailure: boolean) {
-    this.assertMutationReady();
-    this.assertWritable();
-    // Reserve the same queue as collection commands before awaiting initialization.
-    const mutation = this.writeQueue.then(async () => {
+  private cleanupPosters(ids: string[]) {
+    const cleanup = this.writeQueue.then(async () => {
       if (this.conflict()) throw new CollectionConflictError();
-      await this.initialize();
       this.assertWritable();
-      let value!: T;
+      // The local queue holds ownership stable until cleanup settles. Avoid an empty
+      // write (and revision bump) when later commands have reclaimed every candidate.
+      const owned = new Set(
+        Object.values(this.settledData?.items ?? {}).map((item) => item.posterId),
+      );
+      const unowned = ids.filter((id) => !owned.has(id));
+      if (!unowned.length) return;
       await this.writeTransaction(
         [STORE_NAME, IMAGE_STORE_NAME],
         (transaction) => {
-          value = write(transaction.objectStore(IMAGE_STORE_NAME));
+          const store = transaction.objectStore(IMAGE_STORE_NAME);
+          for (const id of unowned) store.delete(id);
         },
-        'Failed to update posters',
+        'Failed to remove unused poster',
       );
-      if (reportFailure) this.saveError.set(null);
-      return value;
+      for (const id of unowned) imagesInvalidated.next(id);
     });
-    this.writeQueue = mutation.then(
+    this.writeQueue = cleanup.then(
       () => undefined,
-      (error: unknown) => {
-        if (reportFailure) this.reportSaveFailure(error, 'Failed to update posters:');
-      },
+      () => undefined,
     );
-    return mutation;
-  }
-
-  /** Only unreferenced images may be collected, under the shared revision/transaction lock. */
-  deleteUnreferencedImage(id: string) {
-    return this.enqueueImageWrite((store) => {
-      if (Object.values(this.settledData?.items ?? {}).some((item) => item.posterId === id))
-        return false;
-      store.delete(id);
-      return true;
-    }, false);
+    return cleanup;
   }
 
   getSaveErrorSignal() {
@@ -410,6 +419,9 @@ export class StorageService {
   }
 
   private reportSaveFailure(error: unknown, message = 'Failed to save watch-list data:') {
+    // A rejected command needs refresh/retry feedback. Best-effort cleanup uses the
+    // same revision protection, but must not present its committed command as unsaved.
+    if (error instanceof CollectionConflictError && this.settledData) this.conflict.set(true);
     this.saveError.set(
       this.compatibilityError() ? null : error instanceof Error ? error.message : String(error),
     );
@@ -710,7 +722,6 @@ export class StorageService {
             throw error;
           }
           if (revision.result !== this.revision) {
-            if (this.settledData) this.conflict.set(true);
             throw new CollectionConflictError();
           }
           write(transaction, abort);

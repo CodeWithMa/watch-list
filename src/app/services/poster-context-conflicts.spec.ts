@@ -8,8 +8,9 @@ import { ImportExportService } from './import-export.service';
 import { ProviderSettingsService } from './provider-settings.service';
 import { BrowserSettingsStorage } from './browser-settings-storage.service';
 import { WatchListDatabase } from './watch-list-database.service';
+import { WatchListService } from './watch-list.service';
 
-describe('Poster-only context conflicts', () => {
+describe('Poster persistence context conflicts', () => {
   beforeEach(() => {
     vi.stubGlobal('indexedDB', new IDBFactory());
     vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ close: vi.fn() }));
@@ -24,28 +25,25 @@ describe('Poster-only context conflicts', () => {
     vi.unstubAllGlobals();
   });
 
-  it.each(['upload', 'delete', 'replace'])(
-    'rejects a stale portable import after a poster-only %s',
+  it.each(['add', 'delete', 'replace'])(
+    'rejects a stale portable import after a collection/poster %s',
     async (action) => {
       const writer = createPosterContext();
       await writer.storage.initialize();
-      const originalId =
-        action === 'upload'
-          ? undefined
-          : await writer.images.storeFile(new Blob(['original'], { type: 'image/png' }));
+      const originalItem = action === 'add' ? undefined : await addWithPoster(writer);
+      const originalId = originalItem?.posterId;
       const stale = createPosterContext();
       await stale.storage.initialize();
-      const original = stale.storage.getData();
       const preferences = stale.preferences.exportSettings();
       const persistedPreferences = localStorage.getItem('suggestionProviders');
       let uploadedId: string | undefined;
-      if (action === 'upload')
-        uploadedId = await writer.images.storeFile(new Blob(['poster'], { type: 'image/png' }));
-      else if (action === 'delete') await writer.images.delete(originalId);
+      if (action === 'add') uploadedId = (await addWithPoster(writer)).posterId;
+      else if (action === 'delete') await writer.watch.deleteItem(originalItem!.id);
       else
-        await writer.images.replaceImages([
-          { id: 'replacement', type: 'image/png', data: btoa('replacement') },
+        await writer.storage.importDataWithImages(createDefaultStorageData(), [
+          { id: 'replacement', blob: new Blob(['replacement'], { type: 'image/png' }) },
         ]);
+      const committed = writer.storage.getData();
       const replacement = createDefaultStorageData();
       replacement.groups['ungrouped'].name = 'Imported group';
       const file = {
@@ -63,7 +61,7 @@ describe('Poster-only context conflicts', () => {
 
       const reloaded = createPosterContext();
       await reloaded.storage.initialize();
-      expect(reloaded.storage.getData()).toEqual(original);
+      expect(reloaded.storage.getData()).toEqual(committed);
       if (uploadedId) expect(await reloaded.images.getUrl(uploadedId)).toBe('blob:poster');
       if (originalId) expect(await reloaded.images.getUrl(originalId)).toBeNull();
       expect(await reloaded.images.getUrl('replacement')).toBe(
@@ -83,12 +81,12 @@ describe('Poster-only context conflicts', () => {
     },
   );
 
-  it('rejects an ordinary stale collection edit after a poster upload', async () => {
+  it('rejects an ordinary stale collection edit after an item/poster commit', async () => {
     const writer = createPosterContext();
     await writer.storage.initialize();
     const stale = createPosterContext();
     await stale.storage.initialize();
-    await writer.images.storeFile(new Blob(['poster'], { type: 'image/png' }));
+    await addWithPoster(writer);
     await expect(
       stale.storage.mutate((draft) => {
         draft.groups['ungrouped'].name = 'Stale edit';
@@ -100,13 +98,13 @@ describe('Poster-only context conflicts', () => {
   });
 
   it('settles an earlier poster command before validating a later collection command', async () => {
-    const { storage } = createPosterContext();
+    const context = createPosterContext();
+    const { storage } = context;
     await storage.initialize();
     const outcomes: string[] = [];
-    const poster = storage
-      .writeImages((store) => {
-        store.put({ id: 'poster', blob: new Blob(['poster'], { type: 'image/png' }) });
-      })
+    const posterId = await context.images.storeFile(new Blob(['poster'], { type: 'image/png' }));
+    const poster = context.watch
+      .addItem({ ...movie, posterId })
       .then(() => outcomes.push('poster saved'));
     const edit = storage
       .mutate(() => {
@@ -117,51 +115,38 @@ describe('Poster-only context conflicts', () => {
     expect(outcomes).toEqual(['poster saved', 'edit rejected']);
     const reloaded = createPosterContext();
     await reloaded.storage.initialize();
-    expect(await reloaded.images.getUrl('poster')).toBe('blob:poster');
+    expect(await reloaded.images.getUrl(posterId)).toBe('blob:poster');
   });
 
-  describe.each([false, true])('initially loaded: %s', (initialized) => {
-    it.each(['poster', 'collection'])(
-      'preserves overlapping successful commands with %s first',
-      async (first) => {
-        const { storage } = createPosterContext();
-        if (initialized) await storage.initialize();
-        const savePoster = () =>
-          storage.writeImages((store) => {
-            store.put({ id: 'poster', blob: new Blob(['poster'], { type: 'image/png' }) });
-          });
-        const saveCollection = () =>
-          storage.mutate((draft) => {
-            draft.items['movie'] = {
-              id: 'movie',
-              title: 'Movie with poster',
-              type: 'movie',
-              status: 'not-started',
-              groupId: 'ungrouped',
-              posterId: 'poster',
-              createdAt: '2026-10-18T12:00:00.000Z',
-              isAdult: false,
-              watchHistory: [],
-            };
-          });
-        const writes =
-          first === 'poster' ? [savePoster(), saveCollection()] : [saveCollection(), savePoster()];
-        await Promise.all(writes);
-        expect(storage.getConflictSignal()()).toBe(false);
-        const reloaded = createPosterContext();
-        await reloaded.storage.initialize();
-        expect(reloaded.storage.getData().items['movie']).toMatchObject({
-          title: 'Movie with poster',
-          posterId: 'poster',
+  it.each(['poster', 'collection'])(
+    'preserves overlapping successful commands with %s first',
+    async (first) => {
+      const context = createPosterContext();
+      const { storage } = context;
+      const posterId = await context.images.storeFile(new Blob(['poster'], { type: 'image/png' }));
+      const savePoster = () => context.watch.addItem({ ...movie, posterId });
+      const saveCollection = () =>
+        storage.mutate((draft) => {
+          draft.groups['ungrouped'].name = 'Concurrent edit';
         });
-        expect(await reloaded.images.getUrl('poster')).toBe('blob:poster');
-        // A reload adopts the poster revision too, so its next edit must succeed.
-        await reloaded.storage.mutate((draft) => {
-          draft.items['movie'].title = 'Edited after reload';
-        });
-      },
-    );
-  });
+      const writes =
+        first === 'poster' ? [savePoster(), saveCollection()] : [saveCollection(), savePoster()];
+      await Promise.all(writes);
+      expect(storage.getConflictSignal()()).toBe(false);
+      const reloaded = createPosterContext();
+      await reloaded.storage.initialize();
+      expect(reloaded.storage.getItems()[0]).toMatchObject({
+        title: 'Movie with poster',
+        posterId,
+      });
+      expect(reloaded.storage.getGroups()[0].name).toBe('Concurrent edit');
+      expect(await reloaded.images.getUrl(posterId)).toBe('blob:poster');
+      // A reload adopts the poster revision too, so its next edit must succeed.
+      await reloaded.storage.mutate((draft) => {
+        draft.items[reloaded.storage.getItems()[0].id].title = 'Edited after reload';
+      });
+    },
+  );
 
   it.each(['writer', 'peer'])(
     'does not advance either revision on poster transaction abort (%s retries)',
@@ -181,11 +166,8 @@ describe('Poster-only context conflicts', () => {
           request.addEventListener('success', () => this.transaction.abort());
         return request;
       });
-      await expect(
-        writer.storage.writeImages((store) => {
-          store.put({ id: 'aborted', blob: new Blob(['poster'], { type: 'image/png' }) });
-        }),
-      ).rejects.toThrow();
+      const posterId = await writer.images.storeFile(new Blob(['poster'], { type: 'image/png' }));
+      await expect(writer.watch.addItem({ ...movie, posterId })).rejects.toThrow();
       writes.mockRestore();
       const retrying = retryingContext === 'writer' ? writer : peer;
       await retrying.storage.mutate((draft) => {
@@ -194,7 +176,8 @@ describe('Poster-only context conflicts', () => {
       const reloaded = createPosterContext();
       await reloaded.storage.initialize();
       expect(reloaded.storage.getGroups()[0].name).toBe('After aborted poster');
-      expect(await reloaded.images.getUrl('aborted')).toBeNull();
+      expect(await reloaded.images.getUrl(posterId)).toBeNull();
+      expect(reloaded.storage.getItems()).toEqual([]);
       expect(writer.storage.getConflictSignal()()).toBe(false);
     },
   );
@@ -206,6 +189,7 @@ function createPosterContext() {
       StorageService,
       WatchListDatabase,
       ImageStorageService,
+      WatchListService,
       ImportExportService,
       ProviderSettingsService,
       BrowserSettingsStorage,
@@ -214,7 +198,21 @@ function createPosterContext() {
   return {
     storage: injector.get(StorageService),
     images: injector.get(ImageStorageService),
+    watch: injector.get(WatchListService),
     imports: injector.get(ImportExportService),
     preferences: injector.get(ProviderSettingsService),
   };
+}
+
+const movie = {
+  title: 'Movie with poster',
+  type: 'movie',
+  status: 'not-started',
+  groupId: 'ungrouped',
+  isAdult: false,
+} as const;
+
+async function addWithPoster(context: ReturnType<typeof createPosterContext>) {
+  const posterId = await context.images.storeFile(new Blob(['poster'], { type: 'image/png' }));
+  return (await context.watch.addItem({ ...movie, posterId })).value;
 }
