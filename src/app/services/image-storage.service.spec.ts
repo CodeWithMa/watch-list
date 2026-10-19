@@ -200,6 +200,132 @@ describe('ImageStorageService', () => {
     expect(storage.getInMemorySessionSignal()()).toBe(false);
   });
 
+  it.each(['missing', 'rejected'])(
+    'clears a %s poster warning after a successful retry',
+    async (failure) => {
+      const images = TestBed.inject(ImageStorageService);
+      const id = await images.storeFile(createImageBlob());
+      const storage = TestBed.inject(StorageService);
+      const data = storage.getData();
+      data.items['movie'] = {
+        id: 'movie',
+        title: 'Movie',
+        type: 'movie',
+        groupId: 'ungrouped',
+        status: 'not-started',
+        isAdult: false,
+        createdAt: '2026-01-01',
+        watchHistory: [],
+        posterId: id,
+      };
+      await storage.replaceData(data);
+      if (failure === 'missing') await images.replaceImages([]);
+      const fault =
+        failure === 'rejected'
+          ? vi.spyOn(FakeIDBObjectStore.prototype, 'get').mockImplementationOnce(() => {
+              throw new Error('Poster temporarily unavailable');
+            })
+          : null;
+      if (failure === 'rejected') await expect(images.getUrl(id)).rejects.toThrow(/temporarily/);
+      else expect(await images.getUrl(id)).toBeNull();
+      expect(images.unavailablePosters()).toBe(true);
+
+      fault?.mockRestore();
+      if (failure === 'missing')
+        await storage.writeImages((store) => store.put({ id, blob: createImageBlob() }));
+      expect(await images.getUrl(id)).toBe('blob:mock-url');
+      expect(images.unavailablePosters()).toBe(false);
+    },
+  );
+
+  it('keeps warnings for remaining missing posters, then clears them after item removal and import', async () => {
+    const storage = TestBed.inject(StorageService);
+    await storage.initialize();
+    const data = storage.getData();
+    for (const id of ['first', 'second'])
+      data.items[id] = {
+        id,
+        title: id,
+        type: 'movie',
+        groupId: 'ungrouped',
+        status: 'not-started',
+        isAdult: false,
+        createdAt: '2026-01-01',
+        watchHistory: [],
+        posterId: id,
+      };
+    await storage.replaceData(data);
+    const images = TestBed.inject(ImageStorageService);
+    expect(await images.getUrl('first')).toBeNull();
+    expect(await images.getUrl('second')).toBeNull();
+    await storage.writeImages((store) => store.put({ id: 'first', blob: createImageBlob() }));
+    expect(await images.getUrl('first')).toBe('blob:mock-url');
+    expect(images.unavailablePosters()).toBe(true);
+
+    await storage.mutate((draft) => {
+      delete draft.items['second'];
+    });
+    expect(images.unavailablePosters()).toBe(false);
+    await storage.replaceData(data);
+    expect(await images.getUrl('second')).toBeNull();
+    expect(images.unavailablePosters()).toBe(true);
+    await storage.importDataWithImages(data, [
+      { id: 'first', blob: createImageBlob() },
+      { id: 'second', blob: createImageBlob() },
+    ]);
+    expect(await images.getUrl('second')).toBe('blob:mock-url');
+    expect(images.unavailablePosters()).toBe(false);
+  });
+
+  it('exports only requested posters, without attempting to encode unrelated blobs', async () => {
+    const images = TestBed.inject(ImageStorageService);
+    const id = await images.storeFile(createImageBlob());
+    await TestBed.inject(StorageService).writeImages((store) =>
+      store.put({ id: 'unrelated', blob: null }),
+    );
+
+    const exported = await images.exportImages(new Set([id]));
+    expect(exported.map((image) => image.id)).toEqual(['image-test-uuid-1234']);
+  });
+
+  it('ignores a failed poster read invalidated before it settles', async () => {
+    const images = TestBed.inject(ImageStorageService);
+    const id = await images.storeFile(createImageBlob());
+    const storage = TestBed.inject(StorageService);
+    const data = storage.getData();
+    data.items['movie'] = {
+      id: 'movie',
+      title: 'Movie',
+      type: 'movie',
+      groupId: 'ungrouped',
+      status: 'not-started',
+      isAdult: false,
+      createdAt: '2026-01-01',
+      watchHistory: [],
+      posterId: id,
+    };
+    await storage.replaceData(data);
+    const get = FakeIDBObjectStore.prototype.get;
+    const fault = vi.spyOn(FakeIDBObjectStore.prototype, 'get').mockImplementation(function (
+      this: IDBObjectStore,
+      key,
+    ) {
+      const request = get.call(this, key);
+      if (this.name === 'images')
+        request.addEventListener('success', () => {
+          images.invalidateAll();
+          this.transaction.abort();
+        });
+      return request;
+    });
+
+    await expect(images.getUrl(id)).rejects.toThrow();
+    expect(images.unavailablePosters()).toBe(false);
+    fault.mockRestore();
+    expect(await images.getUrl(id)).toBe('blob:mock-url');
+    expect(images.unavailablePosters()).toBe(false);
+  });
+
   it('blocks poster changes before downloading or decoding when another tab upgrades the database', async () => {
     const storage = TestBed.inject(StorageService);
     const images = TestBed.inject(ImageStorageService);

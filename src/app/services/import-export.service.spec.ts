@@ -169,7 +169,12 @@ describe('ImportExportService', () => {
   describe('exportData', () => {
     it('downloads the current data as JSON', async () => {
       const exportPayload = {
-        items: { delayed: { progress: { seasons: [{ seasonNumber: 1, snoozeCount: 2 }] } } },
+        items: {
+          delayed: {
+            posterId: 'poster-1',
+            progress: { seasons: [{ seasonNumber: 1, snoozeCount: 2 }] },
+          },
+        },
         groups: {},
       };
       storageService.getData.mockReturnValue(exportPayload);
@@ -178,6 +183,7 @@ describe('ImportExportService', () => {
       await importExportService.exportData();
 
       expect(storageService.getData).toHaveBeenCalledOnce();
+      expect(imageStorage.exportImages).toHaveBeenCalledWith(new Set(['poster-1']));
       expect(anchor.download).toMatch(/^watch-list-export-\d{4}-\d{2}-\d{2}\.json$/);
       expect(anchor.href).toBe('blob:mock');
       expect(createObjectURL).toHaveBeenCalledOnce();
@@ -203,6 +209,28 @@ describe('ImportExportService', () => {
           },
         },
       });
+    });
+
+    it('keeps the starting metadata snapshot while its poster export is pending', async () => {
+      const initial = createDefaultStorageData();
+      initial.groups['ungrouped'].name = 'At export start';
+      storageService.getData.mockReturnValue(initial);
+      let finishImages!: (images: []) => void;
+      imageStorage.exportImages.mockReturnValue(
+        new Promise<[]>((resolve) => {
+          finishImages = resolve;
+        }),
+      );
+      const { createObjectURL } = mockDownload();
+
+      const exporting = importExportService.exportData();
+      storageService.getData.mockReturnValue({ ...initial, items: {}, groups: {} });
+      finishImages([]);
+      await exporting;
+
+      const text = await readBlobText(createObjectURL.mock.calls[0][0] as Blob);
+      expect(JSON.parse(text).data.groups.ungrouped.name).toBe('At export start');
+      expect(storageService.getData).toHaveBeenCalledOnce();
     });
 
     it('always includes non-sensitive preferences and never leaks tokens', async () => {

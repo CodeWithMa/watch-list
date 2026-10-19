@@ -173,7 +173,7 @@ export class StorageService {
       replacement?: StorageData;
       images?: StoredImage[];
     } = {},
-  ): Promise<MutationResult<T>> {
+  ): Promise<MutationResult<T> & { posterCleanupSkipped?: boolean }> {
     this.assertMutationReady();
     const mutation = this.writeQueue.then(async () => {
       if (this.conflict()) throw new CollectionConflictError();
@@ -193,12 +193,12 @@ export class StorageService {
           'Cannot import posters while persistent storage is unavailable. No data was imported.',
         );
       }
+      let posterCleanupSkipped = false;
       if (this.persistentStorage) {
-        await (posterId
-          ? this.writeDataWithPoster(updated, posterId, poster)
-          : images !== undefined
-            ? this.writeDataWithImages(updated, images)
-            : this.writeData(updated));
+        if (posterId) await this.writeDataWithPoster(updated, posterId, poster);
+        else if (images !== undefined)
+          posterCleanupSkipped = await this.writeDataWithImages(updated, images);
+        else await this.writeData(updated);
       }
       this.recordSuccessfulWrite(updated);
       this.publishSettledData();
@@ -208,7 +208,11 @@ export class StorageService {
         imagesInvalidated.next();
       }
       if (images !== undefined) imagesInvalidated.next();
-      return { value, durability: this.persistentStorage ? 'persistent' : 'session-only' } as const;
+      return {
+        value,
+        durability: this.persistentStorage ? 'persistent' : 'session-only',
+        ...(posterCleanupSkipped ? { posterCleanupSkipped: true } : {}),
+      } as const;
     });
     this.writeQueue = mutation.then(
       () => undefined,
@@ -238,15 +242,14 @@ export class StorageService {
     const omittedPosterIds = removeUnavailablePosterReferences(normalized.data.items, availableIds);
     const result = await this.enqueueMutation(() => undefined, {
       replacement: normalized.data,
-      // Metadata-only recovery must not depend on a writable poster store. Old, now
-      // unreferenced images may remain; imports containing images still replace them atomically.
-      images: images.length ? images.map((image) => ({ ...image })) : undefined,
+      images: images.map((image) => ({ ...image })),
     });
     return {
       ...normalized,
       data: this.getData(),
       durability: result.durability,
       omittedPosterIds,
+      ...(result.posterCleanupSkipped ? { posterCleanupSkipped: true } : {}),
     };
   }
 
@@ -598,17 +601,35 @@ export class StorageService {
     );
   }
 
-  private writeDataWithImages(data: StorageData, images: StoredImage[]): Promise<void> {
-    return this.writeTransaction(
-      [STORE_NAME, IMAGE_STORE_NAME],
-      (transaction) => {
-        transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
-        const imageStore = transaction.objectStore(IMAGE_STORE_NAME);
-        imageStore.clear();
-        for (const image of images) imageStore.put(image);
-      },
-      'Failed to import watch-list data',
-    );
+  private async writeDataWithImages(data: StorageData, images: StoredImage[]) {
+    try {
+      await this.writeTransaction(
+        [STORE_NAME, IMAGE_STORE_NAME],
+        (transaction, abort) => {
+          transaction.objectStore(STORE_NAME).put(data, DATA_KEY);
+          let imageStore: IDBObjectStore;
+          try {
+            imageStore = transaction.objectStore(IMAGE_STORE_NAME);
+            const clear = imageStore.clear();
+            clear.onerror = (event) => {
+              event.preventDefault();
+              abort(new PosterStorageError(clear.error));
+            };
+          } catch (error) {
+            throw new PosterStorageError(error);
+          }
+          for (const image of images) imageStore.put(image);
+        },
+        'Failed to import watch-list data',
+      );
+      return false;
+    } catch (error) {
+      // Only a poster-store acquisition/cleanup failure permits metadata-only recovery.
+      // Metadata failures, conflicts, and image-containing imports must still reject.
+      if (images.length || !(error instanceof PosterStorageError)) throw error;
+      await this.writeData(data);
+      return true;
+    }
   }
 
   private writeDataWithPoster(
@@ -653,7 +674,14 @@ export class StorageService {
     }
     const database = await this.databaseOwner.open();
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction(stores, 'readwrite');
+      let transaction: IDBTransaction;
+      try {
+        transaction = database.transaction(stores, 'readwrite');
+      } catch (error) {
+        // No transaction or write has started. A metadata-only import can retry
+        // without posters, with the normal revision and compatibility checks.
+        throw stores.includes(IMAGE_STORE_NAME) ? new PosterStorageError(error) : error;
+      }
       const nextRevision = crypto.randomUUID();
       let failure: unknown;
       const abort = (error: unknown) => {
@@ -712,6 +740,13 @@ export class StorageService {
       transaction.onerror = () => reject(transaction.error ?? new Error(message));
       transaction.onabort = () => reject(transaction.error ?? new Error(message));
     });
+  }
+}
+
+class PosterStorageError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : 'Poster cleanup unavailable', { cause });
+    this.name = 'PosterStorageError';
   }
 }
 

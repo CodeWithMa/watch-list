@@ -329,6 +329,21 @@ describe('SettingsComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('1 unavailable poster(s) omitted');
   });
 
+  it('identifies poster cleanup skipped during metadata-only recovery', async () => {
+    configure({ token: '', key: '', credential: null });
+    vi.spyOn(TestBed.inject(ImportExportService), 'importData').mockResolvedValue({
+      ...CLEAN_IMPORT,
+      posterCleanupSkipped: true,
+    });
+    const fixture = TestBed.createComponent(SettingsComponent);
+    fixture.componentInstance.pendingImportFile.set(new File([], 'recovery.json'));
+
+    await fixture.componentInstance.confirmImport();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Poster cleanup was unavailable');
+    expect(fixture.nativeElement.textContent).toContain('excluded from exports');
+  });
+
   it('shows an error when exporting data fails', () => {
     vi.useFakeTimers();
     configure({ token: '', key: '', credential: null });

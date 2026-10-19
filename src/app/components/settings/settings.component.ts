@@ -706,6 +706,7 @@ function describeImportResult({
   repairedGroupReferences,
   durability,
   posters,
+  posterCleanupSkipped,
 }: ImportReport): string {
   const session =
     (posters
@@ -713,6 +714,9 @@ function describeImportResult({
       : '') +
     (durability === 'session-only'
       ? ' Data is kept only in this session and will be lost on reload.'
+      : '') +
+    (posterCleanupSkipped
+      ? ' Poster cleanup was unavailable; unreferenced local files may remain and are excluded from exports.'
       : '');
   const total = dropped.groups + dropped.items + dropped.deletedItems;
   if (total === 0 && repairedGroupReferences === 0) {

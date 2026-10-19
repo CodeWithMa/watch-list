@@ -18,6 +18,7 @@ export interface PosterCoverage {
 export type ImportReport = NormalizationReport &
   Pick<MutationResult<void>, 'durability'> & {
     posters?: PosterCoverage;
+    posterCleanupSkipped?: boolean;
   };
 
 export interface PortableExport {
@@ -46,11 +47,16 @@ export class ImportExportService {
   private providerSettings = inject(ProviderSettingsService);
 
   async exportData(): Promise<PosterCoverage> {
+    // Export the collection visible when the action starts, not later edits made
+    // while poster reads/encoding are pending. Only its referenced posters belong here.
     const data = this.storageService.getData();
+    const posterIds = new Set(
+      Object.values(data.items).flatMap((item) => (item.posterId ? [item.posterId] : [])),
+    );
     let images: ExportedImage[] = [];
     let unavailable = false;
     try {
-      images = await this.imageStorage.exportImages();
+      images = await this.imageStorage.exportImages(posterIds);
     } catch {
       unavailable = true;
     }
@@ -118,6 +124,7 @@ export class ImportExportService {
         repairedGroupReferences,
         durability,
         omittedPosterIds = [],
+        posterCleanupSkipped,
       } = await this.storageService.importDataWithImages(data, images, context);
       this.applyPreferencesIfPresent(payload);
       const coverage = readPosterCoverage(payload);
@@ -129,7 +136,13 @@ export class ImportExportService {
               unavailable: coverage?.unavailable ?? false,
             }
           : undefined;
-      return { dropped, repairedGroupReferences, durability, ...(posters ? { posters } : {}) };
+      return {
+        dropped,
+        repairedGroupReferences,
+        durability,
+        ...(posters ? { posters } : {}),
+        ...(posterCleanupSkipped ? { posterCleanupSkipped: true } : {}),
+      };
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error('Invalid JSON file', { cause: error });
