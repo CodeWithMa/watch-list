@@ -24,6 +24,12 @@ export interface WatchHistoryEntry {
   episode?: number;
 }
 
+export interface AvailabilityDeferral {
+  season: number;
+  episode: number;
+  until: string;
+}
+
 export interface Item {
   id: string;
   type: ItemType;
@@ -31,6 +37,7 @@ export interface Item {
   groupId: string;
   status: ItemStatus;
   progress?: SeriesProgress;
+  availabilityDeferral?: AvailabilityDeferral;
   watchHistory: WatchHistoryEntry[];
   createdAt: string;
   posterId?: string;

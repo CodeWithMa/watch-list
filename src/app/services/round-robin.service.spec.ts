@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { RoundRobinService } from './round-robin.service';
+import { WatchListService } from './watch-list.service';
 import { StorageService } from './storage.service';
 import { IDBFactory } from 'fake-indexeddb';
 import { Item } from '../models/item.model';
@@ -309,6 +310,103 @@ describe('RoundRobinService', () => {
       vi.restoreAllMocks();
     });
 
+    it('recommends an alternative immediately and restores original priority at elapsed-hour expiry', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+      vi.setSystemTime(new Date('2026-10-24T23:30:00.000Z'));
+      window.dispatchEvent(new Event('focus'));
+      await saveItems([
+        createSeries({ id: 'first', title: 'First', createdAt: '2026-01-01' }),
+        createSeries({ id: 'other', title: 'Other', createdAt: '2026-02-01' }),
+      ]);
+      const watchList = TestBed.inject(WatchListService);
+      expect(service.nextSeries()?.id).toBe('first');
+      await watchList.deferEpisode('first', 2);
+      TestBed.tick();
+      expect(service.nextSeries()?.id).toBe('other');
+      const deferred = watchList.items();
+
+      vi.advanceTimersByTime(7_199_999);
+      expect(service.nextSeries()?.id).toBe('other');
+      vi.advanceTimersByTime(1);
+      expect(service.nextSeries()?.id).toBe('first');
+      expect(watchList.items()).toEqual(deferred);
+    });
+
+    it('reports the earliest return when all aired episodes are deferred, independently of movies', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+      vi.setSystemTime(new Date('2026-10-20T10:00:00.000Z'));
+      window.dispatchEvent(new Event('focus'));
+      await saveItems([
+        createSeries({ id: 'first', title: 'First', createdAt: '2026-01-01' }),
+        createSeries({ id: 'other', title: 'Other', createdAt: '2026-02-01' }),
+        createSeries({
+          id: 'future',
+          title: 'Future',
+          createdAt: '2026-03-01',
+          firstEpisodeAirDate: '2099-01-01',
+        }),
+        {
+          ...createSeries({ id: 'movie', title: 'Movie', createdAt: '2026-01-01' }),
+          type: 'movie',
+        },
+      ]);
+      const watchList = TestBed.inject(WatchListService);
+      await watchList.deferEpisode('first', 3);
+      await watchList.deferEpisode('other', 1);
+      TestBed.tick();
+      expect(service.nextSeries()).toBeNull();
+      expect(service.allDeferredUntil()).toBe('2026-10-20T11:00:00.000Z');
+      expect(service.nextMovie()?.id).toBe('movie');
+      vi.advanceTimersByTime(3_600_000);
+      expect(service.nextSeries()?.id).toBe('other');
+      expect(service.allDeferredUntil()).toBeNull();
+    });
+
+    it.each(['focus', 'visibilitychange'])(
+      'refreshes an expired deferral when the app resumes via %s',
+      async (event) => {
+        vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+        vi.setSystemTime(new Date('2026-10-20T10:00:00.000Z'));
+        window.dispatchEvent(new Event('focus'));
+        await saveItems([createSeries({ id: 'first', title: 'First', createdAt: '2026-01-01' })]);
+        await TestBed.inject(WatchListService).deferEpisode('first', 1);
+        TestBed.tick();
+        expect(service.nextSeries()).toBeNull();
+        vi.setSystemTime(new Date('2026-10-20T12:00:00.000Z'));
+        if (event === 'focus') window.dispatchEvent(new Event(event));
+        else {
+          vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+          document.dispatchEvent(new Event(event));
+        }
+        expect(service.nextSeries()?.id).toBe('first');
+      },
+    );
+
+    it('ignores a persisted deferral for a different episode', async () => {
+      const item = createSeries({
+        id: 'first',
+        title: 'First',
+        createdAt: '2026-01-01',
+        episode: 2,
+      });
+      item.availabilityDeferral = { season: 1, episode: 1, until: '2099-01-01T00:00:00.000Z' };
+      await saveItems([item]);
+      expect(service.nextSeries()?.id).toBe('first');
+      expect(service.allDeferredUntil()).toBeNull();
+    });
+
+    it('reports the earliest imported expiry even when timestamp precision differs', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-20T10:00:00.000Z'));
+      window.dispatchEvent(new Event('focus'));
+      const first = createSeries({ id: 'first', title: 'First', createdAt: '2026-01-01' });
+      first.availabilityDeferral = { season: 1, episode: 1, until: '2026-10-20T11:00:00.001Z' };
+      const other = createSeries({ id: 'other', title: 'Other', createdAt: '2026-02-01' });
+      other.availabilityDeferral = { season: 1, episode: 1, until: '2026-10-20T11:00:00Z' };
+      await saveItems([first, other]);
+      expect(service.allDeferredUntil()).toBe('2026-10-20T11:00:00Z');
+    });
+
     async function waitingUntilTomorrow() {
       vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
       vi.setSystemTime(new Date(2026, 9, 21, 23, 59, 59));
@@ -322,6 +420,7 @@ describe('RoundRobinService', () => {
       });
       item.progress!.seasons[0].snoozeCount = 1;
       await saveItems([item]);
+      TestBed.tick();
       expect(service.nextSeries()).toBeNull();
     }
 

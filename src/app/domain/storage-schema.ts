@@ -51,6 +51,13 @@ const ItemSchema = z.object({
   groupId: z.string(),
   status: z.enum(['not-started', 'in-progress', 'paused', 'completed', 'dropped']),
   progress: SeriesProgressSchema.optional(),
+  availabilityDeferral: z
+    .object({
+      season: PositiveIntegerSchema,
+      episode: PositiveIntegerSchema,
+      until: z.iso.datetime(),
+    })
+    .optional(),
   watchHistory: z.array(WatchHistoryEntrySchema),
   createdAt: DateSchema,
   posterId: z.string().optional(),
@@ -307,6 +314,11 @@ function migrateStorageData(data: StorageEnvelope): StorageEnvelope {
   if (migrated.schemaVersion < 10) {
     // Optional per-season release delay: absent counts mean zero, with no baseline rewrite.
     migrated.schemaVersion = 10;
+  }
+
+  if (migrated.schemaVersion < 11) {
+    // Optional episode-specific availability deferrals; existing records stay valid.
+    migrated.schemaVersion = 11;
   }
 
   return migrated;

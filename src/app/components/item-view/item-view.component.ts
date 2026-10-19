@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
+import { RoundRobinService } from '../../services/round-robin.service';
 import { injectPosterUrl } from '../../services/poster-reader';
 import { ReadonlyItem as Item, ItemStatus } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
@@ -92,6 +93,21 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
 
         <section class="mb-6">
           <h2 class="text-xl mb-3">Quick Actions</h2>
+          @if (deferralUntil(); as until) {
+            <div class="mb-4 p-4 border border-light-border dark:border-dark-border rounded">
+              <p class="text-sm mb-2">
+                Availability deferred until {{ until | date: 'short' }} (local time).
+              </p>
+              <button
+                type="button"
+                (click)="clearDeferral()"
+                [disabled]="actions.busy()"
+                class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary text-light-font dark:text-dark-font cursor-pointer hover:border-accent-primary disabled:opacity-50"
+              >
+                Clear deferral
+              </button>
+            </div>
+          }
           <div class="flex flex-wrap gap-2">
             @for (action of quickActions(); track action.label) {
               <button
@@ -173,6 +189,7 @@ export class ItemViewComponent {
   private route = inject(ActivatedRoute);
   private watchListService = inject(WatchListService);
   private groupService = inject(GroupService);
+  private roundRobinService = inject(RoundRobinService);
 
   private readonly quickActionsByStatus: Record<
     ItemStatus,
@@ -230,6 +247,10 @@ export class ItemViewComponent {
     const item = this.item();
     return !!item && isEpisodicType(item.type) && item.status === 'in-progress';
   });
+  readonly deferralUntil = computed(() => {
+    const item = this.item();
+    return item ? this.roundRobinService.activeDeferralUntil(item) : null;
+  });
   readonly currentSeason = computed(() => {
     const item = this.item();
     return item ? getCurrentSeason(item) : undefined;
@@ -243,6 +264,15 @@ export class ItemViewComponent {
     () => isValidSnoozeCount(this.snoozeCount()) && this.snoozeCount() > 0,
   );
   readonly actions = new MutationFeedback(watchActionFailure);
+
+  clearDeferral() {
+    const item = this.item();
+    if (!item) return;
+    return this.actions.run(
+      () => this.watchListService.clearDeferral(item.id),
+      'Unable to clear the availability deferral.',
+    );
+  }
 
   runAction(action: QuickAction) {
     const item = this.item();

@@ -1,7 +1,10 @@
 import { Item, SeasonInfo, SeriesProgress } from '../models/item.model';
 import { isEpisodicType } from './item.constants';
 
-type EditableFields = Omit<Item, 'id' | 'createdAt' | 'watchHistory' | 'progress'>;
+type EditableFields = Omit<
+  Item,
+  'id' | 'createdAt' | 'watchHistory' | 'progress' | 'availabilityDeferral'
+>;
 
 /** Omitted properties are untouched; null progress/season entries explicitly remove them. */
 export type ItemEdit = Partial<EditableFields> & {

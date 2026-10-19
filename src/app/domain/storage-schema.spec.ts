@@ -260,7 +260,7 @@ describe('season release delay storage schema', () => {
   it('migrates version 9 without inventing delays or rewriting the baseline', () => {
     const legacy = { ...dataWithSeason({ firstEpisodeAirDate: '2026-10-01' }), schemaVersion: 9 };
     const normalized = normalizeStorageData(legacy).data;
-    expect(normalized.schemaVersion).toBe(10);
+    expect(normalized.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(normalized.items['series'].progress?.seasons).toEqual([
       { seasonNumber: 1, firstEpisodeAirDate: '2026-10-01' },
     ]);
