@@ -7,6 +7,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { vi } from 'vitest';
 import { RoundRobinService } from './round-robin.service';
 import { getCurrentEpisodeAirDate } from '../domain/episode-release';
+import { buildItemEditInput, createItemFormValue } from '../domain/item-form';
 
 describe('WatchListService', () => {
   let storageService: StorageService;
@@ -58,6 +59,33 @@ describe('WatchListService', () => {
       TestBed.resetTestingModule();
       vi.useRealTimers();
       vi.restoreAllMocks();
+    });
+
+    it('imports an offset expiry without losing the series or its history and expires at the equivalent UTC instant', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-20T10:00:00.000Z'));
+      const original = createItem({
+        id: 'deferred',
+        status: 'in-progress',
+        watchHistory: [{ date: '2026-10-19T10:00:00.000Z', season: 1, episode: 1 }],
+      });
+      const imported = {
+        ...original,
+        availabilityDeferral: { season: 1, episode: 1, until: '2026-10-20T14:00:00+02:00' },
+      };
+      await storageService.importData({
+        ...storageService.getData(),
+        items: { deferred: imported, other: createItem({ id: 'other' }) },
+      });
+      expect(service.getItemById('deferred')).toEqual(imported);
+      const recommendations = TestBed.inject(RoundRobinService);
+      expect(recommendations.nextSeries()).toBeNull();
+      vi.setSystemTime(new Date('2026-10-20T11:59:59.999Z'));
+      window.dispatchEvent(new Event('focus'));
+      expect(recommendations.nextSeries()).toBeNull();
+      vi.setSystemTime(new Date('2026-10-20T12:00:00.000Z'));
+      window.dispatchEvent(new Event('focus'));
+      expect(recommendations.nextSeries()?.id).toBe('deferred');
     });
 
     it('rejects invalid durations and movie or missing targets without changing the collection', async () => {
@@ -114,6 +142,33 @@ describe('WatchListService', () => {
       expect(recommendations.nextSeries()?.id).toBe('deferred');
     });
 
+    it('preserves a deferral when adding release metadata materializes the same implicit episode', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-20T10:00:00.000Z'));
+      await saveData({
+        items: { deferred: createItem({ id: 'deferred', status: 'in-progress' }) },
+      });
+      await service.deferEpisode('deferred', 12);
+      const deferred = service.getItemById('deferred')!;
+      const initial = createItemFormValue(deferred);
+      await service.updateItem(
+        'deferred',
+        buildItemEditInput(initial, {
+          ...initial,
+          seasons: [{ seasonNumber: 1, firstEpisodeAirDate: '2026-10-01' }],
+        }),
+      );
+      const updated = service.getItemById('deferred')!;
+      expect(updated.progress).toEqual({
+        season: 1,
+        episode: 1,
+        seasons: [{ seasonNumber: 1, firstEpisodeAirDate: '2026-10-01' }],
+      });
+      expect(updated.availabilityDeferral).toEqual(deferred.availabilityDeferral);
+      expect(updated.watchHistory).toEqual(deferred.watchHistory);
+      expect(TestBed.inject(RoundRobinService).nextSeries()).toBeNull();
+    });
+
     it('rejects a stale episode action after a queued progress change', async () => {
       await saveData({
         items: {
@@ -168,22 +223,40 @@ describe('WatchListService', () => {
       },
     );
 
-    it.each(['watched', 'season', 'episode', 'remove-progress', 'movie'])(
-      'clears the deferral when progress changes via %s',
+    it('preserves a deferral when removing explicit progress leaves the same implicit episode', async () => {
+      await saveData({
+        items: {
+          deferred: createItem({
+            id: 'deferred',
+            status: 'in-progress',
+            progress: { season: 1, episode: 1, seasons: [] },
+          }),
+        },
+      });
+      await service.deferEpisode('deferred', 12);
+      const deferral = service.getItemById('deferred')!.availabilityDeferral;
+      await service.updateItem('deferred', { progress: null });
+      expect(service.getItemById('deferred')?.availabilityDeferral).toEqual(deferral);
+      expect(TestBed.inject(RoundRobinService).nextSeries()).toBeNull();
+    });
+
+    it.each(['watched', 'season', 'episode', 'remove-progress', 'movie', 'ova', 'ona'])(
+      'clears the deferral when episode identity changes via %s',
       async (change) => {
         await saveData({
           items: {
             deferred: createItem({
               id: 'deferred',
               status: 'in-progress',
-              progress: { season: 1, episode: 1, seasons: [] },
+              progress: { season: 1, episode: change === 'remove-progress' ? 2 : 1, seasons: [] },
             }),
           },
         });
         await service.deferEpisode('deferred', 1);
         expect(service.getItemById('deferred')?.availabilityDeferral).toBeDefined();
         if (change === 'watched') await service.markWatched('deferred');
-        else if (change === 'movie') await service.updateItem('deferred', { type: 'movie' });
+        else if (change === 'movie' || change === 'ova' || change === 'ona')
+          await service.updateItem('deferred', { type: change });
         else
           await service.updateItem('deferred', {
             progress:

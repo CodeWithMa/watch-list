@@ -55,7 +55,7 @@ const ItemSchema = z.object({
     .object({
       season: PositiveIntegerSchema,
       episode: PositiveIntegerSchema,
-      until: z.iso.datetime(),
+      until: z.iso.datetime({ offset: true }),
     })
     .optional(),
   watchHistory: z.array(WatchHistoryEntrySchema),

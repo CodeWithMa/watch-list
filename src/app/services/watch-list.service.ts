@@ -67,9 +67,9 @@ export class WatchListService {
       const current = draft.items[itemId];
       const updated = applyItemEdit(current, edit);
       if (
+        current.type !== updated.type ||
         !isEpisodicType(updated.type) ||
-        current.progress?.season !== updated.progress?.season ||
-        current.progress?.episode !== updated.progress?.episode
+        !isCurrentEpisode(updated, current.progress ?? { season: 1, episode: 1 })
       )
         delete updated.availabilityDeferral;
       if (!Object.hasOwn(draft.groups, updated.groupId)) updated.groupId = DEFAULT_GROUP_ID;
