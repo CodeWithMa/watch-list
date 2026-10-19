@@ -280,23 +280,22 @@ export class StorageService {
     const cleanup = this.writeQueue.then(async () => {
       if (this.conflict()) throw new CollectionConflictError();
       this.assertWritable();
-      const removed: string[] = [];
+      // The local queue holds ownership stable until cleanup settles. Avoid an empty
+      // write (and revision bump) when later commands have reclaimed every candidate.
+      const owned = new Set(
+        Object.values(this.settledData?.items ?? {}).map((item) => item.posterId),
+      );
+      const unowned = ids.filter((id) => !owned.has(id));
+      if (!unowned.length) return;
       await this.writeTransaction(
         [STORE_NAME, IMAGE_STORE_NAME],
         (transaction) => {
-          const owned = new Set(
-            Object.values(this.settledData?.items ?? {}).map((item) => item.posterId),
-          );
           const store = transaction.objectStore(IMAGE_STORE_NAME);
-          for (const id of ids) {
-            if (owned.has(id)) continue;
-            store.delete(id);
-            removed.push(id);
-          }
+          for (const id of unowned) store.delete(id);
         },
         'Failed to remove unused poster',
       );
-      for (const id of removed) imagesInvalidated.next(id);
+      for (const id of unowned) imagesInvalidated.next(id);
     });
     this.writeQueue = cleanup.then(
       () => undefined,

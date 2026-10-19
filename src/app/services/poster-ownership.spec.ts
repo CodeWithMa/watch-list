@@ -5,7 +5,11 @@ import { afterEach, vi } from 'vitest';
 import { StorageService } from './storage.service';
 import { ImageStorageService } from './image-storage.service';
 import { WatchListService } from './watch-list.service';
-import { holdPosterCleanup, holdStorageWrite } from './indexeddb-write.test-utils';
+import {
+  controlStorageWrites,
+  holdPosterCleanup,
+  holdStorageWrite,
+} from './indexeddb-write.test-utils';
 import { WatchListDatabase } from './watch-list-database.service';
 
 describe('Committed poster ownership', () => {
@@ -206,6 +210,39 @@ describe('Committed poster ownership', () => {
     expect(await persistentImages().getUrl(posterId)).toBe('blob:poster');
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
     await watch.updateItem((await addition).value.id, { title: 'Still current' });
+  });
+
+  it('keeps a peer current when queued poster reuse makes cleanup a no-op', async () => {
+    const { images, watch } = await setup();
+    const posterId = await images.storeFile(image());
+    const { value: first } = await watch.addItem({ ...movie, posterId });
+    const injector = Injector.create({ providers: [StorageService, WatchListDatabase] });
+    const peer = injector.get(StorageService);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      await peer.initialize();
+      let peerRefresh = Promise.resolve();
+      controlStorageWrites([], (index) => {
+        // Queue the peer's read behind the new owner's write, ahead of cleanup.
+        if (index === 1) peerRefresh = peer.refresh();
+      });
+      const removal = watch.deleteItem(first.id);
+      const addition = watch.addItem({ ...movie, title: 'New owner', posterId });
+      await Promise.all([removal, addition]);
+      await peerRefresh;
+
+      expect(peer.getItems()).toMatchObject([{ title: 'New owner', posterId }]);
+      await expect(
+        peer.mutate((draft) => {
+          draft.groups['ungrouped'].name = 'Valid peer edit';
+        }),
+      ).resolves.toMatchObject({ durability: 'persistent' });
+      expect(peer.getConflictSignal()()).toBe(false);
+      expect(await persistentImages().getUrl(posterId)).toBe('blob:poster');
+    } finally {
+      injector.get(WatchListDatabase).close();
+      injector.destroy();
+    }
   });
 
   it('preserves a peer’s new poster ownership when cleanup encounters a newer revision', async () => {
