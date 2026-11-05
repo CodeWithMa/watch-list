@@ -15,6 +15,8 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
 import { deferralReturnDate } from '../../domain/availability-deferral';
 import { WatchActionNoticeService } from '../watch-action-notice/watch-action-notice.service';
 
+const SLOT_CHOICE_LIMIT = 3;
+
 @Component({
   selector: 'app-home',
   imports: [
@@ -105,8 +107,10 @@ import { WatchActionNoticeService } from '../watch-action-notice/watch-action-no
                 }
               </app-recommendation-panel>
             } @else {
-              <div class="card p-4">
-                <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+              <div class="card overflow-hidden">
+                <p
+                  class="m-0 px-3 sm:px-4 py-3 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+                >
                   @if (allDeferredUntil(); as until) {
                     All aired episodes are temporarily deferred. Earliest return:
                     {{ until | date: 'short' }} (local time).
@@ -121,11 +125,13 @@ import { WatchActionNoticeService } from '../watch-action-notice/watch-action-no
                   }
                 </p>
                 <app-backlog-choices
-                  [items]="backlogSeries()"
+                  [items]="seriesChoices()"
+                  [moreCount]="backlogSeries().length - seriesChoices().length"
                   noun="series"
                   [busy]="actions.busy()"
                   (started)="startBacklogItem($event)"
-                  (seeAll)="backlogSection.scrollIntoView()"
+                  (dropped)="dropBacklogItem($event)"
+                  (seeMore)="backlogSection.scrollIntoView()"
                 />
               </div>
             }
@@ -142,8 +148,10 @@ import { WatchActionNoticeService } from '../watch-action-notice/watch-action-no
                 (dropped)="markItem(nextMovie, 'dropped')"
               />
             } @else {
-              <div class="card p-4">
-                <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+              <div class="card overflow-hidden">
+                <p
+                  class="m-0 px-3 sm:px-4 py-3 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+                >
                   @if (hasMovies()) {
                     No movies currently being watched
                   } @else {
@@ -151,22 +159,28 @@ import { WatchActionNoticeService } from '../watch-action-notice/watch-action-no
                   }
                 </p>
                 <app-backlog-choices
-                  [items]="backlogMovies()"
+                  [items]="movieChoices()"
+                  [moreCount]="backlogMovies().length - movieChoices().length"
                   noun="movie"
                   [busy]="actions.busy()"
                   (started)="startBacklogItem($event)"
-                  (seeAll)="backlogSection.scrollIntoView()"
+                  (dropped)="dropBacklogItem($event)"
+                  (seeMore)="backlogSection.scrollIntoView()"
                 />
               </div>
             }
           </section>
         </div>
 
-        <section #backlogSection class="mb-6 sm:mb-8">
-          @if (backlogItems().length > 0) {
-            <h2 class="section-title mb-3">Backlog</h2>
+        <section #backlogSection class="mb-6 sm:mb-8 empty:hidden">
+          @if (remainingBacklog().length > 0) {
+            <h2 class="section-title mb-3">
+              {{
+                remainingBacklog().length < backlogItems().length ? 'More in backlog' : 'Backlog'
+              }}
+            </h2>
             <div class="card overflow-hidden">
-              @for (item of backlogItems(); track item.id) {
+              @for (item of remainingBacklog(); track item.id) {
                 <app-title-row
                   [item]="item"
                   actionLabel="Start"
@@ -176,7 +190,7 @@ import { WatchActionNoticeService } from '../watch-action-notice/watch-action-no
                 />
               }
             </div>
-          } @else {
+          } @else if (backlogItems().length === 0) {
             <div class="flex flex-wrap items-baseline gap-x-3">
               <h2 class="section-title">Backlog</h2>
               <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
@@ -287,6 +301,18 @@ export class HomeComponent {
       items = items.filter((item) => !item.isAdult);
     }
     return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  });
+
+  // Each backlog title appears once: in its empty slot's short list, otherwise in the list below.
+  protected seriesChoices = computed(() =>
+    this.nextSeries() ? [] : this.backlogSeries().slice(0, SLOT_CHOICE_LIMIT),
+  );
+  protected movieChoices = computed(() =>
+    this.nextMovie() ? [] : this.backlogMovies().slice(0, SLOT_CHOICE_LIMIT),
+  );
+  protected remainingBacklog = computed(() => {
+    const offered = new Set([...this.seriesChoices(), ...this.movieChoices()]);
+    return this.backlogItems().filter((item) => !offered.has(item));
   });
 
   protected hasSeries = computed(() =>

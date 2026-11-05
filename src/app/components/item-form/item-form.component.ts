@@ -136,7 +136,7 @@ export interface ItemFormAutofillPatch {
           }
         </div>
 
-        <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3 mb-4">
           <div>
             <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font"
               >Type *</label
@@ -192,15 +192,14 @@ export interface ItemFormAutofillPatch {
 
         @if (showStartImmediately()) {
           <div class="mb-4">
-            <label class="flex items-center gap-3 cursor-pointer">
+            <label class="choice-row">
               <input
                 type="checkbox"
                 [ngModel]="formValue().startImmediately"
                 (ngModelChange)="updateStartImmediately($event)"
                 name="startImmediately"
-                class="w-5 h-5"
               />
-              <span class="text-light-font dark:text-dark-font">Start watching immediately</span>
+              <span>Start watching immediately</span>
             </label>
           </div>
         }
@@ -217,16 +216,15 @@ export interface ItemFormAutofillPatch {
         </div>
 
         <div class="mb-4">
-          <label class="flex items-center gap-3 cursor-pointer">
+          <label class="choice-row">
             <input
               type="checkbox"
               id="isAdult"
               [ngModel]="formValue().isAdult"
               (ngModelChange)="updateIsAdult($event)"
               name="isAdult"
-              class="w-5 h-5"
             />
-            <span class="text-light-font dark:text-dark-font">Adult content</span>
+            <span>Adult content</span>
           </label>
         </div>
 
@@ -273,7 +271,12 @@ export interface ItemFormAutofillPatch {
               </div>
             </div>
           </details>
-          <details class="form-section" [open]="formValue().seasons.length > 0">
+          <details
+            #seasonDetails
+            id="season-details"
+            class="form-section"
+            [open]="formValue().seasons.length > 0 || revealSeasonDetails()"
+          >
             <summary>Season details (optional)</summary>
             <div>
               <p class="mt-0 mb-3 text-sm text-light-font-secondary dark:text-dark-font-secondary">
@@ -318,10 +321,12 @@ export interface ItemFormAutofillPatch {
 export class ItemFormComponent {
   @ViewChild('posterPicker') private posterPicker?: PosterPickerComponent;
   private readonly titleInput = viewChild.required<ElementRef<HTMLInputElement>>('titleInput');
+  private readonly seasonDetails = viewChild<ElementRef<HTMLElement>>('seasonDetails');
 
   readonly groups = input.required<readonly Readonly<Group>[]>();
   readonly initialValue = input<ItemFormValue>(createDefaultItemFormValue());
   readonly focusTitleOnOpen = input(false);
+  readonly revealSeasonDetails = input(false);
   readonly submitLabel = input('Save');
   readonly busy = input(false);
   readonly error = input<string | null>(null);
@@ -402,6 +407,9 @@ export class ItemFormComponent {
     afterNextRender(() => {
       if (this.focusTitleOnOpen()) {
         this.titleInput().nativeElement.focus();
+      }
+      if (this.revealSeasonDetails()) {
+        this.seasonDetails()?.nativeElement.scrollIntoView();
       }
     });
 

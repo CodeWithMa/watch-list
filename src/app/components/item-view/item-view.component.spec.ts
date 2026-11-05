@@ -110,11 +110,12 @@ describe('ItemViewComponent', () => {
     expect(getUrl).toHaveBeenLastCalledWith('missing');
     expect(root.querySelector('img')?.getAttribute('src')).toBe('blob:selected');
     finish(null);
-    await vi.waitFor(() =>
-      expect(fixture.componentInstance.posterUrl()).toContain('data:image/svg+xml;base64,'),
-    );
+    await vi.waitFor(() => expect(fixture.componentInstance.posterUrl()).toBeNull());
     fixture.detectChanges();
-    expect(root.querySelector('img')?.getAttribute('src')).toContain('data:image/svg+xml;base64,');
+    expect(root.querySelector('img')).toBeNull();
+    expect(root.querySelector('app-poster-fallback')?.getAttribute('aria-label')).toContain(
+      'has no poster',
+    );
   });
 
   it('shows not found for a missing item', async () => {
@@ -225,6 +226,8 @@ describe('ItemViewComponent', () => {
         (button) => button.textContent?.trim() === 'Snooze 1 week',
       )!;
       expect(snooze.disabled).toBe(true);
+      expect(element.querySelector('#snooze-prerequisite')?.textContent).toContain('Snoozing');
+      expect(snooze.getAttribute('aria-describedby')).toBe('snooze-prerequisite');
       expect(element.textContent).not.toContain('Set this season');
       expect(element.textContent).not.toContain('Pending episode air date');
       expect(element.textContent).not.toMatch(/release delay:/);
@@ -244,6 +247,9 @@ describe('ItemViewComponent', () => {
       expect(
         buttons.find((button) => button.textContent?.trim() === 'Snooze 1 week')?.disabled,
       ).toBe(true);
+      if (progress) {
+        expect((fixture.nativeElement as HTMLElement).textContent).toContain('Add air date');
+      }
     },
   );
 

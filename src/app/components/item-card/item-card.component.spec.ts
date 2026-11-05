@@ -37,7 +37,7 @@ describe('ItemCardComponent', () => {
     });
   });
 
-  it('shows readable status, next episode, and a labelled timestamp', async () => {
+  it('shows readable status, type, next episode, and when it was last watched', async () => {
     const fixture = TestBed.createComponent(ItemCardComponent);
     fixture.componentRef.setInput('item', createItem());
     fixture.detectChanges();
@@ -46,6 +46,7 @@ describe('ItemCardComponent', () => {
 
     expect(text()).toContain('Test Show');
     expect(text()).toContain('In Progress');
+    expect(text()).toContain('Series');
     expect(text()).toContain('Next: S1 E2');
     expect(text()).toContain('Watched');
     expect(fixture.componentInstance.progressPercent()).toBe(10);
@@ -55,13 +56,31 @@ describe('ItemCardComponent', () => {
     fixture.detectChanges();
     expect(text()).toContain('Not Started');
     expect(text()).not.toContain('Next:');
-    expect(text()).toContain('Added');
+    expect(text()).not.toContain('Added');
+    expect(text()).not.toContain('Watched');
 
     fixture.componentRef.setInput('item', createItem({ status: 'completed' }));
     fixture.detectChanges();
     expect(text()).toContain('Completed');
     expect(text()).not.toContain('Next:');
     expect(fixture.componentInstance.progressPercent()).toBe(100);
+  });
+
+  it('keeps the title link once when a titled cover replaces the artwork', async () => {
+    const fixture = TestBed.createComponent(ItemCardComponent);
+    fixture.componentRef.setInput('item', createItem({ posterId: undefined }));
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(root.querySelector('app-poster-fallback')?.textContent).toContain('Test Show');
+    });
+    expect(root.querySelector('h3')?.classList).toContain('sr-only');
+    expect(root.querySelector('h3 a')?.textContent).toContain('Test Show');
+
+    fixture.componentRef.setInput('item', createItem({ posterId: 'p1' }));
+    fixture.detectChanges();
+    expect(root.querySelector('h3')?.classList).not.toContain('sr-only');
   });
 
   it('computes progress and lastWatched for movie', () => {

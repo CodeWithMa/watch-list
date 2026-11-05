@@ -735,10 +735,8 @@ describe('PosterPickerComponent', () => {
     finish(null);
     await vi.waitFor(() => expect(fixture.componentInstance.posterPreviewUrl()).toBeNull());
     fixture.detectChanges();
-    expect(root.querySelector('img')?.getAttribute('src')).toBe(
-      fixture.componentInstance.posterPlaceholderUrl(),
-    );
-    expect(root.querySelector('img')?.alt).toBe('No poster');
+    expect(root.querySelector('img')).toBeNull();
+    expect(root.querySelector('app-poster-fallback')?.getAttribute('aria-label')).toBe('No poster');
   });
 
   it('cleans up drafts on destroy', async () => {

@@ -37,9 +37,13 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
         <div class="space-y-6 sm:space-y-8">
           <section>
             <h2 class="section-title mb-3">Overview</h2>
-            <dl class="m-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <dl
+              class="card overflow-hidden m-0 grid grid-cols-3 lg:grid-cols-6 gap-px bg-light-border dark:bg-dark-border"
+            >
               @for (metric of overview(); track metric.label) {
-                <div class="card p-4 text-center flex flex-col-reverse justify-end">
+                <div
+                  class="p-3 sm:p-4 text-center flex flex-col-reverse justify-end bg-light-bg-secondary dark:bg-dark-bg-secondary"
+                >
                   <dt class="text-xs mt-1 text-light-font-secondary dark:text-dark-font-secondary">
                     {{ metric.label }}
                   </dt>
@@ -58,9 +62,13 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
 
           <section>
             <h2 class="section-title mb-3">Streaks</h2>
-            <dl class="m-0 grid grid-cols-3 gap-3">
+            <dl
+              class="card overflow-hidden m-0 grid grid-cols-3 gap-px bg-light-border dark:bg-dark-border"
+            >
               @for (metric of streaks(); track metric.label) {
-                <div class="card p-4 text-center flex flex-col-reverse justify-end">
+                <div
+                  class="p-3 sm:p-4 text-center flex flex-col-reverse justify-end bg-light-bg-secondary dark:bg-dark-bg-secondary"
+                >
                   <dt class="text-xs mt-1 text-light-font-secondary dark:text-dark-font-secondary">
                     {{ metric.label }}
                   </dt>
@@ -217,12 +225,12 @@ export class StatsComponent {
   );
 
   protected readonly overview = computed(() => [
-    { label: 'Total Items', value: this.totalItems() },
+    { label: 'Episodes', value: this.totalEpisodesWatched() },
     { label: 'Watching', value: this.inProgressCount() },
     { label: 'Completed', value: this.completedCount() },
-    { label: 'Dropped', value: this.droppedCount() },
-    { label: 'Episodes', value: this.totalEpisodesWatched() },
     { label: 'Watch Entries', value: this.history().length },
+    { label: 'Total Items', value: this.totalItems() },
+    { label: 'Dropped', value: this.droppedCount() },
   ]);
 
   protected readonly streaks = computed(() => [

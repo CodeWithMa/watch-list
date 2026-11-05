@@ -1,43 +1,34 @@
 import { Component, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { ReadonlyItem as Item } from '../../models/item.model';
-
-const CHOICE_LIMIT = 3;
+import { TitleRowComponent } from './title-row.component';
 
 /** Offers an explicit start for an empty slot; backlog titles are never recommended on their own. */
 @Component({
   selector: 'app-backlog-choices',
-  imports: [RouterLink],
+  imports: [TitleRowComponent],
   template: `
     @if (items().length > 0) {
-      <h3 class="mt-3 mb-1 text-sm font-semibold">Choose a {{ noun() }} from your backlog</h3>
-      <ul class="m-0 p-0 list-none">
-        @for (choice of items().slice(0, limit); track choice.id) {
-          <li class="flex items-center gap-2 py-1">
-            <a
-              [routerLink]="['/items', choice.id]"
-              class="flex-1 min-w-0 truncate text-sm no-underline text-light-font dark:text-dark-font hover:text-accent-text"
-              >{{ choice.title }}</a
-            >
-            <button
-              type="button"
-              (click)="started.emit(choice.id)"
-              [disabled]="busy()"
-              [attr.aria-label]="'Start ' + choice.title"
-              class="btn btn-secondary shrink-0"
-            >
-              Start
-            </button>
-          </li>
+      <h3 class="m-0 px-3 sm:px-4 pb-2 text-sm font-semibold">
+        Choose a {{ noun() }} from your backlog
+      </h3>
+      <div class="border-t border-light-border dark:border-dark-border">
+        @for (choice of items(); track choice.id) {
+          <app-title-row
+            [item]="choice"
+            actionLabel="Start"
+            [busy]="busy()"
+            (started)="started.emit(choice.id)"
+            (dropped)="dropped.emit(choice.id)"
+          />
         }
-      </ul>
-      @if (items().length > limit) {
+      </div>
+      @if (moreCount() > 0) {
         <button
           type="button"
-          (click)="seeAll.emit()"
-          class="mt-1 min-h-11 text-sm text-accent-text underline cursor-pointer"
+          (click)="seeMore.emit()"
+          class="w-full min-h-11 px-3 sm:px-4 text-left text-sm text-accent-text underline cursor-pointer border-t border-light-border dark:border-dark-border"
         >
-          See all {{ items().length }} in backlog
+          See {{ moreCount() }} more below
         </button>
       }
     }
@@ -46,8 +37,9 @@ const CHOICE_LIMIT = 3;
 export class BacklogChoicesComponent {
   readonly items = input.required<readonly Item[]>();
   readonly noun = input.required<string>();
+  readonly moreCount = input(0);
   readonly busy = input(false);
   readonly started = output<string>();
-  readonly seeAll = output();
-  protected readonly limit = CHOICE_LIMIT;
+  readonly dropped = output<string>();
+  readonly seeMore = output();
 }

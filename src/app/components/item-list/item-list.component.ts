@@ -50,7 +50,7 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
           type="button"
           (click)="filtersOpen.set(!filtersOpen())"
           [attr.aria-expanded]="filtersOpen()"
-          aria-controls="library-filters type-filters"
+          aria-controls="library-filters"
           class="btn btn-secondary md:hidden"
         >
           Filter &amp; sort
@@ -62,77 +62,6 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
             >
           }
         </button>
-        <div
-          id="library-filters"
-          class="flex flex-wrap items-center gap-2 max-md:w-full max-md:mt-1"
-          [class.max-md:hidden]="!filtersOpen()"
-        >
-          <div class="flex items-center gap-2 max-md:w-full">
-            <select
-              [ngModel]="sortField()"
-              (ngModelChange)="setSortField($event)"
-              aria-label="Sort by"
-              class="form-select max-md:flex-1"
-            >
-              @for (field of sortFields; track field) {
-                <option [value]="field">{{ sortFieldLabels[field] }}</option>
-              }
-            </select>
-            <button
-              type="button"
-              (click)="toggleSortDirection()"
-              [attr.aria-label]="'Sort direction: ' + sortOrder()"
-              [attr.title]="sortDirectionLabels[sortDirection()]"
-              class="btn btn-secondary whitespace-nowrap"
-            >
-              @if (sortDirection() === 'desc') {
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M12 19V5" />
-                  <path d="M5 12l7-7 7 7" />
-                </svg>
-              } @else {
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M12 5v14" />
-                  <path d="M19 12l-7 7-7-7" />
-                </svg>
-              }
-              {{ sortOrder() }}
-            </button>
-          </div>
-          <select
-            [ngModel]="groupFilter()"
-            (ngModelChange)="groupFilter.set($event)"
-            aria-label="Filter by group"
-            class="form-select max-md:w-full"
-          >
-            <option value="">All Groups</option>
-            @for (group of groups(); track group.id) {
-              <option [value]="group.id">{{ group.name }}</option>
-            }
-          </select>
-        </div>
       </div>
 
       <div class="flex flex-col gap-2 mb-3">
@@ -146,7 +75,9 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
             class="max-md:sr-only w-12 shrink-0 text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary"
             >Status</span
           >
-          <div class="relative flex gap-2 overflow-x-auto max-md:-mx-4 max-md:px-4 py-0.5">
+          <div
+            class="scroll-fade-x relative flex gap-2 overflow-x-auto max-md:-mx-4 max-md:px-4 py-0.5"
+          >
             <button
               type="button"
               (click)="statusFilter.set('all')"
@@ -168,35 +99,106 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
           </div>
         </div>
         <div
-          id="type-filters"
-          role="group"
-          aria-labelledby="type-filter-label"
-          class="flex flex-wrap items-center gap-2"
+          id="library-filters"
+          class="flex flex-wrap items-center gap-x-4 gap-y-2 md:justify-between max-md:p-3 max-md:rounded max-md:border max-md:border-light-border max-md:dark:border-dark-border"
           [class.max-md:hidden]="!filtersOpen()"
         >
-          <span
-            id="type-filter-label"
-            class="w-12 shrink-0 text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary"
-            >Type</span
+          <div
+            role="group"
+            aria-labelledby="type-filter-label"
+            class="flex flex-wrap items-center gap-2 max-md:w-full"
           >
-          <button
-            type="button"
-            (click)="typeFilter.set('all')"
-            [attr.aria-pressed]="typeFilter() === 'all'"
-            class="chip"
-          >
-            All
-          </button>
-          @for (type of itemTypes; track type) {
+            <span
+              id="type-filter-label"
+              class="max-md:w-full md:w-12 shrink-0 text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary"
+              >Type</span
+            >
             <button
               type="button"
-              (click)="typeFilter.set(type)"
-              [attr.aria-pressed]="typeFilter() === type"
-              class="chip"
+              (click)="typeFilter.set('all')"
+              [attr.aria-pressed]="typeFilter() === 'all'"
+              class="chip max-md:flex-1 max-md:shrink max-md:min-w-0 max-md:px-1"
             >
-              {{ itemTypeLabels[type] }}
+              All
             </button>
-          }
+            @for (type of itemTypes; track type) {
+              <button
+                type="button"
+                (click)="typeFilter.set(type)"
+                [attr.aria-pressed]="typeFilter() === type"
+                class="chip max-md:flex-1 max-md:shrink max-md:min-w-0 max-md:px-1"
+              >
+                {{ itemTypeLabels[type] }}
+              </button>
+            }
+          </div>
+          <div class="flex flex-wrap items-center gap-2 max-md:w-full">
+            <div class="flex items-center gap-2 max-md:w-full">
+              <select
+                [ngModel]="sortField()"
+                (ngModelChange)="setSortField($event)"
+                aria-label="Sort by"
+                class="form-select max-md:flex-1"
+              >
+                @for (field of sortFields; track field) {
+                  <option [value]="field">{{ sortFieldLabels[field] }}</option>
+                }
+              </select>
+              <button
+                type="button"
+                (click)="toggleSortDirection()"
+                [attr.aria-label]="'Sort direction: ' + sortOrder()"
+                [attr.title]="sortDirectionLabels[sortDirection()]"
+                class="btn btn-secondary whitespace-nowrap"
+              >
+                @if (sortDirection() === 'desc') {
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 19V5" />
+                    <path d="M5 12l7-7 7 7" />
+                  </svg>
+                } @else {
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 5v14" />
+                    <path d="M19 12l-7 7-7-7" />
+                  </svg>
+                }
+                {{ sortOrder() }}
+              </button>
+            </div>
+            <select
+              [ngModel]="groupFilter()"
+              (ngModelChange)="groupFilter.set($event)"
+              aria-label="Filter by group"
+              class="form-select max-md:w-full md:max-w-56"
+            >
+              <option value="">All Groups</option>
+              @for (group of groups(); track group.id) {
+                <option [value]="group.id">{{ group.name }}</option>
+              }
+            </select>
+          </div>
         </div>
       </div>
 

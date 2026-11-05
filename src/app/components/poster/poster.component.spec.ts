@@ -5,7 +5,6 @@ import { vi } from 'vitest';
 import { Item } from '../../models/item.model';
 import { ImageStorageService } from '../../services/image-storage.service';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
-import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
 import { PosterComponent } from './poster.component';
 
 function createItem(overrides: Partial<Item> = {}): Item {
@@ -56,7 +55,9 @@ describe('PosterComponent', () => {
     finish(null);
     await vi.waitFor(() => expect(fixture.componentInstance.posterUrl()).toBeNull());
     fixture.detectChanges();
-    expect(source()).toBe(getPlaceholderUrl());
+    expect(source()).toBeUndefined();
+    const fallback = fixture.nativeElement.querySelector('app-poster-fallback') as HTMLElement;
+    expect(fallback.textContent).toContain('Test Show');
   });
 
   it('keeps adult posters blurred until revealed and resets reveal for another item', async () => {

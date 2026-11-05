@@ -9,7 +9,7 @@ import { injectPosterUrl } from '../../services/poster-reader';
 import { ReadonlyItem as Item, ItemStatus } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { formatEpisode, getMostRecentWatchDate } from '../../utils/progress.utils';
-import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
+import { PosterFallbackComponent } from '../poster-fallback/poster-fallback.component';
 import { ITEM_STATUS_LABELS, ITEM_TYPE_LABELS, isEpisodicType } from '../../domain/item.constants';
 import { statusBadgeClass } from '../../utils/status.utils';
 import { WatchActionNoticeService } from '../watch-action-notice/watch-action-notice.service';
@@ -26,7 +26,13 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
 
 @Component({
   selector: 'app-item-view',
-  imports: [DatePipe, RouterLink, TimeAgoComponent, ConflictRecoveryComponent],
+  imports: [
+    DatePipe,
+    RouterLink,
+    TimeAgoComponent,
+    ConflictRecoveryComponent,
+    PosterFallbackComponent,
+  ],
   template: `
     <div>
       <app-conflict-recovery [disabled]="actions.busy()" (recovered)="actions.error.set(null)" />
@@ -34,11 +40,21 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
         <div
           class="card p-4 sm:p-6 mb-6 grid grid-cols-[5.5rem_1fr] sm:grid-cols-[10rem_1fr] sm:grid-rows-[auto_1fr] gap-4 sm:gap-x-6"
         >
-          <img
-            [src]="posterUrl()"
-            [alt]="currentItem.title + ' poster'"
-            class="w-full aspect-[2/3] object-cover rounded sm:row-span-2"
-          />
+          <div class="overflow-hidden rounded sm:row-span-2 self-start">
+            @if (posterUrl(); as url) {
+              <img
+                [src]="url"
+                [alt]="currentItem.title + ' poster'"
+                class="block w-full aspect-[2/3] object-cover"
+              />
+            } @else if (posterUrl() === null) {
+              <app-poster-fallback
+                [title]="currentItem.title"
+                [type]="currentItem.type"
+                [label]="currentItem.title + ' has no poster'"
+              />
+            }
+          </div>
           <div class="min-w-0">
             <h1 class="page-title break-words">{{ currentItem.title }}</h1>
             <div class="mt-2 flex flex-wrap items-center gap-2">
@@ -98,7 +114,8 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                   type="button"
                   (click)="changeReleaseDelay(1)"
                   [disabled]="actions.busy() || !canSnooze()"
-                  [title]="snoozeHint()"
+                  [title]="canSnooze() ? snoozeHint : null"
+                  [attr.aria-describedby]="canSnooze() ? null : 'snooze-prerequisite'"
                   class="btn btn-secondary"
                 >
                   Snooze 1 week
@@ -118,6 +135,24 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                 >Edit Item</a
               >
             </div>
+            @if (showReleaseDelayControls() && !canSnooze()) {
+              <p
+                id="snooze-prerequisite"
+                class="mt-3 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+              >
+                @if (currentSeason()?.firstEpisodeAirDate) {
+                  Snoozing isn't available for this episode.
+                } @else {
+                  Snoozing needs this season's first air date.
+                  <a
+                    [routerLink]="['/items', currentItem.id, 'edit']"
+                    fragment="season-details"
+                    class="text-accent-text underline whitespace-nowrap"
+                    >Add air date</a
+                  >
+                }
+              </p>
+            }
             @if (actions.error()) {
               <p role="alert" class="mt-3 mb-0 text-sm text-accent-danger-text">
                 {{ actions.error() }}
@@ -237,8 +272,7 @@ export class ItemViewComponent {
     return item && this.hasWatchHistory() ? getMostRecentWatchDate(item) : '';
   });
   readonly hasWatchHistory = computed(() => (this.item()?.watchHistory.length ?? 0) > 0);
-  private readonly storedPosterUrl = injectPosterUrl(() => this.item()?.posterId);
-  readonly posterUrl = computed(() => this.storedPosterUrl() ?? getPlaceholderUrl());
+  readonly posterUrl = injectPosterUrl(() => this.item()?.posterId);
   readonly watchHistory = computed(() =>
     [...(this.item()?.watchHistory ?? [])].sort(
       (left, right) => new Date(right.date).getTime() - new Date(left.date).getTime(),
@@ -281,11 +315,7 @@ export class ItemViewComponent {
     const item = this.item();
     return !!item && canSnoozeCurrentSeason(item);
   });
-  readonly snoozeHint = computed(() =>
-    this.canSnooze()
-      ? 'Shift the estimated release of the remaining episodes by one week'
-      : "Add this season's first episode air date in Edit Item to enable snoozing",
-  );
+  readonly snoozeHint = 'Shift the estimated release of the remaining episodes by one week';
   readonly canRemoveDelay = computed(
     () => isValidSnoozeCount(this.snoozeCount()) && this.snoozeCount() > 0,
   );

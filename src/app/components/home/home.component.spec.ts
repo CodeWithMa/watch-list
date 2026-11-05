@@ -147,7 +147,11 @@ describe('HomeComponent', () => {
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
     expect(root.textContent).toContain('Choose a movie from your backlog');
-    expect(root.textContent).toContain('See all 4 in backlog');
+    expect(root.textContent).toContain('See 1 more below');
+    expect(root.textContent).toContain('More in backlog');
+    // Every backlog title is offered exactly once.
+    const titles = [...root.querySelectorAll('app-title-row a')].map((a) => a.textContent?.trim());
+    expect(titles.sort()).toEqual(['Movie A', 'Movie B', 'Movie C', 'Movie D']);
     expect(root.textContent).not.toContain('Choose a series from your backlog');
     const svc = TestBed.inject(WatchListService);
     expect(svc.markStarted).not.toHaveBeenCalled();

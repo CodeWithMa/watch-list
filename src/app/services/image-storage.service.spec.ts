@@ -565,7 +565,7 @@ describe('ImageStorageService', () => {
     first.destroy();
 
     await vi.waitFor(() => expect(secondUrl()).toBe('blob:mock-url'));
-    expect(firstUrl()).toBeNull();
+    expect(firstUrl()).toBeUndefined();
     expect(URL.createObjectURL).toHaveBeenCalledOnce();
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 

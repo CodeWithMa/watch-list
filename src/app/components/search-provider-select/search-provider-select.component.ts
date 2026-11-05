@@ -37,7 +37,7 @@ import { SuggestionSource } from '../../models/suggestion.model';
           alt=""
           class="size-5"
         />
-        <span>{{ labels[value() ?? sources()[0]] }}</span>
+        <span class="max-[22.5rem]:hidden">{{ labels[value() ?? sources()[0]] }}</span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="14"

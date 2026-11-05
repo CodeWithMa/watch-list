@@ -1,4 +1,12 @@
-import { Component, ElementRef, afterNextRender, computed, input, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  afterNextRender,
+  computed,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { HistoryEntry } from '../../../models/storage.model';
 import { toLocalDateKey, toLocalDateKeyFromISO } from '../../../utils/date.utils';
 
@@ -15,11 +23,28 @@ interface MonthLabel {
 
 @Component({
   selector: 'app-stats-heatmap',
+  host: { '(window:resize)': 'onResize()' },
   template: `
-    <p class="sm:hidden mt-0 mb-2 text-xs text-light-font-secondary dark:text-dark-font-secondary">
-      Showing the most recent weeks. Scroll sideways for the full year.
-    </p>
-    <div #scroller class="relative overflow-x-auto">
+    @if (canScroll()) {
+      <div class="flex items-center justify-between gap-3 mb-2 min-h-11">
+        <p class="m-0 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+          Past year · scroll sideways to explore
+        </p>
+        @if (!showingToday()) {
+          <button type="button" (click)="showToday()" class="btn btn-secondary shrink-0">
+            Today
+          </button>
+        }
+      </div>
+    }
+    <div
+      #scroller
+      (scroll)="syncScrollState()"
+      role="group"
+      aria-label="Watch activity for the past year"
+      [attr.tabindex]="canScroll() ? 0 : null"
+      class="relative overflow-x-auto"
+    >
       <div class="inline-block min-w-[720px]">
         <div class="relative h-4 mb-1">
           @for (month of monthLabels(); track month.label + month.weekIndex) {
@@ -33,7 +58,9 @@ interface MonthLabel {
         </div>
 
         <div class="flex gap-0">
-          <div class="flex flex-col gap-[3px] mr-1">
+          <div
+            class="sticky left-0 z-10 flex flex-col gap-[3px] pr-1 bg-light-bg-secondary dark:bg-dark-bg-secondary"
+          >
             @for (dayLabel of dayLabels; track dayLabel) {
               <span
                 class="text-xs text-light-font-secondary dark:text-dark-font-secondary h-[13px] leading-[13px] text-right w-7"
@@ -57,16 +84,15 @@ interface MonthLabel {
             }
           </div>
         </div>
-
-        <div class="flex items-center gap-2 mt-3 justify-end">
-          <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">Less</span>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-light-border dark:bg-dark-border"></div>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/35"></div>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/65"></div>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text"></div>
-          <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">More</span>
-        </div>
       </div>
+    </div>
+    <div class="flex items-center gap-2 mt-3 justify-end">
+      <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">Less</span>
+      <div class="w-[13px] h-[13px] rounded-[2px] bg-light-border dark:bg-dark-border"></div>
+      <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/35"></div>
+      <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/65"></div>
+      <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text"></div>
+      <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">More</span>
     </div>
   `,
 })
@@ -74,12 +100,30 @@ export class StatsHeatmapComponent {
   historyEntries = input.required<readonly Readonly<HistoryEntry>[]>();
   private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
 
+  readonly canScroll = signal(false);
+  readonly showingToday = signal(true);
+
   constructor() {
     // Narrow screens start at the newest weeks; older months are one swipe away.
-    afterNextRender(() => {
-      const element = this.scroller().nativeElement;
-      element.scrollLeft = element.scrollWidth;
-    });
+    afterNextRender(() => this.showToday());
+  }
+
+  showToday() {
+    const element = this.scroller().nativeElement;
+    element.scrollLeft = element.scrollWidth;
+    this.syncScrollState();
+  }
+
+  // Columns have a fixed width, so a chosen historical position needs no adjustment on resize.
+  onResize() {
+    if (this.showingToday()) this.showToday();
+    else this.syncScrollState();
+  }
+
+  syncScrollState() {
+    const { clientWidth, scrollLeft, scrollWidth } = this.scroller().nativeElement;
+    this.canScroll.set(scrollWidth > clientWidth);
+    this.showingToday.set(scrollLeft + clientWidth >= scrollWidth - 1);
   }
 
   dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];

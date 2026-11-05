@@ -58,7 +58,7 @@ describe('Poster read lifetime', () => {
 
   it('publishes the selected poster and retains it while a replacement is pending', async () => {
     const reader = createReader();
-    expect(reader.url()).toBeNull();
+    expect(reader.url()).toBeUndefined();
     expect(reads.map((read) => read.id)).toEqual(['first']);
     reads[0].resolve('blob:first');
     await settle();
@@ -97,7 +97,7 @@ describe('Poster read lifetime', () => {
     reads[0].resolve('blob:obsolete');
     await Promise.resolve();
     await Promise.resolve();
-    expect(reader.url()).toBeNull();
+    expect(reader.url()).toBeUndefined();
 
     TestBed.tick();
     reads[1].resolve('blob:second');
@@ -112,7 +112,7 @@ describe('Poster read lifetime', () => {
     reads[0].resolve('blob:obsolete');
     await Promise.resolve();
     await Promise.resolve();
-    expect(reader.url()).toBeNull();
+    expect(reader.url()).toBeUndefined();
     TestBed.tick();
     expect(reads.map((read) => read.id)).toEqual(['first', 'first']);
 
@@ -133,7 +133,7 @@ describe('Poster read lifetime', () => {
     reads[0].resolve('blob:shared');
     reads[1].resolve('blob:shared');
     await settle();
-    expect(destroyed.url()).toBeNull();
+    expect(destroyed.url()).toBeUndefined();
     expect(active.url()).toBe('blob:shared');
 
     version.update((value) => value + 1);

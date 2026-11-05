@@ -10,11 +10,14 @@ import { PosterComponent } from '../poster/poster.component';
 @Component({
   selector: 'app-recommendation-panel',
   imports: [RouterLink, PosterComponent],
+  host: { class: '@container block' },
   template: `
     <article class="card p-3 sm:p-4">
-      <div class="flex gap-3 sm:gap-4">
-        <app-poster [item]="item()" class="w-20 sm:w-28 shrink-0 rounded" />
-        <div class="min-w-0 flex-1">
+      <div
+        class="grid grid-cols-[5rem_minmax(0,1fr)] @md:grid-cols-[7rem_minmax(0,1fr)] gap-3 @md:gap-x-4"
+      >
+        <app-poster [item]="item()" class="self-start rounded @md:row-span-2" />
+        <div class="min-w-0">
           <h3 class="m-0 text-lg sm:text-xl leading-snug font-semibold">
             <a
               [routerLink]="['/items', item().id]"
@@ -43,44 +46,44 @@ import { PosterComponent } from '../poster/poster.component';
             }
           }
         </div>
-      </div>
-      <div class="mt-3 flex flex-col gap-1">
-        <button
-          type="button"
-          (click)="watched.emit()"
-          [disabled]="busy()"
-          class="btn btn-primary w-full"
-        >
-          {{ episode() ? 'Mark ' + episode() + ' watched' : 'Mark Watched' }}
-        </button>
-        <div class="flex flex-wrap gap-1">
-          @if (episode()) {
+        <div class="col-span-2 @md:col-span-1 @md:col-start-2 @md:self-end flex flex-col gap-1">
+          <button
+            type="button"
+            (click)="watched.emit()"
+            [disabled]="busy()"
+            class="btn btn-primary w-full"
+          >
+            {{ episode() ? 'Mark ' + episode() + ' watched' : 'Mark Watched' }}
+          </button>
+          <div class="flex gap-1 @md:-ml-2">
+            @if (episode()) {
+              <button
+                type="button"
+                (click)="deferred.emit()"
+                [disabled]="busy()"
+                class="btn btn-quiet flex-1 @md:flex-none px-2 whitespace-nowrap"
+              >
+                Not available?
+              </button>
+            }
             <button
               type="button"
-              (click)="deferred.emit()"
+              (click)="paused.emit()"
               [disabled]="busy()"
-              class="btn btn-quiet flex-1 whitespace-nowrap"
+              class="btn btn-quiet flex-1 @md:flex-none px-2"
             >
-              Not available?
+              Pause
             </button>
-          }
-          <button
-            type="button"
-            (click)="paused.emit()"
-            [disabled]="busy()"
-            class="btn btn-quiet flex-1"
-          >
-            Pause
-          </button>
-          <button
-            type="button"
-            (click)="dropped.emit()"
-            [disabled]="busy()"
-            title="Stop watching this title. Its history is kept, and you can restart it later."
-            class="btn btn-quiet flex-1"
-          >
-            Drop
-          </button>
+            <button
+              type="button"
+              (click)="dropped.emit()"
+              [disabled]="busy()"
+              title="Stop watching this title. Its history is kept, and you can restart it later."
+              class="btn btn-quiet flex-1 @md:flex-none px-2"
+            >
+              Drop
+            </button>
+          </div>
         </div>
       </div>
       <ng-content />

@@ -2,6 +2,18 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@property --scroll-fade-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --scroll-fade-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
 @theme {
   --color-light-bg-primary: #f5f5f5;
   --color-light-bg-secondary: #ffffff;
@@ -195,6 +207,50 @@
 
   .chip {
     @apply inline-flex items-center justify-center shrink-0 min-h-10 max-md:min-h-11 px-3 rounded border text-sm font-medium whitespace-nowrap cursor-pointer transition-colors border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:border-accent-text aria-pressed:border-transparent aria-pressed:bg-accent-primary aria-pressed:text-white;
+  }
+
+  /* Fixed control column, so wrapped labels and hints stay attached to their checkbox or radio. */
+  .choice-row {
+    @apply grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 content-center min-h-6 max-md:min-h-11 cursor-pointer text-light-font dark:text-dark-font;
+  }
+
+  .choice-row > input {
+    @apply size-5 m-0 mt-0.5 cursor-pointer;
+  }
+
+  .choice-hint {
+    @apply block text-sm text-light-font-secondary dark:text-dark-font-secondary;
+  }
+
+  /* Fades whichever edge still has content; a strip that fits has no scroll range and no fade. */
+  @supports (animation-timeline: scroll(x self)) {
+    .scroll-fade-x {
+      mask-image: linear-gradient(
+        to right,
+        transparent,
+        #000 var(--scroll-fade-start),
+        #000 calc(100% - var(--scroll-fade-end)),
+        transparent
+      );
+      animation: scroll-fade-x linear both;
+      animation-timeline: scroll(x self);
+    }
+
+    @keyframes scroll-fade-x {
+      from {
+        --scroll-fade-start: 0px;
+        --scroll-fade-end: 1.5rem;
+      }
+      10%,
+      90% {
+        --scroll-fade-start: 1.5rem;
+        --scroll-fade-end: 1.5rem;
+      }
+      to {
+        --scroll-fade-start: 1.5rem;
+        --scroll-fade-end: 0px;
+      }
+    }
   }
 
   .form-select {

@@ -62,6 +62,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   [disabled]="busy()"
                   class="btn btn-secondary"
                   title="Move up"
+                  [attr.aria-label]="'Move ' + group.name + ' up'"
                 >
                   ↑
                 </button>
@@ -72,16 +73,13 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   [disabled]="busy()"
                   class="btn btn-secondary"
                   title="Move down"
+                  [attr.aria-label]="'Move ' + group.name + ' down'"
                 >
                   ↓
                 </button>
               }
               @if (group.id !== defaultGroupId) {
-                <button
-                  (click)="editGroup(group)"
-                  [disabled]="busy()"
-                  class="btn btn-danger-outline"
-                >
+                <button (click)="editGroup(group)" [disabled]="busy()" class="btn btn-secondary">
                   Edit
                 </button>
               }

@@ -36,46 +36,52 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
           Adding titles manually never needs a provider.
         </p>
         <div class="flex flex-col gap-3 mb-4">
-          <label class="flex flex-wrap items-center gap-x-3 gap-y-1 cursor-pointer">
+          <label class="choice-row">
             <input
               id="providerToggleTmdb"
               type="checkbox"
               [checked]="tmdbEnabled()"
               (change)="toggleProvider('tmdb', $event)"
-              class="w-5 h-5"
             />
-            <span class="text-light-font dark:text-dark-font">TMDB — Movies &amp; Series</span>
-            <span
-              class="text-xs font-medium rounded px-1.5 py-0.5"
-              [class]="
-                tmdbConnected()
-                  ? 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark'
-                  : 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark'
-              "
-              >{{ tmdbConnected() ? 'Connected' : 'Needs setup' }}</span
-            >
+            <span>
+              <span class="flex flex-wrap items-center gap-x-2">
+                TMDB
+                <span
+                  class="text-xs font-medium rounded px-1.5 py-0.5"
+                  [class]="
+                    tmdbConnected()
+                      ? 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark'
+                      : 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark'
+                  "
+                  >{{ tmdbConnected() ? 'Connected' : 'Needs setup' }}</span
+                >
+              </span>
+              <span class="choice-hint">Movies &amp; series</span>
+            </span>
           </label>
-          <label class="flex flex-wrap items-center gap-x-3 gap-y-1 cursor-pointer">
+          <label class="choice-row">
             <input
               id="providerToggleJikan"
               type="checkbox"
               [checked]="jikanEnabled()"
               (change)="toggleProvider('jikan', $event)"
-              class="w-5 h-5"
             />
-            <span class="text-light-font dark:text-dark-font"
-              >Jikan (MyAnimeList) — TV / Movie / OVA / ONA</span
-            >
+            <span>
+              Jikan (MyAnimeList)
+              <span class="choice-hint">TV, movies, OVA &amp; ONA</span>
+            </span>
           </label>
-          <label class="flex flex-wrap items-center gap-x-3 gap-y-1 cursor-pointer">
+          <label class="choice-row">
             <input
               id="providerToggleAnilist"
               type="checkbox"
               [checked]="anilistEnabled()"
               (change)="toggleProvider('anilist', $event)"
-              class="w-5 h-5"
             />
-            <span class="text-light-font dark:text-dark-font">AniList — Anime</span>
+            <span>
+              AniList
+              <span class="choice-hint">Anime</span>
+            </span>
           </label>
         </div>
 
@@ -198,62 +204,50 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
 
       <section class="card p-4 sm:p-6 mb-4">
         <h2 class="section-title mb-3">Adult content</h2>
-        <label class="flex items-center gap-3 cursor-pointer">
+        <label class="choice-row">
           <input
             id="includeAdultToggle"
             type="checkbox"
             [checked]="includeAdult()"
             (change)="toggleAdult($event)"
-            class="w-5 h-5"
           />
-          <span class="text-light-font dark:text-dark-font"
-            >Include adult / NSFW results (TMDB, Jikan, AniList)</span
-          >
+          <span>Include adult / NSFW results (TMDB, Jikan, AniList)</span>
         </label>
 
         <fieldset class="mt-4">
           <legend class="text-sm font-medium text-light-font dark:text-dark-font mb-2">
             Display adult items in your collection
           </legend>
-          <div class="flex flex-col gap-2">
-            <label class="flex items-center gap-3 cursor-pointer">
+          <div class="flex flex-col md:gap-2">
+            <label class="choice-row">
               <input
                 type="radio"
                 name="adultDisplayMode"
                 value="show"
                 [checked]="adultDisplayMode() === 'show'"
                 (change)="setAdultDisplayMode('show')"
-                class="w-4 h-4"
               />
-              <span class="text-sm text-light-font dark:text-dark-font"
-                >Show — no filtering or blur</span
-              >
+              <span>Show — no filtering or blur</span>
             </label>
-            <label class="flex items-center gap-3 cursor-pointer">
+            <label class="choice-row">
               <input
                 type="radio"
                 name="adultDisplayMode"
                 value="blur"
                 [checked]="adultDisplayMode() === 'blur'"
                 (change)="setAdultDisplayMode('blur')"
-                class="w-4 h-4"
               />
-              <span class="text-sm text-light-font dark:text-dark-font"
-                >Blur posters — click to reveal</span
-              >
+              <span>Blur posters — click to reveal</span>
             </label>
-            <label class="flex items-center gap-3 cursor-pointer">
+            <label class="choice-row">
               <input
                 type="radio"
                 name="adultDisplayMode"
                 value="hide"
                 [checked]="adultDisplayMode() === 'hide'"
                 (change)="setAdultDisplayMode('hide')"
-                class="w-4 h-4"
               />
-              <span class="text-sm text-light-font dark:text-dark-font"
-                >Hide — remove adult items from lists</span
-              >
+              <span>Hide — remove adult items from lists</span>
             </label>
           </div>
         </fieldset>

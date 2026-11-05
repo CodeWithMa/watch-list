@@ -69,6 +69,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             [error]="mutation.error()"
             [showDirtyState]="true"
             [resetOnCancel]="true"
+            [revealSeasonDetails]="revealSeasonDetails"
             [disableSubmitWhenPristine]="true"
             (submitted)="saveChanges($event)"
           />
@@ -90,6 +91,7 @@ export class ItemDetailComponent {
 
   readonly groups = this.groupService.groups;
   readonly mutation = new MutationFeedback(itemMutationFailure);
+  readonly revealSeasonDetails = this.route.snapshot?.fragment === 'season-details';
 
   // Capture a baseline per routed item; live collection updates must not reset an open draft.
   readonly item = toSignal(

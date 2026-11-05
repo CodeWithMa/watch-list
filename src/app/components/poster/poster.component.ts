@@ -3,14 +3,19 @@ import { RouterLink } from '@angular/router';
 import { ReadonlyItem as Item } from '../../models/item.model';
 import { injectPosterUrl } from '../../services/poster-reader';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
-import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
+import { PosterFallbackComponent } from '../poster-fallback/poster-fallback.component';
 
 @Component({
   selector: 'app-poster',
-  imports: [RouterLink],
+  imports: [RouterLink, PosterFallbackComponent],
   host: { class: 'relative block overflow-hidden' },
   template: `
-    <a [routerLink]="['/items', item().id]" tabindex="-1" aria-hidden="true">
+    <a
+      [routerLink]="['/items', item().id]"
+      tabindex="-1"
+      aria-hidden="true"
+      class="block no-underline"
+    >
       @if (posterUrl()) {
         <img
           [src]="posterUrl()"
@@ -18,8 +23,10 @@ import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
           class="block w-full aspect-[2/3] object-cover"
           [style.filter]="shouldBlur() ? 'blur(12px)' : null"
         />
+      } @else if (posterUrl() === null) {
+        <app-poster-fallback [title]="item().title" [type]="item().type" />
       } @else {
-        <img [src]="placeholderUrl" alt="" class="block w-full aspect-[2/3] object-cover" />
+        <div class="w-full aspect-[2/3] bg-light-hover dark:bg-dark-bg-tertiary"></div>
       }
     </a>
     @if (shouldBlur()) {
@@ -39,7 +46,6 @@ export class PosterComponent {
   readonly item = input.required<Item>();
 
   readonly posterUrl = injectPosterUrl(() => this.item().posterId);
-  readonly placeholderUrl = getPlaceholderUrl();
   readonly revealed = signal(false);
   readonly shouldBlur = computed(() => {
     const mode = this.providerSettings.settings().adultDisplayMode;
