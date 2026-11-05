@@ -15,6 +15,7 @@ import {
 import { TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { SuggestionSource } from '../../models/suggestion.model';
 import { environment } from '../../../environments/environment';
+import { statusBadgeClass } from '../../utils/status.utils';
 import { CollectionConflictError, StorageService } from '../../services/storage.service';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
@@ -22,11 +23,11 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
   selector: 'app-settings',
   imports: [FormsModule, DatePipe, FilePickerFocusDirective, ConflictRecoveryComponent],
   template: `
-    <div>
+    <div class="max-w-3xl">
       <h1 class="page-title mb-6">Settings</h1>
 
       <p class="mt-0 mb-4 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-        Preferences save automatically. TMDB credentials save when you choose Save Credentials.
+        Preferences save automatically. TMDB credentials save when you choose Save credentials.
       </p>
 
       <section class="card p-4 sm:p-6 mb-4">
@@ -46,15 +47,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             <span>
               <span class="flex flex-wrap items-center gap-x-2">
                 TMDB
-                <span
-                  class="text-xs font-medium rounded px-1.5 py-0.5"
-                  [class]="
-                    tmdbConnected()
-                      ? 'bg-status-completed-bg-light dark:bg-status-completed-bg-dark text-status-completed-text-light dark:text-status-completed-text-dark'
-                      : 'bg-status-not-started-bg-light dark:bg-status-not-started-bg-dark text-status-not-started-text-light dark:text-status-not-started-text-dark'
-                  "
-                  >{{ tmdbConnected() ? 'Connected' : 'Needs setup' }}</span
-                >
+                <span [class]="providerBadge(tmdbStatus())">{{ tmdbStatus() }}</span>
               </span>
               <span class="choice-hint">Movies &amp; series</span>
             </span>
@@ -67,7 +60,12 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
               (change)="toggleProvider('jikan', $event)"
             />
             <span>
-              Jikan (MyAnimeList)
+              <span class="flex flex-wrap items-center gap-x-2">
+                Jikan (MyAnimeList)
+                <span [class]="providerBadge(publicStatus(jikanEnabled()))">{{
+                  publicStatus(jikanEnabled())
+                }}</span>
+              </span>
               <span class="choice-hint">TV, movies, OVA &amp; ONA</span>
             </span>
           </label>
@@ -79,32 +77,20 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
               (change)="toggleProvider('anilist', $event)"
             />
             <span>
-              AniList
+              <span class="flex flex-wrap items-center gap-x-2">
+                AniList
+                <span [class]="providerBadge(publicStatus(anilistEnabled()))">{{
+                  publicStatus(anilistEnabled())
+                }}</span>
+              </span>
               <span class="choice-hint">Anime</span>
             </span>
           </label>
         </div>
 
-        <details class="form-section" [open]="!tmdbConnected()">
-          <summary>TMDB connection</summary>
+        <details class="form-section">
+          <summary>Configure TMDB</summary>
           <div>
-            <div class="flex items-center gap-3 mb-4">
-              <a
-                href="https://www.themoviedb.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="shrink-0"
-              >
-                <img
-                  src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg"
-                  alt="TMDB"
-                  class="h-10 w-auto"
-                />
-              </a>
-              <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-                This product uses the TMDB API but is not endorsed or certified by TMDB.
-              </p>
-            </div>
             <div class="mb-4">
               <label
                 for="tmdbToken"
@@ -143,10 +129,10 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             </div>
             <div class="flex flex-wrap gap-2">
               <button type="button" (click)="saveTmdbToken()" class="btn btn-primary">
-                Save Credentials
+                Save credentials
               </button>
               <button type="button" (click)="clearTmdbToken()" class="btn btn-secondary">
-                Clear Credentials
+                Clear credentials
               </button>
             </div>
           </div>
@@ -160,7 +146,24 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
           </div>
         }
 
-        <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+        <div class="flex items-center gap-3 mb-3">
+          <a
+            href="https://www.themoviedb.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="shrink-0"
+          >
+            <img
+              src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg"
+              alt="TMDB"
+              class="h-6 w-auto"
+            />
+          </a>
+          <p class="meta m-0">
+            This product uses the TMDB API but is not endorsed or certified by TMDB.
+          </p>
+        </div>
+        <p class="meta m-0">
           <a
             href="https://anilist.co"
             target="_blank"
@@ -216,7 +219,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
 
         <fieldset class="mt-4">
           <legend class="text-sm font-medium text-light-font dark:text-dark-font mb-2">
-            Display adult items in your collection
+            Display adult titles in your collection
           </legend>
           <div class="flex flex-col md:gap-2">
             <label class="choice-row">
@@ -247,7 +250,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                 [checked]="adultDisplayMode() === 'hide'"
                 (change)="setAdultDisplayMode('hide')"
               />
-              <span>Hide — remove adult items from lists</span>
+              <span>Hide — remove adult titles from lists</span>
             </label>
           </div>
         </fieldset>
@@ -315,7 +318,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
           (recovered)="errorMessage.set(null)"
         />
         <div class="mb-4 last:mb-0">
-          <button (click)="exportData()" class="btn btn-secondary">Export Data</button>
+          <button (click)="exportData()" class="btn btn-secondary">Export data</button>
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
             Download your current watch list and available poster images as a JSON file. Unavailable
             posters are listed in the export; metadata can be recovered even without images.
@@ -329,7 +332,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
               [disabled]="importInProgress()"
               class="btn btn-secondary"
             >
-              Import Data
+              Import data
             </button>
             <input
               type="file"
@@ -356,7 +359,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   [disabled]="importInProgress() || refreshing()"
                   class="btn btn-danger"
                 >
-                  Confirm Import
+                  Confirm import
                 </button>
                 <button
                   (click)="cancelImport()"
@@ -390,7 +393,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
 
       @if (recoveryBackups().length > 0) {
         <section class="card p-4 sm:p-6 mb-4">
-          <h2 class="section-title mb-3">Recovery Backups</h2>
+          <h2 class="section-title mb-3">Recovery backups</h2>
           @for (backup of recoveryBackups(); track backup.key) {
             <div class="flex items-center justify-between gap-3 mb-2 last:mb-0">
               <div>
@@ -409,23 +412,22 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
       <section class="card p-4 sm:p-6">
         <h2 class="section-title mb-3">About</h2>
         <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-          Watch List v{{ environment.appVersion }}
-          @if (isHashLinkable) {
-            (<a
-              [href]="'https://github.com/CodeWithMa/watch-list/commit/' + environment.commitHash"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="underline hover:no-underline"
-              >{{ shortHash }}</a
-            >)
+          @if (environment.appVersion === 'unknown') {
+            Watch List — development build
           } @else {
-            ({{ shortHash }})
-          }
-          — Built
-          @if (environment.buildDate !== 'unknown') {
-            {{ environment.buildDate | date: 'medium' }}
-          } @else {
-            unknown
+            Watch List v{{ environment.appVersion }}
+            @if (isHashLinkable) {
+              (<a
+                [href]="'https://github.com/CodeWithMa/watch-list/commit/' + environment.commitHash"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="underline hover:no-underline"
+                >{{ shortHash }}</a
+              >)
+            }
+            @if (environment.buildDate !== 'unknown') {
+              — Built {{ environment.buildDate | date: 'medium' }}
+            }
           }
         </p>
       </section>
@@ -455,6 +457,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
   tmdbApiKey = signal(this.tmdbSettingsService.key());
   tmdbSettingsMessage = signal<string | null>(null);
   tmdbConnected = computed(() => !!this.tmdbSettingsService.getCredential());
+  tmdbStatus = computed(() => {
+    if (!this.tmdbEnabled()) return 'Disabled';
+    return this.tmdbConnected() ? 'Ready' : 'Needs setup';
+  });
   tmdbEnabled = signal(this.providerSettingsService.isEnabled('tmdb'));
   jikanEnabled = signal(this.providerSettingsService.isEnabled('jikan'));
   anilistEnabled = signal(this.providerSettingsService.isEnabled('anilist'));
@@ -464,6 +470,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
   recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
   pendingImportFile = signal<File | null>(null);
   importInProgress = signal(false);
+
+  protected publicStatus(enabled: boolean) {
+    return enabled ? 'Ready' : 'Disabled';
+  }
+
+  protected providerBadge(status: string) {
+    if (status === 'Ready') return statusBadgeClass('completed');
+    return statusBadgeClass(status === 'Needs setup' ? 'paused' : 'not-started');
+  }
 
   ngOnInit(): void {
     this.loadRecoveryBackups();

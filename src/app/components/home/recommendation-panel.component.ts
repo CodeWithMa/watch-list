@@ -10,26 +10,25 @@ import { PosterComponent } from '../poster/poster.component';
 @Component({
   selector: 'app-recommendation-panel',
   imports: [RouterLink, PosterComponent],
-  host: { class: '@container block' },
+  host: { class: '@container block flex-1' },
   template: `
-    <article class="card p-3 sm:p-4">
+    <article class="card h-full flex flex-col p-3 sm:p-4">
       <div
-        class="grid grid-cols-[5rem_minmax(0,1fr)] @md:grid-cols-[7rem_minmax(0,1fr)] gap-3 @md:gap-x-4"
+        class="flex-1 grid grid-cols-[4rem_minmax(0,1fr)] @md:grid-cols-[8rem_minmax(0,1fr)] @md:grid-rows-[1fr_auto] gap-x-3 @md:gap-x-5 gap-y-3"
       >
-        <app-poster [item]="item()" class="self-start rounded @md:row-span-2" />
+        <app-poster [item]="item()" class="self-start rounded-md @md:row-span-2" />
         <div class="min-w-0">
-          <h3 class="m-0 text-lg sm:text-xl leading-snug font-semibold">
+          <h3 class="m-0 text-lg/snug @md:text-2xl/tight font-bold tracking-tight">
             <a
               [routerLink]="['/items', item().id]"
+              [title]="item().title"
               class="line-clamp-3 no-underline text-light-font dark:text-dark-font hover:text-accent-text"
               >{{ item().title }}</a
             >
           </h3>
-          <p class="mt-1 mb-0 text-xs text-light-font-secondary dark:text-dark-font-secondary">
-            {{ typeLabel() }}
-          </p>
+          <p class="meta mt-1 mb-0">{{ typeLabel() }}</p>
           @if (episode(); as next) {
-            <p class="mt-2 mb-0 text-sm">
+            <p class="mt-1 @md:mt-2 mb-0 text-sm @md:text-base">
               Next episode: <strong class="font-semibold">{{ next }}</strong>
               @if (totalEpisodes(); as total) {
                 <span class="text-light-font-secondary dark:text-dark-font-secondary">
@@ -46,31 +45,32 @@ import { PosterComponent } from '../poster/poster.component';
             }
           }
         </div>
-        <div class="col-span-2 @md:col-span-1 @md:col-start-2 @md:self-end flex flex-col gap-1">
+        <div class="col-span-2 @md:col-span-1 @md:col-start-2 flex flex-col gap-1">
           <button
             type="button"
             (click)="watched.emit()"
             [disabled]="busy()"
             class="btn btn-primary w-full"
           >
-            {{ episode() ? 'Mark ' + episode() + ' watched' : 'Mark Watched' }}
+            {{ episode() ? 'Mark ' + episode() + ' watched' : 'Mark watched' }}
           </button>
-          <div class="flex gap-1 @md:-ml-2">
+          <div class="flex items-center gap-1 -mx-1">
             @if (episode()) {
               <button
                 type="button"
                 (click)="deferred.emit()"
                 [disabled]="busy()"
-                class="btn btn-quiet flex-1 @md:flex-none px-2 whitespace-nowrap"
+                title="Hide this episode from recommendations until it's available."
+                class="btn btn-quiet px-2 whitespace-nowrap"
               >
-                Not available?
+                Defer episode…
               </button>
             }
             <button
               type="button"
               (click)="paused.emit()"
               [disabled]="busy()"
-              class="btn btn-quiet flex-1 @md:flex-none px-2"
+              class="btn btn-quiet px-2"
             >
               Pause
             </button>
@@ -79,7 +79,7 @@ import { PosterComponent } from '../poster/poster.component';
               (click)="dropped.emit()"
               [disabled]="busy()"
               title="Stop watching this title. Its history is kept, and you can restart it later."
-              class="btn btn-quiet flex-1 @md:flex-none px-2"
+              class="btn btn-quiet-danger ml-auto px-2"
             >
               Drop
             </button>

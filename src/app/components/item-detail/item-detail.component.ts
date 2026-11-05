@@ -24,7 +24,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
       @if (item()) {
         <div class="max-w-3xl">
           <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-            <h1 class="page-title">Edit Item</h1>
+            <h1 class="page-title">Edit details</h1>
             <div class="flex flex-wrap gap-2">
               @if (!confirmDelete()) {
                 <button
@@ -42,7 +42,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   (click)="deleteItem()"
                   class="btn btn-danger"
                 >
-                  Confirm Delete?
+                  Confirm delete
                 </button>
                 <button
                   type="button"
@@ -57,8 +57,8 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
           </div>
           @if (!itemExists()) {
             <p role="alert" class="text-accent-danger-text">
-              This item was deleted while you were editing. Your draft cannot be saved.
-              <a [routerLink]="['/items']">Back to Items</a>
+              This title was deleted while you were editing. Your draft cannot be saved.
+              <a [routerLink]="['/items']">Back to library</a>
             </p>
           }
           <app-item-form
@@ -76,8 +76,8 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
         </div>
       } @else {
         <div class="text-center px-8 py-16">
-          <h2 class="mb-4">Item not found</h2>
-          <a [routerLink]="['/items']">Back to Items</a>
+          <h2 class="mb-4">Title not found</h2>
+          <a [routerLink]="['/items']">Back to library</a>
         </div>
       }
     </div>
@@ -122,7 +122,7 @@ export class ItemDetailComponent {
           currentItem.id,
           buildItemEditInput(this.formValue(), formValue),
         ),
-      'Unable to save this item.',
+      'Unable to save this title.',
     );
     if (result) {
       this.router.navigate(['/items']);
@@ -139,7 +139,7 @@ export class ItemDetailComponent {
     if (currentItem) {
       const result = await this.mutation.run(
         () => this.watchListService.deleteItem(currentItem.id),
-        'Unable to delete this item.',
+        'Unable to delete this title.',
       );
       if (result) this.router.navigate(['/items']);
     }

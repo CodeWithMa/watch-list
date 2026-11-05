@@ -130,11 +130,9 @@ describe('HomeComponent', () => {
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
     expect(root.textContent).toContain('Your watch list is empty');
-    expect(root.querySelector('a[href="/items/add"]')?.textContent).toContain(
-      'Add your first title',
-    );
+    expect(root.querySelector('a[href="/items/add"]')?.textContent).toContain('Add title');
     expect(root.textContent).not.toContain('No series');
-    expect(root.textContent).not.toContain('No items paused');
+    expect(root.textContent).not.toContain('No titles paused');
   });
 
   it('offers backlog choices in an empty slot without starting anything', async () => {
@@ -150,7 +148,9 @@ describe('HomeComponent', () => {
     expect(root.textContent).toContain('See 1 more below');
     expect(root.textContent).toContain('More in backlog');
     // Every backlog title is offered exactly once.
-    const titles = [...root.querySelectorAll('app-title-row a')].map((a) => a.textContent?.trim());
+    const titles = [...root.querySelectorAll('app-title-row a[title]')].map((a) =>
+      a.textContent?.trim(),
+    );
     expect(titles.sort()).toEqual(['Movie A', 'Movie B', 'Movie C', 'Movie D']);
     expect(root.textContent).not.toContain('Choose a series from your backlog');
     const svc = TestBed.inject(WatchListService);
@@ -170,7 +170,7 @@ describe('HomeComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('No items paused');
+    expect(fixture.nativeElement.textContent).toContain('No titles paused');
   });
 
   it('computes backlogItems sorted newest first', () => {
@@ -233,8 +233,8 @@ describe('HomeComponent', () => {
     const fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent).toContain('No items in backlog');
-    expect(fixture.nativeElement.textContent).toContain('No items paused');
+    expect(fixture.nativeElement.textContent).toContain('No titles in backlog');
+    expect(fixture.nativeElement.textContent).toContain('No titles paused');
   });
 
   it('shows backlog items and handles start/drop backlog', async () => {

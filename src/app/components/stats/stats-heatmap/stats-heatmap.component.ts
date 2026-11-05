@@ -74,11 +74,18 @@ interface MonthLabel {
             @for (week of weeks(); track $index) {
               <div class="flex flex-col gap-[3px]">
                 @for (day of week; track day.date) {
-                  <div
-                    class="w-[13px] h-[13px] rounded-[2px]"
+                  <button
+                    type="button"
+                    class="block w-[13px] h-[13px] rounded-[2px] cursor-pointer"
                     [class]="getCellClass(day.level)"
                     [title]="getCellLabel(day)"
-                  ></div>
+                    [attr.aria-label]="getCellLabel(day)"
+                    [attr.data-date]="day.date"
+                    [attr.tabindex]="day.date === activeDate() ? 0 : -1"
+                    (focus)="selectDay(day)"
+                    (click)="selectDay(day)"
+                    (keydown)="onCellKeydown($event, day)"
+                  ></button>
                 }
               </div>
             }
@@ -86,13 +93,19 @@ interface MonthLabel {
         </div>
       </div>
     </div>
-    <div class="flex items-center gap-2 mt-3 justify-end">
-      <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">Less</span>
-      <div class="w-[13px] h-[13px] rounded-[2px] bg-light-border dark:bg-dark-border"></div>
-      <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/35"></div>
-      <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/65"></div>
-      <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text"></div>
-      <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">More</span>
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mt-3">
+      <p class="meta m-0 min-h-5" aria-live="polite">
+        {{ selectedDay() ?? 'Select a day to see its watches' }}
+      </p>
+      <div class="flex items-center gap-2">
+        <span class="meta mr-1">Watches per day</span>
+        <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">Less</span>
+        <div class="w-[13px] h-[13px] rounded-[2px] bg-light-border dark:bg-dark-border"></div>
+        <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/35"></div>
+        <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/65"></div>
+        <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text"></div>
+        <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">More</span>
+      </div>
     </div>
   `,
 })
@@ -102,6 +115,12 @@ export class StatsHeatmapComponent {
 
   readonly canScroll = signal(false);
   readonly showingToday = signal(true);
+  readonly selectedDay = signal<string | null>(null);
+  private readonly selectedDate = signal<string | null>(null);
+  // One tab stop for the whole year; arrow keys move between days.
+  protected readonly activeDate = computed(
+    () => this.selectedDate() ?? this.weeks().flat().at(-1)?.date,
+  );
 
   constructor() {
     // Narrow screens start at the newest weeks; older months are one swipe away.
@@ -199,6 +218,24 @@ export class StatsHeatmapComponent {
 
     return labels;
   });
+
+  selectDay(day: DayCell) {
+    this.selectedDate.set(day.date);
+    this.selectedDay.set(this.getCellLabel(day));
+  }
+
+  onCellKeydown(event: KeyboardEvent, day: DayCell) {
+    const step = { ArrowLeft: -7, ArrowRight: 7, ArrowUp: -1, ArrowDown: 1 }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    const days = this.weeks().flat();
+    const target = days[days.findIndex(({ date }) => date === day.date) + step];
+    if (!target) return;
+    this.selectedDate.set(target.date);
+    this.scroller()
+      .nativeElement.querySelector<HTMLElement>(`[data-date="${target.date}"]`)
+      ?.focus();
+  }
 
   getCellLabel({ count, date }: DayCell) {
     return `${count} ${count === 1 ? 'entry' : 'entries'}, ${this.formatTooltipDate(date)}`;

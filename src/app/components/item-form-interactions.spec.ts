@@ -155,7 +155,7 @@ describe('Settled item form interactions', () => {
       const submit = () =>
         command === 'save'
           ? root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
-          : button(root, 'Confirm Delete?').click();
+          : button(root, 'Confirm delete').click();
       controlStorageWrites([false]);
       submit();
       submit();
@@ -199,7 +199,7 @@ describe('Settled item form interactions', () => {
       const held = holdStorageWrite(0);
       const submit = () =>
         command === 'delete'
-          ? button(root, 'Confirm Delete?').click()
+          ? button(root, 'Confirm delete').click()
           : root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
       submit();
       try {

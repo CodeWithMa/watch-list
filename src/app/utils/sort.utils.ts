@@ -4,13 +4,8 @@ import { getMostRecentWatchDate } from './progress.utils';
 export type SortField = 'title' | 'createdAt' | 'lastWatched' | 'status';
 export type SortDirection = 'asc' | 'desc';
 
-export const SORT_FIELDS: readonly SortField[] = [
-  'title',
-  'createdAt',
-  'lastWatched',
-  'status',
-] as const;
-export const SORT_DIRECTIONS: readonly SortDirection[] = ['asc', 'desc'] as const;
+const SORT_FIELDS: readonly SortField[] = ['title', 'createdAt', 'lastWatched', 'status'] as const;
+const SORT_DIRECTIONS: readonly SortDirection[] = ['asc', 'desc'] as const;
 
 export const SORT_FIELD_LABELS: Record<SortField, string> = {
   title: 'Title',
@@ -27,11 +22,6 @@ const STATUS_SORT_ORDER: Record<ItemStatus, number> = {
   dropped: 4,
 };
 
-export const SORT_DIRECTION_LABELS: Record<SortDirection, string> = {
-  asc: 'Ascending',
-  desc: 'Descending',
-};
-
 /** Plain-language result order, so the direction control does not need to be decoded. */
 export function sortOrderLabel(field: SortField, direction: SortDirection): string {
   const ascending = direction === 'asc';
@@ -39,6 +29,18 @@ export function sortOrderLabel(field: SortField, direction: SortDirection): stri
   if (field === 'status') return ascending ? 'Watching first' : 'Dropped first';
   return ascending ? 'Oldest first' : 'Newest first';
 }
+
+/** Every field and direction as one plainly worded choice, e.g. "Title: Z–A". */
+export function sortLabel(field: SortField, direction: SortDirection): string {
+  return `${SORT_FIELD_LABELS[field]}: ${sortOrderLabel(field, direction)}`;
+}
+
+export const SORT_OPTIONS = SORT_FIELDS.flatMap((field) =>
+  (field === 'title' || field === 'status'
+    ? (['asc', 'desc'] as const)
+    : (['desc', 'asc'] as const)
+  ).map((direction) => ({ field, direction, label: sortLabel(field, direction) })),
+);
 
 export function isSortField(value: unknown): value is SortField {
   return typeof value === 'string' && (SORT_FIELDS as readonly string[]).includes(value);

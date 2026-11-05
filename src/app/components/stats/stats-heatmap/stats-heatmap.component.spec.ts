@@ -50,9 +50,30 @@ describe('StatsHeatmapComponent', () => {
     resize();
     expect(scroller.scrollLeft).toBe(120);
 
-    root.querySelector('button')!.click();
+    root.querySelector<HTMLButtonElement>('button:not([data-date])')!.click();
     fixture.detectChanges();
     expect(scroller.scrollLeft).toBe(900);
-    expect(root.querySelector('button')).toBeNull();
+    expect(root.querySelector('button:not([data-date])')).toBeNull();
+  });
+
+  it('names the unit and reveals a day by tap or keyboard from a single tab stop', () => {
+    const fixture = TestBed.createComponent(StatsHeatmapComponent);
+    fixture.componentRef.setInput('historyEntries', []);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    document.body.append(root);
+    expect(root.textContent).toContain('Watches per day');
+
+    expect(root.querySelectorAll('[data-date][tabindex="0"]')).toHaveLength(1);
+    const last = root.querySelector<HTMLButtonElement>('[data-date][tabindex="0"]')!;
+    last.click();
+    fixture.detectChanges();
+    expect(root.querySelector('[aria-live]')?.textContent).toContain('0 entries');
+
+    last.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    fixture.detectChanges();
+    expect(root.querySelectorAll('[data-date][tabindex="0"]')).toHaveLength(1);
+    expect(root.querySelector('[data-date][tabindex="0"]')).not.toBe(last);
+    root.remove();
   });
 });

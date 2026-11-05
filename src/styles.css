@@ -1,37 +1,26 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/figtree/index.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@property --scroll-fade-start {
-  syntax: '<length>';
-  inherits: false;
-  initial-value: 0px;
-}
-
-@property --scroll-fade-end {
-  syntax: '<length>';
-  inherits: false;
-  initial-value: 0px;
-}
-
 @theme {
-  --color-light-bg-primary: #f5f5f5;
+  --color-light-bg-primary: #f4f5f7;
   --color-light-bg-secondary: #ffffff;
-  --color-light-bg-tertiary: #f8f9fa;
-  --color-light-font: #333333;
-  --color-light-font-secondary: #555555;
-  --color-light-font-muted: #666666;
-  --color-light-border: #e0e0e0;
-  --color-light-border-light: #eeeeee;
+  --color-light-bg-tertiary: #eef0f4;
+  --color-light-font: #1d2129;
+  --color-light-font-secondary: #4b5261;
+  --color-light-font-muted: #5d6472;
+  --color-light-border: #dfe2e8;
+  --color-light-border-light: #eceef2;
 
-  --color-dark-bg-primary: #1a1a1a;
-  --color-dark-bg-secondary: #2d2d2d;
-  --color-dark-bg-tertiary: #252525;
-  --color-dark-font: #e0e0e0;
-  --color-dark-font-secondary: #c4c4c4;
-  --color-dark-font-muted: #a8a8a8;
-  --color-dark-border: #404040;
-  --color-dark-border-light: #333333;
+  --color-dark-bg-primary: #121418;
+  --color-dark-bg-secondary: #1c1f25;
+  --color-dark-bg-tertiary: #262a32;
+  --color-dark-font: #eceef2;
+  --color-dark-font-secondary: #b9bfca;
+  --color-dark-font-muted: #a0a7b4;
+  --color-dark-border: #333842;
+  --color-dark-border-light: #2a2e36;
 
   --color-accent-primary: #0069d9;
   --color-accent-primary-hover: #0056b3;
@@ -48,33 +37,33 @@
   --color-accent-secondary: #6c757d;
   --color-accent-secondary-hover: #5a6268;
 
-  --color-light-hover: #e9ecef;
-  --color-dark-hover: #333333;
+  --color-light-hover: #eaecf1;
+  --color-dark-hover: #282c34;
 
-  --color-status-not-started-bg-light: #fff3cd;
-  --color-status-not-started-text-light: #856404;
-  --color-status-not-started-bg-dark: #856404;
-  --color-status-not-started-text-dark: #fff3cd;
+  --color-status-not-started-bg-light: #e9ebf0;
+  --color-status-not-started-text-light: #3f4654;
+  --color-status-not-started-bg-dark: #2f343e;
+  --color-status-not-started-text-dark: #cfd4de;
 
-  --color-status-in-progress-bg-light: #d1ecf1;
-  --color-status-in-progress-text-light: #0c5460;
-  --color-status-in-progress-bg-dark: #0c5460;
-  --color-status-in-progress-text-dark: #d1ecf1;
+  --color-status-in-progress-bg-light: #dcebff;
+  --color-status-in-progress-text-light: #0b4a94;
+  --color-status-in-progress-bg-dark: #12365f;
+  --color-status-in-progress-text-dark: #cfe3ff;
 
   --color-status-completed-bg-light: #d4edda;
   --color-status-completed-text-light: #155724;
-  --color-status-completed-bg-dark: #155724;
-  --color-status-completed-text-dark: #d4edda;
+  --color-status-completed-bg-dark: #16402a;
+  --color-status-completed-text-dark: #c9ecd5;
 
   --color-status-dropped-bg-light: #f8d7da;
   --color-status-dropped-text-light: #721c24;
-  --color-status-dropped-bg-dark: #721c24;
-  --color-status-dropped-text-dark: #f8d7da;
+  --color-status-dropped-bg-dark: #4f1f25;
+  --color-status-dropped-text-dark: #f8d4d8;
 
-  --color-status-paused-bg-light: #e0d4f5;
-  --color-status-paused-text-light: #5b21b6;
-  --color-status-paused-bg-dark: #5b21b6;
-  --color-status-paused-text-dark: #e0d4f5;
+  --color-status-paused-bg-light: #fdf0d0;
+  --color-status-paused-text-light: #6f4a00;
+  --color-status-paused-bg-dark: #4f3a0c;
+  --color-status-paused-text-dark: #fbe3ae;
 
   --color-error-bg-light: #f8d7da;
   --color-error-text-light: #721c24;
@@ -93,7 +82,12 @@
   --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.5);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.25rem;
+
+  --font-sans:
+    'Figtree Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
 }
 
 @layer base {
@@ -170,19 +164,24 @@
   }
 
   .page-title {
-    @apply m-0 text-2xl sm:text-[1.75rem] leading-tight font-semibold text-light-font dark:text-dark-font;
+    @apply m-0 text-2xl/[1.875rem] sm:text-[1.75rem]/[2.125rem] font-bold tracking-tight text-light-font dark:text-dark-font;
   }
 
   .section-title {
-    @apply m-0 text-lg font-semibold text-light-font dark:text-dark-font;
+    @apply m-0 text-lg/6 font-semibold tracking-tight text-light-font dark:text-dark-font;
   }
 
   .card {
     @apply rounded-lg border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary;
   }
 
+  /* Secondary information: type, dates, helper text. */
+  .meta {
+    @apply text-meta text-light-font-secondary dark:text-dark-font-secondary;
+  }
+
   .btn {
-    @apply inline-flex items-center justify-center gap-2 min-h-10 max-md:min-h-11 px-4 py-2 rounded border text-sm font-medium no-underline cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 min-h-10 max-md:min-h-11 px-4 py-2 rounded-md border text-sm font-semibold no-underline cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-primary {
@@ -197,6 +196,11 @@
     @apply border-transparent bg-transparent text-light-font-secondary dark:text-dark-font-secondary enabled:hover:bg-light-hover dark:enabled:hover:bg-dark-hover;
   }
 
+  /* Leaving a title or group is a consequence, not a routine action: quiet until pointed at. */
+  .btn-quiet-danger {
+    @apply border-transparent bg-transparent text-light-font-secondary dark:text-dark-font-secondary enabled:hover:bg-accent-danger/10 enabled:hover:text-accent-danger-text;
+  }
+
   .btn-danger {
     @apply border-transparent bg-accent-danger text-white enabled:hover:bg-accent-danger-hover;
   }
@@ -206,7 +210,7 @@
   }
 
   .chip {
-    @apply inline-flex items-center justify-center shrink-0 min-h-10 max-md:min-h-11 px-3 rounded border text-sm font-medium whitespace-nowrap cursor-pointer transition-colors border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:border-accent-text aria-pressed:border-transparent aria-pressed:bg-accent-primary aria-pressed:text-white;
+    @apply inline-flex items-center justify-center shrink-0 min-h-10 max-md:min-h-11 px-3.5 rounded-full border text-sm font-medium whitespace-nowrap cursor-pointer transition-colors border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:border-accent-text aria-pressed:border-transparent aria-pressed:bg-accent-primary aria-pressed:text-white aria-pressed:before:content-['✓'] aria-pressed:before:mr-1.5;
   }
 
   /* Fixed control column, so wrapped labels and hints stay attached to their checkbox or radio. */
@@ -222,43 +226,12 @@
     @apply block text-sm text-light-font-secondary dark:text-dark-font-secondary;
   }
 
-  /* Fades whichever edge still has content; a strip that fits has no scroll range and no fade. */
-  @supports (animation-timeline: scroll(x self)) {
-    .scroll-fade-x {
-      mask-image: linear-gradient(
-        to right,
-        transparent,
-        #000 var(--scroll-fade-start),
-        #000 calc(100% - var(--scroll-fade-end)),
-        transparent
-      );
-      animation: scroll-fade-x linear both;
-      animation-timeline: scroll(x self);
-    }
-
-    @keyframes scroll-fade-x {
-      from {
-        --scroll-fade-start: 0px;
-        --scroll-fade-end: 1.5rem;
-      }
-      10%,
-      90% {
-        --scroll-fade-start: 1.5rem;
-        --scroll-fade-end: 1.5rem;
-      }
-      to {
-        --scroll-fade-start: 1.5rem;
-        --scroll-fade-end: 0px;
-      }
-    }
-  }
-
   .form-select {
-    @apply min-h-10 max-md:min-h-11 px-3 py-2 border border-light-border dark:border-dark-border rounded text-sm bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font;
+    @apply min-h-10 max-md:min-h-11 px-3 py-2 border border-light-border dark:border-dark-border rounded-md text-sm bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font;
   }
 
   .form-section {
-    @apply mb-4 rounded border border-light-border dark:border-dark-border;
+    @apply mb-4 rounded-md border border-light-border dark:border-dark-border;
   }
 
   .form-section > summary {
@@ -270,11 +243,11 @@
   }
 
   .form-control {
-    @apply w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)];
+    @apply w-full p-3 border border-light-border dark:border-dark-border rounded-md text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)];
   }
 
   .form-control-sm {
-    @apply w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary;
+    @apply w-full p-2 border border-light-border dark:border-dark-border rounded-md text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary;
   }
 
   .search-input-group {

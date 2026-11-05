@@ -108,7 +108,7 @@ describe('AddItemComponent', () => {
       expect(provider.querySelector('img')?.getAttribute('src')).toBe('icons/providers/tmdb.svg');
       expect(provider.title).toBe('Search with TMDB');
       expect(
-        provider.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
+        provider.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_PRECEDING,
       ).toBeTruthy();
       provider.click();
       fixture.detectChanges();
@@ -270,7 +270,7 @@ describe('AddItemComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain(
-      'An item named "Existing Show" already exists.',
+      'A title named "Existing Show" already exists.',
     );
   });
 
@@ -410,18 +410,21 @@ describe('AddItemComponent', () => {
       await vi.advanceTimersByTimeAsync(0);
       const root = fixture.nativeElement as HTMLElement;
       const title = root.querySelector<HTMLInputElement>('#title')!;
+      // The setup state and manual path are honest before anything is typed.
+      expect(root.textContent).toContain('TMDB needs setup');
+      expect(root.textContent).toContain('enter the title manually');
       title.value = 'Arrival';
       title.dispatchEvent(new Event('input'));
       await vi.advanceTimersByTimeAsync(1000);
       fixture.detectChanges();
-      expect(root.textContent).toContain("TMDB isn't connected");
+      expect(root.textContent).toContain('TMDB needs setup');
       expect(root.querySelector('a[href="/settings"]')).not.toBeNull();
       expect(root.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
 
       fixture.componentInstance.onSearchProviderChanged('jikan');
       await vi.advanceTimersByTimeAsync(1000);
       fixture.detectChanges();
-      expect(root.textContent).not.toContain("TMDB isn't connected");
+      expect(root.textContent).not.toContain('TMDB needs setup');
       expect(root.textContent).toContain('No suggestions found');
     } finally {
       vi.useRealTimers();

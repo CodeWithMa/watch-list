@@ -102,7 +102,7 @@ describe('Watch action acknowledgment and undo', () => {
       type: 'movie',
       progress: undefined,
     });
-    homeButton('Mark Watched').click();
+    homeButton('Mark watched').click();
     await settled('Severance marked as watched');
     expect(homeRoot.querySelector('article')).toBeNull();
     undoButton()!.click();

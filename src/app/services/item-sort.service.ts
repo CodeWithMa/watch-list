@@ -29,10 +29,6 @@ export class ItemSortService {
     this.saveDirection(direction);
   }
 
-  toggleDirection(): void {
-    this.setDirection(this.directionSignal() === 'asc' ? 'desc' : 'asc');
-  }
-
   private loadField(): SortField {
     try {
       const raw = this.settingsStorage.read(SORT_FIELD_KEY);

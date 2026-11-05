@@ -9,11 +9,11 @@ import { StatsDailyActivityComponent } from './stats-daily-activity/stats-daily-
 const PATTERN_SAMPLE_SIZE = 20;
 
 const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
-  { label: 'In Progress', status: 'in-progress' },
+  { label: 'In progress', status: 'in-progress' },
   { label: 'Paused', status: 'paused' },
   { label: 'Completed', status: 'completed' },
   { label: 'Dropped', status: 'dropped' },
-  { label: 'Not Started', status: 'not-started' },
+  { label: 'Not started', status: 'not-started' },
 ];
 
 @Component({
@@ -29,9 +29,9 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
             No data to show yet.
           </p>
           <p class="text-sm text-light-font-secondary dark:text-dark-font-secondary mt-0 mb-4">
-            Add items and start watching to see your stats!
+            Add titles and start watching to see your stats.
           </p>
-          <a [routerLink]="['/items']" class="btn btn-primary">Browse Items</a>
+          <a [routerLink]="['/items/add']" class="btn btn-primary">Add title</a>
         </div>
       } @else {
         <div class="space-y-6 sm:space-y-8">
@@ -80,7 +80,7 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
 
           @if (mostWatchedItems().length > 0) {
             <section>
-              <h2 class="section-title mb-3">Most Watched</h2>
+              <h2 class="section-title mb-3">Most watched</h2>
               <div class="card overflow-hidden">
                 @for (item of mostWatchedItems(); track item.id; let i = $index) {
                   <div
@@ -121,7 +121,7 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
                 </p>
               }
               <section>
-                <h3 class="text-base font-semibold mt-0 mb-3">Daily Activity</h3>
+                <h3 class="text-base font-semibold mt-0 mb-3">Daily activity</h3>
                 <div class="card p-4 sm:p-6">
                   <app-stats-daily-activity [historyEntries]="history()" />
                 </div>
@@ -225,18 +225,18 @@ export class StatsComponent {
   );
 
   protected readonly overview = computed(() => [
-    { label: 'Episodes', value: this.totalEpisodesWatched() },
+    { label: 'Episodes logged', value: this.totalEpisodesWatched() },
     { label: 'Watching', value: this.inProgressCount() },
     { label: 'Completed', value: this.completedCount() },
-    { label: 'Watch Entries', value: this.history().length },
-    { label: 'Total Items', value: this.totalItems() },
+    { label: 'Watches logged', value: this.history().length },
+    { label: 'Total titles', value: this.totalItems() },
     { label: 'Dropped', value: this.droppedCount() },
   ]);
 
   protected readonly streaks = computed(() => [
-    { label: 'Current Streak (days)', value: this.currentStreak() },
-    { label: 'Longest Streak (days)', value: this.longestStreak() },
-    { label: 'Total Days Watched', value: this.totalDaysWatched() },
+    { label: 'Current streak (days)', value: this.currentStreak() },
+    { label: 'Longest streak (days)', value: this.longestStreak() },
+    { label: 'Total days watched', value: this.totalDaysWatched() },
   ]);
 
   protected readonly breakdown = computed(() => [
@@ -246,7 +246,7 @@ export class StatsComponent {
         label,
         value: this.seriesCountByStatus()[status],
       })),
-      summaryLabel: 'Avg. Episodes / Active',
+      summaryLabel: 'Avg. episodes / active',
       summary: this.avgEpisodesPerActiveSeries(),
     },
     {
@@ -255,7 +255,7 @@ export class StatsComponent {
         label,
         value: this.moviesCountByStatus()[status],
       })),
-      summaryLabel: 'Avg. Time to Complete',
+      summaryLabel: 'Avg. time to complete',
       summary: this.avgTimeToComplete(),
     },
   ]);

@@ -30,7 +30,9 @@ import { SuggestionSource } from '../../models/suggestion.model';
         aria-haspopup="menu"
         [attr.aria-expanded]="isOpen()"
         (click)="toggle()"
-        class="flex h-(--search-control-size) items-center justify-center gap-1.5 px-2.5 rounded-l text-sm font-medium text-light-font dark:text-dark-font border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer focus-visible:outline-2 focus-visible:outline-accent-primary focus-visible:-outline-offset-2"
+        [class.rounded-md]="standalone()"
+        [class.rounded-l]="!standalone()"
+        class="flex h-(--search-control-size) items-center justify-center gap-1.5 px-2.5 text-sm font-medium text-light-font dark:text-dark-font border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer focus-visible:outline-2 focus-visible:outline-accent-primary focus-visible:-outline-offset-2"
       >
         <img
           [src]="'icons/providers/' + (value() ?? sources()[0]) + '.svg'"
@@ -91,6 +93,8 @@ export class SearchProviderSelectComponent {
   readonly sources = input.required<SuggestionSource[]>();
   readonly value = input.required<SuggestionSource | undefined>();
   readonly label = input.required<string>();
+  /** Stands on its own rather than joined to the left edge of a search field. */
+  readonly standalone = input(false);
   readonly sourcesNeedingSetup = input<readonly SuggestionSource[]>([]);
   readonly valueChange = output<SuggestionSource>();
   readonly labels = { tmdb: 'TMDB', jikan: 'Jikan', anilist: 'AniList' };

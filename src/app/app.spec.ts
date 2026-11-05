@@ -29,7 +29,7 @@ describe('App navigation', () => {
     const { root } = setup();
     expect(
       [...root.querySelectorAll('#primary-nav-links a')].map((link) => link.textContent?.trim()),
-    ).toEqual(['Home', 'Items', 'History', 'Stats', 'Groups', 'Settings']);
+    ).toEqual(['Home', 'Library', 'History', 'Stats', 'Groups', 'Settings']);
     expect(root.querySelector('nav app-theme-switcher')).not.toBeNull();
   });
 

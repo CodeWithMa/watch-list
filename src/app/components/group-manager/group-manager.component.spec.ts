@@ -58,7 +58,7 @@ describe('GroupManagerComponent inline delete confirm', () => {
     remove.click();
     fixture.detectChanges();
 
-    expect(document.activeElement).toBe(button(root, 'Confirm Delete?'));
+    expect(document.activeElement).toBe(button(root, 'Confirm delete'));
     expect(deleteGroup).not.toHaveBeenCalled();
 
     const cancel = button(root, 'Cancel');
@@ -79,7 +79,7 @@ describe('GroupManagerComponent inline delete confirm', () => {
     const root = fixture.nativeElement as HTMLElement;
     button(root, 'Delete').click();
     fixture.detectChanges();
-    const confirm = button(root, 'Confirm Delete?');
+    const confirm = button(root, 'Confirm delete');
     confirm.focus();
     confirm.click();
     await fixture.whenStable();
@@ -127,14 +127,14 @@ describe('GroupManagerComponent inline delete confirm', () => {
       const root = fixture.nativeElement as HTMLElement;
       button(root, 'Delete').click();
       fixture.detectChanges();
-      const confirm = button(root, 'Confirm Delete?');
+      const confirm = button(root, 'Confirm delete');
       confirm.focus();
       confirm.click();
       await fixture.whenStable();
       fixture.detectChanges();
 
       expect(root.querySelector('[role="alert"]')?.textContent).toContain(message);
-      expect(document.activeElement).toBe(button(root, 'Confirm Delete?'));
+      expect(document.activeElement).toBe(button(root, 'Confirm delete'));
     },
   );
 
@@ -151,7 +151,7 @@ describe('GroupManagerComponent inline delete confirm', () => {
     expect(deleteGroup).not.toHaveBeenCalled();
     expect(confirmSpy).not.toHaveBeenCalled();
     const confirmButton = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (button: HTMLButtonElement) => button.textContent?.trim() === 'Confirm Delete?',
+      (button: HTMLButtonElement) => button.textContent?.trim() === 'Confirm delete',
     );
     expect(confirmButton).not.toBeUndefined();
   });

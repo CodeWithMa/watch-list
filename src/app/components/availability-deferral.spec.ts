@@ -36,7 +36,7 @@ describe('Availability deferral controls', () => {
     const fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
-    button(root, 'Not available?').click();
+    button(root, 'Defer episode…').click();
     fixture.detectChanges();
     expect(root.querySelector('input')?.value).toBe('1');
     expect(root.textContent).toContain(formatDate('2026-10-20T11:00:00.000Z', 'short', 'en-US'));
@@ -58,7 +58,7 @@ describe('Availability deferral controls', () => {
       const fixture = TestBed.createComponent(HomeComponent);
       fixture.detectChanges();
       const root: HTMLElement = fixture.nativeElement;
-      button(root, 'Not available?').click();
+      button(root, 'Defer episode…').click();
       fixture.detectChanges();
       const input = root.querySelector('input')!;
       for (const value of ['', '0', '-1', '1.5', '1.0000000000000001', '1e309', '1000000000000']) {
@@ -107,7 +107,7 @@ describe('Availability deferral controls', () => {
     expect(root.textContent).not.toContain('Other');
     expect(
       Array.from(root.querySelectorAll('button')).some((b) =>
-        b.textContent?.includes('Not available?'),
+        b.textContent?.includes('Defer episode…'),
       ),
     ).toBe(false);
   });
@@ -137,7 +137,7 @@ describe('Availability deferral controls', () => {
     const fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     const root: HTMLElement = fixture.nativeElement;
-    button(root, 'Not available?').click();
+    button(root, 'Defer episode…').click();
     fixture.detectChanges();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const failure = controlStorageWrites([false]);

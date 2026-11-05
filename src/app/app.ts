@@ -37,7 +37,7 @@ export class App {
   protected readonly title = signal('watch-list');
   protected readonly navLinks = [
     { path: '/', label: 'Home' },
-    { path: '/items', label: 'Items' },
+    { path: '/items', label: 'Library' },
     { path: '/history', label: 'History' },
     { path: '/stats', label: 'Stats' },
     { path: '/groups', label: 'Groups' },

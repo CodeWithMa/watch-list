@@ -10,7 +10,7 @@ import { formatEpisode } from '../../utils/progress.utils';
   imports: [RouterLink],
   template: `
     <div>
-      <h1 class="page-title mb-6">Watch History</h1>
+      <h1 class="page-title mb-6">Watch history</h1>
 
       @if (history().length === 0) {
         <div class="card p-6 sm:p-8 text-center">

@@ -21,8 +21,8 @@ export function isEpisodicType(type: ItemType): boolean {
 }
 
 export const ITEM_STATUS_LABELS: Record<ItemStatus, string> = {
-  'not-started': 'Not Started',
-  'in-progress': 'In Progress',
+  'not-started': 'Not started',
+  'in-progress': 'In progress',
   paused: 'Paused',
   completed: 'Completed',
   dropped: 'Dropped',

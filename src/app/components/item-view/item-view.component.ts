@@ -49,7 +49,6 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
               />
             } @else if (posterUrl() === null) {
               <app-poster-fallback
-                [title]="currentItem.title"
                 [type]="currentItem.type"
                 [label]="currentItem.title + ' has no poster'"
               />
@@ -59,9 +58,7 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
             <h1 class="page-title break-words">{{ currentItem.title }}</h1>
             <div class="mt-2 flex flex-wrap items-center gap-2">
               <span [class]="statusBadge()">{{ statusLabel() }}</span>
-              <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">{{
-                typeLabel()
-              }}</span>
+              <span class="meta">{{ typeLabel() }}</span>
             </div>
             @if (episodeLabel(); as episode) {
               <p class="mt-3 mb-0 text-base">
@@ -69,6 +66,20 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                 @if (currentSeason()?.totalEpisodes; as total) {
                   <span class="text-light-font-secondary dark:text-dark-font-secondary">
                     of {{ total }}</span
+                  >
+                }
+              </p>
+            }
+            @if (showReleaseDelayControls() && !canSnooze()) {
+              <p id="snooze-prerequisite" class="meta mt-1 mb-0">
+                @if (currentSeason()?.firstEpisodeAirDate) {
+                  Snoozing isn't available for this episode.
+                } @else {
+                  <a
+                    [routerLink]="['/items', currentItem.id, 'edit']"
+                    fragment="season-details"
+                    class="text-accent-text underline"
+                    >Add air date to enable snoozing</a
                   >
                 }
               </p>
@@ -94,32 +105,34 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                 </button>
               </div>
             }
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap items-center gap-2">
               @for (action of quickActions(); track action.action; let first = $first) {
-                <button
-                  type="button"
-                  (click)="runAction(action.action)"
-                  [disabled]="actions.busy()"
-                  class="btn"
-                  [class.btn-primary]="first"
-                  [class.btn-secondary]="!first && action.action !== 'dropped'"
-                  [class.btn-quiet]="action.action === 'dropped'"
-                  [class.max-sm:w-full]="first"
-                >
-                  {{ action.label }}
-                </button>
+                @if (action.action !== 'dropped') {
+                  <button
+                    type="button"
+                    (click)="runAction(action.action)"
+                    [disabled]="actions.busy()"
+                    class="btn"
+                    [class.btn-primary]="first"
+                    [class.btn-secondary]="!first"
+                    [class.max-sm:w-full]="first"
+                  >
+                    {{ action.label }}
+                  </button>
+                }
               }
               @if (showReleaseDelayControls()) {
-                <button
-                  type="button"
-                  (click)="changeReleaseDelay(1)"
-                  [disabled]="actions.busy() || !canSnooze()"
-                  [title]="canSnooze() ? snoozeHint : null"
-                  [attr.aria-describedby]="canSnooze() ? null : 'snooze-prerequisite'"
-                  class="btn btn-secondary"
-                >
-                  Snooze 1 week
-                </button>
+                @if (canSnooze()) {
+                  <button
+                    type="button"
+                    (click)="changeReleaseDelay(1)"
+                    [disabled]="actions.busy()"
+                    [title]="snoozeHint"
+                    class="btn btn-secondary"
+                  >
+                    Snooze 1 week
+                  </button>
+                }
                 @if (canRemoveDelay()) {
                   <button
                     type="button"
@@ -132,27 +145,20 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                 }
               }
               <a [routerLink]="['/items', currentItem.id, 'edit']" class="btn btn-secondary"
-                >Edit Item</a
+                >Edit details</a
               >
+              @if (canDrop()) {
+                <button
+                  type="button"
+                  (click)="runAction('dropped')"
+                  [disabled]="actions.busy()"
+                  title="Stop watching this title. Its history is kept, and you can restart it later."
+                  class="btn btn-quiet-danger ml-auto"
+                >
+                  Drop
+                </button>
+              }
             </div>
-            @if (showReleaseDelayControls() && !canSnooze()) {
-              <p
-                id="snooze-prerequisite"
-                class="mt-3 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary"
-              >
-                @if (currentSeason()?.firstEpisodeAirDate) {
-                  Snoozing isn't available for this episode.
-                } @else {
-                  Snoozing needs this season's first air date.
-                  <a
-                    [routerLink]="['/items', currentItem.id, 'edit']"
-                    fragment="season-details"
-                    class="text-accent-text underline whitespace-nowrap"
-                    >Add air date</a
-                  >
-                }
-              </p>
-            }
             @if (actions.error()) {
               <p role="alert" class="mt-3 mb-0 text-sm text-accent-danger-text">
                 {{ actions.error() }}
@@ -168,18 +174,16 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
 
         <section class="mb-6">
           <h2 class="section-title mb-3">Details</h2>
-          <dl class="card m-0 p-4 grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-            <div>
-              <dt class="text-light-font-secondary dark:text-dark-font-secondary">Type</dt>
-              <dd class="m-0">{{ typeLabel() }}</dd>
-            </div>
+          <dl class="card m-0 p-4 grid grid-cols-2 min-[22rem]:grid-cols-3 gap-4 text-sm">
             <div>
               <dt class="text-light-font-secondary dark:text-dark-font-secondary">Group</dt>
               <dd class="m-0">{{ groupName() ?? 'Ungrouped' }}</dd>
             </div>
             <div>
               <dt class="text-light-font-secondary dark:text-dark-font-secondary">Added</dt>
-              <dd class="m-0">{{ currentItem.createdAt | date: 'medium' }}</dd>
+              <dd class="m-0" [title]="currentItem.createdAt | date: 'medium'">
+                {{ currentItem.createdAt | date: 'mediumDate' }}
+              </dd>
             </div>
             <div>
               <dt class="text-light-font-secondary dark:text-dark-font-secondary">Last watched</dt>
@@ -195,7 +199,7 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
         </section>
 
         <section>
-          <h2 class="section-title mb-3">Watch History</h2>
+          <h2 class="section-title mb-3">Watch history</h2>
           @if (watchHistory().length === 0) {
             <p class="card m-0 p-4 text-sm text-light-font-secondary dark:text-dark-font-secondary">
               No watch history yet.
@@ -204,7 +208,9 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
             <ol class="space-y-2 list-none p-0 m-0">
               @for (entry of watchHistory(); track $index) {
                 <li class="card flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm">
-                  <span>{{ entry.date | date: 'medium' }}</span>
+                  <span [title]="entry.date | date: 'medium'">{{
+                    entry.date | date: 'MMM d, y, h:mm a'
+                  }}</span>
                   @if (entry.season) {
                     <span
                       class="text-xs bg-accent-primary/10 text-accent-text px-2 py-0.5 rounded-full font-medium"
@@ -218,8 +224,8 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
         </section>
       } @else {
         <div class="text-center px-8 py-16">
-          <h2 class="mb-4">Item not found</h2>
-          <a [routerLink]="['/items']">Back to Items</a>
+          <h2 class="mb-4">Title not found</h2>
+          <a [routerLink]="['/items']" class="text-accent-text underline">Back to library</a>
         </div>
       }
     </div>
@@ -239,11 +245,11 @@ export class ItemViewComponent {
   > = {
     'not-started': [
       { label: 'Start', action: 'started' },
-      { label: 'Mark Watched', action: 'watched' },
+      { label: 'Mark watched', action: 'watched' },
       { label: 'Drop', action: 'dropped' },
     ],
     'in-progress': [
-      { label: 'Mark Watched', action: 'watched' },
+      { label: 'Mark watched', action: 'watched' },
       { label: 'Pause', action: 'paused' },
       { label: 'Drop', action: 'dropped' },
     ],
@@ -283,11 +289,12 @@ export class ItemViewComponent {
     if (!item) return [];
 
     const episode = this.episodeLabel();
-    const label = episode ? `Mark ${episode} watched` : 'Mark Watched';
+    const label = episode ? `Mark ${episode} watched` : 'Mark watched';
     return this.quickActionsByStatus[item.status].map((action) =>
       action.action === 'watched' ? { ...action, label } : action,
     );
   });
+  readonly canDrop = computed(() => this.quickActions().some(({ action }) => action === 'dropped'));
   readonly statusBadge = computed(() => statusBadgeClass(this.item()?.status ?? 'not-started'));
   readonly statusLabel = computed(() => ITEM_STATUS_LABELS[this.item()?.status ?? 'not-started']);
   readonly typeLabel = computed(() => ITEM_TYPE_LABELS[this.item()?.type ?? 'series']);

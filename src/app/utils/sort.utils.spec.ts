@@ -4,7 +4,8 @@ import {
   isSortDirection,
   isSortField,
   sortItems,
-  SORT_DIRECTION_LABELS,
+  sortLabel,
+  SORT_OPTIONS,
   sortOrderLabel,
   SORT_FIELD_LABELS,
 } from './sort.utils';
@@ -50,8 +51,9 @@ describe('sort.utils', () => {
     });
 
     it('has labels for directions', () => {
-      expect(SORT_DIRECTION_LABELS.asc).toBe('Ascending');
-      expect(SORT_DIRECTION_LABELS.desc).toBe('Descending');
+      expect(sortLabel('title', 'desc')).toBe('Title: Z–A');
+      expect(SORT_OPTIONS.map((option) => option.label)).toContain('Added date: Newest first');
+      expect(SORT_OPTIONS).toHaveLength(8);
     });
 
     it('names the resulting order for each field', () => {

@@ -6,6 +6,7 @@ import { WatchListService } from '../../services/watch-list.service';
 import { BacklogChoicesComponent } from './backlog-choices.component';
 import { RecommendationPanelComponent } from './recommendation-panel.component';
 import { TitleRowComponent } from './title-row.component';
+import { PosterFallbackComponent } from '../poster-fallback/poster-fallback.component';
 import { ReadonlyItem as Item, ItemType } from '../../models/item.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
@@ -23,6 +24,7 @@ const SLOT_CHOICE_LIMIT = 3;
     BacklogChoicesComponent,
     CommonModule,
     ConflictRecoveryComponent,
+    PosterFallbackComponent,
     RecommendationPanelComponent,
     RouterLink,
     TitleRowComponent,
@@ -39,17 +41,44 @@ const SLOT_CHOICE_LIMIT = 3;
       }
 
       @if (isLibraryEmpty()) {
-        <section class="card p-6 sm:p-8 text-center">
-          <h2 class="section-title mb-2">Your watch list is empty</h2>
-          <p class="mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+        <section class="card max-w-2xl mx-auto px-4 py-8 sm:p-10 text-center">
+          <div class="flex justify-center mb-6" aria-hidden="true">
+            <app-poster-fallback
+              type="movie"
+              class="!w-16 rounded-md border border-light-border dark:border-dark-border -rotate-6 translate-x-3 translate-y-1"
+            />
+            <app-poster-fallback
+              type="series"
+              class="!w-20 relative z-10 rounded-md border border-light-border dark:border-dark-border"
+            />
+            <app-poster-fallback
+              type="movie"
+              class="!w-16 rounded-md border border-light-border dark:border-dark-border rotate-6 -translate-x-3 translate-y-1"
+            />
+          </div>
+          <h2 class="section-title !text-xl mb-2">Your watch list is empty</h2>
+          <p class="mt-0 mb-6 text-light-font-secondary dark:text-dark-font-secondary">
             Add a series or movie and this page will tell you what to watch next.
           </p>
-          <a routerLink="/items/add" class="btn btn-primary">Add your first title</a>
+          <ol
+            class="list-none m-0 mb-6 p-0 grid sm:grid-cols-3 gap-3 text-sm text-left sm:text-center"
+          >
+            @for (step of onboardingSteps; track step; let number = $index) {
+              <li class="flex sm:flex-col items-center gap-2">
+                <span
+                  class="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-primary/10 dark:bg-accent-text/15 text-accent-text text-meta font-semibold"
+                  >{{ number + 1 }}</span
+                >
+                {{ step }}
+              </li>
+            }
+          </ol>
+          <a routerLink="/items/add" class="btn btn-primary">Add title</a>
         </section>
       } @else {
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 sm:mb-8 items-start">
-          <section>
-            <h2 class="slot-label">Next Series</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 sm:mb-8">
+          <section class="flex flex-col">
+            <h2 class="slot-label">Next series</h2>
             @if (nextSeries(); as item) {
               <app-recommendation-panel
                 [item]="item"
@@ -65,7 +94,9 @@ const SLOT_CHOICE_LIMIT = 3;
                       Hide {{ target.title }}'s current episode from recommendations until it's
                       available.
                     </p>
-                    <label for="deferral-hours" class="block text-sm mb-1">Hours</label>
+                    <label for="deferral-hours" class="block text-sm font-medium mb-1"
+                      >Hours to hide</label
+                    >
                     <input
                       #hoursInput
                       id="deferral-hours"
@@ -137,8 +168,8 @@ const SLOT_CHOICE_LIMIT = 3;
             }
           </section>
 
-          <section>
-            <h2 class="slot-label">Next Movie</h2>
+          <section class="flex flex-col">
+            <h2 class="slot-label">Next movie</h2>
             @if (nextMovie(); as item) {
               <app-recommendation-panel
                 [item]="item"
@@ -194,7 +225,7 @@ const SLOT_CHOICE_LIMIT = 3;
             <div class="flex flex-wrap items-baseline gap-x-3">
               <h2 class="section-title">Backlog</h2>
               <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-                No items in backlog
+                No titles in backlog
               </p>
             </div>
           }
@@ -218,7 +249,7 @@ const SLOT_CHOICE_LIMIT = 3;
             <div class="flex flex-wrap items-baseline gap-x-3">
               <h2 class="section-title">Paused</h2>
               <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-                No items paused
+                No titles paused
               </p>
             </div>
           }
@@ -230,6 +261,7 @@ const SLOT_CHOICE_LIMIT = 3;
     .slot-label {
       margin: 0 0 0.5rem;
       font-size: 0.875rem;
+      line-height: 1.25rem;
       font-weight: 600;
     }
   `,
@@ -240,6 +272,11 @@ export class HomeComponent {
   private providerSettings = inject(ProviderSettingsService);
   private notices = inject(WatchActionNoticeService);
   readonly actions = new MutationFeedback(watchActionFailure);
+  protected readonly onboardingSteps = [
+    'Add the titles you want to watch',
+    'Log episodes and movies as you go',
+    'Get your next pick right here',
+  ];
 
   nextSeries = this.roundRobinService.nextSeries;
   nextMovie = this.roundRobinService.nextMovie;

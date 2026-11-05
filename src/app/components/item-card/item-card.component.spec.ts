@@ -45,7 +45,7 @@ describe('ItemCardComponent', () => {
     const text = () => (fixture.nativeElement as HTMLElement).textContent;
 
     expect(text()).toContain('Test Show');
-    expect(text()).toContain('In Progress');
+    expect(text()).toContain('In progress');
     expect(text()).toContain('Series');
     expect(text()).toContain('Next: S1 E2');
     expect(text()).toContain('Watched');
@@ -54,7 +54,7 @@ describe('ItemCardComponent', () => {
 
     fixture.componentRef.setInput('item', createItem({ status: 'not-started', watchHistory: [] }));
     fixture.detectChanges();
-    expect(text()).toContain('Not Started');
+    expect(text()).toContain('Not started');
     expect(text()).not.toContain('Next:');
     expect(text()).not.toContain('Added');
     expect(text()).not.toContain('Watched');
@@ -66,21 +66,25 @@ describe('ItemCardComponent', () => {
     expect(fixture.componentInstance.progressPercent()).toBe(100);
   });
 
-  it('keeps the title link once when a titled cover replaces the artwork', async () => {
+  it('keeps one card anatomy with and without artwork', async () => {
     const fixture = TestBed.createComponent(ItemCardComponent);
     fixture.componentRef.setInput('item', createItem({ posterId: undefined }));
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
     await vi.waitFor(() => {
       fixture.detectChanges();
-      expect(root.querySelector('app-poster-fallback')?.textContent).toContain('Test Show');
+      expect(root.querySelector('app-poster-fallback')).not.toBeNull();
     });
-    expect(root.querySelector('h3')?.classList).toContain('sr-only');
-    expect(root.querySelector('h3 a')?.textContent).toContain('Test Show');
+    const title = () => root.querySelector('h3 a');
+    expect(root.querySelector('app-poster-fallback')?.textContent).not.toContain('Test Show');
+    const withoutArtwork = title()?.parentElement?.className;
+    expect(title()?.textContent).toContain('Test Show');
+    expect(title()?.getAttribute('title')).toBe('Test Show');
 
     fixture.componentRef.setInput('item', createItem({ posterId: 'p1' }));
     fixture.detectChanges();
-    expect(root.querySelector('h3')?.classList).not.toContain('sr-only');
+    expect(title()?.parentElement?.className).toBe(withoutArtwork);
+    expect(root.querySelectorAll('h3 a')).toHaveLength(1);
   });
 
   it('computes progress and lastWatched for movie', () => {

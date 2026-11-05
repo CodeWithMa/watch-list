@@ -24,7 +24,7 @@ import { PosterFallbackComponent } from '../poster-fallback/poster-fallback.comp
           [style.filter]="shouldBlur() ? 'blur(12px)' : null"
         />
       } @else if (posterUrl() === null) {
-        <app-poster-fallback [title]="item().title" [type]="item().type" />
+        <app-poster-fallback [type]="item().type" />
       } @else {
         <div class="w-full aspect-[2/3] bg-light-hover dark:bg-dark-bg-tertiary"></div>
       }
@@ -36,7 +36,7 @@ import { PosterFallbackComponent } from '../poster-fallback/poster-fallback.comp
         class="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-sm font-medium backdrop-blur-[2px] cursor-pointer border-0"
         aria-label="Reveal adult poster"
       >
-        Adult — click to reveal
+        <span [class.sr-only]="compact()">Adult — click to reveal</span>
       </button>
     }
   `,
@@ -44,6 +44,8 @@ import { PosterFallbackComponent } from '../poster-fallback/poster-fallback.comp
 export class PosterComponent {
   private providerSettings = inject(ProviderSettingsService);
   readonly item = input.required<Item>();
+  /** Thumbnail slots have no room for the reveal prompt's text. */
+  readonly compact = input(false);
 
   readonly posterUrl = injectPosterUrl(() => this.item().posterId);
   readonly revealed = signal(false);

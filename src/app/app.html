@@ -5,9 +5,21 @@
   <div class="page-container !py-0 flex flex-wrap items-center gap-x-6">
     <a
       routerLink="/"
-      class="flex items-center min-h-14 md:min-h-16 text-xl font-bold text-accent-text no-underline hover:underline"
-      >Watch List</a
+      class="flex items-center gap-2 min-h-14 md:min-h-16 text-xl font-bold tracking-tight text-light-font dark:text-dark-font no-underline hover:text-accent-text"
     >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        class="text-accent-primary dark:text-accent-text"
+        aria-hidden="true"
+      >
+        <rect width="24" height="24" rx="6" fill="currentColor" />
+        <path d="M9.5 7.5v9l7-4.5z" class="fill-white dark:fill-dark-bg-secondary" />
+      </svg>
+      Watch List
+    </a>
     <div class="max-md:ml-auto flex items-center gap-1 md:order-last">
       <app-theme-switcher />
       <button
@@ -40,7 +52,7 @@
     </div>
     <div
       id="primary-nav-links"
-      class="md:ml-auto flex gap-1 md:gap-6 max-md:w-full max-md:flex-col max-md:pb-3 md:items-center"
+      class="md:ml-auto flex gap-1 max-md:w-full max-md:flex-col max-md:pb-3 md:items-center"
       [class.max-md:hidden]="!menuOpen()"
     >
       @for (link of navLinks; track link.path) {
@@ -50,7 +62,7 @@
           ariaCurrentWhenActive="page"
           [routerLinkActiveOptions]="{ exact: link.path === '/' }"
           (click)="closeMenu()"
-          class="text-light-font dark:text-dark-font no-underline font-medium transition-colors duration-200 hover:text-accent-text flex items-center max-md:min-h-11 max-md:px-3 max-md:rounded md:py-2 md:border-b-2 md:border-transparent [&.active]:text-accent-text md:[&.active]:border-accent-text max-md:[&.active]:bg-light-hover dark:max-md:[&.active]:bg-dark-hover"
+          class="text-light-font-secondary dark:text-dark-font-secondary no-underline font-medium transition-colors duration-200 hover:text-accent-text flex items-center min-h-10 max-md:min-h-11 px-3 rounded-md [&.active]:font-semibold [&.active]:text-accent-text [&.active]:bg-accent-primary/10 dark:[&.active]:bg-accent-text/15"
           >{{ link.label }}</a
         >
       }

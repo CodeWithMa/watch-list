@@ -49,18 +49,21 @@ export interface ItemFormAutofillPatch {
           <label for="title" class="block mb-2 font-medium text-light-font dark:text-dark-font"
             >Title *</label
           >
-          <div class="search-input-group">
+          <input
+            #titleInput
+            type="text"
+            id="title"
+            [ngModel]="formValue().title"
+            (ngModelChange)="updateTitle($event)"
+            name="title"
+            required
+            class="form-control"
+          />
+          <div
+            class="hidden has-[app-search-provider-select:not(.hidden)]:flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 [--search-control-size:2.75rem] md:[--search-control-size:2.5rem]"
+          >
+            <span class="meta">Suggestions from</span>
             <ng-content select="[title-search-provider]" />
-            <input
-              #titleInput
-              type="text"
-              id="title"
-              [ngModel]="formValue().title"
-              (ngModelChange)="updateTitle($event)"
-              name="title"
-              required
-              class="form-control flex-1 min-w-0"
-            />
           </div>
           @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
             <div class="text-accent-danger-text text-sm mt-1">Title is required</div>
@@ -70,11 +73,11 @@ export interface ItemFormAutofillPatch {
               {{ duplicateTitleHint() }}
             </div>
           }
-          @if (searchSetupRequired() && formValue().title.trim() && suggestions().length === 0) {
+          @if (searchSetupRequired() && suggestions().length === 0) {
             <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-              TMDB isn't connected, so there are no suggestions.
+              TMDB needs setup, so it can't suggest titles yet.
               <a routerLink="/settings" class="text-accent-text underline">Connect it in Settings</a
-              >, switch provider, or just fill in the details yourself.
+              >, switch provider, or enter the title manually.
             </p>
           } @else if (suggestionsEmpty()) {
             <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
@@ -136,10 +139,10 @@ export interface ItemFormAutofillPatch {
           }
         </div>
 
-        <div class="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3 mb-4">
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-3 mb-4">
           <div>
             <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-              >Type *</label
+              >Type</label
             >
             <select
               id="type"
@@ -155,7 +158,7 @@ export interface ItemFormAutofillPatch {
           </div>
           <div>
             <label for="groupId" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-              >Group *</label
+              >Group</label
             >
             <select
               id="groupId"
@@ -204,33 +207,37 @@ export interface ItemFormAutofillPatch {
           </div>
         }
 
-        <div class="mb-4">
-          <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Poster</span>
-          <app-poster-picker
-            [posterId]="formValue().posterId"
-            [searchSeed]="formValue().title"
-            (posterIdChange)="updatePosterId($event)"
-            (loadingChange)="posterLoading.set($event)"
-            #posterPicker
-          />
-        </div>
-
-        <div class="mb-4">
-          <label class="choice-row">
-            <input
-              type="checkbox"
-              id="isAdult"
-              [ngModel]="formValue().isAdult"
-              (ngModelChange)="updateIsAdult($event)"
-              name="isAdult"
+        <details
+          class="form-section"
+          [open]="showStatusPicker() || !!formValue().posterId || formValue().isAdult"
+        >
+          <summary>Poster and adult content (optional)</summary>
+          <div>
+            <app-poster-picker
+              [posterId]="formValue().posterId"
+              [searchSeed]="formValue().title"
+              (posterIdChange)="updatePosterId($event)"
+              (loadingChange)="posterLoading.set($event)"
+              #posterPicker
             />
-            <span>Adult content</span>
-          </label>
-        </div>
+            <label class="choice-row mt-4">
+              <input
+                type="checkbox"
+                id="isAdult"
+                [ngModel]="formValue().isAdult"
+                (ngModelChange)="updateIsAdult($event)"
+                name="isAdult"
+              />
+              <span>Adult content</span>
+            </label>
+          </div>
+        </details>
 
         @if (isEpisodic(formValue().type)) {
           <details class="form-section" [open]="showProgressSection()">
-            <summary>{{ showStatusPicker() ? 'Progress' : 'Starting progress' }}</summary>
+            <summary>
+              {{ showStatusPicker() ? 'Progress' : 'Starting progress (optional)' }}
+            </summary>
             <div>
               <p class="mt-0 mb-3 text-sm text-light-font-secondary dark:text-dark-font-secondary">
                 The next episode to watch. New titles start at season 1, episode 1.

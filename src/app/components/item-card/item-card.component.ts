@@ -15,53 +15,39 @@ import { statusBadgeClass } from '../../utils/status.utils';
   selector: 'app-item-card',
   imports: [RouterLink, TimeAgoComponent, PosterComponent],
   template: `
-    <div
-      class="card overflow-hidden h-full flex flex-col"
-      [class.has-[:focus-visible]:outline-2]="titleOnCover()"
-      [class.has-[:focus-visible]:outline-accent-text]="titleOnCover()"
-      [class.has-[:focus-visible]:outline-offset-2]="titleOnCover()"
-    >
-      <app-poster [item]="item()" />
+    <div class="flex flex-col gap-2">
+      <div class="relative overflow-hidden rounded-lg">
+        <app-poster [item]="item()" />
+        @if (progressPercent() !== null && isActive()) {
+          <div class="absolute inset-x-0 bottom-0 h-1 bg-black/40">
+            <div
+              class="h-full bg-accent-primary transition-[width] duration-300 ease-in-out"
+              [style.width.%]="progressPercent()"
+            ></div>
+          </div>
+        }
+      </div>
 
-      @if (progressPercent() !== null && isActive()) {
-        <div class="w-full h-1 bg-light-border dark:bg-dark-border">
-          <div
-            class="h-full bg-accent-primary transition-[width] duration-300 ease-in-out"
-            [style.width.%]="progressPercent()"
-          ></div>
-        </div>
-      }
-
-      <div class="p-3 flex flex-col flex-1 gap-2">
-        <!-- A titled cover already shows this link's text, so it stays only for assistive tech and focus. -->
-        <h3
-          class="m-0 text-sm sm:text-[0.9375rem] leading-snug font-medium"
-          [class.sr-only]="titleOnCover()"
-        >
+      <div class="flex flex-col gap-1">
+        <h3 class="m-0 text-sm sm:text-[0.9375rem] leading-snug font-semibold">
           <a
             [routerLink]="['/items', item().id]"
             [title]="item().title"
-            class="line-clamp-5 min-h-[2lh] no-underline text-light-font dark:text-dark-font hover:text-accent-text"
+            class="line-clamp-3 no-underline text-light-font dark:text-dark-font hover:text-accent-text"
             >{{ item().title }}</a
           >
         </h3>
 
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span [class]="statusBadge()">{{ statusLabel() }}</span>
-          <span class="text-light-font-secondary dark:text-dark-font-secondary">{{
-            typeLabel()
-          }}</span>
+          <span class="meta">{{ typeLabel() }}</span>
         </div>
 
-        @if (nextEpisode() || item().watchHistory.length) {
-          <div class="mt-auto text-xs text-light-font-secondary dark:text-dark-font-secondary">
-            @if (nextEpisode(); as next) {
-              <div class="font-medium text-light-font dark:text-dark-font">Next: {{ next }}</div>
-            }
-            @if (item().watchHistory.length) {
-              <div class="mt-1 first:mt-0">Watched <app-time-ago [date]="lastWatchedDate()" /></div>
-            }
-          </div>
+        @if (nextEpisode(); as next) {
+          <div class="text-meta font-medium">Next: {{ next }}</div>
+        }
+        @if (item().watchHistory.length) {
+          <div class="meta">Watched <app-time-ago [date]="lastWatchedDate()" /></div>
         }
       </div>
     </div>
@@ -73,7 +59,6 @@ export class ItemCardComponent {
   statusBadge = computed(() => statusBadgeClass(this.item().status));
   statusLabel = computed(() => ITEM_STATUS_LABELS[this.item().status]);
   typeLabel = computed(() => ITEM_TYPE_LABELS[this.item().type]);
-  titleOnCover = computed(() => !this.item().posterId);
   isActive = computed(() => ['in-progress', 'paused'].includes(this.item().status));
   nextEpisode = computed(() => {
     const { progress, type } = this.item();

@@ -124,7 +124,7 @@ describe('ItemViewComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.textContent).toContain('Item not found');
+    expect(fixture.nativeElement.textContent).toContain('Title not found');
   });
 
   it('invokes matching quick actions', async () => {
@@ -206,7 +206,7 @@ describe('ItemViewComponent', () => {
   );
 
   it.each([undefined, '2026-02-31'])(
-    'disables snoozing for an unusable date %s, but still permits removing delay',
+    'replaces snoozing with its prerequisite for an unusable date %s, but still permits removing delay',
     async (firstEpisodeAirDate) => {
       const service = configure([
         {
@@ -224,10 +224,9 @@ describe('ItemViewComponent', () => {
       const element = fixture.nativeElement as HTMLElement;
       const snooze = [...element.querySelectorAll('button')].find(
         (button) => button.textContent?.trim() === 'Snooze 1 week',
-      )!;
-      expect(snooze.disabled).toBe(true);
-      expect(element.querySelector('#snooze-prerequisite')?.textContent).toContain('Snoozing');
-      expect(snooze.getAttribute('aria-describedby')).toBe('snooze-prerequisite');
+      );
+      expect(snooze).toBeUndefined();
+      expect(element.querySelector('#snooze-prerequisite')?.textContent).toMatch(/snoozing/i);
       expect(element.textContent).not.toContain('Set this season');
       expect(element.textContent).not.toContain('Pending episode air date');
       expect(element.textContent).not.toMatch(/release delay:/);
@@ -237,7 +236,7 @@ describe('ItemViewComponent', () => {
   );
 
   it.each([undefined, { season: 2, episode: 3, seasons: [] }])(
-    'disables snoozing for missing progress or matching season',
+    'replaces snoozing with its prerequisite for missing progress or matching season',
     async (progress) => {
       configure([{ ...item, progress }]);
       const fixture = TestBed.createComponent(ItemViewComponent);
@@ -245,10 +244,12 @@ describe('ItemViewComponent', () => {
       await fixture.whenStable();
       const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')];
       expect(
-        buttons.find((button) => button.textContent?.trim() === 'Snooze 1 week')?.disabled,
-      ).toBe(true);
+        buttons.find((button) => button.textContent?.trim() === 'Snooze 1 week'),
+      ).toBeUndefined();
       if (progress) {
-        expect((fixture.nativeElement as HTMLElement).textContent).toContain('Add air date');
+        expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+          'Add air date to enable snoozing',
+        );
       }
     },
   );
@@ -304,6 +305,6 @@ describe('ItemViewComponent', () => {
       ...(fixture.nativeElement as HTMLElement).querySelectorAll('section button'),
     ].map((button) => button.textContent?.trim());
 
-    expect(labels).toEqual(['Start', 'Mark Watched', 'Drop']);
+    expect(labels).toEqual(['Start', 'Mark watched', 'Drop']);
   });
 });

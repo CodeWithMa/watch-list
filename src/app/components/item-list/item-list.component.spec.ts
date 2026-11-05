@@ -306,30 +306,6 @@ describe('ItemListComponent', () => {
     expect(fixture.componentInstance.sortDirection()).toBe('asc');
   });
 
-  it('renders sort controls', async () => {
-    setup({ watchItems: [] });
-    const fixture = TestBed.createComponent(ItemListComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const selects = fixture.nativeElement.querySelectorAll('select');
-    // group + sortField = 2 selects, sort direction is now a toggle button
-    expect(selects.length).toBe(2);
-
-    const sortBySelect = fixture.nativeElement.querySelector('select[aria-label="Sort by"]');
-    expect(sortBySelect).not.toBeNull();
-    expect(sortBySelect.textContent).toContain('Title');
-    expect(sortBySelect.textContent).toContain('Added date');
-    expect(sortBySelect.textContent).toContain('Last watched date');
-
-    const sortToggle = fixture.nativeElement.querySelector('button[aria-label^="Sort direction"]');
-    expect(sortToggle).not.toBeNull();
-    expect(sortToggle.getAttribute('title')).toMatch(/Ascending|Descending/);
-    expect(sortToggle.getAttribute('aria-label')).toContain('Sort direction');
-    expect(sortToggle.querySelector('svg')).not.toBeNull();
-  });
-
   const listItem: Item = {
     id: 'listed',
     title: 'Listed',
@@ -358,7 +334,7 @@ describe('ItemListComponent', () => {
     const root = fixture.nativeElement as HTMLElement;
     expect(root.textContent).toContain('No matches');
     expect(root.textContent).toContain('Showing 0 of');
-    expect(fixture.componentInstance.secondaryFilterCount()).toBe(1);
+    expect(fixture.componentInstance.activeFilters()).toEqual([{ key: 'type', label: 'Movie' }]);
 
     [...root.querySelectorAll('button')]
       .find((button) => button.textContent?.includes('Clear search and filters'))!
@@ -369,8 +345,84 @@ describe('ItemListComponent', () => {
     expect(root.textContent).not.toContain('No matches');
   });
 
+  it('words every sort order in one control', async () => {
+    setup({ watchItems: [listItem], sortField: 'title', sortDirection: 'desc' });
+    const fixture = TestBed.createComponent(ItemListComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+
+    const select = root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!;
+    expect(select.textContent).toContain('Title: A–Z');
+    expect(select.textContent).toContain('Added date: Newest first');
+    expect(select.textContent).toContain('Last watched date: Oldest first');
+    expect(root.querySelector('button[aria-label^="Sort direction"]')).toBeNull();
+    expect(root.textContent).toContain('Title: Z–A');
+
+    fixture.componentInstance.setSort('createdAt:asc');
+    expect(fixture.componentInstance.sortField()).toBe('createdAt');
+    expect(fixture.componentInstance.sortDirection()).toBe('asc');
+  });
+
+  it('hides search and filters until the library has something to filter', async () => {
+    setup({ watchItems: [] });
+    const fixture = TestBed.createComponent(ItemListComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelector('#library-filters')).toBeNull();
+    expect(root.querySelector('input[aria-label="Search by name"]')).toBeNull();
+    expect([...root.querySelectorAll('a')].map((link) => link.textContent?.trim())).toEqual([
+      'Add title',
+    ]);
+  });
+
+  it('reaches every status in the panel and summarises hidden filters when it closes', async () => {
+    setup({ watchItems: [listItem] });
+    const fixture = TestBed.createComponent(ItemListComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    document.body.append(root);
+    const buttons = () => [...root.querySelectorAll('button')];
+    const named = (name: string) => buttons().find((b) => b.textContent?.trim() === name)!;
+
+    const statuses = root.querySelector('[aria-labelledby="status-filter-label"]')!;
+    expect(statuses.textContent).toContain('Completed');
+    expect(statuses.textContent).toContain('Dropped');
+    expect(statuses.className).not.toContain('overflow-x-auto');
+
+    const toggle = root.querySelector<HTMLButtonElement>(
+      'button[aria-controls="library-filters"]',
+    )!;
+    toggle.click();
+    fixture.detectChanges();
+    expect(root.querySelector('#library-filters')?.classList).not.toContain('max-md:hidden');
+
+    named('Dropped').click();
+    fixture.detectChanges();
+    expect(toggle.textContent).toContain('1');
+    expect(root.querySelector('button[aria-label="Remove filter: Dropped"]')).toBeNull();
+
+    root
+      .querySelector('#library-filters')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.filtersOpen()).toBe(false);
+    expect(document.activeElement).toBe(toggle);
+
+    root.querySelector<HTMLButtonElement>('button[aria-label="Remove filter: Dropped"]')!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.statusFilter()).toBe('all');
+    expect(toggle.textContent).not.toContain('1');
+    root.remove();
+  });
+
   it('marks the selected filter on every group the same way', async () => {
-    setup();
+    setup({ watchItems: [listItem] });
     const fixture = TestBed.createComponent(ItemListComponent);
     fixture.detectChanges();
     await fixture.whenStable();

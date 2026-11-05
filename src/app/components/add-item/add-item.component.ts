@@ -28,14 +28,14 @@ interface SelectedSuggestionRef {
   imports: [ItemFormComponent, SearchProviderSelectComponent, ConflictRecoveryComponent],
   template: `
     <div>
-      <h1 class="page-title mb-6">Add New Item</h1>
+      <h1 class="page-title mb-4 sm:mb-6">Add title</h1>
       <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
 
       <app-item-form
         [groups]="groups()"
         [initialValue]="initialValue"
         [focusTitleOnOpen]="true"
-        submitLabel="Add Item"
+        submitLabel="Add title"
         [busy]="mutation.busy()"
         [error]="mutation.error()"
         [showStartImmediately]="true"
@@ -57,6 +57,7 @@ interface SelectedSuggestionRef {
           [sources]="enabledSources()"
           [value]="selectedSource()"
           label="Title search provider"
+          [standalone]="true"
           [sourcesNeedingSetup]="sourcesNeedingSetup()"
           (valueChange)="onSearchProviderChanged($event)"
         />
@@ -99,7 +100,7 @@ export class AddItemComponent {
       .items()
       .find((item) => this.normalizeTitle(item.title) === normalizedTitle);
 
-    return duplicate ? `An item named "${duplicate.title}" already exists.` : '';
+    return duplicate ? `A title named "${duplicate.title}" already exists.` : '';
   });
 
   constructor() {
@@ -162,7 +163,7 @@ export class AddItemComponent {
   async onSubmit(formValue: ItemFormValue): Promise<void> {
     const result = await this.mutation.run(
       () => this.watchListService.addItem(buildItemMutationInput(formValue)),
-      'Unable to add this item.',
+      'Unable to add this title.',
     );
     if (result) {
       this.router.navigate(['/items']);

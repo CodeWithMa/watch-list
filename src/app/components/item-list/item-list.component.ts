@@ -1,4 +1,4 @@
-import { Component, computed, signal, inject } from '@angular/core';
+import { Component, ElementRef, computed, signal, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { FormsModule } from '@angular/forms';
@@ -14,14 +14,13 @@ import {
 import { FilterStatus } from '../../utils/status.utils';
 import { FilterType } from '../../utils/type.utils';
 import {
-  SORT_DIRECTIONS,
-  SORT_DIRECTION_LABELS,
-  SORT_FIELDS,
-  SORT_FIELD_LABELS,
+  SORT_OPTIONS,
   SortDirection,
   SortField,
+  isSortDirection,
+  isSortField,
   sortItems,
-  sortOrderLabel,
+  sortLabel,
 } from '../../utils/sort.utils';
 
 import { ItemCardComponent } from '../item-card/item-card.component';
@@ -30,54 +29,56 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
 @Component({
   selector: 'app-item-list',
   imports: [FormsModule, RouterLink, ItemCardComponent],
+  host: { '(keydown.escape)': 'closeFilters()' },
   template: `
     <div>
       <div class="flex items-center justify-between gap-4 mb-3 sm:mb-4">
-        <h1 class="page-title">All Items</h1>
-        <a [routerLink]="['/items/add']" class="btn btn-primary shrink-0">Add Item</a>
+        <h1 class="page-title">Library</h1>
+        @if (visibleLibraryCount() > 0) {
+          <a [routerLink]="['/items/add']" class="btn btn-primary shrink-0">Add title</a>
+        }
       </div>
 
-      <div class="flex flex-wrap items-center gap-2 mb-3">
-        <input
-          type="text"
-          placeholder="Search by name..."
-          aria-label="Search by name"
-          [ngModel]="searchFilter()"
-          (ngModelChange)="searchFilter.set($event)"
-          class="form-select flex-1 min-w-40 text-base md:text-sm"
-        />
-        <button
-          type="button"
-          (click)="filtersOpen.set(!filtersOpen())"
-          [attr.aria-expanded]="filtersOpen()"
-          aria-controls="library-filters"
-          class="btn btn-secondary md:hidden"
-        >
-          Filter &amp; sort
-          @if (secondaryFilterCount() > 0) {
-            <span
-              class="inline-flex size-5 items-center justify-center rounded-full bg-accent-primary text-xs text-white"
-              [attr.aria-label]="secondaryFilterCount() + ' applied'"
-              >{{ secondaryFilterCount() }}</span
-            >
-          }
-        </button>
-      </div>
+      @if (visibleLibraryCount() > 0) {
+        <div class="flex items-center gap-2 mb-3">
+          <input
+            type="text"
+            placeholder="Search by name..."
+            aria-label="Search by name"
+            [ngModel]="searchFilter()"
+            (ngModelChange)="searchFilter.set($event)"
+            class="form-select flex-1 min-w-0 text-base md:text-sm"
+          />
+          <button
+            #filterToggle
+            type="button"
+            (click)="filtersOpen.set(!filtersOpen())"
+            [attr.aria-expanded]="filtersOpen()"
+            aria-controls="library-filters"
+            class="btn btn-secondary shrink-0 md:hidden"
+          >
+            Filter &amp; sort
+            @if (activeFilters().length > 0) {
+              <span
+                class="inline-flex size-5 items-center justify-center rounded-full bg-accent-primary text-xs text-white"
+                [attr.aria-label]="activeFilters().length + ' applied'"
+                >{{ activeFilters().length }}</span
+              >
+            }
+          </button>
+        </div>
 
-      <div class="flex flex-col gap-2 mb-3">
         <div
-          role="group"
-          aria-labelledby="status-filter-label"
-          class="relative flex items-center gap-2"
+          id="library-filters"
+          class="flex flex-col gap-3 md:gap-2 mb-3 max-md:card max-md:p-3"
+          [class.max-md:hidden]="!filtersOpen()"
         >
-          <span
-            id="status-filter-label"
-            class="max-md:sr-only w-12 shrink-0 text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary"
-            >Status</span
-          >
           <div
-            class="scroll-fade-x relative flex gap-2 overflow-x-auto max-md:-mx-4 max-md:px-4 py-0.5"
+            role="group"
+            aria-labelledby="status-filter-label"
+            class="flex flex-wrap items-center gap-2"
           >
+            <span id="status-filter-label" class="filter-label">Status</span>
             <button
               type="button"
               (click)="statusFilter.set('all')"
@@ -97,142 +98,115 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
               </button>
             }
           </div>
-        </div>
-        <div
-          id="library-filters"
-          class="flex flex-wrap items-center gap-x-4 gap-y-2 md:justify-between max-md:p-3 max-md:rounded max-md:border max-md:border-light-border max-md:dark:border-dark-border"
-          [class.max-md:hidden]="!filtersOpen()"
-        >
-          <div
-            role="group"
-            aria-labelledby="type-filter-label"
-            class="flex flex-wrap items-center gap-2 max-md:w-full"
-          >
-            <span
-              id="type-filter-label"
-              class="max-md:w-full md:w-12 shrink-0 text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary"
-              >Type</span
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-3 md:justify-between">
+            <div
+              role="group"
+              aria-labelledby="type-filter-label"
+              class="flex flex-wrap items-center gap-2"
             >
-            <button
-              type="button"
-              (click)="typeFilter.set('all')"
-              [attr.aria-pressed]="typeFilter() === 'all'"
-              class="chip max-md:flex-1 max-md:shrink max-md:min-w-0 max-md:px-1"
-            >
-              All
-            </button>
-            @for (type of itemTypes; track type) {
+              <span id="type-filter-label" class="filter-label">Type</span>
               <button
                 type="button"
-                (click)="typeFilter.set(type)"
-                [attr.aria-pressed]="typeFilter() === type"
-                class="chip max-md:flex-1 max-md:shrink max-md:min-w-0 max-md:px-1"
+                (click)="typeFilter.set('all')"
+                [attr.aria-pressed]="typeFilter() === 'all'"
+                class="chip"
               >
-                {{ itemTypeLabels[type] }}
+                All
               </button>
-            }
-          </div>
-          <div class="flex flex-wrap items-center gap-2 max-md:w-full">
-            <div class="flex items-center gap-2 max-md:w-full">
+              @for (type of itemTypes; track type) {
+                <button
+                  type="button"
+                  (click)="typeFilter.set(type)"
+                  [attr.aria-pressed]="typeFilter() === type"
+                  class="chip"
+                >
+                  {{ itemTypeLabels[type] }}
+                </button>
+              }
+            </div>
+            <div class="flex flex-wrap items-center gap-2 max-md:w-full">
               <select
-                [ngModel]="sortField()"
-                (ngModelChange)="setSortField($event)"
-                aria-label="Sort by"
-                class="form-select max-md:flex-1"
+                [ngModel]="groupFilter()"
+                (ngModelChange)="groupFilter.set($event)"
+                aria-label="Filter by group"
+                class="form-select max-md:w-full md:max-w-56"
               >
-                @for (field of sortFields; track field) {
-                  <option [value]="field">{{ sortFieldLabels[field] }}</option>
+                <option value="">All groups</option>
+                @for (group of groups(); track group.id) {
+                  <option [value]="group.id">{{ group.name }}</option>
                 }
               </select>
+              <select
+                [ngModel]="sortValue()"
+                (ngModelChange)="setSort($event)"
+                aria-label="Sort by"
+                class="form-select max-md:w-full"
+              >
+                @for (option of sortOptions; track option.label) {
+                  <option [value]="option.field + ':' + option.direction">
+                    {{ option.label }}
+                  </option>
+                }
+              </select>
+            </div>
+          </div>
+          <button type="button" (click)="closeFilters()" class="btn btn-primary w-full md:hidden">
+            Show {{ filteredItems().length }}
+            {{ filteredItems().length === 1 ? 'title' : 'titles' }}
+          </button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4 min-h-6 text-sm">
+          <div class="flex flex-wrap items-baseline gap-x-3 max-md:w-full">
+            <span
+              aria-live="polite"
+              class="text-light-font-secondary dark:text-dark-font-secondary"
+              >{{ resultSummary() }}</span
+            >
+            <span class="meta md:hidden">{{ sortSummary() }}</span>
+          </div>
+          @if (!filtersOpen()) {
+            @for (filter of activeFilters(); track filter.key) {
               <button
                 type="button"
-                (click)="toggleSortDirection()"
-                [attr.aria-label]="'Sort direction: ' + sortOrder()"
-                [attr.title]="sortDirectionLabels[sortDirection()]"
-                class="btn btn-secondary whitespace-nowrap"
+                (click)="clearFilter(filter.key)"
+                [attr.aria-label]="'Remove filter: ' + filter.label"
+                class="md:hidden inline-flex items-center gap-1.5 min-h-11 px-3 rounded-full border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary font-medium cursor-pointer"
               >
-                @if (sortDirection() === 'desc') {
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M12 19V5" />
-                    <path d="M5 12l7-7 7 7" />
-                  </svg>
-                } @else {
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M12 5v14" />
-                    <path d="M19 12l-7 7-7-7" />
-                  </svg>
-                }
-                {{ sortOrder() }}
+                {{ filter.label }} <span aria-hidden="true">×</span>
               </button>
-            </div>
-            <select
-              [ngModel]="groupFilter()"
-              (ngModelChange)="groupFilter.set($event)"
-              aria-label="Filter by group"
-              class="form-select max-md:w-full md:max-w-56"
+            }
+          }
+          @if (hasActiveFilters() && filteredItems().length > 0) {
+            <button
+              type="button"
+              (click)="resetFilters()"
+              class="text-accent-text underline cursor-pointer max-md:min-h-11"
             >
-              <option value="">All Groups</option>
-              @for (group of groups(); track group.id) {
-                <option [value]="group.id">{{ group.name }}</option>
-              }
-            </select>
-          </div>
+              Reset filters
+            </button>
+          }
         </div>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-x-3 mb-3 min-h-6 text-sm" aria-live="polite">
-        <span class="text-light-font-secondary dark:text-dark-font-secondary">{{
-          resultSummary()
-        }}</span>
-        @if (hasActiveFilters() && visibleLibraryCount() > 0) {
-          <button
-            type="button"
-            (click)="resetFilters()"
-            class="text-accent-text underline cursor-pointer max-md:min-h-11"
-          >
-            Reset filters
-          </button>
-        }
-      </div>
+      }
 
       @if (filteredItems().length > 0) {
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div
+          class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-3 sm:gap-x-4 gap-y-5 sm:gap-y-6 items-start"
+        >
           @for (item of filteredItems(); track item.id) {
             <app-item-card [item]="item" />
           }
         </div>
       } @else if (visibleLibraryCount() === 0) {
-        <div class="card p-6 sm:p-8 text-center">
+        <div class="card max-w-2xl mx-auto p-6 sm:p-8 text-center">
           <h2 class="section-title mb-2">Your library is empty</h2>
           <p class="mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
             Add a series or movie to start tracking it.
           </p>
-          <a [routerLink]="['/items/add']" class="btn btn-primary">Add your first title</a>
+          <a [routerLink]="['/items/add']" class="btn btn-primary">Add title</a>
         </div>
       } @else {
-        <div class="card p-6 sm:p-8 text-center">
+        <div class="card max-w-2xl mx-auto p-6 sm:p-8 text-center">
           <h2 class="section-title mb-2">No matches</h2>
           <p class="mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
             No titles fit your search and filters.
@@ -243,6 +217,23 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
         </div>
       }
     </div>
+  `,
+  styles: `
+    .filter-label {
+      flex-shrink: 0;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    @media (max-width: 47.99rem) {
+      .filter-label {
+        width: 100%;
+      }
+    }
+    @media (min-width: 48rem) {
+      .filter-label {
+        width: 3.25rem;
+      }
+    }
   `,
 })
 export class ItemListComponent {
@@ -257,10 +248,7 @@ export class ItemListComponent {
   readonly itemTypes = ITEM_TYPES;
   readonly itemTypeLabels = ITEM_TYPE_LABELS;
 
-  readonly sortFields = SORT_FIELDS;
-  readonly sortDirections = SORT_DIRECTIONS;
-  readonly sortFieldLabels = SORT_FIELD_LABELS;
-  readonly sortDirectionLabels = SORT_DIRECTION_LABELS;
+  readonly sortOptions = SORT_OPTIONS;
 
   statusFilter = signal<FilterStatus>('all');
   typeFilter = signal<FilterType>('all');
@@ -273,15 +261,31 @@ export class ItemListComponent {
   allItems = this.watchListService.items;
 
   readonly filtersOpen = signal(false);
-  readonly sortOrder = computed(() => sortOrderLabel(this.sortField(), this.sortDirection()));
-  readonly secondaryFilterCount = computed(
-    () => Number(this.typeFilter() !== 'all') + Number(!!this.groupFilter()),
-  );
+  private readonly filterToggle = viewChild<ElementRef<HTMLElement>>('filterToggle');
+  readonly sortValue = computed(() => `${this.sortField()}:${this.sortDirection()}`);
+  readonly sortSummary = computed(() => sortLabel(this.sortField(), this.sortDirection()));
+  // Search stays visible, so only the controls a closed mobile panel hides are summarised.
+  readonly activeFilters = computed(() => {
+    const status = this.statusFilter();
+    const type = this.typeFilter();
+    const group = this.groupFilter();
+    return [
+      ...(status === 'all'
+        ? []
+        : [{ key: 'status' as const, label: this.itemStatusLabels[status] }]),
+      ...(type === 'all' ? [] : [{ key: 'type' as const, label: this.itemTypeLabels[type] }]),
+      ...(group
+        ? [
+            {
+              key: 'group' as const,
+              label: this.groups().find(({ id }) => id === group)?.name ?? 'Group',
+            },
+          ]
+        : []),
+    ];
+  });
   readonly hasActiveFilters = computed(
-    () =>
-      this.secondaryFilterCount() > 0 ||
-      this.statusFilter() !== 'all' ||
-      !!this.searchFilter().trim(),
+    () => this.activeFilters().length > 0 || !!this.searchFilter().trim(),
   );
 
   private readonly visibleLibrary = computed(() =>
@@ -306,16 +310,30 @@ export class ItemListComponent {
     this.searchFilter.set('');
   }
 
+  clearFilter(key: 'status' | 'type' | 'group'): void {
+    if (key === 'status') this.statusFilter.set('all');
+    else if (key === 'type') this.typeFilter.set('all');
+    else this.groupFilter.set('');
+  }
+
+  closeFilters(): void {
+    if (!this.filtersOpen()) return;
+    this.filtersOpen.set(false);
+    this.filterToggle()?.nativeElement.focus();
+  }
+
+  setSort(value: string): void {
+    const [field, direction] = value.split(':');
+    if (isSortField(field)) this.setSortField(field);
+    if (isSortDirection(direction)) this.setSortDirection(direction);
+  }
+
   setSortField(field: SortField): void {
     this.itemSortService.setField(field);
   }
 
   setSortDirection(direction: SortDirection): void {
     this.itemSortService.setDirection(direction);
-  }
-
-  toggleSortDirection(): void {
-    this.itemSortService.toggleDirection();
   }
 
   filteredItems = computed(() => {
