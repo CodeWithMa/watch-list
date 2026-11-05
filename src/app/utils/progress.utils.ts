@@ -34,3 +34,7 @@ export function getMostRecentWatchDate(item: Item): string {
   }
   return item.createdAt;
 }
+
+export function formatEpisode({ season, episode }: { season?: number; episode?: number }): string {
+  return `S${season} E${episode}`;
+}

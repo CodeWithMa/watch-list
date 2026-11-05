@@ -330,6 +330,61 @@ describe('ItemListComponent', () => {
     expect(sortToggle.querySelector('svg')).not.toBeNull();
   });
 
+  const listItem: Item = {
+    id: 'listed',
+    title: 'Listed',
+    type: 'series',
+    groupId: 'ungrouped',
+    status: 'not-started',
+    isAdult: false,
+    watchHistory: [],
+    createdAt: '2026-05-01T10:00:00.000Z',
+  };
+
+  it('distinguishes an empty library from a filtered-out one, and resets filters', async () => {
+    setup({ watchItems: [] });
+    let fixture = TestBed.createComponent(ItemListComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Your library is empty');
+    expect(fixture.nativeElement.textContent).not.toContain('No matches');
+
+    setup({ watchItems: [listItem] });
+    fixture = TestBed.createComponent(ItemListComponent);
+    fixture.componentInstance.searchFilter.set('zzz-no-such-title');
+    fixture.componentInstance.typeFilter.set('movie');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('No matches');
+    expect(root.textContent).toContain('Showing 0 of');
+    expect(fixture.componentInstance.secondaryFilterCount()).toBe(1);
+
+    [...root.querySelectorAll('button')]
+      .find((button) => button.textContent?.includes('Clear search and filters'))!
+      .click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.searchFilter()).toBe('');
+    expect(fixture.componentInstance.typeFilter()).toBe('all');
+    expect(root.textContent).not.toContain('No matches');
+  });
+
+  it('marks the selected filter on every group the same way', async () => {
+    setup();
+    const fixture = TestBed.createComponent(ItemListComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const pressed = () =>
+      [...root.querySelectorAll('button[aria-pressed="true"]')].map((b) => b.textContent?.trim());
+    expect(pressed()).toEqual(['All', 'All']);
+    [...root.querySelectorAll('button')]
+      .find((button) => button.textContent?.trim() === 'Paused')!
+      .click();
+    fixture.detectChanges();
+    expect(pressed()).toEqual(['Paused', 'All']);
+  });
+
   it('returns empty when no items', () => {
     setup({ watchItems: [] });
     const fixture = TestBed.createComponent(ItemListComponent);

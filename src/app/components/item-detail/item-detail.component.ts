@@ -22,16 +22,16 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
     <div>
       <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
       @if (item()) {
-        <div class="border border-light-border dark:border-dark-border rounded-lg p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="mt-0">Edit Item</h2>
-            <div class="flex gap-2">
+        <div class="max-w-3xl">
+          <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+            <h1 class="page-title">Edit Item</h1>
+            <div class="flex flex-wrap gap-2">
               @if (!confirmDelete()) {
                 <button
                   type="button"
                   [disabled]="mutation.busy()"
                   (click)="confirmDelete.set(true)"
-                  class="px-6 py-3 border border-accent-danger rounded bg-transparent text-accent-danger cursor-pointer hover:bg-accent-danger hover:text-white"
+                  class="btn btn-danger-outline"
                 >
                   Delete
                 </button>
@@ -40,7 +40,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   type="button"
                   [disabled]="mutation.busy()"
                   (click)="deleteItem()"
-                  class="px-6 py-3 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse"
+                  class="btn btn-danger"
                 >
                   Confirm Delete?
                 </button>
@@ -48,7 +48,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   type="button"
                   [disabled]="mutation.busy()"
                   (click)="cancelDelete()"
-                  class="px-6 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border border-light-border dark:border-dark-border rounded cursor-pointer"
+                  class="btn btn-secondary"
                 >
                   Cancel
                 </button>
@@ -56,7 +56,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             </div>
           </div>
           @if (!itemExists()) {
-            <p role="alert" class="text-accent-danger">
+            <p role="alert" class="text-accent-danger-text">
               This item was deleted while you were editing. Your draft cannot be saved.
               <a [routerLink]="['/items']">Back to Items</a>
             </p>

@@ -7,7 +7,8 @@ import { ThemeService, Theme } from '../../services/theme.service';
     <button
       (click)="themeService.cycleTheme()"
       [attr.aria-label]="getAriaLabel()"
-      class="p-2 rounded hover:bg-light-hover dark:hover:bg-dark-hover transition-colors duration-200"
+      type="button"
+      class="flex size-11 items-center justify-center rounded cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover transition-colors duration-200"
       [title]="getTitle()"
     >
       @switch (themeService.theme()) {

@@ -34,7 +34,7 @@ describe('ItemFormComponent', () => {
     });
   });
 
-  it('applies the selected status color on first render', async () => {
+  it('marks the selected status on first render', async () => {
     const fixture = TestBed.createComponent(ItemFormComponent);
     fixture.componentRef.setInput('groups', groups);
     fixture.componentRef.setInput('initialValue', {
@@ -59,8 +59,7 @@ describe('ItemFormComponent', () => {
     const completedButton = buttons.find((button) => button.textContent?.trim() === 'Completed');
 
     expect(completedButton).toBeDefined();
-    expect(completedButton?.className).toContain('bg-status-completed-bg-light');
-    expect(completedButton?.className).toContain('border-transparent');
+    expect(completedButton?.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('disables submit when pristine if configured', async () => {

@@ -75,8 +75,8 @@ describe('ItemViewComponent', () => {
     expect(element.textContent).toContain('Test Series');
     expect(element.textContent).toContain('Favourites');
     expect(element.textContent).toContain('Apr 1, 2026');
-    expect(element.textContent).toContain('S2E3');
-    expect(element.textContent).toContain('S1E1');
+    expect(element.textContent).toContain('S2 E3');
+    expect(element.textContent).toContain('S1 E1');
 
     const historyEntries = [...element.querySelectorAll('ol li')];
     expect(historyEntries[0].textContent).toContain('May 2, 2026');
@@ -298,6 +298,6 @@ describe('ItemViewComponent', () => {
       ...(fixture.nativeElement as HTMLElement).querySelectorAll('section button'),
     ].map((button) => button.textContent?.trim());
 
-    expect(labels).toEqual(['Mark Watched', 'Start', 'Drop']);
+    expect(labels).toEqual(['Start', 'Mark Watched', 'Drop']);
   });
 });

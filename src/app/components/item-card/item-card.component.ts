@@ -1,75 +1,51 @@
-import { Component, input, computed, effect, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ReadonlyItem as Item } from '../../models/item.model';
+import { ITEM_STATUS_LABELS, isEpisodicType } from '../../domain/item.constants';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
-import { calculateProgress, getMostRecentWatchDate } from '../../utils/progress.utils';
-import { statusLineColor } from '../../utils/status.utils';
-import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
-import { injectPosterUrl } from '../../services/poster-reader';
-import { ProviderSettingsService } from '../../services/provider-settings.service';
+import { PosterComponent } from '../poster/poster.component';
+import {
+  calculateProgress,
+  formatEpisode,
+  getMostRecentWatchDate,
+} from '../../utils/progress.utils';
+import { statusBadgeClass } from '../../utils/status.utils';
 
 @Component({
   selector: 'app-item-card',
-  imports: [CommonModule, RouterLink, TimeAgoComponent],
+  imports: [RouterLink, TimeAgoComponent, PosterComponent],
   template: `
-    <div
-      class="border border-light-border dark:border-dark-border rounded-lg bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark overflow-hidden"
-    >
-      <div [class]="'h-1 ' + statusColorClass()"></div>
-      <div class="relative">
-        <a [routerLink]="['/items', item().id]">
-          @if (posterUrl()) {
-            <img
-              [src]="posterUrl()"
-              [alt]="item().title + ' poster'"
-              class="w-full aspect-[2/3] object-cover"
-              [style.filter]="shouldBlur() ? 'blur(12px)' : null"
-            />
-          } @else {
-            <img
-              [src]="placeholderUrl()"
-              [alt]="item().title + ' placeholder poster'"
-              class="w-full aspect-[2/3] object-cover"
-            />
-          }
-        </a>
-        @if (shouldBlur()) {
-          <button
-            type="button"
-            (click)="revealed.set(true)"
-            class="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-sm font-medium backdrop-blur-[2px] cursor-pointer border-0"
-            aria-label="Reveal adult poster"
-          >
-            Adult — click to reveal
-          </button>
-        }
-        @if (item().progress) {
-          <span
-            class="absolute top-0 right-0 px-2 py-1 text-xs font-medium bg-black/60 text-white backdrop-blur-sm"
-          >
-            S{{ item().progress!.season }}E{{ item().progress!.episode }}
-          </span>
-        }
-      </div>
+    <div class="card overflow-hidden h-full flex flex-col">
+      <app-poster [item]="item()" />
 
-      <div class="w-full h-1 bg-light-border dark:bg-dark-border">
-        <div
-          class="h-full bg-accent-success transition-[width] duration-300 ease-in-out"
-          [style.width.%]="progressPercent() ?? 0"
-        ></div>
-      </div>
+      @if (progressPercent() !== null && isActive()) {
+        <div class="w-full h-1 bg-light-border dark:bg-dark-border">
+          <div
+            class="h-full bg-accent-primary transition-[width] duration-300 ease-in-out"
+            [style.width.%]="progressPercent()"
+          ></div>
+        </div>
+      }
 
-      <div class="p-3">
-        <h3 class="m-0 text-sm font-medium truncate">
+      <div class="p-3 flex flex-col flex-1 gap-2">
+        <h3 class="m-0 text-sm sm:text-[0.9375rem] leading-snug font-medium">
           <a
             [routerLink]="['/items', item().id]"
-            class="no-underline text-light-font dark:text-dark-font hover:text-accent-primary"
+            [title]="item().title"
+            class="line-clamp-2 min-h-[2lh] no-underline text-light-font dark:text-dark-font hover:text-accent-text"
             >{{ item().title }}</a
           >
         </h3>
 
-        <div class="mt-1.5 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span [class]="statusBadge()">{{ statusLabel() }}</span>
+          @if (nextEpisode(); as next) {
+            <span class="font-medium text-light-font dark:text-dark-font">Next: {{ next }}</span>
+          }
+        </div>
+
+        <div class="mt-auto text-xs text-light-font-secondary dark:text-dark-font-secondary">
+          {{ item().watchHistory.length ? 'Watched' : 'Added' }}
           <app-time-ago [date]="lastWatchedDate()" />
         </div>
       </div>
@@ -77,18 +53,14 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
   `,
 })
 export class ItemCardComponent {
-  private providerSettings = inject(ProviderSettingsService);
   item = input.required<Item>();
 
-  readonly posterUrl = injectPosterUrl(() => this.item().posterId);
-  placeholderUrl = computed(() => getPlaceholderUrl());
-  statusColorClass = computed(() => statusLineColor(this.item().status));
-  revealed = signal(false);
-  shouldBlur = computed(() => {
-    const mode = this.providerSettings.settings().adultDisplayMode;
-    // 'blur' blurs everywhere; 'hide' still blurs where card remains visible (next*), since next* is not filtered
-    // 'show' never blurs
-    return this.item().isAdult && mode !== 'show' && !!this.posterUrl() && !this.revealed();
+  statusBadge = computed(() => statusBadgeClass(this.item().status));
+  statusLabel = computed(() => ITEM_STATUS_LABELS[this.item().status]);
+  isActive = computed(() => ['in-progress', 'paused'].includes(this.item().status));
+  nextEpisode = computed(() => {
+    const { progress, type } = this.item();
+    return progress && isEpisodicType(type) && this.isActive() ? formatEpisode(progress) : null;
   });
 
   progressPercent = computed(() => {
@@ -98,12 +70,4 @@ export class ItemCardComponent {
   lastWatchedDate = computed(() => {
     return getMostRecentWatchDate(this.item());
   });
-
-  constructor() {
-    effect(() => {
-      // Reset click-to-reveal when item identity changes
-      void this.item().id;
-      this.revealed.set(false);
-    });
-  }
 }

@@ -191,7 +191,7 @@ describe('Conflict recovery interactions', () => {
     await external.mutate((draft) => {
       draft.items['series'].title = 'Renamed externally';
     });
-    button(root, 'Mark Watched').click();
+    button(root, 'Mark S1 E1 watched').click();
     await vi.waitFor(() => {
       fixture.detectChanges();
       expect(root.textContent).toContain('changed in another tab or window');
@@ -203,7 +203,7 @@ describe('Conflict recovery interactions', () => {
       expect(root.textContent).toContain('Renamed externally');
     });
     expect(storage.getData().items['series'].watchHistory).toHaveLength(0);
-    button(root, 'Mark Watched').click();
+    button(root, 'Mark S1 E1 watched').click();
     await vi.waitFor(() => expect(storage.getData().items['series'].watchHistory).toHaveLength(1));
     expect(storage.getData().items['series'].progress?.episode).toBe(2);
   });

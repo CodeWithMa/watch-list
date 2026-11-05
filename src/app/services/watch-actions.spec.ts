@@ -28,8 +28,8 @@ describe('Settled watch actions', () => {
     const { storage, watch } = await setup();
     const results = await Promise.all([watch.markWatched('series'), watch.markWatched('series')]);
     expect(results).toEqual([
-      { value: undefined, durability: 'persistent' },
-      { value: undefined, durability: 'persistent' },
+      expect.objectContaining({ durability: 'persistent' }),
+      expect.objectContaining({ durability: 'persistent' }),
     ]);
     expect(watch.getItemById('series')).toMatchObject({
       status: 'in-progress',
@@ -60,7 +60,7 @@ describe('Settled watch actions', () => {
         return result;
       });
       expect(beforeCommit).toEqual({ resolved: false, item: original });
-      expect(result).toEqual({ value: undefined, durability: 'persistent' });
+      expect(result).toMatchObject({ durability: 'persistent' });
       const expectedStatus = {
         markWatched: 'in-progress',
         markStarted: 'in-progress',

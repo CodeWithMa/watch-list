@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, ElementRef, afterNextRender, computed, input, viewChild } from '@angular/core';
 import { HistoryEntry } from '../../../models/storage.model';
 import { toLocalDateKey, toLocalDateKeyFromISO } from '../../../utils/date.utils';
 
@@ -16,12 +16,15 @@ interface MonthLabel {
 @Component({
   selector: 'app-stats-heatmap',
   template: `
-    <div class="overflow-x-auto">
+    <p class="sm:hidden mt-0 mb-2 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+      Showing the most recent weeks. Scroll sideways for the full year.
+    </p>
+    <div #scroller class="relative overflow-x-auto">
       <div class="inline-block min-w-[720px]">
-        <div class="relative h-[14px] mb-1">
+        <div class="relative h-4 mb-1">
           @for (month of monthLabels(); track month.label + month.weekIndex) {
             <span
-              class="absolute text-[10px] text-light-font-muted dark:text-dark-font-muted -translate-x-1/2"
+              class="absolute text-xs text-light-font-secondary dark:text-dark-font-secondary -translate-x-1/2"
               [style.left]="month.weekIndex * 16 + 36 + 'px'"
             >
               {{ month.label }}
@@ -33,7 +36,7 @@ interface MonthLabel {
           <div class="flex flex-col gap-[3px] mr-1">
             @for (dayLabel of dayLabels; track dayLabel) {
               <span
-                class="text-[10px] text-light-font-muted dark:text-dark-font-muted h-[13px] leading-[13px] text-right"
+                class="text-xs text-light-font-secondary dark:text-dark-font-secondary h-[13px] leading-[13px] text-right w-7"
               >
                 {{ dayLabel }}
               </span>
@@ -45,20 +48,10 @@ interface MonthLabel {
               <div class="flex flex-col gap-[3px]">
                 @for (day of week; track day.date) {
                   <div
-                    class="w-[13px] h-[13px] rounded-[2px] relative group cursor-default"
+                    class="w-[13px] h-[13px] rounded-[2px]"
                     [class]="getCellClass(day.level)"
-                  >
-                    <div
-                      class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-light-bg-primary dark:bg-dark-bg-primary border border-light-border dark:border-dark-border rounded text-xs text-light-font dark:text-dark-font whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-light dark:shadow-dark"
-                    >
-                      <span class="font-medium"
-                        >{{ day.count }} {{ day.count === 1 ? 'entry' : 'entries' }}</span
-                      >
-                      <span class="text-light-font-muted dark:text-dark-font-muted ml-1">{{
-                        formatTooltipDate(day.date)
-                      }}</span>
-                    </div>
-                  </div>
+                    [title]="getCellLabel(day)"
+                  ></div>
                 }
               </div>
             }
@@ -66,14 +59,12 @@ interface MonthLabel {
         </div>
 
         <div class="flex items-center gap-2 mt-3 justify-end">
-          <span class="text-[10px] text-light-font-muted dark:text-dark-font-muted">Less</span>
-          <div
-            class="w-[13px] h-[13px] rounded-[2px] bg-light-bg-tertiary dark:bg-dark-bg-tertiary"
-          ></div>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-primary/25"></div>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-primary/50"></div>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-primary"></div>
-          <span class="text-[10px] text-light-font-muted dark:text-dark-font-muted">More</span>
+          <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">Less</span>
+          <div class="w-[13px] h-[13px] rounded-[2px] bg-light-border dark:bg-dark-border"></div>
+          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/35"></div>
+          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text/65"></div>
+          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-text"></div>
+          <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">More</span>
         </div>
       </div>
     </div>
@@ -81,6 +72,15 @@ interface MonthLabel {
 })
 export class StatsHeatmapComponent {
   historyEntries = input.required<readonly Readonly<HistoryEntry>[]>();
+  private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
+
+  constructor() {
+    // Narrow screens start at the newest weeks; older months are one swipe away.
+    afterNextRender(() => {
+      const element = this.scroller().nativeElement;
+      element.scrollLeft = element.scrollWidth;
+    });
+  }
 
   dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 
@@ -156,16 +156,20 @@ export class StatsHeatmapComponent {
     return labels;
   });
 
+  getCellLabel({ count, date }: DayCell) {
+    return `${count} ${count === 1 ? 'entry' : 'entries'}, ${this.formatTooltipDate(date)}`;
+  }
+
   getCellClass(level: 0 | 1 | 2 | 3): string {
     switch (level) {
       case 0:
-        return 'bg-light-bg-tertiary dark:bg-dark-bg-tertiary';
+        return 'bg-light-border dark:bg-dark-border';
       case 1:
-        return 'bg-accent-primary/25';
+        return 'bg-accent-text/35';
       case 2:
-        return 'bg-accent-primary/50';
+        return 'bg-accent-text/65';
       case 3:
-        return 'bg-accent-primary';
+        return 'bg-accent-text';
     }
   }
 

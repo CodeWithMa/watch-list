@@ -3,11 +3,9 @@ const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w342';
 function getPlaceholderSvg(): string {
   return `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 342 513" width="342" height="513">
-      <rect width="342" height="513" fill="#2d2d2d"/>
-      <rect x="85.5" y="128.25" width="171" height="256.5" fill="#3d3d3d" rx="8"/>
-      <path d="M171 200c-28 0-50 22-50 50s22 50 50 50 50-22 50-50-22-50-50-50z" fill="#555"/>
-      <path d="M171 275c-14 0-25 11-25 25s11 25 25 25 25-11 25-25-11-25-25-25z" fill="#555"/>
-      <path d="M171 350c-30 0-55 25-55 55h110c0-30-25-55-55-55z" fill="#555"/>
+      <rect width="342" height="513" fill="#3a3d42"/>
+      <rect x="111" y="196" width="120" height="120" rx="14" fill="none" stroke="#6f747b" stroke-width="8"/>
+      <path d="M155 228v56l46-28z" fill="#6f747b"/>
     </svg>
   `.trim();
 }

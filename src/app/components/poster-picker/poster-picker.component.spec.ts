@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { createSuggestionProviders } from '../../services/suggestion-search.test-utils';
@@ -26,6 +27,7 @@ describe('PosterPickerComponent', () => {
     suggestionSearchService = createSuggestionProviders();
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
         ...suggestionSearchService.providers,
         {
           provide: ImageStorageService,
@@ -92,7 +94,7 @@ describe('PosterPickerComponent', () => {
       fixture.detectChanges();
       const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
       expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
-        'TMDB',
+        'TMDBNeeds setup',
         'Jikan',
         'AniList',
       ]);

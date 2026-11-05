@@ -12,6 +12,67 @@ import { CURRENT_SCHEMA_VERSION } from './models/storage.model';
 import { createDefaultStorageData } from './domain/storage-schema';
 import { routes } from './app.routes';
 
+describe('App navigation', () => {
+  function setup() {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: PLATFORM_ID, useValue: 'server' }],
+    });
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const toggle = root.querySelector<HTMLButtonElement>('button[aria-controls]')!;
+    const expanded = () => toggle.getAttribute('aria-expanded');
+    return { fixture, root, toggle, expanded };
+  }
+
+  it('exposes all six destinations and the theme control', () => {
+    const { root } = setup();
+    expect(
+      [...root.querySelectorAll('#primary-nav-links a')].map((link) => link.textContent?.trim()),
+    ).toEqual(['Home', 'Items', 'History', 'Stats', 'Groups', 'Settings']);
+    expect(root.querySelector('nav app-theme-switcher')).not.toBeNull();
+  });
+
+  it('toggles the compact menu and closes it on Escape, returning focus', () => {
+    const { fixture, root, toggle, expanded } = setup();
+    document.body.append(root);
+    const links = root.querySelector('#primary-nav-links')!;
+    expect(expanded()).toBe('false');
+    expect(links.classList).toContain('max-md:hidden');
+    expect(toggle.getAttribute('aria-label')).toBe('Open menu');
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(expanded()).toBe('true');
+    expect(links.classList).not.toContain('max-md:hidden');
+    expect(toggle.getAttribute('aria-label')).toBe('Close menu');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(expanded()).toBe('false');
+    expect(document.activeElement).toBe(toggle);
+    root.remove();
+  });
+
+  it('closes the menu after choosing a destination or clicking elsewhere', () => {
+    const { fixture, root, toggle, expanded } = setup();
+    toggle.click();
+    fixture.detectChanges();
+    root.querySelector<HTMLAnchorElement>('#primary-nav-links a')!.click();
+    fixture.detectChanges();
+    expect(expanded()).toBe('false');
+
+    toggle.click();
+    fixture.detectChanges();
+    root.querySelector('nav')!.click();
+    fixture.detectChanges();
+    expect(expanded()).toBe('true');
+    document.body.click();
+    fixture.detectChanges();
+    expect(expanded()).toBe('false');
+  });
+});
+
 describe('App update notification', () => {
   function setup(isEnabled: boolean | null = true) {
     const versionUpdates = new Subject<VersionEvent>();

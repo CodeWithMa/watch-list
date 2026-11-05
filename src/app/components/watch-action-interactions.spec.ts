@@ -69,7 +69,7 @@ describe('Settled watch interactions', () => {
         fixture.detectChanges();
         expect(element.textContent).toContain('Series');
         expect(element.textContent).not.toContain('Edited title');
-        expect(element.textContent).toContain('S1E2');
+        expect(element.textContent).toContain('S1 E2');
         expect(element.querySelector('button')?.disabled).toBe(false);
         if (component === ItemViewComponent)
           expect(element.querySelectorAll('ol li')).toHaveLength(1);
@@ -80,11 +80,11 @@ describe('Settled watch interactions', () => {
     });
 
     const scenarios: { label: string; status: ItemStatus; expectedStatus: ItemStatus }[] = [
-      { label: 'Mark Watched', status: 'in-progress', expectedStatus: 'in-progress' },
+      { label: 'Mark S1 E1 watched', status: 'in-progress', expectedStatus: 'in-progress' },
       { label: 'Pause', status: 'in-progress', expectedStatus: 'paused' },
       { label: 'Drop', status: 'in-progress', expectedStatus: 'dropped' },
       {
-        label: component === HomeComponent ? 'Add to currently watching' : 'Start',
+        label: 'Start',
         status: 'not-started',
         expectedStatus: 'in-progress',
       },
@@ -135,7 +135,7 @@ describe('Settled watch interactions', () => {
         const item = storage.getData().items['series'];
         expect(element.querySelector('[role="alert"]')).toBeNull();
         expect(item.status).toBe(expectedStatus);
-        expect(item.watchHistory).toHaveLength(label === 'Mark Watched' ? 1 : 0);
+        expect(item.watchHistory).toHaveLength(label === 'Mark S1 E1 watched' ? 1 : 0);
         expect(item.progress?.seasons[0].snoozeCount).toBe(label === 'Snooze 1 week' ? 1 : 0);
         const reloaded = TestBed.runInInjectionContext(() => new StorageService());
         await reloaded.initialize();
@@ -172,8 +172,8 @@ describe('Settled watch interactions', () => {
     fixture.detectChanges();
     const entries = [...(fixture.nativeElement as HTMLElement).querySelectorAll('ol li')];
     expect(entries).toHaveLength(2);
-    expect(entries[0].textContent).toContain('S1E1');
-    expect(entries[1].textContent).toContain('S1E2');
+    expect(entries[0].textContent).toContain('S1 E1');
+    expect(entries[1].textContent).toContain('S1 E2');
   });
 });
 

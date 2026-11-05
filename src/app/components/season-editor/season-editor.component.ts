@@ -12,11 +12,10 @@ import {
   selector: 'app-season-editor',
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
-      <div class="mb-6">
-        <h3 class="mb-4 font-medium text-light-font dark:text-dark-font">Seasons</h3>
+    <div>
+      <div>
         @for (season of seasons(); track season.seasonNumber; let i = $index) {
-          <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-4 items-end">
+          <div class="grid grid-cols-2 md:grid-cols-[1fr_1fr_1.5fr_auto] gap-2 mb-4 items-end">
             <div class="flex-1">
               <label for="seasonNumber{{ i }}" class="block mb-1 text-sm">Season</label>
               <input
@@ -41,7 +40,7 @@ import {
                 class="form-control-sm"
               />
             </div>
-            <div class="flex-1">
+            <div class="col-span-2 md:col-span-1">
               <label for="seasonFirstAirDate{{ i }}" class="block mb-1 text-sm"
                 >First episode air date</label
               >
@@ -54,22 +53,10 @@ import {
                 class="form-control-sm"
               />
             </div>
-            <button
-              type="button"
-              (click)="removeSeason(i)"
-              class="px-3 py-2 bg-accent-danger text-white border-none rounded cursor-pointer text-sm hover:bg-accent-danger-hover"
-            >
-              Remove
-            </button>
+            <button type="button" (click)="removeSeason(i)" class="btn btn-quiet">Remove</button>
           </div>
         }
-        <button
-          type="button"
-          (click)="addSeason()"
-          class="px-4 py-2 bg-accent-secondary text-white border-none rounded cursor-pointer text-sm hover:bg-accent-secondary-hover"
-        >
-          Add Season
-        </button>
+        <button type="button" (click)="addSeason()" class="btn btn-secondary">Add Season</button>
       </div>
     </div>
   `,

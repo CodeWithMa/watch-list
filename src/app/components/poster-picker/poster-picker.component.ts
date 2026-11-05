@@ -1,5 +1,6 @@
 import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Suggestion, SuggestionSource } from '../../models/suggestion.model';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
 import { ImageStorageService } from '../../services/image-storage.service';
@@ -10,25 +11,25 @@ import { SearchProviderSelectComponent } from '../search-provider-select/search-
 
 @Component({
   selector: 'app-poster-picker',
-  imports: [FormsModule, FilePickerFocusDirective, SearchProviderSelectComponent],
+  imports: [FormsModule, RouterLink, FilePickerFocusDirective, SearchProviderSelectComponent],
   template: `
-    <div class="flex flex-col gap-4 sm:flex-row">
+    <div class="flex gap-4">
       <div class="shrink-0">
         @if (posterPreviewUrl()) {
           <img
             [src]="posterPreviewUrl()"
             alt="Poster preview"
-            class="w-32 aspect-[2/3] object-cover rounded border border-light-border dark:border-dark-border"
+            class="w-20 sm:w-24 aspect-[2/3] object-cover rounded border border-light-border dark:border-dark-border"
           />
         } @else {
           <img
             [src]="posterPlaceholderUrl()"
             alt="No poster"
-            class="w-32 aspect-[2/3] object-cover rounded border border-light-border dark:border-dark-border"
+            class="w-20 sm:w-24 aspect-[2/3] object-cover rounded border border-light-border dark:border-dark-border"
           />
         }
       </div>
-      <div class="flex-1 flex flex-col gap-3 min-w-0">
+      <div class="flex-1 flex flex-col gap-2 min-w-0">
         @if (showPosterSearch()) {
           <div>
             <div class="search-input-group search-input-group-sm">
@@ -36,6 +37,7 @@ import { SearchProviderSelectComponent } from '../search-provider-select/search-
                 [sources]="enabledSources()"
                 [value]="selectedSource()"
                 label="Poster search provider"
+                [sourcesNeedingSetup]="sourcesNeedingSetup()"
                 (valueChange)="onSearchProviderChanged($event)"
               />
               <input
@@ -52,7 +54,22 @@ import { SearchProviderSelectComponent } from '../search-provider-select/search-
                 Searching...
               </div>
             } @else if (posterSuggestionsError()) {
-              <div class="mt-1 text-xs text-accent-secondary">{{ posterSuggestionsError() }}</div>
+              <div class="mt-1 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+                {{ posterSuggestionsError() }}
+              </div>
+            } @else if (
+              posterSearchQuery().trim() && needsSetup() && posterSuggestions().length === 0
+            ) {
+              <div class="mt-1 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+                TMDB isn't connected yet.
+                <a routerLink="/settings" class="text-accent-text underline"
+                  >Connect it in Settings</a
+                >, switch provider, or upload an image.
+              </div>
+            } @else if (posterSuggestionsEmpty()) {
+              <div class="mt-1 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+                No posters found. Try another search or provider, or upload an image.
+              </div>
             } @else if (posterSuggestions().length > 0) {
               <div
                 class="mt-1 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary max-h-48 overflow-y-auto"
@@ -88,19 +105,11 @@ import { SearchProviderSelectComponent } from '../search-provider-select/search-
           </div>
         }
         @if (posterId()) {
-          <button
-            type="button"
-            (click)="clearPoster()"
-            class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
-          >
+          <button type="button" (click)="clearPoster()" class="btn btn-secondary self-start">
             Clear poster
           </button>
         }
-        <button
-          type="button"
-          (click)="posterInput.click()"
-          class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
-        >
+        <button type="button" (click)="posterInput.click()" class="btn btn-secondary self-start">
           Upload image
         </button>
         <input
@@ -118,14 +127,10 @@ import { SearchProviderSelectComponent } from '../search-provider-select/search-
           </div>
         }
         @if (posterError()) {
-          <div class="text-xs text-accent-danger">{{ posterError() }}</div>
+          <div class="text-xs text-accent-danger-text">{{ posterError() }}</div>
         }
         @if (!showPosterSearch()) {
-          <button
-            type="button"
-            (click)="openPosterSearch()"
-            class="self-start px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover text-sm"
-          >
+          <button type="button" (click)="openPosterSearch()" class="btn btn-secondary self-start">
             Search for poster
           </button>
         }
@@ -152,6 +157,14 @@ export class PosterPickerComponent {
   );
   readonly posterSuggestionsLoading = this.search.loading;
   readonly posterSuggestionsError = this.search.error;
+  readonly sourcesNeedingSetup = this.search.sourcesNeedingSetup;
+  readonly needsSetup = this.search.needsSetup;
+  // Results without artwork are filtered out above, so an all-filtered list is also empty.
+  readonly posterSuggestionsEmpty = computed(
+    () =>
+      this.search.noResults() ||
+      (this.search.results().length > 0 && this.posterSuggestions().length === 0),
+  );
   readonly showPosterSearch = signal(false);
   readonly posterLoading = signal(false);
   readonly posterError = signal('');

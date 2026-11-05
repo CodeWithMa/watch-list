@@ -1,51 +1,59 @@
 <nav
-  class="bg-light-bg-secondary dark:bg-dark-bg-secondary border-b border-light-border dark:border-dark-border shadow-light dark:shadow-dark sticky top-0 z-100"
+  aria-label="Primary"
+  class="bg-light-bg-secondary dark:bg-dark-bg-secondary border-b border-light-border dark:border-dark-border sticky top-0 z-100"
 >
-  <div class="page-container !py-4 flex justify-between items-center max-md:flex-col max-md:gap-4">
+  <div class="page-container !py-0 flex flex-wrap items-center gap-x-6">
     <a
       routerLink="/"
-      class="text-2xl font-bold text-accent-primary hover:text-accent-primary-hover no-underline"
+      class="flex items-center min-h-14 md:min-h-16 text-xl font-bold text-accent-text no-underline hover:underline"
       >Watch List</a
     >
-    <div class="flex gap-6 max-md:flex-wrap max-md:justify-center items-center">
-      <a
-        routerLink="/"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-        class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary"
-        >Home</a
-      >
-      <a
-        routerLink="/items"
-        routerLinkActive="active"
-        class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary"
-        >Items</a
-      >
-      <a
-        routerLink="/history"
-        routerLinkActive="active"
-        class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary"
-        >History</a
-      >
-      <a
-        routerLink="/stats"
-        routerLinkActive="active"
-        class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary"
-        >Stats</a
-      >
-      <a
-        routerLink="/groups"
-        routerLinkActive="active"
-        class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary"
-        >Groups</a
-      >
-      <a
-        routerLink="/settings"
-        routerLinkActive="active"
-        class="text-light-font dark:text-dark-font no-underline font-medium py-2 transition-colors duration-200 hover:text-accent-primary [&.active]:text-accent-primary [&.active]:border-b-2 [&.active]:border-accent-primary"
-        >Settings</a
-      >
+    <div class="max-md:ml-auto flex items-center gap-1 md:order-last">
       <app-theme-switcher />
+      <button
+        #menuToggle
+        type="button"
+        class="md:hidden flex size-11 items-center justify-center rounded cursor-pointer text-light-font dark:text-dark-font hover:bg-light-hover dark:hover:bg-dark-hover"
+        aria-controls="primary-nav-links"
+        [attr.aria-expanded]="menuOpen()"
+        [attr.aria-label]="menuOpen() ? 'Close menu' : 'Open menu'"
+        (click)="menuOpen.set(!menuOpen())"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          @if (menuOpen()) {
+            <path d="M6 6l12 12M18 6L6 18" />
+          } @else {
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          }
+        </svg>
+      </button>
+    </div>
+    <div
+      id="primary-nav-links"
+      class="md:ml-auto flex gap-1 md:gap-6 max-md:w-full max-md:flex-col max-md:pb-3 md:items-center"
+      [class.max-md:hidden]="!menuOpen()"
+    >
+      @for (link of navLinks; track link.path) {
+        <a
+          [routerLink]="link.path"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="{ exact: link.path === '/' }"
+          (click)="closeMenu()"
+          class="text-light-font dark:text-dark-font no-underline font-medium transition-colors duration-200 hover:text-accent-text flex items-center max-md:min-h-11 max-md:px-3 max-md:rounded md:py-2 md:border-b-2 md:border-transparent [&.active]:text-accent-text md:[&.active]:border-accent-text max-md:[&.active]:bg-light-hover dark:max-md:[&.active]:bg-dark-hover"
+          >{{ link.label }}</a
+        >
+      }
     </div>
   </div>
 </nav>
@@ -53,7 +61,7 @@
 @if (updateReady()) {
   <div
     role="status"
-    class="bg-success-bg-light dark:bg-success-bg-dark text-success-text-light dark:text-success-text-dark px-8 py-3 border-b border-success-border-light dark:border-success-border-dark flex flex-wrap items-center justify-center gap-3"
+    class="bg-success-bg-light dark:bg-success-bg-dark text-success-text-light dark:text-success-text-dark px-4 py-3 sm:px-8 border-b border-success-border-light dark:border-success-border-dark flex flex-wrap items-center justify-center gap-3"
   >
     <span>A new version of Watch List is available.</span>
     <button
@@ -69,7 +77,7 @@
 @if (inMemorySession()) {
   <div
     role="alert"
-    class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark px-8 py-3 text-center border-b border-error-border-light dark:border-error-border-dark"
+    class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark px-4 py-3 sm:px-8 text-center border-b border-error-border-light dark:border-error-border-dark"
   >
     Persistent storage is unavailable. Changes are only kept in memory and will be lost on reload.
     <a routerLink="/settings" class="underline">Export your session in Settings</a> before
@@ -80,7 +88,7 @@
 }
 
 @if (settingsUnavailable()) {
-  <div role="alert" class="px-8 py-3 text-center">
+  <div role="alert" class="px-4 py-3 sm:px-8 text-center">
     Browser settings storage is unavailable for some preferences or credentials. Changes apply to
     this session, but could not all be read or saved. Previously stored values may return on reload.
     Retry saving when browser storage is available.
@@ -88,7 +96,7 @@
 }
 
 @if (postersUnavailable()) {
-  <div role="alert" class="px-8 py-3 text-center">
+  <div role="alert" class="px-4 py-3 sm:px-8 text-center">
     Some posters are unavailable. Placeholders are shown; collection metadata is still usable.
     Exports identify any omitted posters.
   </div>
@@ -97,13 +105,17 @@
 @if (saveError()) {
   <div
     role="alert"
-    class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark px-8 py-3 text-center border-b border-error-border-light dark:border-error-border-dark"
+    class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark px-4 py-3 sm:px-8 text-center border-b border-error-border-light dark:border-error-border-dark"
   >
     The last operation could not be completed. {{ saveError() }}
   </div>
 }
 
-<main class="min-h-[calc(100vh-80px)] bg-light-bg-primary dark:bg-dark-bg-primary">
+<main
+  id="main-content"
+  tabindex="-1"
+  class="min-h-[calc(100vh-80px)] bg-light-bg-primary dark:bg-dark-bg-primary focus:outline-none"
+>
   <div class="page-container">
     @if (compatibilityError(); as error) {
       <section
@@ -168,3 +180,5 @@
     }
   </div>
 </main>
+
+<app-watch-action-notice />

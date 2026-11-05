@@ -7,8 +7,8 @@
   --color-light-bg-secondary: #ffffff;
   --color-light-bg-tertiary: #f8f9fa;
   --color-light-font: #333333;
-  --color-light-font-secondary: #666666;
-  --color-light-font-muted: #999999;
+  --color-light-font-secondary: #555555;
+  --color-light-font-muted: #666666;
   --color-light-border: #e0e0e0;
   --color-light-border-light: #eeeeee;
 
@@ -16,13 +16,15 @@
   --color-dark-bg-secondary: #2d2d2d;
   --color-dark-bg-tertiary: #252525;
   --color-dark-font: #e0e0e0;
-  --color-dark-font-secondary: #b0b0b0;
-  --color-dark-font-muted: #808080;
+  --color-dark-font-secondary: #c4c4c4;
+  --color-dark-font-muted: #a8a8a8;
   --color-dark-border: #404040;
   --color-dark-border-light: #333333;
 
-  --color-accent-primary: #007bff;
+  --color-accent-primary: #0069d9;
   --color-accent-primary-hover: #0056b3;
+  --color-accent-text: #0059b8;
+  --color-accent-danger-text: #b02a37;
   --color-accent-success: #28a745;
   --color-accent-success-hover: #218838;
   --color-accent-info: #17a2b8;
@@ -95,6 +97,18 @@
 
   html.dark {
     color-scheme: dark;
+    /* The fills stay dark enough for white labels; text on dark surfaces needs lighter tints. */
+    --color-accent-text: #7ab8ff;
+    --color-accent-danger-text: #ff8f99;
+  }
+
+  html {
+    scroll-padding-top: 5rem;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-text);
+    outline-offset: 2px;
   }
 
   body {
@@ -109,6 +123,27 @@
       color 0.3s ease;
   }
 
+  /* Flex summaries lose the native marker, so disclosures draw their own. */
+  summary {
+    list-style: none;
+  }
+
+  summary::before {
+    content: '';
+    flex-shrink: 0;
+    width: 0.5em;
+    height: 0.5em;
+    margin-right: 0.75em;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+  }
+
+  details[open] > summary::before {
+    transform: rotate(45deg);
+  }
+
   button,
   input,
   select,
@@ -119,7 +154,63 @@
 
 @layer components {
   .page-container {
-    @apply max-w-[1200px] mx-auto p-8;
+    @apply max-w-[1200px] mx-auto p-4 sm:p-6 lg:p-8;
+  }
+
+  .page-title {
+    @apply m-0 text-2xl sm:text-[1.75rem] leading-tight font-semibold text-light-font dark:text-dark-font;
+  }
+
+  .section-title {
+    @apply m-0 text-lg font-semibold text-light-font dark:text-dark-font;
+  }
+
+  .card {
+    @apply rounded-lg border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 min-h-10 max-md:min-h-11 px-4 py-2 rounded border text-sm font-medium no-underline cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply border-transparent bg-accent-primary text-white enabled:hover:bg-accent-primary-hover [&:not(button)]:hover:bg-accent-primary-hover;
+  }
+
+  .btn-secondary {
+    @apply border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font enabled:hover:bg-light-hover dark:enabled:hover:bg-dark-hover [&:not(button)]:hover:bg-light-hover dark:[&:not(button)]:hover:bg-dark-hover;
+  }
+
+  .btn-quiet {
+    @apply border-transparent bg-transparent text-light-font-secondary dark:text-dark-font-secondary enabled:hover:bg-light-hover dark:enabled:hover:bg-dark-hover;
+  }
+
+  .btn-danger {
+    @apply border-transparent bg-accent-danger text-white enabled:hover:bg-accent-danger-hover;
+  }
+
+  .btn-danger-outline {
+    @apply border-accent-danger-text bg-transparent text-accent-danger-text enabled:hover:bg-accent-danger enabled:hover:border-accent-danger enabled:hover:text-white;
+  }
+
+  .chip {
+    @apply inline-flex items-center justify-center shrink-0 min-h-10 max-md:min-h-11 px-3 rounded border text-sm font-medium whitespace-nowrap cursor-pointer transition-colors border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:border-accent-text aria-pressed:border-transparent aria-pressed:bg-accent-primary aria-pressed:text-white;
+  }
+
+  .form-select {
+    @apply min-h-10 max-md:min-h-11 px-3 py-2 border border-light-border dark:border-dark-border rounded text-sm bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font;
+  }
+
+  .form-section {
+    @apply mb-4 rounded border border-light-border dark:border-dark-border;
+  }
+
+  .form-section > summary {
+    @apply min-h-11 flex items-center px-4 py-2 cursor-pointer font-medium text-light-font dark:text-dark-font;
+  }
+
+  .form-section > :not(summary) {
+    @apply px-4 pb-4;
   }
 
   .form-control {

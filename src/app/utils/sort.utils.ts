@@ -32,6 +32,14 @@ export const SORT_DIRECTION_LABELS: Record<SortDirection, string> = {
   desc: 'Descending',
 };
 
+/** Plain-language result order, so the direction control does not need to be decoded. */
+export function sortOrderLabel(field: SortField, direction: SortDirection): string {
+  const ascending = direction === 'asc';
+  if (field === 'title') return ascending ? 'A–Z' : 'Z–A';
+  if (field === 'status') return ascending ? 'Watching first' : 'Dropped first';
+  return ascending ? 'Oldest first' : 'Newest first';
+}
+
 export function isSortField(value: unknown): value is SortField {
   return typeof value === 'string' && (SORT_FIELDS as readonly string[]).includes(value);
 }

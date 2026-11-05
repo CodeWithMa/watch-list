@@ -104,7 +104,7 @@ describe('AddItemComponent', () => {
       const provider = root.querySelector<HTMLButtonElement>(
         'button[aria-label="Title search provider: TMDB"]',
       )!;
-      expect(provider.textContent?.trim()).toBe('');
+      expect(provider.textContent?.trim()).toBe('TMDB');
       expect(provider.querySelector('img')?.getAttribute('src')).toBe('icons/providers/tmdb.svg');
       expect(provider.title).toBe('Search with TMDB');
       expect(
@@ -114,7 +114,7 @@ describe('AddItemComponent', () => {
       fixture.detectChanges();
       const options = [...root.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')];
       expect(options.map((option) => option.textContent?.replace('✓', '').trim())).toEqual([
-        'TMDB',
+        'TMDBNeeds setup',
         'Jikan',
         'AniList',
       ]);
@@ -400,6 +400,32 @@ describe('AddItemComponent', () => {
         ],
       },
     });
+  });
+
+  it('explains an unconfigured provider and an empty result, keeping manual entry available', async () => {
+    vi.useFakeTimers();
+    try {
+      const fixture = TestBed.createComponent(AddItemComponent);
+      fixture.detectChanges();
+      await vi.advanceTimersByTimeAsync(0);
+      const root = fixture.nativeElement as HTMLElement;
+      const title = root.querySelector<HTMLInputElement>('#title')!;
+      title.value = 'Arrival';
+      title.dispatchEvent(new Event('input'));
+      await vi.advanceTimersByTimeAsync(1000);
+      fixture.detectChanges();
+      expect(root.textContent).toContain("TMDB isn't connected");
+      expect(root.querySelector('a[href="/settings"]')).not.toBeNull();
+      expect(root.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
+
+      fixture.componentInstance.onSearchProviderChanged('jikan');
+      await vi.advanceTimersByTimeAsync(1000);
+      fixture.detectChanges();
+      expect(root.textContent).not.toContain("TMDB isn't connected");
+      expect(root.textContent).toContain('No suggestions found');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not fetch season details for movie suggestions', () => {

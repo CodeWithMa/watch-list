@@ -1,334 +1,186 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { StatsService } from '../../services/stats.service';
+import { ITEM_TYPE_LABELS } from '../../domain/item.constants';
+import { ItemStatus } from '../../models/item.model';
 import { StatsHeatmapComponent } from './stats-heatmap/stats-heatmap.component';
 import { StatsDailyActivityComponent } from './stats-daily-activity/stats-daily-activity.component';
+
+const PATTERN_SAMPLE_SIZE = 20;
+
+const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
+  { label: 'In Progress', status: 'in-progress' },
+  { label: 'Paused', status: 'paused' },
+  { label: 'Completed', status: 'completed' },
+  { label: 'Dropped', status: 'dropped' },
+  { label: 'Not Started', status: 'not-started' },
+];
 
 @Component({
   selector: 'app-stats',
   imports: [RouterLink, StatsHeatmapComponent, StatsDailyActivityComponent],
   template: `
     <div>
-      <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Stats</h1>
+      <h1 class="page-title mb-6">Stats</h1>
 
       @if (totalItems() === 0 && history().length === 0) {
-        <div
-          class="text-center p-16 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border"
-        >
-          <div class="text-5xl mb-4 opacity-30">📊</div>
-          <p class="text-light-font-secondary dark:text-dark-font-secondary mb-2">
+        <div class="card p-6 sm:p-8 text-center">
+          <p class="text-light-font-secondary dark:text-dark-font-secondary mt-0 mb-2">
             No data to show yet.
           </p>
-          <p class="text-sm text-light-font-muted dark:text-dark-font-muted mb-4">
+          <p class="text-sm text-light-font-secondary dark:text-dark-font-secondary mt-0 mb-4">
             Add items and start watching to see your stats!
           </p>
-          <a
-            [routerLink]="['/items']"
-            class="inline-block px-6 py-3 bg-accent-primary text-white no-underline rounded-lg font-medium hover:bg-accent-primary-hover transition-colors"
-            >Browse Items</a
-          >
+          <a [routerLink]="['/items']" class="btn btn-primary">Browse Items</a>
         </div>
       } @else {
-        <div class="space-y-8">
+        <div class="space-y-6 sm:space-y-8">
           <section>
-            <h2 class="text-lg font-semibold mb-4 text-light-font dark:text-dark-font">Overview</h2>
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-4 text-center"
-              >
-                <div class="text-2xl font-bold text-accent-primary">{{ totalItems() }}</div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted mt-1">
-                  Total Items
+            <h2 class="section-title mb-3">Overview</h2>
+            <dl class="m-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              @for (metric of overview(); track metric.label) {
+                <div class="card p-4 text-center flex flex-col-reverse justify-end">
+                  <dt class="text-xs mt-1 text-light-font-secondary dark:text-dark-font-secondary">
+                    {{ metric.label }}
+                  </dt>
+                  <dd class="m-0 text-2xl font-bold">{{ metric.value }}</dd>
                 </div>
-              </div>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-4 text-center"
-              >
-                <div class="text-2xl font-bold text-accent-info">{{ inProgressCount() }}</div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted mt-1">
-                  Watching
-                </div>
-              </div>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-4 text-center"
-              >
-                <div class="text-2xl font-bold text-accent-success">{{ completedCount() }}</div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted mt-1">
-                  Completed
-                </div>
-              </div>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-4 text-center"
-              >
-                <div class="text-2xl font-bold text-accent-danger">{{ droppedCount() }}</div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted mt-1">
-                  Dropped
-                </div>
-              </div>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-4 text-center"
-              >
-                <div class="text-2xl font-bold text-accent-warning">
-                  {{ totalEpisodesWatched() }}
-                </div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted mt-1">
-                  Episodes
-                </div>
-              </div>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-4 text-center"
-              >
-                <div class="text-2xl font-bold text-light-font dark:text-dark-font">
-                  {{ history().length }}
-                </div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted mt-1">
-                  Watch Entries
-                </div>
-              </div>
-            </div>
+              }
+            </dl>
           </section>
 
           <section>
-            <h2 class="text-lg font-semibold mb-4 text-light-font dark:text-dark-font">Activity</h2>
-            <div
-              class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-6"
-            >
+            <h2 class="section-title mb-3">Activity</h2>
+            <div class="card p-4 sm:p-6">
               <app-stats-heatmap [historyEntries]="history()" />
             </div>
           </section>
 
           <section>
-            <h2 class="text-lg font-semibold mb-4 text-light-font dark:text-dark-font">
-              Daily Activity
-            </h2>
-            <div
-              class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-6"
-            >
-              <app-stats-daily-activity [historyEntries]="history()" />
-            </div>
-          </section>
-
-          <section>
-            <h2 class="text-lg font-semibold mb-4 text-light-font dark:text-dark-font">Streaks</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-4 text-center"
-              >
-                <div class="text-2xl font-bold text-accent-warning">{{ currentStreak() }}</div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted mt-1">
-                  Current Streak (days)
+            <h2 class="section-title mb-3">Streaks</h2>
+            <dl class="m-0 grid grid-cols-3 gap-3">
+              @for (metric of streaks(); track metric.label) {
+                <div class="card p-4 text-center flex flex-col-reverse justify-end">
+                  <dt class="text-xs mt-1 text-light-font-secondary dark:text-dark-font-secondary">
+                    {{ metric.label }}
+                  </dt>
+                  <dd class="m-0 text-2xl font-bold">{{ metric.value }}</dd>
                 </div>
-              </div>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-4 text-center"
-              >
-                <div class="text-2xl font-bold text-accent-primary">{{ longestStreak() }}</div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted mt-1">
-                  Longest Streak (days)
-                </div>
-              </div>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-4 text-center"
-              >
-                <div class="text-2xl font-bold text-accent-success">{{ totalDaysWatched() }}</div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted mt-1">
-                  Total Days Watched
-                </div>
-              </div>
-            </div>
+              }
+            </dl>
           </section>
 
           @if (mostWatchedItems().length > 0) {
             <section>
-              <h2 class="text-lg font-semibold mb-4 text-light-font dark:text-dark-font">
-                Most Watched
-              </h2>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border overflow-hidden"
-              >
+              <h2 class="section-title mb-3">Most Watched</h2>
+              <div class="card overflow-hidden">
                 @for (item of mostWatchedItems(); track item.id; let i = $index) {
                   <div
-                    class="flex items-center gap-4 px-5 py-3 border-b border-light-border-light dark:border-dark-border-light last:border-b-0 hover:bg-light-hover dark:hover:bg-dark-hover transition-colors"
+                    class="flex items-center gap-3 px-4 py-2 border-b border-light-border-light dark:border-dark-border-light last:border-b-0 hover:bg-light-hover dark:hover:bg-dark-hover transition-colors"
                   >
                     <span
-                      class="text-sm font-mono text-light-font-muted dark:text-dark-font-muted w-6 text-right"
+                      class="text-sm text-light-font-secondary dark:text-dark-font-secondary w-5 text-right shrink-0"
                       >{{ i + 1 }}</span
                     >
-                    <div
-                      class="w-1.5 h-1.5 rounded-full shrink-0"
-                      [class.bg-accent-primary]="item.type === 'series'"
-                      [class.bg-accent-success]="item.type === 'movie'"
-                      [class.bg-accent-info]="item.type === 'ova'"
-                      [class.bg-accent-warning]="item.type === 'ona'"
-                    ></div>
                     <a
                       [routerLink]="['/items', item.id]"
-                      class="flex-1 truncate no-underline text-sm font-medium text-light-font dark:text-dark-font hover:text-accent-primary transition-colors"
+                      class="flex-1 min-w-0 truncate no-underline text-sm font-medium text-light-font dark:text-dark-font hover:text-accent-text transition-colors"
                     >
                       {{ item.title }}
                     </a>
                     <span
-                      class="text-xs px-2 py-0.5 rounded capitalize bg-light-bg-tertiary dark:bg-dark-bg-tertiary text-light-font-secondary dark:text-dark-font-secondary shrink-0"
-                      >{{ item.type }}</span
+                      class="max-sm:hidden text-xs shrink-0 text-light-font-secondary dark:text-dark-font-secondary"
+                      >{{ typeLabels[item.type] }}</span
                     >
-                    <span
-                      class="text-sm font-mono font-medium text-light-font dark:text-dark-font shrink-0"
-                      >{{ item.watchHistory.length }}</span
-                    >
-                    <span class="text-xs text-light-font-muted dark:text-dark-font-muted shrink-0"
-                      >entries</span
-                    >
+                    <span class="text-sm font-medium shrink-0">{{
+                      entryCount(item.watchHistory.length)
+                    }}</span>
                   </div>
                 }
               </div>
             </section>
           }
 
-          <section>
-            <h2 class="text-lg font-semibold mb-4 text-light-font dark:text-dark-font">
-              Breakdown
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-5"
-              >
-                <h3
-                  class="text-sm font-semibold mb-3 text-light-font-secondary dark:text-dark-font-secondary"
-                >
-                  Series
-                </h3>
-                <div class="space-y-2">
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">In Progress</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesCountByStatus()['in-progress']
-                    }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">Paused</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesCountByStatus()['paused']
-                    }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">Completed</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesCountByStatus()['completed']
-                    }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">Dropped</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesCountByStatus()['dropped']
-                    }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">Not Started</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      seriesCountByStatus()['not-started']
-                    }}</span>
-                  </div>
-                  <div
-                    class="border-t border-light-border-light dark:border-dark-border-light pt-2 mt-2 flex justify-between text-sm"
-                  >
-                    <span class="text-light-font-muted dark:text-dark-font-muted"
-                      >Avg. Episodes / Active</span
-                    >
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      avgEpisodesPerActiveSeries()
-                    }}</span>
-                  </div>
+          <details [open]="hasEnoughHistory()">
+            <summary class="section-title min-h-11 flex items-center cursor-pointer">
+              More insights
+            </summary>
+            <div class="space-y-6 sm:space-y-8 mt-3">
+              @if (!hasEnoughHistory()) {
+                <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+                  Based on {{ entryCount(history().length) }}. Patterns become meaningful after
+                  {{ patternSampleSize }} or more.
+                </p>
+              }
+              <section>
+                <h3 class="text-base font-semibold mt-0 mb-3">Daily Activity</h3>
+                <div class="card p-4 sm:p-6">
+                  <app-stats-daily-activity [historyEntries]="history()" />
                 </div>
-              </div>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-5"
-              >
-                <h3
-                  class="text-sm font-semibold mb-3 text-light-font-secondary dark:text-dark-font-secondary"
-                >
-                  Movies
-                </h3>
-                <div class="space-y-2">
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">In Progress</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesCountByStatus()['in-progress']
-                    }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">Paused</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesCountByStatus()['paused']
-                    }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">Completed</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesCountByStatus()['completed']
-                    }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">Dropped</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesCountByStatus()['dropped']
-                    }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-light-font-muted dark:text-dark-font-muted">Not Started</span>
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      moviesCountByStatus()['not-started']
-                    }}</span>
-                  </div>
-                  <div
-                    class="border-t border-light-border-light dark:border-dark-border-light pt-2 mt-2 flex justify-between text-sm"
-                  >
-                    <span class="text-light-font-muted dark:text-dark-font-muted"
-                      >Avg. Time to Complete</span
-                    >
-                    <span class="font-medium text-light-font dark:text-dark-font">{{
-                      avgTimeToComplete()
-                    }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+              </section>
 
-          <section>
-            <h2 class="text-lg font-semibold mb-4 text-light-font dark:text-dark-font">
-              Watch Patterns
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-5"
-              >
-                <h3
-                  class="text-sm font-semibold mb-3 text-light-font-secondary dark:text-dark-font-secondary"
-                >
-                  Most Active Day
-                </h3>
-                <div class="text-2xl font-bold text-accent-primary mb-1">{{ mostActiveDay() }}</div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted">
-                  {{ mostActiveDayCount() }} entries
+              <section>
+                <h3 class="text-base font-semibold mt-0 mb-3">Breakdown</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  @for (group of breakdown(); track group.title) {
+                    <div class="card p-4">
+                      <h4
+                        class="text-sm font-semibold mt-0 mb-3 text-light-font-secondary dark:text-dark-font-secondary"
+                      >
+                        {{ group.title }}
+                      </h4>
+                      <div class="space-y-2">
+                        @for (row of group.rows; track row.label) {
+                          <div class="flex justify-between text-sm">
+                            <span class="text-light-font-secondary dark:text-dark-font-secondary">{{
+                              row.label
+                            }}</span>
+                            <span class="font-medium">{{ row.value }}</span>
+                          </div>
+                        }
+                        <div
+                          class="border-t border-light-border-light dark:border-dark-border-light pt-2 mt-2 flex justify-between text-sm"
+                        >
+                          <span class="text-light-font-secondary dark:text-dark-font-secondary">{{
+                            group.summaryLabel
+                          }}</span>
+                          <span class="font-medium">{{ group.summary }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
                 </div>
-              </div>
-              <div
-                class="bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border p-5"
-              >
-                <h3
-                  class="text-sm font-semibold mb-3 text-light-font-secondary dark:text-dark-font-secondary"
-                >
-                  Most Active Time
-                </h3>
-                <div class="text-2xl font-bold text-accent-primary mb-1">
-                  {{ mostActiveTimeOfDay() }}
+              </section>
+
+              <section>
+                <h3 class="text-base font-semibold mt-0 mb-3">Watch Patterns</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="card p-4">
+                    <h4
+                      class="text-sm font-semibold mt-0 mb-2 text-light-font-secondary dark:text-dark-font-secondary"
+                    >
+                      Most Active Day
+                    </h4>
+                    <div class="text-2xl font-bold mb-1">{{ mostActiveDay() }}</div>
+                    <div class="text-xs text-light-font-secondary dark:text-dark-font-secondary">
+                      {{ entryCount(mostActiveDayCount()) }}
+                    </div>
+                  </div>
+                  <div class="card p-4">
+                    <h4
+                      class="text-sm font-semibold mt-0 mb-2 text-light-font-secondary dark:text-dark-font-secondary"
+                    >
+                      Most Active Time
+                    </h4>
+                    <div class="text-2xl font-bold mb-1">{{ mostActiveTimeOfDay() }}</div>
+                    <div class="text-xs text-light-font-secondary dark:text-dark-font-secondary">
+                      {{ entryCount(mostActiveTimeOfDayCount()) }}
+                    </div>
+                  </div>
                 </div>
-                <div class="text-xs text-light-font-muted dark:text-dark-font-muted">
-                  {{ mostActiveTimeOfDayCount() }} entries
-                </div>
-              </div>
+              </section>
             </div>
-          </section>
+          </details>
         </div>
       }
     </div>
@@ -357,4 +209,50 @@ export class StatsComponent {
   mostActiveDayCount = this.statsService.mostActiveDayCount;
   mostActiveTimeOfDay = this.statsService.mostActiveTimeOfDay;
   mostActiveTimeOfDayCount = this.statsService.mostActiveTimeOfDayCount;
+
+  protected readonly typeLabels = ITEM_TYPE_LABELS;
+  protected readonly patternSampleSize = PATTERN_SAMPLE_SIZE;
+  protected readonly hasEnoughHistory = computed(
+    () => this.history().length >= PATTERN_SAMPLE_SIZE,
+  );
+
+  protected readonly overview = computed(() => [
+    { label: 'Total Items', value: this.totalItems() },
+    { label: 'Watching', value: this.inProgressCount() },
+    { label: 'Completed', value: this.completedCount() },
+    { label: 'Dropped', value: this.droppedCount() },
+    { label: 'Episodes', value: this.totalEpisodesWatched() },
+    { label: 'Watch Entries', value: this.history().length },
+  ]);
+
+  protected readonly streaks = computed(() => [
+    { label: 'Current Streak (days)', value: this.currentStreak() },
+    { label: 'Longest Streak (days)', value: this.longestStreak() },
+    { label: 'Total Days Watched', value: this.totalDaysWatched() },
+  ]);
+
+  protected readonly breakdown = computed(() => [
+    {
+      title: 'Series',
+      rows: BREAKDOWN_ROWS.map(({ label, status }) => ({
+        label,
+        value: this.seriesCountByStatus()[status],
+      })),
+      summaryLabel: 'Avg. Episodes / Active',
+      summary: this.avgEpisodesPerActiveSeries(),
+    },
+    {
+      title: 'Movies',
+      rows: BREAKDOWN_ROWS.map(({ label, status }) => ({
+        label,
+        value: this.moviesCountByStatus()[status],
+      })),
+      summaryLabel: 'Avg. Time to Complete',
+      summary: this.avgTimeToComplete(),
+    },
+  ]);
+
+  protected entryCount(count: number) {
+    return `${count} ${count === 1 ? 'entry' : 'entries'}`;
+  }
 }

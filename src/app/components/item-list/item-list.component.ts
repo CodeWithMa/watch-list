@@ -11,8 +11,8 @@ import {
   ITEM_TYPES,
   ITEM_TYPE_LABELS,
 } from '../../domain/item.constants';
-import { statusButtonClass, FilterStatus } from '../../utils/status.utils';
-import { typeButtonClass, FilterType } from '../../utils/type.utils';
+import { FilterStatus } from '../../utils/status.utils';
+import { FilterType } from '../../utils/type.utils';
 import {
   SORT_DIRECTIONS,
   SORT_DIRECTION_LABELS,
@@ -21,6 +21,7 @@ import {
   SortDirection,
   SortField,
   sortItems,
+  sortOrderLabel,
 } from '../../utils/sort.utils';
 
 import { ItemCardComponent } from '../item-card/item-card.component';
@@ -31,15 +32,47 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
   imports: [FormsModule, RouterLink, ItemCardComponent],
   template: `
     <div>
-      <div class="flex justify-between items-center mb-8 gap-4 flex-wrap">
-        <h1 class="text-2xl m-0 text-light-font dark:text-dark-font">All Items</h1>
-        <div class="flex gap-4 flex-wrap items-center">
-          <div class="flex items-center gap-2">
+      <div class="flex items-center justify-between gap-4 mb-3 sm:mb-4">
+        <h1 class="page-title">All Items</h1>
+        <a [routerLink]="['/items/add']" class="btn btn-primary shrink-0">Add Item</a>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 mb-3">
+        <input
+          type="text"
+          placeholder="Search by name..."
+          aria-label="Search by name"
+          [ngModel]="searchFilter()"
+          (ngModelChange)="searchFilter.set($event)"
+          class="form-select flex-1 min-w-40 text-base md:text-sm"
+        />
+        <button
+          type="button"
+          (click)="filtersOpen.set(!filtersOpen())"
+          [attr.aria-expanded]="filtersOpen()"
+          aria-controls="library-filters type-filters"
+          class="btn btn-secondary md:hidden"
+        >
+          Filter &amp; sort
+          @if (secondaryFilterCount() > 0) {
+            <span
+              class="inline-flex size-5 items-center justify-center rounded-full bg-accent-primary text-xs text-white"
+              [attr.aria-label]="secondaryFilterCount() + ' applied'"
+              >{{ secondaryFilterCount() }}</span
+            >
+          }
+        </button>
+        <div
+          id="library-filters"
+          class="flex flex-wrap items-center gap-2 max-md:w-full max-md:mt-1"
+          [class.max-md:hidden]="!filtersOpen()"
+        >
+          <div class="flex items-center gap-2 max-md:w-full">
             <select
               [ngModel]="sortField()"
               (ngModelChange)="setSortField($event)"
               aria-label="Sort by"
-              class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
+              class="form-select max-md:flex-1"
             >
               @for (field of sortFields; track field) {
                 <option [value]="field">{{ sortFieldLabels[field] }}</option>
@@ -48,15 +81,15 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
             <button
               type="button"
               (click)="toggleSortDirection()"
-              [attr.aria-label]="'Sort direction: ' + sortDirectionLabels[sortDirection()]"
+              [attr.aria-label]="'Sort direction: ' + sortOrder()"
               [attr.title]="sortDirectionLabels[sortDirection()]"
-              class="px-3 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary flex items-center justify-center"
+              class="btn btn-secondary whitespace-nowrap"
             >
               @if (sortDirection() === 'desc') {
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -71,8 +104,8 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
               } @else {
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -85,57 +118,72 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
                   <path d="M19 12l-7 7-7-7" />
                 </svg>
               }
+              {{ sortOrder() }}
             </button>
           </div>
           <select
             [ngModel]="groupFilter()"
             (ngModelChange)="groupFilter.set($event)"
-            class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
+            aria-label="Filter by group"
+            class="form-select max-md:w-full"
           >
             <option value="">All Groups</option>
             @for (group of groups(); track group.id) {
               <option [value]="group.id">{{ group.name }}</option>
             }
           </select>
-          <input
-            type="text"
-            placeholder="Search by name..."
-            [ngModel]="searchFilter()"
-            (ngModelChange)="searchFilter.set($event)"
-            class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font w-64"
-          />
-          <a
-            [routerLink]="['/items/add']"
-            class="px-6 py-3 bg-accent-primary text-white no-underline rounded font-medium hover:bg-accent-primary-hover"
-            >Add Item</a
-          >
         </div>
       </div>
 
-      <div class="flex flex-col gap-2 mb-4">
-        <div class="flex flex-wrap gap-2">
-          <button
-            type="button"
-            (click)="statusFilter.set('all')"
-            [class]="getFilterButtonClass('all')"
+      <div class="flex flex-col gap-2 mb-3">
+        <div
+          role="group"
+          aria-labelledby="status-filter-label"
+          class="relative flex items-center gap-2"
+        >
+          <span
+            id="status-filter-label"
+            class="max-md:sr-only w-12 shrink-0 text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary"
+            >Status</span
           >
-            All
-          </button>
-          @for (status of itemStatuses; track status) {
+          <div class="relative flex gap-2 overflow-x-auto max-md:-mx-4 max-md:px-4 py-0.5">
             <button
               type="button"
-              (click)="statusFilter.set(status)"
-              [class]="getFilterButtonClass(status)"
+              (click)="statusFilter.set('all')"
+              [attr.aria-pressed]="statusFilter() === 'all'"
+              class="chip"
             >
-              {{ itemStatusLabels[status] }}
+              All
             </button>
-          }
+            @for (status of itemStatuses; track status) {
+              <button
+                type="button"
+                (click)="statusFilter.set(status)"
+                [attr.aria-pressed]="statusFilter() === status"
+                class="chip"
+              >
+                {{ itemStatusLabels[status] }}
+              </button>
+            }
+          </div>
         </div>
-        <div class="flex flex-wrap gap-2">
+        <div
+          id="type-filters"
+          role="group"
+          aria-labelledby="type-filter-label"
+          class="flex flex-wrap items-center gap-2"
+          [class.max-md:hidden]="!filtersOpen()"
+        >
+          <span
+            id="type-filter-label"
+            class="w-12 shrink-0 text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary"
+            >Type</span
+          >
           <button
             type="button"
             (click)="typeFilter.set('all')"
-            [class]="getTypeFilterButtonClass('all')"
+            [attr.aria-pressed]="typeFilter() === 'all'"
+            class="chip"
           >
             All
           </button>
@@ -143,7 +191,8 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
             <button
               type="button"
               (click)="typeFilter.set(type)"
-              [class]="getTypeFilterButtonClass(type)"
+              [attr.aria-pressed]="typeFilter() === type"
+              class="chip"
             >
               {{ itemTypeLabels[type] }}
             </button>
@@ -151,15 +200,46 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
         </div>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        @for (item of filteredItems(); track item.id) {
-          <app-item-card [item]="item" />
-        } @empty {
-          <p class="text-center text-light-font-muted dark:text-dark-font-muted p-8">
-            No items found
-          </p>
+      <div class="flex flex-wrap items-center gap-x-3 mb-3 min-h-6 text-sm" aria-live="polite">
+        <span class="text-light-font-secondary dark:text-dark-font-secondary">{{
+          resultSummary()
+        }}</span>
+        @if (hasActiveFilters() && visibleLibraryCount() > 0) {
+          <button
+            type="button"
+            (click)="resetFilters()"
+            class="text-accent-text underline cursor-pointer max-md:min-h-11"
+          >
+            Reset filters
+          </button>
         }
       </div>
+
+      @if (filteredItems().length > 0) {
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          @for (item of filteredItems(); track item.id) {
+            <app-item-card [item]="item" />
+          }
+        </div>
+      } @else if (visibleLibraryCount() === 0) {
+        <div class="card p-6 sm:p-8 text-center">
+          <h2 class="section-title mb-2">Your library is empty</h2>
+          <p class="mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+            Add a series or movie to start tracking it.
+          </p>
+          <a [routerLink]="['/items/add']" class="btn btn-primary">Add your first title</a>
+        </div>
+      } @else {
+        <div class="card p-6 sm:p-8 text-center">
+          <h2 class="section-title mb-2">No matches</h2>
+          <p class="mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+            No titles fit your search and filters.
+          </p>
+          <button type="button" (click)="resetFilters()" class="btn btn-secondary">
+            Clear search and filters
+          </button>
+        </div>
+      }
     </div>
   `,
 })
@@ -190,12 +270,38 @@ export class ItemListComponent {
 
   allItems = this.watchListService.items;
 
-  getFilterButtonClass(status: FilterStatus): string {
-    return statusButtonClass(this.statusFilter() === status, status);
-  }
+  readonly filtersOpen = signal(false);
+  readonly sortOrder = computed(() => sortOrderLabel(this.sortField(), this.sortDirection()));
+  readonly secondaryFilterCount = computed(
+    () => Number(this.typeFilter() !== 'all') + Number(!!this.groupFilter()),
+  );
+  readonly hasActiveFilters = computed(
+    () =>
+      this.secondaryFilterCount() > 0 ||
+      this.statusFilter() !== 'all' ||
+      !!this.searchFilter().trim(),
+  );
 
-  getTypeFilterButtonClass(type: FilterType): string {
-    return typeButtonClass(this.typeFilter() === type, type);
+  private readonly visibleLibrary = computed(() =>
+    this.providerSettings.settings().adultDisplayMode === 'hide'
+      ? this.allItems().filter((item) => !item.isAdult)
+      : this.allItems(),
+  );
+  readonly visibleLibraryCount = computed(() => this.visibleLibrary().length);
+  readonly resultSummary = computed(() => {
+    const total = this.visibleLibraryCount();
+    const shown = this.filteredItems().length;
+    const titles = total === 1 ? 'title' : 'titles';
+    return this.hasActiveFilters()
+      ? `Showing ${shown} of ${total} ${titles}`
+      : `${total} ${titles}`;
+  });
+
+  resetFilters(): void {
+    this.statusFilter.set('all');
+    this.typeFilter.set('all');
+    this.groupFilter.set('');
+    this.searchFilter.set('');
   }
 
   setSortField(field: SortField): void {
@@ -211,18 +317,13 @@ export class ItemListComponent {
   }
 
   filteredItems = computed(() => {
-    let items = this.allItems();
+    let items = this.visibleLibrary();
     const statusFilter = this.statusFilter();
     const typeFilter = this.typeFilter();
     const search = this.searchFilter().toLowerCase();
     const groupFilter = this.groupFilter();
     const sortField = this.sortField();
     const sortDirection = this.sortDirection();
-    const adultMode = this.providerSettings.settings().adultDisplayMode;
-
-    if (adultMode === 'hide') {
-      items = items.filter((item) => !item.isAdult);
-    }
 
     if (search) {
       items = items.filter((item) => item.title.toLowerCase().includes(search));

@@ -21,6 +21,7 @@ export function createSearchStream(
   const results = signal<Suggestion[]>([]);
   const loading = signal(false);
   const error = signal('');
+  const noResults = signal(false);
   let pending: Subscription | undefined;
   let lastRequest: { query: string; source: SuggestionSource | undefined } | undefined;
 
@@ -30,6 +31,7 @@ export function createSearchStream(
     results.set([]);
     loading.set(false);
     error.set('');
+    noResults.set(false);
   }
 
   function request() {
@@ -48,7 +50,10 @@ export function createSearchStream(
         }),
       )
       .subscribe({
-        next: (suggestions) => results.set(suggestions),
+        next: (suggestions) => {
+          results.set(suggestions);
+          noResults.set(suggestions.length === 0);
+        },
         error: () => {
           loading.set(false);
           error.set(errorMessage);
@@ -71,6 +76,7 @@ export function createSearchStream(
     results: results.asReadonly(),
     loading: loading.asReadonly(),
     error: error.asReadonly(),
+    noResults: noResults.asReadonly(),
     setQuery(value: string) {
       query.set(value);
       request();

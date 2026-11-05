@@ -1,9 +1,10 @@
-import { Component, DOCUMENT, inject, signal } from '@angular/core';
+import { Component, DOCUMENT, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { SwUpdate } from '@angular/service-worker';
 import { EMPTY, filter, map } from 'rxjs';
 import { ThemeSwitcherComponent } from './components/theme-switcher/theme-switcher.component';
+import { WatchActionNoticeComponent } from './components/watch-action-notice/watch-action-notice.component';
 import { StorageService } from './services/storage.service';
 import { BrowserSettingsStorage } from './services/browser-settings-storage.service';
 import { ImageStorageService } from './services/image-storage.service';
@@ -14,7 +15,17 @@ import {
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ThemeSwitcherComponent],
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    ThemeSwitcherComponent,
+    WatchActionNoticeComponent,
+  ],
+  host: {
+    '(document:click)': 'onDocumentClick($event)',
+    '(document:keydown.escape)': 'closeMenu(true)',
+  },
   templateUrl: './app.html',
   styles: [':host { display: block; min-height: 100vh; }'],
 })
@@ -24,6 +35,16 @@ export class App {
   private readonly document = inject(DOCUMENT);
   private readonly updates = inject(SwUpdate, { optional: true });
   protected readonly title = signal('watch-list');
+  protected readonly navLinks = [
+    { path: '/', label: 'Home' },
+    { path: '/items', label: 'Items' },
+    { path: '/history', label: 'History' },
+    { path: '/stats', label: 'Stats' },
+    { path: '/groups', label: 'Groups' },
+    { path: '/settings', label: 'Settings' },
+  ];
+  protected readonly menuOpen = signal(false);
+  private readonly menuToggle = viewChild.required<ElementRef<HTMLElement>>('menuToggle');
   protected readonly saveError = this.storageService.getSaveErrorSignal();
   protected readonly inMemorySession = this.storageService.getInMemorySessionSignal();
   protected readonly settingsUnavailable = inject(BrowserSettingsStorage).unavailable;
@@ -39,6 +60,16 @@ export class App {
     ),
     { initialValue: false },
   );
+
+  protected closeMenu(returnFocus = false) {
+    if (!this.menuOpen()) return;
+    this.menuOpen.set(false);
+    if (returnFocus) this.menuToggle().nativeElement.focus();
+  }
+
+  protected onDocumentClick(event: MouseEvent) {
+    if (event.target instanceof Element && !event.target.closest('nav')) this.closeMenu();
+  }
 
   protected reload() {
     this.document.location.reload();

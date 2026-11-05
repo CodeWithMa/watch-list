@@ -16,7 +16,7 @@ import { StorageService } from '../../services/storage.service';
           type="button"
           (click)="refresh()"
           [disabled]="busy() || disabled()"
-          class="px-4 py-2 rounded bg-accent-primary text-white disabled:opacity-50"
+          class="btn btn-primary"
         >
           Refresh collection
         </button>

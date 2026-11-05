@@ -28,7 +28,7 @@ interface SelectedSuggestionRef {
   imports: [ItemFormComponent, SearchProviderSelectComponent, ConflictRecoveryComponent],
   template: `
     <div>
-      <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Add New Item</h1>
+      <h1 class="page-title mb-6">Add New Item</h1>
       <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
 
       <app-item-form
@@ -44,6 +44,8 @@ interface SelectedSuggestionRef {
         [suggestions]="suggestions()"
         [suggestionsLoading]="suggestionsLoading()"
         [suggestionsError]="suggestionsError()"
+        [suggestionsEmpty]="suggestionsEmpty()"
+        [searchSetupRequired]="needsSetup()"
         [autofillPatch]="autofillPatch()"
         (titleChanged)="onTitleChanged($event)"
         (suggestionSelected)="onSuggestionSelected($event)"
@@ -55,6 +57,7 @@ interface SelectedSuggestionRef {
           [sources]="enabledSources()"
           [value]="selectedSource()"
           label="Title search provider"
+          [sourcesNeedingSetup]="sourcesNeedingSetup()"
           (valueChange)="onSearchProviderChanged($event)"
         />
       </app-item-form>
@@ -81,6 +84,9 @@ export class AddItemComponent {
   readonly suggestions = this.search.results;
   readonly suggestionsLoading = this.search.loading;
   readonly suggestionsError = this.search.error;
+  readonly suggestionsEmpty = this.search.noResults;
+  readonly sourcesNeedingSetup = this.search.sourcesNeedingSetup;
+  readonly needsSetup = this.search.needsSetup;
   readonly autofillPatch = signal<{ id: number; value: Partial<ItemFormValue> } | null>(null);
   private autofillPatchId = 0;
   readonly duplicateTitleHint = computed(() => {
