@@ -34,13 +34,14 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
     PosterFallbackComponent,
   ],
   template: `
-    <div>
+    <div class="max-w-4xl">
+      <a routerLink="/items" class="back-link">Library</a>
       <app-conflict-recovery [disabled]="actions.busy()" (recovered)="actions.error.set(null)" />
       @if (item(); as currentItem) {
         <div
-          class="card p-4 sm:p-6 mb-6 grid grid-cols-[5.5rem_1fr] sm:grid-cols-[10rem_1fr] sm:grid-rows-[auto_1fr] gap-4 sm:gap-x-6"
+          class="card p-4 sm:p-6 mb-6 sm:mb-8 grid grid-cols-[5.5rem_1fr] sm:grid-cols-[9rem_1fr] sm:grid-rows-[auto_auto_1fr] gap-4 sm:gap-x-6"
         >
-          <div class="overflow-hidden rounded sm:row-span-2 self-start">
+          <div class="overflow-hidden rounded sm:row-span-3 self-start">
             @if (posterUrl(); as url) {
               <img
                 [src]="url"
@@ -50,6 +51,7 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
             } @else if (posterUrl() === null) {
               <app-poster-fallback
                 [type]="currentItem.type"
+                [title]="currentItem.title"
                 [label]="currentItem.title + ' has no poster'"
               />
             }
@@ -148,15 +150,22 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                 >Edit details</a
               >
               @if (canDrop()) {
-                <button
-                  type="button"
-                  (click)="runAction('dropped')"
-                  [disabled]="actions.busy()"
-                  title="Stop watching this title. Its history is kept, and you can restart it later."
-                  class="btn btn-quiet-danger ml-auto"
-                >
-                  Drop
-                </button>
+                <!-- Kept with its siblings, but set apart: leaving a title is not a routine step. -->
+                <span class="inline-flex items-center gap-2 self-stretch">
+                  <span
+                    class="max-sm:hidden self-stretch w-px my-1.5 bg-light-border dark:bg-dark-border"
+                    aria-hidden="true"
+                  ></span>
+                  <button
+                    type="button"
+                    (click)="runAction('dropped')"
+                    [disabled]="actions.busy()"
+                    title="Stop watching this title. Its history is kept, and you can restart it later."
+                    class="btn btn-quiet-danger"
+                  >
+                    Drop
+                  </button>
+                </span>
               }
             </div>
             @if (actions.error()) {
@@ -170,23 +179,22 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
               </p>
             }
           </section>
-        </div>
 
-        <section class="mb-6">
-          <h2 class="section-title mb-3">Details</h2>
-          <dl class="card m-0 p-4 grid grid-cols-2 min-[22rem]:grid-cols-3 gap-4 text-sm">
+          <dl
+            class="col-span-2 sm:col-span-1 sm:col-start-2 self-end m-0 pt-4 grid grid-cols-2 min-[22rem]:grid-cols-3 gap-4 border-t border-light-border-light dark:border-dark-border-light text-sm"
+          >
             <div>
-              <dt class="text-light-font-secondary dark:text-dark-font-secondary">Group</dt>
+              <dt class="meta">Group</dt>
               <dd class="m-0">{{ groupName() ?? 'Ungrouped' }}</dd>
             </div>
             <div>
-              <dt class="text-light-font-secondary dark:text-dark-font-secondary">Added</dt>
+              <dt class="meta">Added</dt>
               <dd class="m-0" [title]="currentItem.createdAt | date: 'medium'">
                 {{ currentItem.createdAt | date: 'mediumDate' }}
               </dd>
             </div>
             <div>
-              <dt class="text-light-font-secondary dark:text-dark-font-secondary">Last watched</dt>
+              <dt class="meta">Last watched</dt>
               <dd class="m-0">
                 @if (hasWatchHistory()) {
                   <app-time-ago [date]="lastWatchedDate()" />
@@ -196,7 +204,7 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
               </dd>
             </div>
           </dl>
-        </section>
+        </div>
 
         <section>
           <h2 class="section-title mb-3">Watch history</h2>
@@ -205,17 +213,19 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
               No watch history yet.
             </p>
           } @else {
-            <ol class="space-y-2 list-none p-0 m-0">
+            <ol class="card list-none p-0 m-0 overflow-hidden">
               @for (entry of watchHistory(); track $index) {
-                <li class="card flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm">
-                  <span [title]="entry.date | date: 'medium'">{{
-                    entry.date | date: 'MMM d, y, h:mm a'
-                  }}</span>
+                <li
+                  class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm border-b border-light-border-light dark:border-dark-border-light last:border-b-0"
+                >
+                  <span [title]="entry.date | date: 'medium'"
+                    >{{ entry.date | date: 'EEE, MMM d, y' }}
+                    <span class="text-light-font-secondary dark:text-dark-font-secondary">
+                      · {{ entry.date | date: 'h:mm a' }}</span
+                    ></span
+                  >
                   @if (entry.season) {
-                    <span
-                      class="text-xs bg-accent-primary/10 text-accent-text px-2 py-0.5 rounded-full font-medium"
-                      >{{ formatEpisode(entry) }}</span
-                    >
+                    <span class="tag tag-accent ml-auto">{{ formatEpisode(entry) }}</span>
                   }
                 </li>
               }
@@ -223,9 +233,12 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
           }
         </section>
       } @else {
-        <div class="text-center px-8 py-16">
-          <h2 class="mb-4">Title not found</h2>
-          <a [routerLink]="['/items']" class="text-accent-text underline">Back to library</a>
+        <div class="card text-center px-8 py-16">
+          <h2 class="section-title mb-2">Title not found</h2>
+          <p class="mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+            It may have been deleted.
+          </p>
+          <a routerLink="/items" class="btn btn-secondary">Open library</a>
         </div>
       }
     </div>

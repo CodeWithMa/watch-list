@@ -12,7 +12,7 @@ import { PosterComponent } from '../poster/poster.component';
   },
   template: `
     <div
-      class="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] @2xl:grid-cols-[2.5rem_minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 px-3 sm:px-4 py-2"
+      class="grid grid-cols-[2rem_minmax(0,1fr)_auto] @2xl:grid-cols-[2rem_minmax(0,1fr)_auto_auto] items-center gap-x-3 gap-y-1 px-3 sm:px-4 py-2"
     >
       <app-poster
         [item]="item()"

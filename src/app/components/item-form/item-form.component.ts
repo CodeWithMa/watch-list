@@ -57,17 +57,24 @@ export interface ItemFormAutofillPatch {
             (ngModelChange)="updateTitle($event)"
             name="title"
             required
+            [attr.aria-invalid]="showTitleError() || null"
+            [attr.aria-describedby]="showTitleError() ? 'title-error' : null"
             class="form-control"
           />
+          @if (
+            showTitleError() ||
+            (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched)
+          ) {
+            <div id="title-error" class="text-accent-danger-text text-sm mt-1">
+              Title is required
+            </div>
+          }
           <div
             class="hidden has-[app-search-provider-select:not(.hidden)]:flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 [--search-control-size:2.75rem] md:[--search-control-size:2.5rem]"
           >
             <span class="meta">Suggestions from</span>
             <ng-content select="[title-search-provider]" />
           </div>
-          @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
-            <div class="text-accent-danger-text text-sm mt-1">Title is required</div>
-          }
           @if (duplicateTitleHint()) {
             <div class="text-light-font-secondary dark:text-dark-font-secondary text-sm mt-1">
               {{ duplicateTitleHint() }}
@@ -302,24 +309,27 @@ export interface ItemFormAutofillPatch {
           }
         }
 
-        @if (showDirtyState() && isDirty()) {
-          <div
-            class="mb-4 px-3 py-2 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary border border-accent-secondary text-light-font-secondary dark:text-dark-font-secondary text-sm"
-          >
-            You have unsaved changes
-          </div>
-        }
-
         @if (error()) {
           <div role="alert" class="text-accent-danger-text mt-4">{{ error() }}</div>
         }
-        <div class="flex flex-wrap gap-2 mt-6">
+        <div class="flex flex-wrap items-center gap-2 mt-6">
           <button type="submit" class="btn btn-primary" [disabled]="isSubmitDisabled()">
             {{ submitLabel() }}
           </button>
           <button type="button" (click)="handleCancel()" class="btn btn-secondary">
             {{ cancelLabel() }}
           </button>
+          <!-- Next to Save, so the reason Save is or isn't available sits where the eye is. -->
+          @if (showDirtyState()) {
+            <span role="status" class="meta ml-1 inline-flex items-center gap-2">
+              @if (isDirty()) {
+                <span class="size-2 rounded-full bg-accent-primary" aria-hidden="true"></span>
+                You have unsaved changes
+              } @else if (disableSubmitWhenPristine()) {
+                No changes to save
+              }
+            </span>
+          }
         </div>
       </fieldset>
     </form>
@@ -362,6 +372,10 @@ export class ItemFormComponent {
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
   readonly posterLoading = signal(false);
+  private readonly submitAttempted = signal(false);
+  readonly showTitleError = computed(
+    () => this.submitAttempted() && !this.formValue().title.trim(),
+  );
   readonly isEpisodic = isEpisodicType;
 
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
@@ -388,12 +402,7 @@ export class ItemFormComponent {
   });
 
   readonly isSubmitDisabled = computed(() => {
-    if (
-      this.busy() ||
-      !this.formValue().title.trim() ||
-      this.posterLoading() ||
-      this.hasInvalidProgress()
-    ) {
+    if (this.busy() || this.posterLoading() || this.hasInvalidProgress()) {
       return true;
     }
 
@@ -446,6 +455,11 @@ export class ItemFormComponent {
     if (this.isSubmitDisabled()) {
       return;
     }
+    if (!value.title.trim()) {
+      this.submitAttempted.set(true);
+      this.titleInput().nativeElement.focus();
+      return;
+    }
 
     const submittedValue = prepareSubmittedItemFormValue(value, this.showStartImmediately());
 
@@ -462,6 +476,7 @@ export class ItemFormComponent {
   handleCancel(): void {
     if (this.busy()) return;
     this.posterPicker?.clearDrafts();
+    this.submitAttempted.set(false);
     if (this.resetOnCancel()) {
       this.formValue.set(normalizeFormValueForType(this.initialValue()));
     }

@@ -21,8 +21,9 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
   template: `
     <div>
       <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
-      @if (item()) {
-        <div class="max-w-3xl">
+      @if (item(); as currentItem) {
+        <div class="reading-measure">
+          <a [routerLink]="['/items', currentItem.id]" class="back-link">{{ currentItem.title }}</a>
           <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
             <h1 class="page-title">Edit details</h1>
             <div class="flex flex-wrap gap-2">
@@ -31,9 +32,9 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   type="button"
                   [disabled]="mutation.busy()"
                   (click)="confirmDelete.set(true)"
-                  class="btn btn-danger-outline"
+                  class="btn btn-quiet-danger"
                 >
-                  Delete
+                  Delete title
                 </button>
               } @else {
                 <button
@@ -58,13 +59,13 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
           @if (!itemExists()) {
             <p role="alert" class="text-accent-danger-text">
               This title was deleted while you were editing. Your draft cannot be saved.
-              <a [routerLink]="['/items']">Back to library</a>
+              <a routerLink="/items" class="underline">Open library</a>
             </p>
           }
           <app-item-form
             [groups]="groups()"
             [initialValue]="formValue()"
-            submitLabel="Save Changes"
+            submitLabel="Save changes"
             [busy]="mutation.busy()"
             [error]="mutation.error()"
             [showDirtyState]="true"
@@ -75,9 +76,12 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
           />
         </div>
       } @else {
-        <div class="text-center px-8 py-16">
-          <h2 class="mb-4">Title not found</h2>
-          <a [routerLink]="['/items']">Back to library</a>
+        <div class="card reading-measure text-center px-8 py-16">
+          <h2 class="section-title mb-2">Title not found</h2>
+          <p class="mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+            It may have been deleted.
+          </p>
+          <a routerLink="/items" class="btn btn-secondary">Open library</a>
         </div>
       }
     </div>

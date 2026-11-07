@@ -14,7 +14,7 @@ export function statusBadgeClass(status: ItemStatus): string {
       'bg-status-dropped-bg-light dark:bg-status-dropped-bg-dark text-status-dropped-text-light dark:text-status-dropped-text-dark',
   };
 
-  return `inline-block rounded px-1.5 py-0.5 text-meta font-medium ${colors[status]}`;
+  return `tag ${colors[status]}`;
 }
 
 export type FilterStatus = ItemStatus | 'all';

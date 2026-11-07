@@ -32,6 +32,9 @@ export class WatchActionNoticeService {
 
   readonly notice = signal<WatchActionNotice | null>(null);
   readonly undoing = signal(false);
+  readonly durationMs = NOTICE_DURATION_MS;
+  /** Counts timer starts, so a countdown display can restart in step with the real timer. */
+  readonly timerRun = signal(0);
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));
@@ -95,7 +98,9 @@ export class WatchActionNoticeService {
 
   resume() {
     this.pause();
-    if (this.notice()) this.timer = setTimeout(() => this.dismiss(), NOTICE_DURATION_MS);
+    if (!this.notice()) return;
+    this.timer = setTimeout(() => this.dismiss(), NOTICE_DURATION_MS);
+    this.timerRun.update((run) => run + 1);
   }
 
   private show(notice: WatchActionNotice) {

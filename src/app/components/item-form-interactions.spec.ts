@@ -149,7 +149,7 @@ describe('Settled item form interactions', () => {
       title.dispatchEvent(new Event('input'));
       fixture.detectChanges();
       if (command === 'delete') {
-        button(root, 'Delete').click();
+        button(root, 'Delete title').click();
         fixture.detectChanges();
       }
       const submit = () =>
@@ -193,7 +193,7 @@ describe('Settled item form interactions', () => {
       title.dispatchEvent(new Event('input'));
       fixture.detectChanges();
       if (command === 'delete') {
-        button(root, 'Delete').click();
+        button(root, 'Delete title').click();
         fixture.detectChanges();
       }
       const held = holdStorageWrite(0);

@@ -8,8 +8,8 @@ import { TitleRowComponent } from './title-row.component';
   imports: [TitleRowComponent],
   template: `
     @if (items().length > 0) {
-      <h3 class="m-0 px-3 sm:px-4 pb-2 text-sm font-semibold">
-        Choose a {{ noun() }} from your backlog
+      <h3 class="m-0 px-3 sm:px-4 py-3 text-sm font-semibold">
+        Start a {{ noun() }} from your backlog
       </h3>
       <div class="border-t border-light-border dark:border-dark-border">
         @for (choice of items(); track choice.id) {

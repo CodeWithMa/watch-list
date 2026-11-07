@@ -44,7 +44,7 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
                 <div
                   class="p-3 sm:p-4 text-center flex flex-col-reverse justify-end bg-light-bg-secondary dark:bg-dark-bg-secondary"
                 >
-                  <dt class="text-xs mt-1 text-light-font-secondary dark:text-dark-font-secondary">
+                  <dt class="meta mt-1">
                     {{ metric.label }}
                   </dt>
                   <dd class="m-0 text-2xl font-bold">{{ metric.value }}</dd>
@@ -69,7 +69,7 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
                 <div
                   class="p-3 sm:p-4 text-center flex flex-col-reverse justify-end bg-light-bg-secondary dark:bg-dark-bg-secondary"
                 >
-                  <dt class="text-xs mt-1 text-light-font-secondary dark:text-dark-font-secondary">
+                  <dt class="meta mt-1">
                     {{ metric.label }}
                   </dt>
                   <dd class="m-0 text-2xl font-bold">{{ metric.value }}</dd>
@@ -147,12 +147,15 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
                           </div>
                         }
                         <div
-                          class="border-t border-light-border-light dark:border-dark-border-light pt-2 mt-2 flex justify-between text-sm"
+                          class="border-t border-light-border-light dark:border-dark-border-light pt-2 mt-2 flex justify-between gap-4 text-sm"
                         >
-                          <span class="text-light-font-secondary dark:text-dark-font-secondary">{{
-                            group.summaryLabel
-                          }}</span>
-                          <span class="font-medium">{{ group.summary }}</span>
+                          <span class="text-light-font-secondary dark:text-dark-font-secondary"
+                            >{{ group.summaryLabel }}
+                            @if (group.summaryHint; as hint) {
+                              <span class="block text-xs">{{ hint }}</span>
+                            }
+                          </span>
+                          <span class="font-medium shrink-0">{{ group.summary }}</span>
                         </div>
                       </div>
                     </div>
@@ -161,13 +164,13 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
               </section>
 
               <section>
-                <h3 class="text-base font-semibold mt-0 mb-3">Watch Patterns</h3>
+                <h3 class="text-base font-semibold mt-0 mb-3">Watch patterns</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div class="card p-4">
                     <h4
                       class="text-sm font-semibold mt-0 mb-2 text-light-font-secondary dark:text-dark-font-secondary"
                     >
-                      Most Active Day
+                      Most active day
                     </h4>
                     <div class="text-2xl font-bold mb-1">{{ mostActiveDay() }}</div>
                     <div class="text-xs text-light-font-secondary dark:text-dark-font-secondary">
@@ -178,7 +181,7 @@ const BREAKDOWN_ROWS: readonly { label: string; status: ItemStatus }[] = [
                     <h4
                       class="text-sm font-semibold mt-0 mb-2 text-light-font-secondary dark:text-dark-font-secondary"
                     >
-                      Most Active Time
+                      Most active time
                     </h4>
                     <div class="text-2xl font-bold mb-1">{{ mostActiveTimeOfDay() }}</div>
                     <div class="text-xs text-light-font-secondary dark:text-dark-font-secondary">
@@ -205,6 +208,7 @@ export class StatsComponent {
   completedCount = this.statsService.completedCount;
   droppedCount = this.statsService.droppedCount;
   totalEpisodesWatched = this.statsService.totalEpisodesWatched;
+  totalMoviesWatched = this.statsService.totalMoviesWatched;
   seriesCountByStatus = this.statsService.seriesCountByStatus;
   moviesCountByStatus = this.statsService.moviesCountByStatus;
   mostWatchedItems = this.statsService.mostWatchedItems;
@@ -225,12 +229,12 @@ export class StatsComponent {
   );
 
   protected readonly overview = computed(() => [
-    { label: 'Episodes logged', value: this.totalEpisodesWatched() },
-    { label: 'Watching', value: this.inProgressCount() },
+    { label: 'Episodes watched', value: this.totalEpisodesWatched() },
+    { label: 'Movies watched', value: this.totalMoviesWatched() },
+    { label: 'Watching now', value: this.inProgressCount() },
     { label: 'Completed', value: this.completedCount() },
-    { label: 'Watches logged', value: this.history().length },
-    { label: 'Total titles', value: this.totalItems() },
     { label: 'Dropped', value: this.droppedCount() },
+    { label: 'Titles in library', value: this.totalItems() },
   ]);
 
   protected readonly streaks = computed(() => [
@@ -246,8 +250,9 @@ export class StatsComponent {
         label,
         value: this.seriesCountByStatus()[status],
       })),
-      summaryLabel: 'Avg. episodes / active',
+      summaryLabel: 'Avg. episodes watched per series in progress',
       summary: this.avgEpisodesPerActiveSeries(),
+      summaryHint: null,
     },
     {
       title: 'Movies',
@@ -255,8 +260,9 @@ export class StatsComponent {
         label,
         value: this.moviesCountByStatus()[status],
       })),
-      summaryLabel: 'Avg. time to complete',
-      summary: this.avgTimeToComplete(),
+      summaryLabel: 'Avg. time from added to watched',
+      summary: this.avgTimeToComplete() ?? '—',
+      summaryHint: this.avgTimeToComplete() ? null : 'No completed movies yet',
     },
   ]);
 

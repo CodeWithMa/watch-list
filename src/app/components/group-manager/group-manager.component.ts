@@ -10,7 +10,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
   selector: 'app-group-manager',
   imports: [FormsModule, ConflictRecoveryComponent],
   template: `
-    <div class="max-w-3xl">
+    <div class="reading-measure">
       <h1 class="page-title mb-6">Groups</h1>
       @if (!editingGroup()) {
         <app-conflict-recovery [disabled]="busy()" (recovered)="operationError.set(null)" />
@@ -40,7 +40,8 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             placeholder="Group name"
             required
             [readOnly]="busy()"
-            class="flex-1 p-3 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
+            aria-label="Group name"
+            class="form-control flex-1"
           />
           <button type="submit" [disabled]="busy()" class="btn btn-primary">Create group</button>
         </form>
@@ -52,8 +53,11 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
           <div
             class="flex flex-wrap justify-between items-center gap-2 py-3 border-b border-light-border-light dark:border-dark-border-light last:border-b-0"
           >
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-0.5 min-w-0">
               <span class="font-medium">{{ group.name }}</span>
+              @if (group.id === defaultGroupId) {
+                <span class="meta">Titles without a group</span>
+              }
             </div>
             <div class="flex gap-2">
               @if (groups().length > 1) {
@@ -61,7 +65,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   (click)="moveUp(group.id)"
                   [disabled]="busy() || i === 0"
                   class="btn btn-secondary !px-3"
-                  title="Move up"
+                  [title]="i === 0 ? 'Already first' : 'Move ' + group.name + ' up'"
                   [attr.aria-label]="'Move ' + group.name + ' up'"
                 >
                   ↑
@@ -70,7 +74,9 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                   (click)="moveDown(group.id)"
                   [disabled]="busy() || i === groups().length - 1"
                   class="btn btn-secondary !px-3"
-                  title="Move down"
+                  [title]="
+                    i === groups().length - 1 ? 'Already last' : 'Move ' + group.name + ' down'
+                  "
                   [attr.aria-label]="'Move ' + group.name + ' down'"
                 >
                   ↓
@@ -128,7 +134,8 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                 name="editGroupName"
                 required
                 [readOnly]="busy()"
-                class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
+                aria-label="Group name"
+                class="form-control"
               />
               <div class="flex gap-4 mt-6">
                 <button type="submit" [disabled]="busy()" class="btn btn-primary">Save</button>

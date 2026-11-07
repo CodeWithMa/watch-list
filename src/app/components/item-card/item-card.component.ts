@@ -15,25 +15,20 @@ import { statusBadgeClass } from '../../utils/status.utils';
   selector: 'app-item-card',
   imports: [RouterLink, TimeAgoComponent, PosterComponent],
   template: `
-    <div class="flex flex-col gap-2">
-      <div class="relative overflow-hidden rounded-lg">
+    <div class="group flex flex-col gap-2.5">
+      <div
+        class="relative overflow-hidden rounded-lg ring-accent-text/70 transition-[box-shadow,translate] duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg group-hover:ring-2 group-focus-within:ring-2 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0"
+      >
         <app-poster [item]="item()" />
-        @if (progressPercent() !== null && isActive()) {
-          <div class="absolute inset-x-0 bottom-0 h-1 bg-black/40">
-            <div
-              class="h-full bg-accent-primary transition-[width] duration-300 ease-in-out"
-              [style.width.%]="progressPercent()"
-            ></div>
-          </div>
-        }
       </div>
 
-      <div class="flex flex-col gap-1">
-        <h3 class="m-0 text-sm sm:text-[0.9375rem] leading-snug font-semibold">
+      <div class="flex flex-col gap-1.5">
+        <!-- A fixed two-line slot keeps every badge row in a grid row on one baseline. -->
+        <h3 class="m-0 sm:min-h-[2lh] text-sm sm:text-[0.9375rem] leading-snug font-semibold">
           <a
             [routerLink]="['/items', item().id]"
             [title]="item().title"
-            class="line-clamp-3 no-underline text-light-font dark:text-dark-font hover:text-accent-text"
+            class="line-clamp-3 sm:line-clamp-2 no-underline text-light-font dark:text-dark-font hover:text-accent-text group-hover:underline underline-offset-2"
             >{{ item().title }}</a
           >
         </h3>
@@ -44,7 +39,22 @@ import { statusBadgeClass } from '../../utils/status.utils';
         </div>
 
         @if (nextEpisode(); as next) {
-          <div class="text-meta font-medium">Next: {{ next }}</div>
+          <!-- Progress sits beside the episode it describes, never over the artwork. -->
+          <div class="flex items-center gap-2 text-meta font-medium">
+            <span class="shrink-0">Next: {{ next }}</span>
+            @if (progressPercent()) {
+              <span
+                class="flex-1 max-w-20 h-1 rounded-full bg-light-border dark:bg-dark-border overflow-hidden"
+                [title]="progressPercent() + '% of this season watched'"
+                aria-hidden="true"
+              >
+                <span
+                  class="block h-full rounded-full bg-accent-primary dark:bg-accent-text transition-[width] duration-300 ease-in-out"
+                  [style.width.%]="progressPercent()"
+                ></span>
+              </span>
+            }
+          </div>
         }
         @if (item().watchHistory.length) {
           <div class="meta">Watched <app-time-ago [date]="lastWatchedDate()" /></div>

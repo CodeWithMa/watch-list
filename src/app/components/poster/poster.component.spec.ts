@@ -57,7 +57,9 @@ describe('PosterComponent', () => {
     fixture.detectChanges();
     expect(source()).toBeUndefined();
     const fallback = fixture.nativeElement.querySelector('app-poster-fallback') as HTMLElement;
-    expect(fallback.textContent?.trim()).toBe('');
+    // Only decorative initials; the title itself is announced by the surrounding text.
+    expect(fallback.getAttribute('aria-hidden')).toBe('true');
+    expect(fallback.textContent?.trim()).toMatch(/^\p{Lu}{0,2}$/u);
   });
 
   it('keeps adult posters blurred until revealed and resets reveal for another item', async () => {

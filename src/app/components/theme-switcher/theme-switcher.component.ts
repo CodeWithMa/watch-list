@@ -79,14 +79,14 @@ import { ThemeService, Theme } from '../../services/theme.service';
 export class ThemeSwitcherComponent {
   protected themeService = inject(ThemeService);
 
+  // The icon shows the current theme, so the label names it before the action it offers.
   getAriaLabel(): string {
-    const current = this.themeService.theme();
-    const next: Record<Theme, string> = {
-      system: 'Switch to Light mode',
-      light: 'Switch to Dark mode',
-      dark: 'Switch to System mode',
+    const label: Record<Theme, string> = {
+      system: 'Theme: System. Switch to Light',
+      light: 'Theme: Light. Switch to Dark',
+      dark: 'Theme: Dark. Switch to System',
     };
-    return next[current];
+    return label[this.themeService.theme()];
   }
 
   getTitle(): string {

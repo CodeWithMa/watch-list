@@ -61,6 +61,19 @@ describe('TimeAgoComponent', () => {
     expect(fixture.componentInstance.timeAgo()).toBe('1 month ago');
   });
 
+  it('never renders a zero count at unit boundaries', () => {
+    // 28 and 29 days: four weeks, not "0 months".
+    let fixture = create('2026-04-17T12:00:00.000Z');
+    expect(fixture.componentInstance.timeAgo()).toBe('4 weeks ago');
+    fixture = create('2026-04-16T12:00:00.000Z');
+    expect(fixture.componentInstance.timeAgo()).toBe('4 weeks ago');
+    fixture = create('2026-04-15T12:00:00.000Z');
+    expect(fixture.componentInstance.timeAgo()).toBe('1 month ago');
+    // 360-364 days: still under a year, but twelve months, not "0 years".
+    fixture = create('2025-05-20T12:00:00.000Z');
+    expect(fixture.componentInstance.timeAgo()).toBe('1 year ago');
+  });
+
   it('returns years ago', () => {
     let fixture = create('2024-05-15T12:00:00.000Z');
     expect(fixture.componentInstance.timeAgo()).toBe('2 years ago');

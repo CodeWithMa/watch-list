@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { of, Subject, switchMap } from 'rxjs';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
@@ -25,10 +25,16 @@ interface SelectedSuggestionRef {
 
 @Component({
   selector: 'app-add-item',
-  imports: [ItemFormComponent, SearchProviderSelectComponent, ConflictRecoveryComponent],
+  imports: [
+    ItemFormComponent,
+    RouterLink,
+    SearchProviderSelectComponent,
+    ConflictRecoveryComponent,
+  ],
   template: `
-    <div>
-      <h1 class="page-title mb-4 sm:mb-6">Add title</h1>
+    <div class="reading-measure">
+      <a routerLink="/items" class="back-link">Library</a>
+      <h1 class="page-title mb-4 sm:mb-6">New title</h1>
       <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
 
       <app-item-form

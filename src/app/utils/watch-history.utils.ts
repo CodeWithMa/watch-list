@@ -1,8 +1,10 @@
 import { HistoryEntry } from '../models/storage.model';
 
 export interface CalendarGroup {
-  relativeLabel: string;
-  dateLabel: string;
+  /** Stable per local day, for tracking. */
+  dayKey: string;
+  /** One canonical heading, e.g. "Today · Fri, Nov 6", "Wednesday, Nov 4", "Tue, Dec 30, 2025". */
+  label: string;
   entries: (HistoryEntry & { relativeTime: string })[];
 }
 
@@ -35,12 +37,8 @@ export function groupHistoryEntries(
     const daysDiff = Math.round((today.getTime() - entryDay.getTime()) / 86400000);
 
     groups.push({
-      relativeLabel: formatRelativeDayLabel(entryDay, daysDiff, locale),
-      dateLabel: entryDay.toLocaleDateString(locale, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }),
+      dayKey,
+      label: formatDayLabel(entryDay, daysDiff, today, locale),
       entries: dayEntries,
     });
   });
@@ -61,18 +59,17 @@ function formatClockTime(date: Date): string {
   return `${displayHours}:${displayMinutes} ${ampm}`;
 }
 
-function formatRelativeDayLabel(date: Date, daysDiff: number, locale: string): string {
-  if (daysDiff === 0) {
-    return 'Today';
-  }
+function formatDayLabel(date: Date, daysDiff: number, today: Date, locale: string): string {
+  const year = date.getFullYear() === today.getFullYear() ? undefined : 'numeric';
+  const recent = daysDiff >= 0 && daysDiff <= 6;
+  const day = date.toLocaleDateString(locale, {
+    weekday: recent && daysDiff > 1 ? 'long' : 'short',
+    month: 'short',
+    day: 'numeric',
+    year,
+  });
 
-  if (daysDiff === 1) {
-    return 'Yesterday';
-  }
-
-  if (daysDiff <= 6) {
-    return date.toLocaleDateString(locale, { weekday: 'long' });
-  }
-
-  return date.toLocaleDateString(locale, { weekday: 'long', month: 'short', day: 'numeric' });
+  if (daysDiff === 0) return `Today · ${day}`;
+  if (daysDiff === 1) return `Yesterday · ${day}`;
+  return day;
 }

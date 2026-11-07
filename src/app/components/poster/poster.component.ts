@@ -24,7 +24,7 @@ import { PosterFallbackComponent } from '../poster-fallback/poster-fallback.comp
           [style.filter]="shouldBlur() ? 'blur(12px)' : null"
         />
       } @else if (posterUrl() === null) {
-        <app-poster-fallback [type]="item().type" />
+        <app-poster-fallback [type]="item().type" [title]="item().title" />
       } @else {
         <div class="w-full aspect-[2/3] bg-light-hover dark:bg-dark-bg-tertiary"></div>
       }

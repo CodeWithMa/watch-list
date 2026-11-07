@@ -76,20 +76,24 @@ const SLOT_CHOICE_LIMIT = 3;
           <a routerLink="/items/add" class="btn btn-primary">Add title</a>
         </section>
       } @else {
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 sm:mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 items-start gap-4 lg:gap-6 mb-6 sm:mb-8">
           <section class="flex flex-col">
             <h2 class="slot-label">Next series</h2>
             @if (nextSeries(); as item) {
               <app-recommendation-panel
                 [item]="item"
                 [busy]="actions.busy()"
+                [deferOpen]="!!deferringItem()"
                 (watched)="markItem(nextSeries, 'watched')"
                 (deferred)="openDeferral()"
                 (paused)="markItem(nextSeries, 'paused')"
                 (dropped)="markItem(nextSeries, 'dropped')"
               >
                 @if (deferringItem(); as target) {
-                  <div class="mt-3 pt-3 border-t border-light-border dark:border-dark-border">
+                  <div
+                    id="deferral-panel"
+                    class="mt-3 pt-3 border-t border-light-border dark:border-dark-border"
+                  >
                     <p class="mt-0 mb-3 text-sm">
                       Hide {{ target.title }}'s current episode from recommendations until it's
                       available.
@@ -139,22 +143,25 @@ const SLOT_CHOICE_LIMIT = 3;
               </app-recommendation-panel>
             } @else {
               <div class="card overflow-hidden">
-                <p
-                  class="m-0 px-3 sm:px-4 py-3 text-sm text-light-font-secondary dark:text-dark-font-secondary"
-                >
-                  @if (allDeferredUntil(); as until) {
-                    All aired episodes are temporarily deferred. Earliest return:
-                    {{ until | date: 'short' }} (local time).
-                  } @else if (hasSeries()) {
-                    @if (hasInProgressSeries()) {
-                      No aired series episodes available
+                <!-- The backlog heading already says nothing is in progress; explain only other states. -->
+                @if (allDeferredUntil() || hasInProgressSeries() || seriesChoices().length === 0) {
+                  <p
+                    class="m-0 px-3 sm:px-4 py-3 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+                  >
+                    @if (allDeferredUntil(); as until) {
+                      All aired episodes are temporarily deferred. Earliest return:
+                      {{ until | date: 'short' }} (local time).
+                    } @else if (hasSeries()) {
+                      @if (hasInProgressSeries()) {
+                        No aired series episodes available
+                      } @else {
+                        No series currently being watched
+                      }
                     } @else {
-                      No series currently being watched
+                      No series in your watch list
                     }
-                  } @else {
-                    No series in your watch list
-                  }
-                </p>
+                  </p>
+                }
                 <app-backlog-choices
                   [items]="seriesChoices()"
                   [moreCount]="backlogSeries().length - seriesChoices().length"
@@ -180,15 +187,17 @@ const SLOT_CHOICE_LIMIT = 3;
               />
             } @else {
               <div class="card overflow-hidden">
-                <p
-                  class="m-0 px-3 sm:px-4 py-3 text-sm text-light-font-secondary dark:text-dark-font-secondary"
-                >
-                  @if (hasMovies()) {
-                    No movies currently being watched
-                  } @else {
-                    No movies in your watch list
-                  }
-                </p>
+                @if (movieChoices().length === 0) {
+                  <p
+                    class="m-0 px-3 sm:px-4 py-3 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+                  >
+                    @if (hasMovies()) {
+                      No movies currently being watched
+                    } @else {
+                      No movies in your watch list
+                    }
+                  </p>
+                }
                 <app-backlog-choices
                   [items]="movieChoices()"
                   [moreCount]="backlogMovies().length - movieChoices().length"

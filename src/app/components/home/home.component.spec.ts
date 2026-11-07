@@ -144,7 +144,7 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.textContent).toContain('Choose a movie from your backlog');
+    expect(root.textContent).toContain('Start a movie from your backlog');
     expect(root.textContent).toContain('See 1 more below');
     expect(root.textContent).toContain('More in backlog');
     // Every backlog title is offered exactly once.
@@ -152,7 +152,7 @@ describe('HomeComponent', () => {
       a.textContent?.trim(),
     );
     expect(titles.sort()).toEqual(['Movie A', 'Movie B', 'Movie C', 'Movie D']);
-    expect(root.textContent).not.toContain('Choose a series from your backlog');
+    expect(root.textContent).not.toContain('Start a series from your backlog');
     const svc = TestBed.inject(WatchListService);
     expect(svc.markStarted).not.toHaveBeenCalled();
     const start = [...root.querySelectorAll('app-backlog-choices button')][0] as HTMLButtonElement;
@@ -337,7 +337,9 @@ describe('HomeComponent', () => {
     fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent).toContain('No series currently being watched');
+    // With a backlog to offer, the slot speaks once: the backlog heading.
+    expect(fixture.nativeElement.textContent).toContain('Start a series from your backlog');
+    expect(fixture.nativeElement.textContent).not.toContain('No series currently being watched');
 
     // Has in-progress but not watchable (all future)
     const inProg = createItem({
@@ -377,7 +379,8 @@ describe('HomeComponent', () => {
     fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent).toContain('No movies currently being watched');
+    expect(fixture.nativeElement.textContent).toContain('Start a movie from your backlog');
+    expect(fixture.nativeElement.textContent).not.toContain('No movies currently being watched');
   });
 
   it('computes hasSeries and hasMovies correctly', () => {

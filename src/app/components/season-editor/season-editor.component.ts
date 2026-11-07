@@ -56,7 +56,7 @@ import {
             <button type="button" (click)="removeSeason(i)" class="btn btn-quiet">Remove</button>
           </div>
         }
-        <button type="button" (click)="addSeason()" class="btn btn-secondary">Add Season</button>
+        <button type="button" (click)="addSeason()" class="btn btn-secondary">Add season</button>
       </div>
     </div>
   `,
