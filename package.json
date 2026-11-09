@@ -64,7 +64,7 @@
     "@types/node": "^22.0.0",
     "concurrently": "^10.0.6",
     "electron": "^44.7.0",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^26.18.0",
     "wait-on": "^8.0.0",
     "@vitest/coverage-v8": "^5.0.5",
     "angular-eslint": "^22.6.0",
