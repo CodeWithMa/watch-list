@@ -30,19 +30,36 @@ import { SuggestionSource } from '../../models/suggestion.model';
         aria-haspopup="menu"
         [attr.aria-expanded]="isOpen()"
         (click)="toggle()"
-        class="flex size-(--search-control-size) items-center justify-center rounded-l border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer focus-visible:outline-2 focus-visible:outline-accent-primary focus-visible:-outline-offset-2"
+        [class.rounded-md]="standalone()"
+        [class.rounded-l]="!standalone()"
+        class="flex h-(--search-control-size) items-center justify-center gap-1.5 px-2.5 text-sm font-medium text-light-font dark:text-dark-font border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary hover:bg-light-hover dark:hover:bg-dark-hover cursor-pointer focus-visible:outline-2 focus-visible:outline-accent-primary focus-visible:-outline-offset-2"
       >
         <img
           [src]="'icons/providers/' + (value() ?? sources()[0]) + '.svg'"
           alt=""
-          class="size-6"
+          class="size-5"
         />
+        <span class="max-[22.5rem]:hidden">{{ labels[value() ?? sources()[0]] }}</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
       </button>
       @if (isOpen()) {
         <div
           role="menu"
           [attr.aria-label]="label()"
-          class="absolute left-0 top-full z-30 mt-1 min-w-40 p-1 rounded border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-lg"
+          class="absolute left-0 top-full z-30 mt-1 min-w-52 p-1 rounded border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-lg"
         >
           @for (source of sources(); track source; let index = $index) {
             <button
@@ -57,8 +74,13 @@ import { SuggestionSource } from '../../models/suggestion.model';
             >
               <img [src]="'icons/providers/' + source + '.svg'" alt="" class="size-5" />
               <span>{{ labels[source] }}</span>
+              @if (sourcesNeedingSetup().includes(source)) {
+                <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary"
+                  >Needs setup</span
+                >
+              }
               @if (source === value()) {
-                <span aria-hidden="true" class="ml-auto text-accent-primary">✓</span>
+                <span aria-hidden="true" class="ml-auto text-accent-text">✓</span>
               }
             </button>
           }
@@ -71,6 +93,9 @@ export class SearchProviderSelectComponent {
   readonly sources = input.required<SuggestionSource[]>();
   readonly value = input.required<SuggestionSource | undefined>();
   readonly label = input.required<string>();
+  /** Stands on its own rather than joined to the left edge of a search field. */
+  readonly standalone = input(false);
+  readonly sourcesNeedingSetup = input<readonly SuggestionSource[]>([]);
   readonly valueChange = output<SuggestionSource>();
   readonly labels = { tmdb: 'TMDB', jikan: 'Jikan', anilist: 'AniList' };
   readonly isOpen = signal(false);

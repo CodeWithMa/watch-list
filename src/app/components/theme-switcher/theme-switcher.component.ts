@@ -7,7 +7,8 @@ import { ThemeService, Theme } from '../../services/theme.service';
     <button
       (click)="themeService.cycleTheme()"
       [attr.aria-label]="getAriaLabel()"
-      class="p-2 rounded hover:bg-light-hover dark:hover:bg-dark-hover transition-colors duration-200"
+      type="button"
+      class="flex size-11 items-center justify-center rounded cursor-pointer hover:bg-light-hover dark:hover:bg-dark-hover transition-colors duration-200"
       [title]="getTitle()"
     >
       @switch (themeService.theme()) {
@@ -23,10 +24,10 @@ import { ThemeService, Theme } from '../../services/theme.service';
             stroke-linecap="round"
             stroke-linejoin="round"
             class="text-light-font dark:text-dark-font"
+            aria-hidden="true"
           >
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"></path>
           </svg>
         }
         @case ('light') {
@@ -41,6 +42,7 @@ import { ThemeService, Theme } from '../../services/theme.service';
             stroke-linecap="round"
             stroke-linejoin="round"
             class="text-light-font dark:text-dark-font"
+            aria-hidden="true"
           >
             <circle cx="12" cy="12" r="5"></circle>
             <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -65,6 +67,7 @@ import { ThemeService, Theme } from '../../services/theme.service';
             stroke-linecap="round"
             stroke-linejoin="round"
             class="text-light-font dark:text-dark-font"
+            aria-hidden="true"
           >
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
           </svg>
@@ -76,14 +79,14 @@ import { ThemeService, Theme } from '../../services/theme.service';
 export class ThemeSwitcherComponent {
   protected themeService = inject(ThemeService);
 
+  // The icon shows the current theme, so the label names it before the action it offers.
   getAriaLabel(): string {
-    const current = this.themeService.theme();
-    const next: Record<Theme, string> = {
-      system: 'Switch to Light mode',
-      light: 'Switch to Dark mode',
-      dark: 'Switch to System mode',
+    const label: Record<Theme, string> = {
+      system: 'Theme: System. Switch to Light',
+      light: 'Theme: Light. Switch to Dark',
+      dark: 'Theme: Dark. Switch to System',
     };
-    return next[current];
+    return label[this.themeService.theme()];
   }
 
   getTitle(): string {

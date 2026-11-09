@@ -191,7 +191,7 @@ describe('Conflict recovery interactions', () => {
     await external.mutate((draft) => {
       draft.items['series'].title = 'Renamed externally';
     });
-    button(root, 'Mark Watched').click();
+    button(root, 'Mark S1 E1 watched').click();
     await vi.waitFor(() => {
       fixture.detectChanges();
       expect(root.textContent).toContain('changed in another tab or window');
@@ -203,7 +203,7 @@ describe('Conflict recovery interactions', () => {
       expect(root.textContent).toContain('Renamed externally');
     });
     expect(storage.getData().items['series'].watchHistory).toHaveLength(0);
-    button(root, 'Mark Watched').click();
+    button(root, 'Mark S1 E1 watched').click();
     await vi.waitFor(() => expect(storage.getData().items['series'].watchHistory).toHaveLength(1));
     expect(storage.getData().items['series'].progress?.episode).toBe(2);
   });
@@ -228,7 +228,7 @@ describe('Conflict recovery interactions', () => {
     await external.mutate((draft) => {
       draft.groups['ungrouped'].name = 'External group';
     });
-    button(root, 'Confirm Import').click();
+    button(root, 'Confirm import').click();
     await vi.waitFor(() => {
       fixture.detectChanges();
       expect(root.textContent).toContain('Import failed');
@@ -236,15 +236,15 @@ describe('Conflict recovery interactions', () => {
     expect(root.textContent).toContain('collection.json');
     button(root, 'Refresh collection').click();
     fixture.detectChanges();
-    expect(button(root, 'Confirm Import').disabled).toBe(true);
-    button(root, 'Confirm Import').click();
+    expect(button(root, 'Confirm import').disabled).toBe(true);
+    button(root, 'Confirm import').click();
     await vi.waitFor(() => {
       fixture.detectChanges();
       expect(root.textContent).toContain('Collection refreshed');
     });
     expect(storage.getGroups()[0].name).toBe('External group');
     expect(root.textContent).toContain('collection.json');
-    button(root, 'Confirm Import').click();
+    button(root, 'Confirm import').click();
     await vi.waitFor(() => expect(storage.getGroups()[0].name).toBe('Imported group'));
   });
 

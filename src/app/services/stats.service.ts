@@ -26,6 +26,16 @@ export class StatsService {
     return count;
   });
 
+  totalMoviesWatched = computed(() => {
+    let count = 0;
+    for (const item of this.items()) {
+      if (item.type === 'movie') {
+        count += item.watchHistory.length;
+      }
+    }
+    return count;
+  });
+
   seriesCountByStatus = computed(() => {
     const counts: Record<string, number> = {
       'not-started': 0,
@@ -76,7 +86,7 @@ export class StatsService {
 
   avgTimeToComplete = computed(() => {
     const completed = this.items().filter((i) => i.type === 'movie' && i.status === 'completed');
-    if (completed.length === 0) return 'N/A';
+    if (completed.length === 0) return null;
     const totalMs = completed.reduce((sum, item) => {
       const created = new Date(item.createdAt).getTime();
       const lastWatch =

@@ -21,34 +21,35 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
   template: `
     <div>
       <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
-      @if (item()) {
-        <div class="border border-light-border dark:border-dark-border rounded-lg p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="mt-0">Edit Item</h2>
-            <div class="flex gap-2">
+      @if (item(); as currentItem) {
+        <div class="reading-measure">
+          <a [routerLink]="['/items', currentItem.id]" class="back-link">{{ currentItem.title }}</a>
+          <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+            <h1 class="page-title">Edit details</h1>
+            <div class="flex flex-wrap gap-2">
               @if (!confirmDelete()) {
                 <button
                   type="button"
                   [disabled]="mutation.busy()"
                   (click)="confirmDelete.set(true)"
-                  class="px-6 py-3 border border-accent-danger rounded bg-transparent text-accent-danger cursor-pointer hover:bg-accent-danger hover:text-white"
+                  class="btn btn-quiet-danger"
                 >
-                  Delete
+                  Delete title
                 </button>
               } @else {
                 <button
                   type="button"
                   [disabled]="mutation.busy()"
                   (click)="deleteItem()"
-                  class="px-6 py-3 border border-accent-danger rounded bg-accent-danger text-white cursor-pointer hover:bg-accent-danger-hover animate-pulse"
+                  class="btn btn-danger"
                 >
-                  Confirm Delete?
+                  Confirm delete
                 </button>
                 <button
                   type="button"
                   [disabled]="mutation.busy()"
                   (click)="cancelDelete()"
-                  class="px-6 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font border border-light-border dark:border-dark-border rounded cursor-pointer"
+                  class="btn btn-secondary"
                 >
                   Cancel
                 </button>
@@ -56,27 +57,31 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             </div>
           </div>
           @if (!itemExists()) {
-            <p role="alert" class="text-accent-danger">
-              This item was deleted while you were editing. Your draft cannot be saved.
-              <a [routerLink]="['/items']">Back to Items</a>
+            <p role="alert" class="text-accent-danger-text">
+              This title was deleted while you were editing. Your draft cannot be saved.
+              <a routerLink="/items" class="underline">Open library</a>
             </p>
           }
           <app-item-form
             [groups]="groups()"
             [initialValue]="formValue()"
-            submitLabel="Save Changes"
+            submitLabel="Save changes"
             [busy]="mutation.busy()"
             [error]="mutation.error()"
             [showDirtyState]="true"
             [resetOnCancel]="true"
+            [revealSeasonDetails]="revealSeasonDetails"
             [disableSubmitWhenPristine]="true"
             (submitted)="saveChanges($event)"
           />
         </div>
       } @else {
-        <div class="text-center px-8 py-16">
-          <h2 class="mb-4">Item not found</h2>
-          <a [routerLink]="['/items']">Back to Items</a>
+        <div class="card reading-measure text-center px-8 py-16">
+          <h2 class="section-title mb-2">Title not found</h2>
+          <p class="mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
+            It may have been deleted.
+          </p>
+          <a routerLink="/items" class="btn btn-secondary">Open library</a>
         </div>
       }
     </div>
@@ -90,6 +95,7 @@ export class ItemDetailComponent {
 
   readonly groups = this.groupService.groups;
   readonly mutation = new MutationFeedback(itemMutationFailure);
+  readonly revealSeasonDetails = this.route.snapshot?.fragment === 'season-details';
 
   // Capture a baseline per routed item; live collection updates must not reset an open draft.
   readonly item = toSignal(
@@ -120,7 +126,7 @@ export class ItemDetailComponent {
           currentItem.id,
           buildItemEditInput(this.formValue(), formValue),
         ),
-      'Unable to save this item.',
+      'Unable to save this title.',
     );
     if (result) {
       this.router.navigate(['/items']);
@@ -137,7 +143,7 @@ export class ItemDetailComponent {
     if (currentItem) {
       const result = await this.mutation.run(
         () => this.watchListService.deleteItem(currentItem.id),
-        'Unable to delete this item.',
+        'Unable to delete this title.',
       );
       if (result) this.router.navigate(['/items']);
     }

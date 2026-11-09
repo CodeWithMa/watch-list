@@ -114,14 +114,14 @@ describe('storage fault screen journeys', () => {
         token.value = 'session-token';
         token.dispatchEvent(new Event('input'));
         const save = [...root.querySelectorAll<HTMLButtonElement>('button')].find((b) =>
-          b.textContent?.includes('Save Credentials'),
+          b.textContent?.includes('Save credentials'),
         )!;
         save.click();
         fixture.detectChanges();
         expect(root.textContent).toContain('could not be saved');
         expect(root.textContent).not.toContain('token saved');
         const clear = [...root.querySelectorAll<HTMLButtonElement>('button')].find((b) =>
-          b.textContent?.includes('Clear Credentials'),
+          b.textContent?.includes('Clear credentials'),
         )!;
         clear.click();
         fixture.detectChanges();

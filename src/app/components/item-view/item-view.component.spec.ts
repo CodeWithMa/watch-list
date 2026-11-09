@@ -75,8 +75,8 @@ describe('ItemViewComponent', () => {
     expect(element.textContent).toContain('Test Series');
     expect(element.textContent).toContain('Favourites');
     expect(element.textContent).toContain('Apr 1, 2026');
-    expect(element.textContent).toContain('S2E3');
-    expect(element.textContent).toContain('S1E1');
+    expect(element.textContent).toContain('S2 E3');
+    expect(element.textContent).toContain('S1 E1');
 
     const historyEntries = [...element.querySelectorAll('ol li')];
     expect(historyEntries[0].textContent).toContain('May 2, 2026');
@@ -110,11 +110,12 @@ describe('ItemViewComponent', () => {
     expect(getUrl).toHaveBeenLastCalledWith('missing');
     expect(root.querySelector('img')?.getAttribute('src')).toBe('blob:selected');
     finish(null);
-    await vi.waitFor(() =>
-      expect(fixture.componentInstance.posterUrl()).toContain('data:image/svg+xml;base64,'),
-    );
+    await vi.waitFor(() => expect(fixture.componentInstance.posterUrl()).toBeNull());
     fixture.detectChanges();
-    expect(root.querySelector('img')?.getAttribute('src')).toContain('data:image/svg+xml;base64,');
+    expect(root.querySelector('img')).toBeNull();
+    expect(root.querySelector('app-poster-fallback')?.getAttribute('aria-label')).toContain(
+      'has no poster',
+    );
   });
 
   it('shows not found for a missing item', async () => {
@@ -123,7 +124,7 @@ describe('ItemViewComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.textContent).toContain('Item not found');
+    expect(fixture.nativeElement.textContent).toContain('Title not found');
   });
 
   it('invokes matching quick actions', async () => {
@@ -205,7 +206,7 @@ describe('ItemViewComponent', () => {
   );
 
   it.each([undefined, '2026-02-31'])(
-    'disables snoozing for an unusable date %s, but still permits removing delay',
+    'replaces snoozing with its prerequisite for an unusable date %s, but still permits removing delay',
     async (firstEpisodeAirDate) => {
       const service = configure([
         {
@@ -223,8 +224,9 @@ describe('ItemViewComponent', () => {
       const element = fixture.nativeElement as HTMLElement;
       const snooze = [...element.querySelectorAll('button')].find(
         (button) => button.textContent?.trim() === 'Snooze 1 week',
-      )!;
-      expect(snooze.disabled).toBe(true);
+      );
+      expect(snooze).toBeUndefined();
+      expect(element.querySelector('#snooze-prerequisite')?.textContent).toMatch(/snoozing/i);
       expect(element.textContent).not.toContain('Set this season');
       expect(element.textContent).not.toContain('Pending episode air date');
       expect(element.textContent).not.toMatch(/release delay:/);
@@ -234,7 +236,7 @@ describe('ItemViewComponent', () => {
   );
 
   it.each([undefined, { season: 2, episode: 3, seasons: [] }])(
-    'disables snoozing for missing progress or matching season',
+    'replaces snoozing with its prerequisite for missing progress or matching season',
     async (progress) => {
       configure([{ ...item, progress }]);
       const fixture = TestBed.createComponent(ItemViewComponent);
@@ -242,8 +244,13 @@ describe('ItemViewComponent', () => {
       await fixture.whenStable();
       const buttons = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')];
       expect(
-        buttons.find((button) => button.textContent?.trim() === 'Snooze 1 week')?.disabled,
-      ).toBe(true);
+        buttons.find((button) => button.textContent?.trim() === 'Snooze 1 week'),
+      ).toBeUndefined();
+      if (progress) {
+        expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+          'Add air date to enable snoozing',
+        );
+      }
     },
   );
 
@@ -298,6 +305,6 @@ describe('ItemViewComponent', () => {
       ...(fixture.nativeElement as HTMLElement).querySelectorAll('section button'),
     ].map((button) => button.textContent?.trim());
 
-    expect(labels).toEqual(['Mark Watched', 'Start', 'Drop']);
+    expect(labels).toEqual(['Start', 'Mark watched', 'Drop']);
   });
 });

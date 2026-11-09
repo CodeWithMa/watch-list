@@ -10,8 +10,8 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
   selector: 'app-group-manager',
   imports: [FormsModule, ConflictRecoveryComponent],
   template: `
-    <div>
-      <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Group Management</h1>
+    <div class="reading-measure">
+      <h1 class="page-title mb-6">Groups</h1>
       @if (!editingGroup()) {
         <app-conflict-recovery [disabled]="busy()" (recovered)="operationError.set(null)" />
       }
@@ -29,11 +29,9 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
           Changes are only kept for this session and will be lost on reload.
         </p>
       }
-      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-8">
-        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-          Create New Group
-        </h2>
-        <form (ngSubmit)="createGroup()" class="flex gap-4">
+      <div class="card p-4 sm:p-6 mb-6">
+        <h2 class="section-title mb-4">New group</h2>
+        <form (ngSubmit)="createGroup()" class="flex flex-col sm:flex-row gap-3">
           <input
             #newGroupInput
             type="text"
@@ -42,56 +40,50 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             placeholder="Group name"
             required
             [readOnly]="busy()"
-            class="flex-1 p-3 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
+            aria-label="Group name"
+            class="form-control flex-1"
           />
-          <button
-            type="submit"
-            [disabled]="busy()"
-            class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer font-medium hover:bg-accent-primary-hover"
-          >
-            Create Group
-          </button>
+          <button type="submit" [disabled]="busy()" class="btn btn-primary">Create group</button>
         </form>
       </div>
 
-      <div
-        class="bg-light-bg-secondary dark:bg-dark-bg-secondary border border-light-border dark:border-dark-border rounded-lg p-6"
-      >
-        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Groups</h2>
+      <div class="card p-4 sm:p-6">
+        <h2 class="section-title mb-4">Your groups</h2>
         @for (group of groups(); track group.id; let i = $index) {
           <div
-            class="flex justify-between items-center p-4 border-b border-light-border-light dark:border-dark-border-light last:border-b-0"
+            class="flex flex-wrap justify-between items-center gap-2 py-3 border-b border-light-border-light dark:border-dark-border-light last:border-b-0"
           >
-            <div class="flex flex-col gap-1">
-              <span class="font-medium text-lg">{{ group.name }}</span>
+            <div class="flex flex-col gap-0.5 min-w-0">
+              <span class="font-medium">{{ group.name }}</span>
+              @if (group.id === defaultGroupId) {
+                <span class="meta">Titles without a group</span>
+              }
             </div>
             <div class="flex gap-2">
-              @if (i > 0) {
+              @if (groups().length > 1) {
                 <button
                   (click)="moveUp(group.id)"
-                  [disabled]="busy()"
-                  class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
-                  title="Move up"
+                  [disabled]="busy() || i === 0"
+                  class="btn btn-secondary !px-3"
+                  [title]="i === 0 ? 'Already first' : 'Move ' + group.name + ' up'"
+                  [attr.aria-label]="'Move ' + group.name + ' up'"
                 >
                   ↑
                 </button>
-              }
-              @if (i < groups().length - 1) {
                 <button
                   (click)="moveDown(group.id)"
-                  [disabled]="busy()"
-                  class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
-                  title="Move down"
+                  [disabled]="busy() || i === groups().length - 1"
+                  class="btn btn-secondary !px-3"
+                  [title]="
+                    i === groups().length - 1 ? 'Already last' : 'Move ' + group.name + ' down'
+                  "
+                  [attr.aria-label]="'Move ' + group.name + ' down'"
                 >
                   ↓
                 </button>
               }
               @if (group.id !== defaultGroupId) {
-                <button
-                  (click)="editGroup(group)"
-                  [disabled]="busy()"
-                  class="px-4 py-2 border border-accent-warning rounded bg-accent-warning text-black dark:text-white hover:bg-accent-warning-hover cursor-pointer text-sm"
-                >
+                <button (click)="editGroup(group)" [disabled]="busy()" class="btn btn-secondary">
                   Edit
                 </button>
               }
@@ -104,16 +96,17 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                       ? confirmDeleteGroup(group.id)
                       : requestDeleteGroup(group.id)
                   "
-                  [class.animate-pulse]="pendingDeleteGroupId() === group.id"
-                  class="px-4 py-2 border border-accent-danger rounded bg-accent-danger text-white hover:bg-accent-danger-hover cursor-pointer text-sm"
+                  class="btn"
+                  [class.btn-danger]="pendingDeleteGroupId() === group.id"
+                  [class.btn-quiet-danger]="pendingDeleteGroupId() !== group.id"
                 >
-                  {{ pendingDeleteGroupId() === group.id ? 'Confirm Delete?' : 'Delete' }}
+                  {{ pendingDeleteGroupId() === group.id ? 'Confirm delete' : 'Delete' }}
                 </button>
                 @if (pendingDeleteGroupId() === group.id) {
                   <button
                     (click)="cancelDeleteGroup(); deleteButton.focus()"
                     [disabled]="busy()"
-                    class="px-4 py-2 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary"
+                    class="btn btn-secondary"
                   >
                     Cancel
                   </button>
@@ -125,9 +118,9 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
       </div>
 
       @if (editingGroup()) {
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]">
-          <div class="bg-light-bg-secondary dark:bg-dark-bg-secondary p-8 rounded-lg min-w-[400px]">
-            <h3 class="mt-0 mb-6">Edit Group</h3>
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[1000]">
+          <div class="card p-4 sm:p-6 w-full max-w-md">
+            <h3 class="section-title mb-6">Edit group</h3>
             <app-conflict-recovery [disabled]="busy()" (recovered)="operationError.set(null)" />
             @if (operationError()) {
               <div role="alert" class="mb-4 text-error-text-light dark:text-error-text-dark">
@@ -141,21 +134,16 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                 name="editGroupName"
                 required
                 [readOnly]="busy()"
-                class="w-full p-3 border border-light-border dark:border-dark-border rounded text-base bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font"
+                aria-label="Group name"
+                class="form-control"
               />
               <div class="flex gap-4 mt-6">
-                <button
-                  type="submit"
-                  [disabled]="busy()"
-                  class="px-6 py-3 bg-accent-primary text-white border-none rounded cursor-pointer hover:bg-accent-primary-hover"
-                >
-                  Save
-                </button>
+                <button type="submit" [disabled]="busy()" class="btn btn-primary">Save</button>
                 <button
                   type="button"
                   [disabled]="busy()"
                   (click)="cancelEdit()"
-                  class="px-6 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer hover:bg-accent-secondary-hover"
+                  class="btn btn-secondary"
                 >
                   Cancel
                 </button>

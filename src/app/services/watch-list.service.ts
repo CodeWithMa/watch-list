@@ -6,6 +6,7 @@ import { freezeReadModel } from '../models/readonly';
 import { DEFAULT_GROUP_ID, isEpisodicType } from '../domain/item.constants';
 import { applyItemEdit, ItemEdit } from '../domain/item-edit';
 import { deferralReturnDate, isCurrentEpisode } from '../domain/availability-deferral';
+import { WatchChange, recordWatchChange, revertWatchChange } from '../domain/watch-change';
 import {
   canSnoozeCurrentSeason,
   getCurrentSeason,
@@ -133,11 +134,13 @@ export class WatchListService {
       if (!isCurrentEpisode(item, { season, episode })) {
         throw new Error('The current episode changed. Review the recommendation and try again.');
       }
-      item.availabilityDeferral = {
-        season,
-        episode,
-        until: until.toISOString(),
-      };
+      return recordWatchChange(item, (current) => {
+        current.availabilityDeferral = {
+          season,
+          episode,
+          until: until.toISOString(),
+        };
+      });
     });
   }
 
@@ -188,8 +191,18 @@ export class WatchListService {
 
   private mutateItem(itemId: string, intent: (item: Item) => void) {
     return this.storageService.mutate((draft) => {
-      if (Object.hasOwn(draft.items, itemId)) intent(draft.items[itemId]);
+      return Object.hasOwn(draft.items, itemId)
+        ? recordWatchChange(draft.items[itemId], intent)
+        : undefined;
     });
+  }
+
+  revertWatchChange(change: WatchChange) {
+    return this.storageService.mutate(
+      (draft) =>
+        Object.hasOwn(draft.items, change.itemId) &&
+        revertWatchChange(draft.items[change.itemId], change),
+    );
   }
 
   getItemById(itemId: string) {

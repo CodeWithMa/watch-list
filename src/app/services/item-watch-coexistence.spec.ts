@@ -312,7 +312,7 @@ describe('Item edits coexisting with settled watch commands', () => {
             totalEpisodes: 10,
             historyLength: command === 'markWatched' ? 1 : 0,
           };
-          expect(outcome).toEqual({ value: undefined, durability: 'persistent' });
+          expect(outcome).toMatchObject({ durability: 'persistent' });
           expect({ eventual: summarize(storage), reloaded: summarize(reloaded) }).toEqual({
             eventual: expected,
             reloaded: expected,

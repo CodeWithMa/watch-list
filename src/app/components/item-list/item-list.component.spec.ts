@@ -306,28 +306,135 @@ describe('ItemListComponent', () => {
     expect(fixture.componentInstance.sortDirection()).toBe('asc');
   });
 
-  it('renders sort controls', async () => {
+  const listItem: Item = {
+    id: 'listed',
+    title: 'Listed',
+    type: 'series',
+    groupId: 'ungrouped',
+    status: 'not-started',
+    isAdult: false,
+    watchHistory: [],
+    createdAt: '2026-05-01T10:00:00.000Z',
+  };
+
+  it('distinguishes an empty library from a filtered-out one, and resets filters', async () => {
     setup({ watchItems: [] });
+    let fixture = TestBed.createComponent(ItemListComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Your library is empty');
+    expect(fixture.nativeElement.textContent).not.toContain('No matches');
+
+    setup({ watchItems: [listItem] });
+    fixture = TestBed.createComponent(ItemListComponent);
+    fixture.componentInstance.searchFilter.set('zzz-no-such-title');
+    fixture.componentInstance.typeFilter.set('movie');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('No matches');
+    expect(root.textContent).toContain('Showing 0 of');
+    expect(fixture.componentInstance.activeFilters()).toEqual([{ key: 'type', label: 'Movie' }]);
+
+    [...root.querySelectorAll('button')]
+      .find((button) => button.textContent?.includes('Clear search and filters'))!
+      .click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.searchFilter()).toBe('');
+    expect(fixture.componentInstance.typeFilter()).toBe('all');
+    expect(root.textContent).not.toContain('No matches');
+  });
+
+  it('words every sort order in one control', async () => {
+    setup({ watchItems: [listItem], sortField: 'title', sortDirection: 'desc' });
     const fixture = TestBed.createComponent(ItemListComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
 
-    const selects = fixture.nativeElement.querySelectorAll('select');
-    // group + sortField = 2 selects, sort direction is now a toggle button
-    expect(selects.length).toBe(2);
+    const select = root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!;
+    expect(select.textContent).toContain('Title: A–Z');
+    expect(select.textContent).toContain('Added date: Newest first');
+    expect(select.textContent).toContain('Last watched date: Oldest first');
+    expect(root.querySelector('button[aria-label^="Sort direction"]')).toBeNull();
+    expect(root.textContent).toContain('Title: Z–A');
 
-    const sortBySelect = fixture.nativeElement.querySelector('select[aria-label="Sort by"]');
-    expect(sortBySelect).not.toBeNull();
-    expect(sortBySelect.textContent).toContain('Title');
-    expect(sortBySelect.textContent).toContain('Added date');
-    expect(sortBySelect.textContent).toContain('Last watched date');
+    fixture.componentInstance.setSort('createdAt:asc');
+    expect(fixture.componentInstance.sortField()).toBe('createdAt');
+    expect(fixture.componentInstance.sortDirection()).toBe('asc');
+  });
 
-    const sortToggle = fixture.nativeElement.querySelector('button[aria-label^="Sort direction"]');
-    expect(sortToggle).not.toBeNull();
-    expect(sortToggle.getAttribute('title')).toMatch(/Ascending|Descending/);
-    expect(sortToggle.getAttribute('aria-label')).toContain('Sort direction');
-    expect(sortToggle.querySelector('svg')).not.toBeNull();
+  it('hides search and filters until the library has something to filter', async () => {
+    setup({ watchItems: [] });
+    const fixture = TestBed.createComponent(ItemListComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.querySelector('#library-filters')).toBeNull();
+    expect(root.querySelector('input[aria-label="Search by name"]')).toBeNull();
+    expect([...root.querySelectorAll('a')].map((link) => link.textContent?.trim())).toEqual([
+      'Add title',
+    ]);
+  });
+
+  it('reaches every status in the panel and summarises hidden filters when it closes', async () => {
+    setup({ watchItems: [listItem] });
+    const fixture = TestBed.createComponent(ItemListComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    document.body.append(root);
+    const buttons = () => [...root.querySelectorAll('button')];
+    const named = (name: string) => buttons().find((b) => b.textContent?.trim() === name)!;
+
+    const statuses = root.querySelector('[aria-labelledby="status-filter-label"]')!;
+    expect(statuses.textContent).toContain('Completed');
+    expect(statuses.textContent).toContain('Dropped');
+    expect(statuses.className).not.toContain('overflow-x-auto');
+
+    const toggle = root.querySelector<HTMLButtonElement>(
+      'button[aria-controls="library-filters"]',
+    )!;
+    toggle.click();
+    fixture.detectChanges();
+    expect(root.querySelector('#library-filters')?.classList).not.toContain('max-md:hidden');
+
+    named('Dropped').click();
+    fixture.detectChanges();
+    expect(toggle.textContent).toContain('1');
+    expect(root.querySelector('button[aria-label="Remove filter: Dropped"]')).toBeNull();
+
+    root
+      .querySelector('#library-filters')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.filtersOpen()).toBe(false);
+    expect(document.activeElement).toBe(toggle);
+
+    root.querySelector<HTMLButtonElement>('button[aria-label="Remove filter: Dropped"]')!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.statusFilter()).toBe('all');
+    expect(toggle.textContent).not.toContain('1');
+    root.remove();
+  });
+
+  it('marks the selected filter on every group the same way', async () => {
+    setup({ watchItems: [listItem] });
+    const fixture = TestBed.createComponent(ItemListComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const pressed = () =>
+      [...root.querySelectorAll('button[aria-pressed="true"]')].map((b) => b.textContent?.trim());
+    expect(pressed()).toEqual(['All', 'All']);
+    [...root.querySelectorAll('button')]
+      .find((button) => button.textContent?.trim() === 'Paused')!
+      .click();
+    fixture.detectChanges();
+    expect(pressed()).toEqual(['Paused', 'All']);
   });
 
   it('returns empty when no items', () => {

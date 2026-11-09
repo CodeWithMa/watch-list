@@ -34,7 +34,7 @@ describe('ItemFormComponent', () => {
     });
   });
 
-  it('applies the selected status color on first render', async () => {
+  it('marks the selected status on first render', async () => {
     const fixture = TestBed.createComponent(ItemFormComponent);
     fixture.componentRef.setInput('groups', groups);
     fixture.componentRef.setInput('initialValue', {
@@ -59,8 +59,55 @@ describe('ItemFormComponent', () => {
     const completedButton = buttons.find((button) => button.textContent?.trim() === 'Completed');
 
     expect(completedButton).toBeDefined();
-    expect(completedButton?.className).toContain('bg-status-completed-bg-light');
-    expect(completedButton?.className).toContain('border-transparent');
+    expect(completedButton?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('explains a blank title on submit instead of disabling the primary action', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.componentRef.setInput('initialValue', { ...createDefaultItemFormValue(), title: ' ' });
+    const submitted = vi.fn();
+    fixture.componentInstance.submitted.subscribe(submitted);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const submit = root.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    const title = root.querySelector<HTMLInputElement>('#title')!;
+    expect(submit.disabled).toBe(false);
+    expect(root.textContent).not.toContain('Title is required');
+
+    submit.click();
+    fixture.detectChanges();
+
+    expect(submitted).not.toHaveBeenCalled();
+    expect(root.querySelector('#title-error')?.textContent).toContain('Title is required');
+    expect(title.getAttribute('aria-describedby')).toBe('title-error');
+    expect(title.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(title);
+
+    title.value = 'Severance';
+    title.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(root.querySelector('#title-error')).toBeNull();
+  });
+
+  it('says why a pristine form cannot be saved and when it has unsaved changes', async () => {
+    const fixture = TestBed.createComponent(ItemFormComponent);
+    fixture.componentRef.setInput('groups', groups);
+    fixture.componentRef.setInput('showDirtyState', true);
+    fixture.componentRef.setInput('disableSubmitWhenPristine', true);
+    fixture.componentRef.setInput('initialValue', { ...createDefaultItemFormValue(), title: 'A' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const status = () => root.querySelector('[role="status"]')?.textContent?.trim();
+    expect(status()).toBe('No changes to save');
+
+    const title = root.querySelector<HTMLInputElement>('#title')!;
+    title.value = 'B';
+    title.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(status()).toBe('You have unsaved changes');
   });
 
   it('disables submit when pristine if configured', async () => {

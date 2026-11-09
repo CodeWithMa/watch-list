@@ -1,4 +1,4 @@
-import { getPosterUrl, getPlaceholderUrl } from './tmdb-image.utils';
+import { getPosterUrl } from './tmdb-image.utils';
 
 describe('getPosterUrl', () => {
   it('returns null for undefined or empty', () => {
@@ -18,14 +18,5 @@ describe('getPosterUrl', () => {
   it('returns null for invalid non-URL strings without slash', () => {
     expect(getPosterUrl('not a url')).toBeNull();
     expect(getPosterUrl('poster.jpg')).toBeNull();
-  });
-});
-
-describe('getPlaceholderUrl', () => {
-  it('returns base64 data url', () => {
-    const url = getPlaceholderUrl();
-    expect(url.startsWith('data:image/svg+xml;base64,')).toBe(true);
-    const decoded = atob(url.split(',')[1]);
-    expect(decoded).toContain('<svg');
   });
 });

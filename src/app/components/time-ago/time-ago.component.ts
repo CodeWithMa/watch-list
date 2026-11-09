@@ -4,11 +4,9 @@ import { Component, computed, input } from '@angular/core';
   selector: 'app-time-ago',
   imports: [],
   template: `
-    <span
-      [title]="dateString()"
-      class="text-light-font-secondary dark:text-dark-font-secondary text-[0.9em]"
-      >{{ timeAgo() }}</span
-    >
+    <span [title]="dateString()" class="text-light-font-secondary dark:text-dark-font-secondary">{{
+      timeAgo()
+    }}</span>
   `,
 })
 export class TimeAgoComponent {
@@ -28,8 +26,9 @@ export class TimeAgoComponent {
     const diffHours = Math.floor(diffMinutes / 60);
     const diffDays = Math.floor(diffHours / 24);
     const diffWeeks = Math.floor(diffDays / 7);
-    const diffMonths = Math.floor(diffDays / 30);
-    const diffYears = Math.floor(diffDays / 365);
+    // Unit boundaries must not overlap, or a gap day renders as "0 months ago".
+    const diffMonths = Math.max(1, Math.floor(diffDays / 30));
+    const diffYears = Math.max(1, Math.floor(diffDays / 365));
 
     if (diffSeconds < 60) {
       return 'just now';
@@ -39,9 +38,9 @@ export class TimeAgoComponent {
       return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     } else if (diffDays < 7) {
       return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    } else if (diffWeeks < 4) {
+    } else if (diffDays < 30) {
       return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`;
-    } else if (diffMonths < 12) {
+    } else if (diffDays < 365 && diffMonths < 12) {
       return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`;
     } else {
       return `${diffYears} year${diffYears > 1 ? 's' : ''} ago`;

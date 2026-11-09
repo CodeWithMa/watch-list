@@ -1,4 +1,12 @@
-import { Component, computed, input } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  afterNextRender,
+  computed,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { HistoryEntry } from '../../../models/storage.model';
 import { toLocalDateKey, toLocalDateKeyFromISO } from '../../../utils/date.utils';
 
@@ -11,76 +19,126 @@ interface DayCell {
 interface MonthLabel {
   label: string;
   weekIndex: number;
+  /** Week columns until the next label, so text never overflows the year. */
+  span: number;
 }
 
 @Component({
   selector: 'app-stats-heatmap',
+  host: { '(window:resize)': 'onResize()' },
   template: `
-    <div class="overflow-x-auto">
-      <div class="inline-block min-w-[720px]">
-        <div class="relative h-[14px] mb-1">
-          @for (month of monthLabels(); track month.label + month.weekIndex) {
-            <span
-              class="absolute text-[10px] text-light-font-muted dark:text-dark-font-muted -translate-x-1/2"
-              [style.left]="month.weekIndex * 16 + 36 + 'px'"
-            >
-              {{ month.label }}
-            </span>
+    @if (canScroll()) {
+      <div class="flex items-center justify-between gap-3 mb-2 min-h-11">
+        <p class="m-0 text-xs text-light-font-secondary dark:text-dark-font-secondary">
+          Past year · scroll sideways to explore
+        </p>
+        @if (!showingToday()) {
+          <button type="button" (click)="showToday()" class="btn btn-secondary shrink-0">
+            Today
+          </button>
+        }
+      </div>
+    }
+    <div
+      #scroller
+      (scroll)="syncScrollState()"
+      role="group"
+      aria-label="Watch activity for the past year"
+      [attr.tabindex]="canScroll() ? 0 : null"
+      class="relative overflow-x-auto"
+    >
+      <!-- Week columns share the card's width; below the minimum the year scrolls sideways. -->
+      <div
+        class="grid min-w-[880px] gap-[3px]"
+        [style.grid-template-columns]="'1.75rem repeat(' + weeks().length + ', minmax(0, 1fr))'"
+      >
+        @for (month of monthLabels(); track month.label + month.weekIndex) {
+          <span
+            class="row-start-1 h-4 mb-1 overflow-hidden whitespace-nowrap text-xs text-light-font-secondary dark:text-dark-font-secondary"
+            [style.grid-column]="month.weekIndex + 2 + ' / span ' + month.span"
+          >
+            {{ month.label }}
+          </span>
+        }
+        @for (dayLabel of dayLabels; track $index) {
+          <span
+            class="col-start-1 sticky left-0 z-10 pr-1 flex items-center justify-end text-xs text-light-font-secondary dark:text-dark-font-secondary bg-light-bg-secondary dark:bg-dark-bg-secondary"
+            [style.grid-row-start]="$index + 2"
+          >
+            {{ dayLabel }}
+          </span>
+        }
+        @for (week of weeks(); track $index; let column = $index) {
+          @for (day of week; track day.date; let row = $index) {
+            <button
+              type="button"
+              class="block w-full aspect-square rounded-[3px] cursor-pointer"
+              [class]="getCellClass(day.level)"
+              [style.grid-column-start]="column + 2"
+              [style.grid-row-start]="row + 2"
+              [title]="getCellLabel(day)"
+              [attr.aria-label]="getCellLabel(day)"
+              [attr.data-date]="day.date"
+              [attr.tabindex]="day.date === activeDate() ? 0 : -1"
+              (focus)="selectDay(day)"
+              (click)="selectDay(day)"
+              (keydown)="onCellKeydown($event, day)"
+            ></button>
           }
-        </div>
-
-        <div class="flex gap-0">
-          <div class="flex flex-col gap-[3px] mr-1">
-            @for (dayLabel of dayLabels; track dayLabel) {
-              <span
-                class="text-[10px] text-light-font-muted dark:text-dark-font-muted h-[13px] leading-[13px] text-right"
-              >
-                {{ dayLabel }}
-              </span>
-            }
-          </div>
-
-          <div class="flex gap-[3px]">
-            @for (week of weeks(); track $index) {
-              <div class="flex flex-col gap-[3px]">
-                @for (day of week; track day.date) {
-                  <div
-                    class="w-[13px] h-[13px] rounded-[2px] relative group cursor-default"
-                    [class]="getCellClass(day.level)"
-                  >
-                    <div
-                      class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-light-bg-primary dark:bg-dark-bg-primary border border-light-border dark:border-dark-border rounded text-xs text-light-font dark:text-dark-font whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-light dark:shadow-dark"
-                    >
-                      <span class="font-medium"
-                        >{{ day.count }} {{ day.count === 1 ? 'entry' : 'entries' }}</span
-                      >
-                      <span class="text-light-font-muted dark:text-dark-font-muted ml-1">{{
-                        formatTooltipDate(day.date)
-                      }}</span>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 mt-3 justify-end">
-          <span class="text-[10px] text-light-font-muted dark:text-dark-font-muted">Less</span>
-          <div
-            class="w-[13px] h-[13px] rounded-[2px] bg-light-bg-tertiary dark:bg-dark-bg-tertiary"
-          ></div>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-primary/25"></div>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-primary/50"></div>
-          <div class="w-[13px] h-[13px] rounded-[2px] bg-accent-primary"></div>
-          <span class="text-[10px] text-light-font-muted dark:text-dark-font-muted">More</span>
-        </div>
+        }
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mt-3">
+      <p class="meta m-0 min-h-5" aria-live="polite">
+        {{ selectedDay() ?? 'Select a day to see its watches' }}
+      </p>
+      <div class="flex items-center gap-2">
+        <span class="meta mr-1">Watches per day</span>
+        <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">Less</span>
+        <div class="w-[13px] h-[13px] rounded-[3px] bg-light-border dark:bg-dark-border"></div>
+        <div class="w-[13px] h-[13px] rounded-[3px] bg-accent-text/35"></div>
+        <div class="w-[13px] h-[13px] rounded-[3px] bg-accent-text/65"></div>
+        <div class="w-[13px] h-[13px] rounded-[3px] bg-accent-text"></div>
+        <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary">More</span>
       </div>
     </div>
   `,
 })
 export class StatsHeatmapComponent {
   historyEntries = input.required<readonly Readonly<HistoryEntry>[]>();
+  private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
+
+  readonly canScroll = signal(false);
+  readonly showingToday = signal(true);
+  readonly selectedDay = signal<string | null>(null);
+  private readonly selectedDate = signal<string | null>(null);
+  // One tab stop for the whole year; arrow keys move between days.
+  protected readonly activeDate = computed(
+    () => this.selectedDate() ?? this.weeks().flat().at(-1)?.date,
+  );
+
+  constructor() {
+    // Narrow screens start at the newest weeks; older months are one swipe away.
+    afterNextRender(() => this.showToday());
+  }
+
+  showToday() {
+    const element = this.scroller().nativeElement;
+    element.scrollLeft = element.scrollWidth;
+    this.syncScrollState();
+  }
+
+  // The year only scrolls at its fixed minimum width, so a chosen position survives resizes.
+  onResize() {
+    if (this.showingToday()) this.showToday();
+    else this.syncScrollState();
+  }
+
+  syncScrollState() {
+    const { clientWidth, scrollLeft, scrollWidth } = this.scroller().nativeElement;
+    this.canScroll.set(scrollWidth > clientWidth);
+    this.showingToday.set(scrollLeft + clientWidth >= scrollWidth - 1);
+  }
 
   dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 
@@ -148,24 +206,53 @@ export class StatsHeatmapComponent {
         labels.push({
           label: date.toLocaleDateString('en-US', { month: 'short' }),
           weekIndex: i,
+          span: 0,
         });
         lastMonth = month;
       }
     }
 
-    return labels;
+    // A month sliver at either edge has no room for its name.
+    return labels
+      .map((label, index) => ({
+        ...label,
+        span: (labels[index + 1]?.weekIndex ?? weeks.length) - label.weekIndex,
+      }))
+      .filter(({ span }) => span >= 2);
   });
+
+  selectDay(day: DayCell) {
+    this.selectedDate.set(day.date);
+    this.selectedDay.set(this.getCellLabel(day));
+  }
+
+  onCellKeydown(event: KeyboardEvent, day: DayCell) {
+    const step = { ArrowLeft: -7, ArrowRight: 7, ArrowUp: -1, ArrowDown: 1 }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    const days = this.weeks().flat();
+    const target = days[days.findIndex(({ date }) => date === day.date) + step];
+    if (!target) return;
+    this.selectedDate.set(target.date);
+    this.scroller()
+      .nativeElement.querySelector<HTMLElement>(`[data-date="${target.date}"]`)
+      ?.focus();
+  }
+
+  getCellLabel({ count, date }: DayCell) {
+    return `${count} ${count === 1 ? 'entry' : 'entries'}, ${this.formatTooltipDate(date)}`;
+  }
 
   getCellClass(level: 0 | 1 | 2 | 3): string {
     switch (level) {
       case 0:
-        return 'bg-light-bg-tertiary dark:bg-dark-bg-tertiary';
+        return 'bg-light-border dark:bg-dark-border';
       case 1:
-        return 'bg-accent-primary/25';
+        return 'bg-accent-text/35';
       case 2:
-        return 'bg-accent-primary/50';
+        return 'bg-accent-text/65';
       case 3:
-        return 'bg-accent-primary';
+        return 'bg-accent-text';
     }
   }
 

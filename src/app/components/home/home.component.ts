@@ -3,7 +3,10 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
-import { ItemCardComponent } from '../item-card/item-card.component';
+import { BacklogChoicesComponent } from './backlog-choices.component';
+import { RecommendationPanelComponent } from './recommendation-panel.component';
+import { TitleRowComponent } from './title-row.component';
+import { PosterFallbackComponent } from '../poster-fallback/poster-fallback.component';
 import { ReadonlyItem as Item, ItemType } from '../../models/item.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
@@ -11,279 +14,278 @@ import { watchActionFailure } from '../watch-action-feedback';
 import { MutationFeedback } from '../mutation-feedback';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 import { deferralReturnDate } from '../../domain/availability-deferral';
+import { WatchActionNoticeService } from '../watch-action-notice/watch-action-notice.service';
+
+const SLOT_CHOICE_LIMIT = 3;
 
 @Component({
   selector: 'app-home',
-  imports: [ItemCardComponent, CommonModule, RouterLink, ConflictRecoveryComponent],
+  imports: [
+    BacklogChoicesComponent,
+    CommonModule,
+    ConflictRecoveryComponent,
+    PosterFallbackComponent,
+    RecommendationPanelComponent,
+    RouterLink,
+    TitleRowComponent,
+  ],
   template: `
     <div>
-      <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">What should I watch now?</h1>
+      <h1 class="page-title mb-4 sm:mb-6">What should I watch now?</h1>
       <app-conflict-recovery [disabled]="actions.busy()" (recovered)="actions.error.set(null)" />
       @if (actions.error()) {
-        <p role="alert" class="mb-4 text-sm text-accent-danger">{{ actions.error() }}</p>
+        <p role="alert" class="mb-4 text-sm text-accent-danger-text">{{ actions.error() }}</p>
       }
       @if (actions.sessionSuccess()) {
         <p role="status" class="mb-4 text-sm">Changed for this session only; not saved to disk.</p>
       }
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 justify-items-center">
-        <div class="w-full max-w-[280px] justify-self-center">
-          <h2
-            class="text-center text-sm font-semibold tracking-wide uppercase mb-3 text-light-font-secondary dark:text-dark-font-secondary"
+      @if (isLibraryEmpty()) {
+        <section class="card max-w-2xl mx-auto px-4 py-8 sm:p-10 text-center">
+          <div class="flex justify-center mb-6" aria-hidden="true">
+            <app-poster-fallback
+              type="movie"
+              class="!w-16 rounded-md border border-light-border dark:border-dark-border -rotate-6 translate-x-3 translate-y-1"
+            />
+            <app-poster-fallback
+              type="series"
+              class="!w-20 relative z-10 rounded-md border border-light-border dark:border-dark-border"
+            />
+            <app-poster-fallback
+              type="movie"
+              class="!w-16 rounded-md border border-light-border dark:border-dark-border rotate-6 -translate-x-3 translate-y-1"
+            />
+          </div>
+          <h2 class="section-title !text-xl mb-2">Your watch list is empty</h2>
+          <p class="mt-0 mb-6 text-light-font-secondary dark:text-dark-font-secondary">
+            Add a series or movie and this page will tell you what to watch next.
+          </p>
+          <ol
+            class="list-none m-0 mb-6 p-0 grid sm:grid-cols-3 gap-3 text-sm text-left sm:text-center"
           >
-            Next Series
-          </h2>
-          @if (nextSeries()) {
-            <div class="w-full">
-              <!-- Narrow card (280px) keeps natural 2/3 poster (~420px tall) fully visible, no cropping -->
-              <app-item-card [item]="nextSeries()!" />
-              <div class="flex flex-wrap justify-center gap-2 mt-3">
-                <button
-                  (click)="markItem(nextSeries, 'watched')"
-                  [disabled]="actions.busy()"
-                  class="px-3 py-1.5 border border-transparent rounded bg-accent-primary text-white cursor-pointer text-xs font-medium hover:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            @for (step of onboardingSteps; track step; let number = $index) {
+              <li class="flex sm:flex-col items-center gap-2">
+                <span
+                  class="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-primary/10 dark:bg-accent-text/15 text-accent-text text-meta font-semibold"
+                  >{{ number + 1 }}</span
                 >
-                  Mark Watched
-                </button>
-                <button
-                  type="button"
-                  (click)="openDeferral()"
-                  [disabled]="actions.busy()"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded text-xs cursor-pointer disabled:opacity-50"
-                >
-                  Not available yet
-                </button>
-                <button
-                  (click)="markItem(nextSeries, 'paused')"
-                  [disabled]="actions.busy()"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Pause
-                </button>
-                <button
-                  (click)="markItem(nextSeries, 'dropped')"
-                  [disabled]="actions.busy()"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Drop
-                </button>
-              </div>
-            </div>
-          } @else {
-            <p
-              class="w-full p-6 text-center text-sm rounded-lg border border-dashed border-light-border dark:border-dark-border text-light-font-muted dark:text-dark-font-muted"
-            >
-              @if (allDeferredUntil(); as until) {
-                All aired episodes are temporarily deferred. Earliest return:
-                {{ until | date: 'short' }} (local time).
-              } @else if (hasSeries()) {
-                @if (hasInProgressSeries()) {
-                  No aired series episodes available
-                } @else {
-                  No series currently being watched
+                {{ step }}
+              </li>
+            }
+          </ol>
+          <a routerLink="/items/add" class="btn btn-primary">Add title</a>
+        </section>
+      } @else {
+        <div class="grid grid-cols-1 lg:grid-cols-2 items-start gap-4 lg:gap-6 mb-6 sm:mb-8">
+          <section class="flex flex-col">
+            <h2 class="slot-label">Next series</h2>
+            @if (nextSeries(); as item) {
+              <app-recommendation-panel
+                [item]="item"
+                [busy]="actions.busy()"
+                [deferOpen]="!!deferringItem()"
+                (watched)="markItem(nextSeries, 'watched')"
+                (deferred)="openDeferral()"
+                (paused)="markItem(nextSeries, 'paused')"
+                (dropped)="markItem(nextSeries, 'dropped')"
+              >
+                @if (deferringItem(); as target) {
+                  <div
+                    id="deferral-panel"
+                    class="mt-3 pt-3 border-t border-light-border dark:border-dark-border"
+                  >
+                    <p class="mt-0 mb-3 text-sm">
+                      Hide {{ target.title }}'s current episode from recommendations until it's
+                      available.
+                    </p>
+                    <label for="deferral-hours" class="block text-sm font-medium mb-1"
+                      >Hours to hide</label
+                    >
+                    <input
+                      #hoursInput
+                      id="deferral-hours"
+                      type="number"
+                      min="1"
+                      step="1"
+                      [value]="deferralHours()"
+                      (input)="deferralHours.set(hoursInput.value)"
+                      [disabled]="actions.busy()"
+                      aria-describedby="deferral-preview"
+                      class="form-control-sm max-w-32"
+                    />
+                    <p id="deferral-preview" aria-live="polite" class="text-sm my-3">
+                      @if (returnDate(); as until) {
+                        Returns {{ until | date: 'short' }} (local time)
+                      } @else {
+                        Enter positive whole hours with a valid return date.
+                      }
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        (click)="confirmDeferral()"
+                        [disabled]="actions.busy() || !returnDate()"
+                        class="btn btn-primary"
+                      >
+                        Confirm deferral
+                      </button>
+                      <button
+                        type="button"
+                        (click)="deferringItem.set(null)"
+                        [disabled]="actions.busy()"
+                        class="btn btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 }
-              } @else {
-                No series in your watch list
-              }
-            </p>
-          }
-          @if (deferringItem(); as target) {
-            <div class="mt-4 p-4 border border-light-border dark:border-dark-border rounded">
-              <p class="text-sm mb-3">Defer {{ target.title }}'s current episode</p>
-              <label for="deferral-hours" class="block text-sm mb-1">Hours</label>
-              <input
-                #hoursInput
-                id="deferral-hours"
-                type="number"
-                min="1"
-                step="1"
-                [value]="deferralHours()"
-                (input)="deferralHours.set(hoursInput.value)"
-                [disabled]="actions.busy()"
-                aria-describedby="deferral-preview"
-                class="w-full p-2 border border-light-border dark:border-dark-border rounded bg-light-bg-primary dark:bg-dark-bg-primary"
+              </app-recommendation-panel>
+            } @else {
+              <div class="card overflow-hidden">
+                <!-- The backlog heading already says nothing is in progress; explain only other states. -->
+                @if (allDeferredUntil() || hasInProgressSeries() || seriesChoices().length === 0) {
+                  <p
+                    class="m-0 px-3 sm:px-4 py-3 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+                  >
+                    @if (allDeferredUntil(); as until) {
+                      All aired episodes are temporarily deferred. Earliest return:
+                      {{ until | date: 'short' }} (local time).
+                    } @else if (hasSeries()) {
+                      @if (hasInProgressSeries()) {
+                        No aired series episodes available
+                      } @else {
+                        No series currently being watched
+                      }
+                    } @else {
+                      No series in your watch list
+                    }
+                  </p>
+                }
+                <app-backlog-choices
+                  [items]="seriesChoices()"
+                  [moreCount]="backlogSeries().length - seriesChoices().length"
+                  noun="series"
+                  [busy]="actions.busy()"
+                  (started)="startBacklogItem($event)"
+                  (dropped)="dropBacklogItem($event)"
+                  (seeMore)="backlogSection.scrollIntoView()"
+                />
+              </div>
+            }
+          </section>
+
+          <section class="flex flex-col">
+            <h2 class="slot-label">Next movie</h2>
+            @if (nextMovie(); as item) {
+              <app-recommendation-panel
+                [item]="item"
+                [busy]="actions.busy()"
+                (watched)="markItem(nextMovie, 'watched')"
+                (paused)="markItem(nextMovie, 'paused')"
+                (dropped)="markItem(nextMovie, 'dropped')"
               />
-              <p id="deferral-preview" aria-live="polite" class="text-sm my-3">
-                @if (returnDate(); as until) {
-                  Returns {{ until | date: 'short' }} (local time)
-                } @else {
-                  Enter positive whole hours with a valid return date.
+            } @else {
+              <div class="card overflow-hidden">
+                @if (movieChoices().length === 0) {
+                  <p
+                    class="m-0 px-3 sm:px-4 py-3 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+                  >
+                    @if (hasMovies()) {
+                      No movies currently being watched
+                    } @else {
+                      No movies in your watch list
+                    }
+                  </p>
                 }
-              </p>
-              <button
-                type="button"
-                (click)="confirmDeferral()"
-                [disabled]="actions.busy() || !returnDate()"
-                class="px-3 py-1.5 mr-2 rounded bg-accent-primary text-white text-sm cursor-pointer disabled:opacity-50"
-              >
-                Confirm deferral
-              </button>
-              <button
-                type="button"
-                (click)="deferringItem.set(null)"
-                [disabled]="actions.busy()"
-                class="px-3 py-1.5 border rounded text-sm cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          }
+                <app-backlog-choices
+                  [items]="movieChoices()"
+                  [moreCount]="backlogMovies().length - movieChoices().length"
+                  noun="movie"
+                  [busy]="actions.busy()"
+                  (started)="startBacklogItem($event)"
+                  (dropped)="dropBacklogItem($event)"
+                  (seeMore)="backlogSection.scrollIntoView()"
+                />
+              </div>
+            }
+          </section>
         </div>
 
-        <div class="w-full max-w-[280px] justify-self-center">
-          <h2
-            class="text-center text-sm font-semibold tracking-wide uppercase mb-3 text-light-font-secondary dark:text-dark-font-secondary"
-          >
-            Next Movie
-          </h2>
-          @if (nextMovie()) {
-            <div class="w-full">
-              <app-item-card [item]="nextMovie()!" />
-              <div class="flex flex-wrap justify-center gap-2 mt-3">
-                <button
-                  (click)="markItem(nextMovie, 'watched')"
-                  [disabled]="actions.busy()"
-                  class="px-3 py-1.5 border border-transparent rounded bg-accent-primary text-white cursor-pointer text-xs font-medium hover:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Mark Watched
-                </button>
-                <button
-                  (click)="markItem(nextMovie, 'paused')"
-                  [disabled]="actions.busy()"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Pause
-                </button>
-                <button
-                  (click)="markItem(nextMovie, 'dropped')"
-                  [disabled]="actions.busy()"
-                  class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-xs hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Drop
-                </button>
-              </div>
+        <section #backlogSection class="mb-6 sm:mb-8 empty:hidden">
+          @if (remainingBacklog().length > 0) {
+            <h2 class="section-title mb-3">
+              {{
+                remainingBacklog().length < backlogItems().length ? 'More in backlog' : 'Backlog'
+              }}
+            </h2>
+            <div class="card overflow-hidden">
+              @for (item of remainingBacklog(); track item.id) {
+                <app-title-row
+                  [item]="item"
+                  actionLabel="Start"
+                  [busy]="actions.busy()"
+                  (started)="startBacklogItem(item.id)"
+                  (dropped)="dropBacklogItem(item.id)"
+                />
+              }
+            </div>
+          } @else if (backlogItems().length === 0) {
+            <div class="flex flex-wrap items-baseline gap-x-3">
+              <h2 class="section-title">Backlog</h2>
+              <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+                No titles in backlog
+              </p>
+            </div>
+          }
+        </section>
+
+        <section>
+          @if (pausedItems().length > 0) {
+            <h2 class="section-title mb-3">Paused</h2>
+            <div class="card overflow-hidden">
+              @for (item of pausedItems(); track item.id) {
+                <app-title-row
+                  [item]="item"
+                  actionLabel="Resume"
+                  [busy]="actions.busy()"
+                  (started)="resumePausedItem(item.id)"
+                  (dropped)="dropPausedItem(item.id)"
+                />
+              }
             </div>
           } @else {
-            <p
-              class="w-full p-6 text-center text-sm rounded-lg border border-dashed border-light-border dark:border-dark-border text-light-font-muted dark:text-dark-font-muted"
-            >
-              @if (hasMovies()) {
-                No movies currently being watched
-              } @else {
-                No movies in your watch list
-              }
-            </p>
+            <div class="flex flex-wrap items-baseline gap-x-3">
+              <h2 class="section-title">Paused</h2>
+              <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+                No titles paused
+              </p>
+            </div>
           }
-        </div>
-      </div>
-
-      <div class="border-t border-light-border dark:border-dark-border pt-8 mt-8">
-        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-          Backlog
-        </h2>
-        @if (backlogItems().length > 0) {
-          <div
-            class="overflow-hidden rounded-lg border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark"
-          >
-            @for (item of backlogItems(); track item.id) {
-              <div
-                class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-light-border dark:border-dark-border last:border-b-0"
-              >
-                <div class="min-w-0 flex items-center gap-3">
-                  <a
-                    [routerLink]="['/items', item.id]"
-                    class="truncate no-underline text-base font-medium text-light-font dark:text-dark-font hover:text-accent-primary"
-                    >{{ item.title }}</a
-                  >
-                  <span
-                    class="shrink-0 rounded-full bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-1 text-xs capitalize text-light-font-secondary dark:text-dark-font-secondary"
-                    >{{ item.type }}</span
-                  >
-                </div>
-                <div class="flex shrink-0 gap-2">
-                  <button
-                    (click)="startBacklogItem(item.id)"
-                    [disabled]="actions.busy()"
-                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Add to currently watching
-                  </button>
-                  <button
-                    (click)="dropBacklogItem(item.id)"
-                    [disabled]="actions.busy()"
-                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Drop
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        } @else {
-          <p
-            class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg"
-          >
-            No items in backlog
-          </p>
-        }
-      </div>
-
-      <div class="border-t border-light-border dark:border-dark-border pt-8 mt-8">
-        <h2 class="text-xl mb-4 text-light-font-secondary dark:text-dark-font-secondary">Paused</h2>
-        @if (pausedItems().length > 0) {
-          <div
-            class="overflow-hidden rounded-lg border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark"
-          >
-            @for (item of pausedItems(); track item.id) {
-              <div
-                class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between border-b border-light-border dark:border-dark-border last:border-b-0"
-              >
-                <div class="min-w-0 flex items-center gap-3">
-                  <a
-                    [routerLink]="['/items', item.id]"
-                    class="truncate no-underline text-base font-medium text-light-font dark:text-dark-font hover:text-accent-primary"
-                    >{{ item.title }}</a
-                  >
-                  <span
-                    class="shrink-0 rounded-full bg-light-bg-tertiary dark:bg-dark-bg-tertiary px-2 py-1 text-xs capitalize text-light-font-secondary dark:text-dark-font-secondary"
-                    >{{ item.type }}</span
-                  >
-                </div>
-                <div class="flex shrink-0 gap-2">
-                  <button
-                    (click)="resumePausedItem(item.id)"
-                    [disabled]="actions.busy()"
-                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Resume
-                  </button>
-                  <button
-                    (click)="dropPausedItem(item.id)"
-                    [disabled]="actions.busy()"
-                    class="px-3 py-1.5 border border-light-border dark:border-dark-border rounded bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font cursor-pointer text-sm hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Drop
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        } @else {
-          <p
-            class="p-8 text-center text-light-font-muted dark:text-dark-font-muted bg-light-bg-primary dark:bg-dark-bg-primary rounded-lg"
-          >
-            No items paused
-          </p>
-        }
-      </div>
+        </section>
+      }
     </div>
+  `,
+  styles: `
+    .slot-label {
+      margin: 0 0 0.5rem;
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+      font-weight: 600;
+    }
   `,
 })
 export class HomeComponent {
   private roundRobinService = inject(RoundRobinService);
   private watchListService = inject(WatchListService);
   private providerSettings = inject(ProviderSettingsService);
+  private notices = inject(WatchActionNoticeService);
   readonly actions = new MutationFeedback(watchActionFailure);
+  protected readonly onboardingSteps = [
+    'Add the titles you want to watch',
+    'Log episodes and movies as you go',
+    'Get your next pick right here',
+  ];
 
   nextSeries = this.roundRobinService.nextSeries;
   nextMovie = this.roundRobinService.nextMovie;
@@ -317,7 +319,8 @@ export class HomeComponent {
     const item = this.deferringItem();
     const hours = this.durationHours();
     if (!item || !deferralReturnDate(hours)) return;
-    const result = await this.actions.run(
+    const result = await this.notices.run(
+      this.actions,
       () =>
         this.watchListService.deferEpisode(
           item.id,
@@ -346,6 +349,18 @@ export class HomeComponent {
     return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   });
 
+  // Each backlog title appears once: in its empty slot's short list, otherwise in the list below.
+  protected seriesChoices = computed(() =>
+    this.nextSeries() ? [] : this.backlogSeries().slice(0, SLOT_CHOICE_LIMIT),
+  );
+  protected movieChoices = computed(() =>
+    this.nextMovie() ? [] : this.backlogMovies().slice(0, SLOT_CHOICE_LIMIT),
+  );
+  protected remainingBacklog = computed(() => {
+    const offered = new Set([...this.seriesChoices(), ...this.movieChoices()]);
+    return this.backlogItems().filter((item) => !offered.has(item));
+  });
+
   protected hasSeries = computed(() =>
     this.watchListService.items().some((item) => isEpisodicType(item.type)),
   );
@@ -354,29 +369,43 @@ export class HomeComponent {
     () => this.watchListService.inProgressSeries().length > 0,
   );
 
+  protected isLibraryEmpty = computed(() => this.watchListService.items().length === 0);
+  protected backlogSeries = computed(() =>
+    this.backlogItems().filter((item) => isEpisodicType(item.type)),
+  );
+  protected backlogMovies = computed(() =>
+    this.backlogItems().filter((item) => item.type === 'movie'),
+  );
+
   markItem(
     getter: () => Item | null | undefined,
     action: 'watched' | 'completed' | 'dropped' | 'paused',
   ) {
     const item = getter();
     if (!item) return;
-    return this.actions.run(() => {
-      if (action === 'watched') return this.watchListService.markWatched(item.id);
-      if (action === 'completed') return this.watchListService.markCompleted(item.id);
-      if (action === 'dropped') return this.watchListService.markDropped(item.id);
-      return this.watchListService.markPaused(item.id);
-    }, 'Could not save the watch action.');
+    return this.notices.run(
+      this.actions,
+      () => {
+        if (action === 'watched') return this.watchListService.markWatched(item.id);
+        if (action === 'completed') return this.watchListService.markCompleted(item.id);
+        if (action === 'dropped') return this.watchListService.markDropped(item.id);
+        return this.watchListService.markPaused(item.id);
+      },
+      'Could not save the watch action.',
+    );
   }
 
   startBacklogItem(itemId: string) {
-    return this.actions.run(
+    return this.notices.run(
+      this.actions,
       () => this.watchListService.markStarted(itemId),
       'Could not start the item.',
     );
   }
 
   dropBacklogItem(itemId: string) {
-    return this.actions.run(
+    return this.notices.run(
+      this.actions,
       () => this.watchListService.markDropped(itemId),
       'Could not drop the item.',
     );

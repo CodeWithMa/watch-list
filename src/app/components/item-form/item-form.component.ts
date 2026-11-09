@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Group } from '../../models/group.model';
 import { ItemStatus, SeasonInfo } from '../../models/item.model';
 import { Suggestion } from '../../models/suggestion.model';
@@ -30,7 +31,6 @@ import {
 } from '../../domain/item.constants';
 import { SeasonEditorComponent } from '../season-editor/season-editor.component';
 import { PosterPickerComponent } from '../poster-picker/poster-picker.component';
-import { statusButtonClass } from '../../utils/status.utils';
 import { toPositiveNumber } from '../../utils/form.utils';
 import { isEpisodicType } from '../../domain/item.constants';
 
@@ -41,36 +41,55 @@ export interface ItemFormAutofillPatch {
 
 @Component({
   selector: 'app-item-form',
-  imports: [CommonModule, FormsModule, SeasonEditorComponent, PosterPickerComponent],
+  imports: [CommonModule, FormsModule, RouterLink, SeasonEditorComponent, PosterPickerComponent],
   template: `
-    <form
-      (ngSubmit)="submit()"
-      #itemForm="ngForm"
-      class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-8 rounded-lg"
-    >
+    <form (ngSubmit)="submit()" #itemForm="ngForm" class="card p-4 sm:p-6 max-w-3xl">
       <fieldset [disabled]="busy()" class="border-0 p-0 m-0 min-w-0">
-        <div class="mb-6">
+        <div class="mb-4">
           <label for="title" class="block mb-2 font-medium text-light-font dark:text-dark-font"
             >Title *</label
           >
-          <div class="search-input-group">
-            <ng-content select="[title-search-provider]" />
-            <input
-              #titleInput
-              type="text"
-              id="title"
-              [ngModel]="formValue().title"
-              (ngModelChange)="updateTitle($event)"
-              name="title"
-              required
-              class="form-control flex-1 min-w-0"
-            />
-          </div>
-          @if (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched) {
-            <div class="text-accent-danger text-sm mt-1">Title is required</div>
+          <input
+            #titleInput
+            type="text"
+            id="title"
+            [ngModel]="formValue().title"
+            (ngModelChange)="updateTitle($event)"
+            name="title"
+            required
+            [attr.aria-invalid]="showTitleError() || null"
+            [attr.aria-describedby]="showTitleError() ? 'title-error' : null"
+            class="form-control"
+          />
+          @if (
+            showTitleError() ||
+            (itemForm.controls['title']?.invalid && itemForm.controls['title']?.touched)
+          ) {
+            <div id="title-error" class="text-accent-danger-text text-sm mt-1">
+              Title is required
+            </div>
           }
+          <div
+            class="hidden has-[app-search-provider-select:not(.hidden)]:flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 [--search-control-size:2.75rem] md:[--search-control-size:2.5rem]"
+          >
+            <span class="meta">Suggestions from</span>
+            <ng-content select="[title-search-provider]" />
+          </div>
           @if (duplicateTitleHint()) {
-            <div class="text-accent-secondary text-sm mt-1">{{ duplicateTitleHint() }}</div>
+            <div class="text-light-font-secondary dark:text-dark-font-secondary text-sm mt-1">
+              {{ duplicateTitleHint() }}
+            </div>
+          }
+          @if (searchSetupRequired() && suggestions().length === 0) {
+            <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+              TMDB needs setup, so it can't suggest titles yet.
+              <a routerLink="/settings" class="text-accent-text underline">Connect it in Settings</a
+              >, switch provider, or enter the title manually.
+            </p>
+          } @else if (suggestionsEmpty()) {
+            <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+              No suggestions found. You can still add this title manually.
+            </p>
           }
           @if (showSuggestions()) {
             <div
@@ -83,7 +102,11 @@ export interface ItemFormAutofillPatch {
                   Searching...
                 </div>
               } @else if (suggestionsError()) {
-                <div class="px-3 py-2 text-sm text-accent-secondary">{{ suggestionsError() }}</div>
+                <div
+                  class="px-3 py-2 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+                >
+                  {{ suggestionsError() }}
+                </div>
               } @else if (suggestions().length > 0) {
                 @for (suggestion of suggestions(); track suggestion.source + '-' + suggestion.id) {
                   <button
@@ -123,75 +146,52 @@ export interface ItemFormAutofillPatch {
           }
         </div>
 
-        <div class="mb-6">
-          <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Poster</span>
-          <app-poster-picker
-            [posterId]="formValue().posterId"
-            [searchSeed]="formValue().title"
-            (posterIdChange)="updatePosterId($event)"
-            (loadingChange)="posterLoading.set($event)"
-            #posterPicker
-          />
-        </div>
-
-        <div class="mb-6">
-          <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-            >Type *</label
-          >
-          <select
-            id="type"
-            [ngModel]="formValue().type"
-            (ngModelChange)="setType($event)"
-            name="type"
-            class="form-control"
-          >
-            @for (itemType of itemTypes; track itemType) {
-              <option [value]="itemType">{{ itemTypeLabels[itemType] }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="mb-6">
-          <label for="groupId" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-            >Group *</label
-          >
-          <select
-            id="groupId"
-            [ngModel]="formValue().groupId"
-            (ngModelChange)="updateGroupId($event)"
-            name="groupId"
-            required
-            class="form-control"
-          >
-            @for (group of groups(); track group.id) {
-              <option [value]="group.id">{{ group.name }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="mb-6">
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              id="isAdult"
-              [ngModel]="formValue().isAdult"
-              (ngModelChange)="updateIsAdult($event)"
-              name="isAdult"
-              class="w-5 h-5"
-            />
-            <span class="text-light-font dark:text-dark-font">Adult content</span>
-          </label>
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-3 mb-4">
+          <div>
+            <label for="type" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+              >Type</label
+            >
+            <select
+              id="type"
+              [ngModel]="formValue().type"
+              (ngModelChange)="setType($event)"
+              name="type"
+              class="form-control"
+            >
+              @for (itemType of itemTypes; track itemType) {
+                <option [value]="itemType">{{ itemTypeLabels[itemType] }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label for="groupId" class="block mb-2 font-medium text-light-font dark:text-dark-font"
+              >Group</label
+            >
+            <select
+              id="groupId"
+              [ngModel]="formValue().groupId"
+              (ngModelChange)="updateGroupId($event)"
+              name="groupId"
+              required
+              class="form-control"
+            >
+              @for (group of groups(); track group.id) {
+                <option [value]="group.id">{{ group.name }}</option>
+              }
+            </select>
+          </div>
         </div>
 
         @if (showStatusPicker()) {
-          <div class="mb-6">
-            <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Status:</span>
-            <div class="flex flex-wrap gap-3">
+          <div class="mb-4">
+            <span class="block mb-2 font-medium text-light-font dark:text-dark-font">Status</span>
+            <div class="flex flex-wrap gap-2">
               @for (status of itemStatuses; track status) {
                 <button
                   type="button"
                   (click)="updateStatus(status)"
-                  [class]="statusButtonClass(status)"
+                  [attr.aria-pressed]="formValue().status === status"
+                  class="chip"
                 >
                   {{ itemStatusLabels[status] }}
                 </button>
@@ -201,90 +201,135 @@ export interface ItemFormAutofillPatch {
         }
 
         @if (showStartImmediately()) {
-          <div class="mb-6">
-            <label class="flex items-center gap-3 cursor-pointer">
+          <div class="mb-4">
+            <label class="choice-row">
               <input
                 type="checkbox"
                 [ngModel]="formValue().startImmediately"
                 (ngModelChange)="updateStartImmediately($event)"
                 name="startImmediately"
-                class="w-5 h-5"
               />
-              <span class="text-light-font dark:text-dark-font">Start watching immediately</span>
+              <span>Start watching immediately</span>
             </label>
           </div>
         }
 
-        @if (isEpisodic(formValue().type)) {
-          <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
-            <div class="mb-6">
-              <label for="season" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-                >Season</label
-              >
-              <input
-                type="number"
-                id="season"
-                [ngModel]="formValue().season"
-                (ngModelChange)="updateSeason($event)"
-                name="season"
-                min="1"
-                class="form-control"
-              />
-            </div>
-            <div class="mb-6">
-              <label
-                for="episode"
-                class="block mb-2 font-medium text-light-font dark:text-dark-font"
-                >Episode</label
-              >
-              <input
-                type="number"
-                id="episode"
-                [ngModel]="formValue().episode"
-                (ngModelChange)="updateEpisode($event)"
-                name="episode"
-                min="1"
-                class="form-control"
-              />
-            </div>
-            <app-season-editor
-              [seasons]="formValue().seasons"
-              (seasonsChange)="updateSeasons($event)"
+        <details
+          class="form-section"
+          [open]="showStatusPicker() || !!formValue().posterId || formValue().isAdult"
+        >
+          <summary>Poster and adult content (optional)</summary>
+          <div>
+            <app-poster-picker
+              [posterId]="formValue().posterId"
+              [searchSeed]="formValue().title"
+              (posterIdChange)="updatePosterId($event)"
+              (loadingChange)="posterLoading.set($event)"
+              #posterPicker
             />
-            @if (hasInvalidProgress()) {
-              <div role="alert" class="text-accent-danger text-sm mt-2">
-                Season and episode values must be positive whole numbers within the supported range.
-              </div>
-            }
+            <label class="choice-row mt-4">
+              <input
+                type="checkbox"
+                id="isAdult"
+                [ngModel]="formValue().isAdult"
+                (ngModelChange)="updateIsAdult($event)"
+                name="isAdult"
+              />
+              <span>Adult content</span>
+            </label>
           </div>
-        }
+        </details>
 
-        @if (showDirtyState() && isDirty()) {
-          <div
-            class="mb-4 px-3 py-2 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary border border-accent-secondary text-accent-secondary text-sm"
+        @if (isEpisodic(formValue().type)) {
+          <details class="form-section" [open]="showProgressSection()">
+            <summary>
+              {{ showStatusPicker() ? 'Progress' : 'Starting progress (optional)' }}
+            </summary>
+            <div>
+              <p class="mt-0 mb-3 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+                The next episode to watch. New titles start at season 1, episode 1.
+              </p>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    for="season"
+                    class="block mb-2 font-medium text-light-font dark:text-dark-font"
+                    >Season</label
+                  >
+                  <input
+                    type="number"
+                    id="season"
+                    [ngModel]="formValue().season"
+                    (ngModelChange)="updateSeason($event)"
+                    name="season"
+                    min="1"
+                    class="form-control"
+                  />
+                </div>
+                <div>
+                  <label
+                    for="episode"
+                    class="block mb-2 font-medium text-light-font dark:text-dark-font"
+                    >Episode</label
+                  >
+                  <input
+                    type="number"
+                    id="episode"
+                    [ngModel]="formValue().episode"
+                    (ngModelChange)="updateEpisode($event)"
+                    name="episode"
+                    min="1"
+                    class="form-control"
+                  />
+                </div>
+              </div>
+            </div>
+          </details>
+          <details
+            #seasonDetails
+            id="season-details"
+            class="form-section"
+            [open]="formValue().seasons.length > 0 || revealSeasonDetails()"
           >
-            You have unsaved changes
-          </div>
+            <summary>Season details (optional)</summary>
+            <div>
+              <p class="mt-0 mb-3 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+                Episode counts and air dates help recommend only episodes that have aired.
+              </p>
+              <app-season-editor
+                [seasons]="formValue().seasons"
+                (seasonsChange)="updateSeasons($event)"
+              />
+            </div>
+          </details>
+          @if (hasInvalidProgress()) {
+            <div role="alert" class="text-accent-danger-text text-sm mb-4">
+              Season and episode values must be positive whole numbers within the supported range.
+            </div>
+          }
         }
 
         @if (error()) {
-          <div role="alert" class="text-accent-danger mt-4">{{ error() }}</div>
+          <div role="alert" class="text-accent-danger-text mt-4">{{ error() }}</div>
         }
-        <div class="flex gap-4 mt-8">
-          <button
-            type="submit"
-            class="px-8 py-3 bg-accent-primary text-white border-none rounded cursor-pointer text-base font-medium hover:bg-accent-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-            [disabled]="isSubmitDisabled()"
-          >
+        <div class="flex flex-wrap items-center gap-2 mt-6">
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitDisabled()">
             {{ submitLabel() }}
           </button>
-          <button
-            type="button"
-            (click)="handleCancel()"
-            class="px-8 py-3 bg-accent-secondary text-white border-none rounded cursor-pointer text-base hover:bg-accent-secondary-hover"
-          >
+          <button type="button" (click)="handleCancel()" class="btn btn-secondary">
             {{ cancelLabel() }}
           </button>
+          <!-- Next to Save, so the reason Save is or isn't available sits where the eye is. -->
+          @if (showDirtyState()) {
+            <span role="status" class="meta ml-1 inline-flex items-center gap-2">
+              @if (isDirty()) {
+                <span class="size-2 rounded-full bg-accent-primary" aria-hidden="true"></span>
+                You have unsaved changes
+              } @else if (disableSubmitWhenPristine()) {
+                No changes to save
+              }
+            </span>
+          }
         </div>
       </fieldset>
     </form>
@@ -293,10 +338,12 @@ export interface ItemFormAutofillPatch {
 export class ItemFormComponent {
   @ViewChild('posterPicker') private posterPicker?: PosterPickerComponent;
   private readonly titleInput = viewChild.required<ElementRef<HTMLInputElement>>('titleInput');
+  private readonly seasonDetails = viewChild<ElementRef<HTMLElement>>('seasonDetails');
 
   readonly groups = input.required<readonly Readonly<Group>[]>();
   readonly initialValue = input<ItemFormValue>(createDefaultItemFormValue());
   readonly focusTitleOnOpen = input(false);
+  readonly revealSeasonDetails = input(false);
   readonly submitLabel = input('Save');
   readonly busy = input(false);
   readonly error = input<string | null>(null);
@@ -310,6 +357,8 @@ export class ItemFormComponent {
   readonly suggestions = input<Suggestion[]>([]);
   readonly suggestionsLoading = input(false);
   readonly suggestionsError = input('');
+  readonly suggestionsEmpty = input(false);
+  readonly searchSetupRequired = input(false);
   readonly autofillPatch = input<ItemFormAutofillPatch | null>(null);
 
   readonly submitted = output<ItemFormValue>();
@@ -323,6 +372,10 @@ export class ItemFormComponent {
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
   readonly posterLoading = signal(false);
+  private readonly submitAttempted = signal(false);
+  readonly showTitleError = computed(
+    () => this.submitAttempted() && !this.formValue().title.trim(),
+  );
   readonly isEpisodic = isEpisodicType;
 
   readonly formValue = linkedSignal(() => normalizeFormValueForType(this.initialValue()));
@@ -349,17 +402,16 @@ export class ItemFormComponent {
   });
 
   readonly isSubmitDisabled = computed(() => {
-    if (
-      this.busy() ||
-      !this.formValue().title.trim() ||
-      this.posterLoading() ||
-      this.hasInvalidProgress()
-    ) {
+    if (this.busy() || this.posterLoading() || this.hasInvalidProgress()) {
       return true;
     }
 
     return this.disableSubmitWhenPristine() && !this.isDirty();
   });
+
+  readonly showProgressSection = computed(
+    () => this.formValue().startImmediately || this.showStatusPicker(),
+  );
 
   readonly showSuggestions = computed(
     () => this.suggestionsLoading() || !!this.suggestionsError() || this.suggestions().length > 0,
@@ -371,6 +423,9 @@ export class ItemFormComponent {
     afterNextRender(() => {
       if (this.focusTitleOnOpen()) {
         this.titleInput().nativeElement.focus();
+      }
+      if (this.revealSeasonDetails()) {
+        this.seasonDetails()?.nativeElement.scrollIntoView();
       }
     });
 
@@ -400,6 +455,11 @@ export class ItemFormComponent {
     if (this.isSubmitDisabled()) {
       return;
     }
+    if (!value.title.trim()) {
+      this.submitAttempted.set(true);
+      this.titleInput().nativeElement.focus();
+      return;
+    }
 
     const submittedValue = prepareSubmittedItemFormValue(value, this.showStartImmediately());
 
@@ -416,6 +476,7 @@ export class ItemFormComponent {
   handleCancel(): void {
     if (this.busy()) return;
     this.posterPicker?.clearDrafts();
+    this.submitAttempted.set(false);
     if (this.resetOnCancel()) {
       this.formValue.set(normalizeFormValueForType(this.initialValue()));
     }
@@ -466,10 +527,6 @@ export class ItemFormComponent {
 
   updateIsAdult(isAdult: boolean): void {
     this.updateFormValue({ isAdult: !!isAdult });
-  }
-
-  statusButtonClass(status: ItemFormValue['status']): string {
-    return statusButtonClass(this.formValue().status === status, status);
   }
 
   private updateFormValue(patch: Partial<ItemFormValue>): void {

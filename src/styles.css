@@ -1,28 +1,31 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/figtree/index.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-light-bg-primary: #f5f5f5;
+  --color-light-bg-primary: #f4f5f7;
   --color-light-bg-secondary: #ffffff;
-  --color-light-bg-tertiary: #f8f9fa;
-  --color-light-font: #333333;
-  --color-light-font-secondary: #666666;
-  --color-light-font-muted: #999999;
-  --color-light-border: #e0e0e0;
-  --color-light-border-light: #eeeeee;
+  --color-light-bg-tertiary: #eef0f4;
+  --color-light-font: #1d2129;
+  --color-light-font-secondary: #4b5261;
+  --color-light-font-muted: #5d6472;
+  --color-light-border: #dfe2e8;
+  --color-light-border-light: #eceef2;
 
-  --color-dark-bg-primary: #1a1a1a;
-  --color-dark-bg-secondary: #2d2d2d;
-  --color-dark-bg-tertiary: #252525;
-  --color-dark-font: #e0e0e0;
-  --color-dark-font-secondary: #b0b0b0;
-  --color-dark-font-muted: #808080;
-  --color-dark-border: #404040;
-  --color-dark-border-light: #333333;
+  --color-dark-bg-primary: #121418;
+  --color-dark-bg-secondary: #1c1f25;
+  --color-dark-bg-tertiary: #262a32;
+  --color-dark-font: #eceef2;
+  --color-dark-font-secondary: #b9bfca;
+  --color-dark-font-muted: #a0a7b4;
+  --color-dark-border: #333842;
+  --color-dark-border-light: #2a2e36;
 
-  --color-accent-primary: #007bff;
+  --color-accent-primary: #0069d9;
   --color-accent-primary-hover: #0056b3;
+  --color-accent-text: #0059b8;
+  --color-accent-danger-text: #b02a37;
   --color-accent-success: #28a745;
   --color-accent-success-hover: #218838;
   --color-accent-info: #17a2b8;
@@ -34,33 +37,33 @@
   --color-accent-secondary: #6c757d;
   --color-accent-secondary-hover: #5a6268;
 
-  --color-light-hover: #e9ecef;
-  --color-dark-hover: #333333;
+  --color-light-hover: #eaecf1;
+  --color-dark-hover: #282c34;
 
-  --color-status-not-started-bg-light: #fff3cd;
-  --color-status-not-started-text-light: #856404;
-  --color-status-not-started-bg-dark: #856404;
-  --color-status-not-started-text-dark: #fff3cd;
+  --color-status-not-started-bg-light: #e9ebf0;
+  --color-status-not-started-text-light: #3f4654;
+  --color-status-not-started-bg-dark: #2f343e;
+  --color-status-not-started-text-dark: #cfd4de;
 
-  --color-status-in-progress-bg-light: #d1ecf1;
-  --color-status-in-progress-text-light: #0c5460;
-  --color-status-in-progress-bg-dark: #0c5460;
-  --color-status-in-progress-text-dark: #d1ecf1;
+  --color-status-in-progress-bg-light: #dcebff;
+  --color-status-in-progress-text-light: #0b4a94;
+  --color-status-in-progress-bg-dark: #12365f;
+  --color-status-in-progress-text-dark: #cfe3ff;
 
   --color-status-completed-bg-light: #d4edda;
   --color-status-completed-text-light: #155724;
-  --color-status-completed-bg-dark: #155724;
-  --color-status-completed-text-dark: #d4edda;
+  --color-status-completed-bg-dark: #16402a;
+  --color-status-completed-text-dark: #c9ecd5;
 
   --color-status-dropped-bg-light: #f8d7da;
   --color-status-dropped-text-light: #721c24;
-  --color-status-dropped-bg-dark: #721c24;
-  --color-status-dropped-text-dark: #f8d7da;
+  --color-status-dropped-bg-dark: #4f1f25;
+  --color-status-dropped-text-dark: #f8d4d8;
 
-  --color-status-paused-bg-light: #e0d4f5;
-  --color-status-paused-text-light: #5b21b6;
-  --color-status-paused-bg-dark: #5b21b6;
-  --color-status-paused-text-dark: #e0d4f5;
+  --color-status-paused-bg-light: #fdf0d0;
+  --color-status-paused-text-light: #6f4a00;
+  --color-status-paused-bg-dark: #4f3a0c;
+  --color-status-paused-text-dark: #fbe3ae;
 
   --color-error-bg-light: #f8d7da;
   --color-error-text-light: #721c24;
@@ -79,7 +82,17 @@
   --shadow-light: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.5);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.25rem;
+
+  --font-sans:
+    'Figtree Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+/* One focus recipe for every text field and select: accent border plus a soft ring. */
+@utility field-focus {
+  @apply focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_3px_rgb(0_105_217/0.3)] dark:focus:shadow-[0_0_0_3px_rgb(122_184_255/0.35)];
 }
 
 @layer base {
@@ -95,6 +108,18 @@
 
   html.dark {
     color-scheme: dark;
+    /* The fills stay dark enough for white labels; text on dark surfaces needs lighter tints. */
+    --color-accent-text: #7ab8ff;
+    --color-accent-danger-text: #ff8f99;
+  }
+
+  html {
+    scroll-padding-top: 5rem;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-text);
+    outline-offset: 2px;
   }
 
   body {
@@ -109,6 +134,27 @@
       color 0.3s ease;
   }
 
+  /* Flex summaries lose the native marker, so disclosures draw their own. */
+  summary {
+    list-style: none;
+  }
+
+  summary::before {
+    content: '';
+    flex-shrink: 0;
+    width: 0.5em;
+    height: 0.5em;
+    margin-right: 0.75em;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+  }
+
+  details[open] > summary::before {
+    transform: rotate(45deg);
+  }
+
   button,
   input,
   select,
@@ -119,15 +165,114 @@
 
 @layer components {
   .page-container {
-    @apply max-w-[1200px] mx-auto p-8;
+    @apply max-w-[1200px] mx-auto p-4 sm:p-6 lg:p-8;
+  }
+
+  .page-title {
+    @apply m-0 text-2xl/[1.875rem] sm:text-[1.75rem]/[2.125rem] font-bold tracking-tight text-light-font dark:text-dark-font;
+  }
+
+  .section-title {
+    @apply m-0 text-lg/6 font-semibold tracking-tight text-light-font dark:text-dark-font;
+  }
+
+  /* Two measures: forms and reading pages use this; browsing surfaces use the full container. */
+  .reading-measure {
+    @apply max-w-3xl;
+  }
+
+  .card {
+    @apply rounded-lg border border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary;
+  }
+
+  /* The way out of a detail or form page; the nav is behind a menu on phones. */
+  .back-link {
+    @apply inline-flex items-center gap-2 min-h-10 max-md:min-h-11 -ml-1 px-1 mb-1 rounded text-sm font-medium no-underline text-light-font-secondary dark:text-dark-font-secondary hover:text-accent-text before:content-[''] before:size-2 before:ml-0.5 before:border-l-2 before:border-b-2 before:border-current before:rotate-45;
+  }
+
+  /* Non-interactive tags (status, episode) are soft rectangles; pills are reserved for toggles. */
+  .tag {
+    @apply inline-block rounded px-1.5 py-0.5 text-meta font-medium;
+  }
+
+  .tag-accent {
+    @apply bg-accent-primary/10 text-accent-text dark:bg-accent-text/15;
+  }
+
+  /* Secondary information: type, dates, helper text. */
+  .meta {
+    @apply text-meta text-light-font-secondary dark:text-dark-font-secondary;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 min-h-10 max-md:min-h-11 px-4 py-2 rounded-md border text-sm font-semibold no-underline cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply border-transparent bg-accent-primary text-white enabled:hover:bg-accent-primary-hover [&:not(button)]:hover:bg-accent-primary-hover;
+  }
+
+  .btn-secondary {
+    @apply border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font enabled:hover:bg-light-hover dark:enabled:hover:bg-dark-hover [&:not(button)]:hover:bg-light-hover dark:[&:not(button)]:hover:bg-dark-hover;
+  }
+
+  .btn-quiet {
+    @apply border-transparent bg-transparent text-light-font-secondary dark:text-dark-font-secondary enabled:hover:bg-light-hover dark:enabled:hover:bg-dark-hover;
+  }
+
+  /*
+   * Action slots. Hero: one btn-primary plus btn-quiet supporting actions (home cards).
+   * Detail: btn-primary plus btn-secondary. Destructive actions always start as
+   * btn-quiet-danger and escalate to btn-danger only in their confirm step.
+   * Leaving a title or group is a consequence, not a routine action: quiet until pointed at.
+   */
+  .btn-quiet-danger {
+    @apply border-transparent bg-transparent text-light-font-secondary dark:text-dark-font-secondary enabled:hover:bg-accent-danger/10 enabled:hover:text-accent-danger-text;
+  }
+
+  .btn-danger {
+    @apply border-transparent bg-accent-danger text-white enabled:hover:bg-accent-danger-hover;
+  }
+
+  .chip {
+    @apply inline-flex items-center justify-center shrink-0 min-h-10 max-md:min-h-11 px-3.5 rounded-full border text-sm font-medium whitespace-nowrap cursor-pointer transition-colors border-light-border dark:border-dark-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:border-accent-text aria-pressed:border-transparent aria-pressed:bg-accent-primary aria-pressed:text-white aria-pressed:before:content-['✓'] aria-pressed:before:mr-1.5;
+  }
+
+  /* Fixed control column, so wrapped labels and hints stay attached to their checkbox or radio. */
+  .choice-row {
+    @apply grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 content-center min-h-6 max-md:min-h-11 cursor-pointer text-light-font dark:text-dark-font;
+  }
+
+  .choice-row > input {
+    @apply size-5 m-0 mt-0.5 cursor-pointer;
+  }
+
+  .choice-hint {
+    @apply block text-sm text-light-font-secondary dark:text-dark-font-secondary;
+  }
+
+  .form-select {
+    @apply field-focus min-h-10 max-md:min-h-11 px-3 py-2 border border-light-border dark:border-dark-border rounded-md text-sm bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font;
+  }
+
+  .form-section {
+    @apply mb-4 rounded-md border border-light-border dark:border-dark-border;
+  }
+
+  .form-section > summary {
+    @apply min-h-11 flex items-center px-4 py-2 cursor-pointer font-medium text-light-font dark:text-dark-font;
+  }
+
+  .form-section > :not(summary) {
+    @apply px-4 pb-4;
   }
 
   .form-control {
-    @apply w-full p-3 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary focus:shadow-[0_0_0_2px_rgba(0,123,255,0.25)];
+    @apply field-focus w-full p-3 border border-light-border dark:border-dark-border rounded-md text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font;
   }
 
   .form-control-sm {
-    @apply w-full p-2 border border-light-border dark:border-dark-border rounded text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font focus:outline-none focus:border-accent-primary;
+    @apply field-focus w-full p-2 border border-light-border dark:border-dark-border rounded-md text-base box-border bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font;
   }
 
   .search-input-group {
@@ -148,7 +293,7 @@
   }
 
   .search-input-group:has(> input:focus) {
-    @apply rounded shadow-[0_0_0_2px_rgba(0,123,255,0.25)];
+    @apply rounded shadow-[0_0_0_3px_rgb(0_105_217/0.3)] dark:shadow-[0_0_0_3px_rgb(122_184_255/0.35)];
   }
 
   .search-input-group > input:focus {

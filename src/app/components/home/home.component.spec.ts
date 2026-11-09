@@ -123,14 +123,54 @@ describe('HomeComponent', () => {
     expect(watchListService.markDropped).toHaveBeenCalledWith('paused-movie');
   });
 
-  it('shows an empty state when no items are paused', async () => {
+  it('offers one onboarding action for an empty library', async () => {
     setup({ watchItems: [] });
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Your watch list is empty');
+    expect(root.querySelector('a[href="/items/add"]')?.textContent).toContain('Add title');
+    expect(root.textContent).not.toContain('No series');
+    expect(root.textContent).not.toContain('No titles paused');
+  });
+
+  it('offers backlog choices in an empty slot without starting anything', async () => {
+    const movies = ['A', 'B', 'C', 'D'].map((id) =>
+      createItem({ id, title: `Movie ${id}`, type: 'movie' }),
+    );
+    setup({ watchItems: movies });
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Start a movie from your backlog');
+    expect(root.textContent).toContain('See 1 more below');
+    expect(root.textContent).toContain('More in backlog');
+    // Every backlog title is offered exactly once.
+    const titles = [...root.querySelectorAll('app-title-row a[title]')].map((a) =>
+      a.textContent?.trim(),
+    );
+    expect(titles.sort()).toEqual(['Movie A', 'Movie B', 'Movie C', 'Movie D']);
+    expect(root.textContent).not.toContain('Start a series from your backlog');
+    const svc = TestBed.inject(WatchListService);
+    expect(svc.markStarted).not.toHaveBeenCalled();
+    const start = [...root.querySelectorAll('app-backlog-choices button')][0] as HTMLButtonElement;
+    start.click();
+    await fixture.whenStable();
+    expect(svc.markStarted).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows an empty state when no items are paused', async () => {
+    setup({
+      watchItems: [createItem({ id: 'done', title: 'Done', type: 'movie', status: 'completed' })],
+    });
     const fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('No items paused');
+    expect(fixture.nativeElement.textContent).toContain('No titles paused');
   });
 
   it('computes backlogItems sorted newest first', () => {
@@ -187,12 +227,14 @@ describe('HomeComponent', () => {
   });
 
   it('shows backlog and paused empty states', async () => {
-    setup({ watchItems: [] });
+    setup({
+      watchItems: [createItem({ id: 'done', title: 'Done', type: 'movie', status: 'completed' })],
+    });
     const fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent).toContain('No items in backlog');
-    expect(fixture.nativeElement.textContent).toContain('No items paused');
+    expect(fixture.nativeElement.textContent).toContain('No titles in backlog');
+    expect(fixture.nativeElement.textContent).toContain('No titles paused');
   });
 
   it('shows backlog items and handles start/drop backlog', async () => {
@@ -271,7 +313,8 @@ describe('HomeComponent', () => {
 
   it('shows empty states for nextSeries/nextMovie', async () => {
     // No series in list
-    setup({ watchItems: [], inProgressSeries: [], nextSeries: null, nextMovie: null });
+    const onlyMovie = createItem({ id: 'done', title: 'Done', type: 'movie', status: 'completed' });
+    setup({ watchItems: [onlyMovie], inProgressSeries: [], nextSeries: null, nextMovie: null });
     let fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -294,7 +337,9 @@ describe('HomeComponent', () => {
     fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent).toContain('No series currently being watched');
+    // With a backlog to offer, the slot speaks once: the backlog heading.
+    expect(fixture.nativeElement.textContent).toContain('Start a series from your backlog');
+    expect(fixture.nativeElement.textContent).not.toContain('No series currently being watched');
 
     // Has in-progress but not watchable (all future)
     const inProg = createItem({
@@ -311,7 +356,8 @@ describe('HomeComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No aired series episodes available');
 
     // Movies
-    setup({ watchItems: [], inProgressSeries: [], nextSeries: null, nextMovie: null });
+    const onlySeries = createItem({ id: 's3', title: 'S3', type: 'series', status: 'completed' });
+    setup({ watchItems: [onlySeries], inProgressSeries: [], nextSeries: null, nextMovie: null });
     fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -333,7 +379,8 @@ describe('HomeComponent', () => {
     fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent).toContain('No movies currently being watched');
+    expect(fixture.nativeElement.textContent).toContain('Start a movie from your backlog');
+    expect(fixture.nativeElement.textContent).not.toContain('No movies currently being watched');
   });
 
   it('computes hasSeries and hasMovies correctly', () => {

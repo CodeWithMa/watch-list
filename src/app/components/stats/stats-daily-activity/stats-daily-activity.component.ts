@@ -9,7 +9,8 @@ import { HistoryEntry } from '../../../models/storage.model';
         No watch activity yet.
       </p>
     }
-    <div class="overflow-x-auto">
+    <!-- Positioned so visually hidden cell labels cannot widen the document. -->
+    <div class="relative overflow-x-auto">
       <table class="w-max border-separate border-spacing-1">
         <caption class="sr-only">
           Watch entries by weekday and local hour
@@ -49,7 +50,9 @@ import { HistoryEntry } from '../../../models/storage.model';
           <tr>
             <td></td>
             @for (hour of hours; track hour) {
-              <td class="text-center text-[10px] text-light-font-muted dark:text-dark-font-muted">
+              <td
+                class="text-center text-xs text-light-font-secondary dark:text-dark-font-secondary"
+              >
                 {{ hour }}
               </td>
             }
@@ -58,14 +61,14 @@ import { HistoryEntry } from '../../../models/storage.model';
       </table>
     </div>
     <div
-      class="flex items-center justify-end gap-2 mt-3 text-[10px] text-light-font-muted dark:text-dark-font-muted"
+      class="flex items-center justify-end gap-2 mt-3 text-xs text-light-font-secondary dark:text-dark-font-secondary"
       aria-hidden="true"
     >
       <span>Less</span>
-      <span class="w-3 h-3 rounded-sm bg-light-bg-tertiary dark:bg-dark-bg-tertiary"></span>
-      <span class="w-3 h-3 rounded-sm bg-accent-primary/25"></span>
-      <span class="w-3 h-3 rounded-sm bg-accent-primary/50"></span>
-      <span class="w-3 h-3 rounded-sm bg-accent-primary"></span>
+      <span class="w-3 h-3 rounded-sm bg-light-border dark:bg-dark-border"></span>
+      <span class="w-3 h-3 rounded-sm bg-accent-text/35"></span>
+      <span class="w-3 h-3 rounded-sm bg-accent-text/65"></span>
+      <span class="w-3 h-3 rounded-sm bg-accent-text"></span>
       <span>More</span>
     </div>
   `,
@@ -106,12 +109,12 @@ export class StatsDailyActivityComponent {
           label: `${labels[index]}, ${start}–${end}: ${formatted} ${value === 1 ? 'entry' : 'entries'}`,
           color:
             value === 0
-              ? 'bg-light-bg-tertiary dark:bg-dark-bg-tertiary'
+              ? 'bg-light-border dark:bg-dark-border'
               : value <= max / 3
-                ? 'bg-accent-primary/25'
+                ? 'bg-accent-text/35'
                 : value <= (max * 2) / 3
-                  ? 'bg-accent-primary/50'
-                  : 'bg-accent-primary',
+                  ? 'bg-accent-text/65'
+                  : 'bg-accent-text',
         };
       }),
     }));

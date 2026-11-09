@@ -251,7 +251,7 @@ describe('SettingsComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.textContent).not.toContain('Recovery Backups');
+    expect(fixture.nativeElement.textContent).not.toContain('Recovery backups');
   });
 
   it('shows recovery backups section when backups exist', async () => {
@@ -267,7 +267,7 @@ describe('SettingsComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Recovery Backups');
+    expect(fixture.nativeElement.textContent).toContain('Recovery backups');
     expect(fixture.nativeElement.textContent).toContain('Download');
   });
 
@@ -369,13 +369,13 @@ describe('SettingsComponent', () => {
     expect(exportService.importData).not.toHaveBeenCalled();
   });
 
-  it('opens the file picker exactly once from a keyboard-focusable Import Data button', () => {
+  it('opens the file picker exactly once from a keyboard-focusable Import data button', () => {
     configure({ token: '', key: '', credential: null });
     const fixture = TestBed.createComponent(SettingsComponent);
     fixture.detectChanges();
 
     const button = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (candidate: HTMLButtonElement) => candidate.textContent?.trim() === 'Import Data',
+      (candidate: HTMLButtonElement) => candidate.textContent?.trim() === 'Import data',
     ) as HTMLButtonElement | undefined;
     expect(button?.tagName).toBe('BUTTON');
     expect(button?.getAttribute('type')).toBe('button');
@@ -422,7 +422,7 @@ describe('SettingsComponent', () => {
       await fixture.whenStable();
 
       expect(window.focus).toHaveBeenCalledOnce();
-      expect(root.textContent).not.toContain('Confirm Import');
+      expect(root.textContent).not.toContain('Confirm import');
       expect(TestBed.inject(ImportExportService).importData).not.toHaveBeenCalled();
     },
   );
@@ -450,7 +450,7 @@ describe('SettingsComponent', () => {
     fixture.detectChanges();
 
     const confirmButton = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (candidate: HTMLButtonElement) => candidate.textContent?.trim() === 'Confirm Import',
+      (candidate: HTMLButtonElement) => candidate.textContent?.trim() === 'Confirm import',
     ) as HTMLButtonElement;
     expect(confirmButton.disabled).toBe(true);
 
@@ -487,7 +487,7 @@ describe('SettingsComponent', () => {
 
     const buttons = [...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[];
     const byText = (text: string) => buttons.find((button) => button.textContent?.trim() === text);
-    expect(byText('Import Data')?.disabled).toBe(true);
+    expect(byText('Import data')?.disabled).toBe(true);
     expect(byText('Cancel')?.disabled).toBe(true);
 
     // The picker is disabled while importing, but a file staged meanwhile
@@ -732,8 +732,8 @@ describe('SettingsComponent', () => {
 
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Watch List vunknown');
-    expect(fixture.nativeElement.textContent).toContain('unknown');
+    expect(fixture.nativeElement.textContent).toContain('development build');
+    expect(fixture.nativeElement.textContent).not.toContain('unknown');
     const link = fixture.nativeElement.querySelector(
       'a[href*="github.com/CodeWithMa/watch-list/commit"]',
     );
@@ -792,8 +792,9 @@ describe('SettingsComponent', () => {
 
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('— Built');
-    expect(fixture.nativeElement.textContent).toContain('unknown');
+    expect(fixture.nativeElement.textContent).toContain('Watch List v1.2.3');
+    expect(fixture.nativeElement.textContent).not.toContain('— Built');
+    expect(fixture.nativeElement.textContent).not.toContain('unknown');
   });
 
   it('syncs provider signals after successful import', async () => {

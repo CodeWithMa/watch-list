@@ -1,4 +1,4 @@
-import { Component, signal, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, computed, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 
@@ -15,6 +15,7 @@ import {
 import { TmdbSettingsService } from '../../services/tmdb-settings.service';
 import { SuggestionSource } from '../../models/suggestion.model';
 import { environment } from '../../../environments/environment';
+import { statusBadgeClass } from '../../utils/status.utils';
 import { CollectionConflictError, StorageService } from '../../services/storage.service';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 
@@ -22,259 +23,152 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
   selector: 'app-settings',
   imports: [FormsModule, DatePipe, FilePickerFocusDirective, ConflictRecoveryComponent],
   template: `
-    <div>
-      <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
+    <div class="max-w-3xl">
+      <h1 class="page-title mb-6">Settings</h1>
 
-      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
-        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-          TMDB
-        </h2>
-        <div class="mb-4">
-          <a
-            href="https://www.themoviedb.org"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-block"
-          >
-            <img
-              src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg"
-              alt="TMDB"
-              class="h-12 w-auto"
-            />
-          </a>
-          <p class="mt-3 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            This product uses the TMDB API but is not endorsed or certified by TMDB.
-          </p>
-        </div>
-        <div class="mb-4">
-          <label for="tmdbToken" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-            >API Read Access Token</label
-          >
-          <input
-            id="tmdbToken"
-            type="password"
-            [ngModel]="tmdbToken()"
-            (ngModelChange)="tmdbToken.set($event)"
-            autocomplete="off"
-            class="form-control"
-          />
-          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Preferred for movie &amp; series suggestions.
-          </p>
-        </div>
-        <div class="mb-4">
-          <label for="tmdbApiKey" class="block mb-2 font-medium text-light-font dark:text-dark-font"
-            >API Key</label
-          >
-          <input
-            id="tmdbApiKey"
-            type="password"
-            [ngModel]="tmdbApiKey()"
-            (ngModelChange)="tmdbApiKey.set($event)"
-            autocomplete="off"
-            class="form-control"
-          />
-          <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Fallback if no token is set.
-          </p>
-        </div>
-        <div class="flex flex-wrap gap-3">
-          <button
-            (click)="saveTmdbToken()"
-            class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium bg-accent-primary text-white hover:bg-accent-primary-hover"
-          >
-            Save Credentials
-          </button>
-          <button
-            (click)="clearTmdbToken()"
-            class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium bg-accent-secondary text-white hover:bg-accent-secondary-hover"
-          >
-            Clear Credentials
-          </button>
-        </div>
-        @if (tmdbSettingsMessage()) {
-          <div class="mt-4 text-sm text-accent-secondary">{{ tmdbSettingsMessage() }}</div>
-        }
-      </div>
+      <p class="mt-0 mb-4 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+        Preferences save automatically. TMDB credentials save when you choose Save credentials.
+      </p>
 
-      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
-        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-          Suggestion Providers
-        </h2>
-        <p class="text-sm text-light-font-secondary dark:text-dark-font-secondary">
-          Choose which sources are used for title and poster suggestions. Disabled providers are not
-          queried.
+      <section class="card p-4 sm:p-6 mb-4">
+        <h2 class="section-title mb-2">Title &amp; poster search</h2>
+        <p class="mt-0 mb-3 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+          Choose which sources suggest titles and posters. Disabled providers are not queried.
+          Adding titles manually never needs a provider.
         </p>
-        <div class="mt-4 flex flex-col gap-3">
-          <label class="flex items-center gap-3 cursor-pointer">
+        <div class="flex flex-col gap-3 mb-4">
+          <label class="choice-row">
             <input
               id="providerToggleTmdb"
               type="checkbox"
               [checked]="tmdbEnabled()"
               (change)="toggleProvider('tmdb', $event)"
-              class="w-5 h-5"
             />
-            <span class="text-light-font dark:text-dark-font">TMDB — Movies &amp; Series</span>
+            <span>
+              <span class="flex flex-wrap items-center gap-x-2">
+                TMDB
+                <span [class]="providerBadge(tmdbStatus())">{{ tmdbStatus() }}</span>
+              </span>
+              <span class="choice-hint">Movies &amp; series</span>
+            </span>
           </label>
-          <label class="flex items-center gap-3 cursor-pointer">
+          <label class="choice-row">
             <input
               id="providerToggleJikan"
               type="checkbox"
               [checked]="jikanEnabled()"
               (change)="toggleProvider('jikan', $event)"
-              class="w-5 h-5"
             />
-            <span class="text-light-font dark:text-dark-font"
-              >Jikan (MyAnimeList) — TV / Movie / OVA / ONA</span
-            >
+            <span>
+              <span class="flex flex-wrap items-center gap-x-2">
+                Jikan (MyAnimeList)
+                <span [class]="providerBadge(publicStatus(jikanEnabled()))">{{
+                  publicStatus(jikanEnabled())
+                }}</span>
+              </span>
+              <span class="choice-hint">TV, movies, OVA &amp; ONA</span>
+            </span>
           </label>
-          <label class="flex items-center gap-3 cursor-pointer">
+          <label class="choice-row">
             <input
               id="providerToggleAnilist"
               type="checkbox"
               [checked]="anilistEnabled()"
               (change)="toggleProvider('anilist', $event)"
-              class="w-5 h-5"
             />
-            <span class="text-light-font dark:text-dark-font">AniList — Anime</span>
+            <span>
+              <span class="flex flex-wrap items-center gap-x-2">
+                AniList
+                <span [class]="providerBadge(publicStatus(anilistEnabled()))">{{
+                  publicStatus(anilistEnabled())
+                }}</span>
+              </span>
+              <span class="choice-hint">Anime</span>
+            </span>
           </label>
         </div>
 
-        <div class="mt-6 pt-6 border-t border-light-border dark:border-dark-border">
-          <h3 class="text-base font-medium mb-3 text-light-font dark:text-dark-font">
-            Adult content
-          </h3>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input
-              id="includeAdultToggle"
-              type="checkbox"
-              [checked]="includeAdult()"
-              (change)="toggleAdult($event)"
-              class="w-5 h-5"
-            />
-            <span class="text-light-font dark:text-dark-font"
-              >Include adult / NSFW results (TMDB, Jikan, AniList)</span
-            >
-          </label>
-
-          <fieldset class="mt-4">
-            <legend class="text-sm font-medium text-light-font dark:text-dark-font mb-2">
-              Display adult items in your collection
-            </legend>
-            <div class="flex flex-col gap-2">
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="adultDisplayMode"
-                  value="show"
-                  [checked]="adultDisplayMode() === 'show'"
-                  (change)="setAdultDisplayMode('show')"
-                  class="w-4 h-4"
-                />
-                <span class="text-sm text-light-font dark:text-dark-font"
-                  >Show — no filtering or blur</span
-                >
-              </label>
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="adultDisplayMode"
-                  value="blur"
-                  [checked]="adultDisplayMode() === 'blur'"
-                  (change)="setAdultDisplayMode('blur')"
-                  class="w-4 h-4"
-                />
-                <span class="text-sm text-light-font dark:text-dark-font"
-                  >Blur posters — click to reveal</span
-                >
-              </label>
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="adultDisplayMode"
-                  value="hide"
-                  [checked]="adultDisplayMode() === 'hide'"
-                  (change)="setAdultDisplayMode('hide')"
-                  class="w-4 h-4"
-                />
-                <span class="text-sm text-light-font dark:text-dark-font"
-                  >Hide — remove adult items from lists</span
-                >
-              </label>
-            </div>
-          </fieldset>
-        </div>
-
-        <div class="mt-6 pt-6 border-t border-light-border dark:border-dark-border">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-base font-medium text-light-font dark:text-dark-font">
-              Anime title language order
-            </h3>
-            <button
-              type="button"
-              (click)="resetTitlePreference()"
-              class="text-xs text-accent-primary hover:underline bg-transparent border-none cursor-pointer p-0"
-              aria-label="Reset title language order to default"
-            >
-              Reset
-            </button>
-          </div>
-          <p class="text-xs mb-3 text-light-font-secondary dark:text-dark-font-secondary">
-            Top is tried first. Reorder with up/down. Applies to AniList &amp; Jikan suggestions.
-          </p>
-          <ol class="flex flex-col gap-2" aria-label="Title language preference order">
-            @for (lang of titleOrder(); track lang; let i = $index) {
-              <li
-                class="flex items-center justify-between p-3 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary"
+        <details class="form-section">
+          <summary>Configure TMDB</summary>
+          <div>
+            <div class="mb-4">
+              <label
+                for="tmdbToken"
+                class="block mb-2 font-medium text-light-font dark:text-dark-font"
+                >API Read Access Token</label
               >
-                <div class="flex items-center gap-3">
-                  <span
-                    class="text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary w-6"
-                    >{{ i + 1 }}.</span
-                  >
-                  <span class="text-sm text-light-font dark:text-dark-font">{{
-                    titleLanguageLabel(lang)
-                  }}</span>
-                  <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary"
-                    >({{ lang }})</span
-                  >
-                </div>
-                <div class="flex items-center gap-1">
-                  <button
-                    type="button"
-                    (click)="moveTitleUp(i)"
-                    [disabled]="i === 0"
-                    class="px-2 py-1 text-xs rounded border border-light-border dark:border-dark-border bg-light-bg-tertiary dark:bg-dark-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-light-bg-secondary dark:hover:bg-dark-bg-secondary"
-                    [attr.aria-label]="'Move ' + titleLanguageLabel(lang) + ' up'"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    (click)="moveTitleDown(i)"
-                    [disabled]="i === titleOrder().length - 1"
-                    class="px-2 py-1 text-xs rounded border border-light-border dark:border-dark-border bg-light-bg-tertiary dark:bg-dark-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-light-bg-secondary dark:hover:bg-dark-bg-secondary"
-                    [attr.aria-label]="'Move ' + titleLanguageLabel(lang) + ' down'"
-                  >
-                    ↓
-                  </button>
-                </div>
-              </li>
-            }
-          </ol>
-        </div>
-      </div>
+              <input
+                id="tmdbToken"
+                type="password"
+                [ngModel]="tmdbToken()"
+                (ngModelChange)="tmdbToken.set($event)"
+                autocomplete="off"
+                class="form-control"
+              />
+              <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+                Preferred for movie &amp; series suggestions.
+              </p>
+            </div>
+            <div class="mb-4">
+              <label
+                for="tmdbApiKey"
+                class="block mb-2 font-medium text-light-font dark:text-dark-font"
+                >API Key</label
+              >
+              <input
+                id="tmdbApiKey"
+                type="password"
+                [ngModel]="tmdbApiKey()"
+                (ngModelChange)="tmdbApiKey.set($event)"
+                autocomplete="off"
+                class="form-control"
+              />
+              <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+                Fallback if no token is set.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" (click)="saveTmdbToken()" class="btn btn-primary">
+                Save credentials
+              </button>
+              <button type="button" (click)="clearTmdbToken()" class="btn btn-secondary">
+                Clear credentials
+              </button>
+            </div>
+          </div>
+        </details>
+        @if (tmdbSettingsMessage()) {
+          <div
+            role="status"
+            class="mb-4 text-sm text-light-font-secondary dark:text-dark-font-secondary"
+          >
+            {{ tmdbSettingsMessage() }}
+          </div>
+        }
 
-      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
-        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-          Anime Suggestions
-        </h2>
-        <p class="text-sm text-light-font-secondary dark:text-dark-font-secondary">
+        <div class="flex items-center gap-3 mb-3">
+          <a
+            href="https://www.themoviedb.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="shrink-0"
+          >
+            <img
+              src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_square_2-d537fb228cf3ded904ef09b136fe3fec72548ebc1fea3fbbd1ad9e36364db38b.svg"
+              alt="TMDB"
+              class="h-6 w-auto"
+            />
+          </a>
+          <p class="meta m-0">
+            This product uses the TMDB API but is not endorsed or certified by TMDB.
+          </p>
+        </div>
+        <p class="meta m-0">
           <a
             href="https://anilist.co"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-accent-primary hover:underline font-medium"
+            class="text-accent-text hover:underline font-medium"
             >AniList</a
           >
           &amp;
@@ -282,24 +176,21 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             href="https://jikan.moe"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-accent-primary hover:underline font-medium"
+            class="text-accent-text hover:underline font-medium"
             >Jikan</a
           >
           (<a
             href="https://myanimelist.net"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-accent-primary hover:underline"
+            class="text-accent-text hover:underline"
             >MyAnimeList</a
-          >) — public APIs, no setup required.
-        </p>
-        <p class="mt-2 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-          TV / Movie / OVA / ONA · SFW by default (toggle in Suggestion Providers) ·
+          >) are public APIs and need no setup. SFW by default ·
           <a
             href="https://anilist.gitbook.io/anilist-apiv2-docs/docs/guide/rate-limiting"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-accent-primary hover:underline"
+            class="text-accent-text hover:underline"
             >AniList limits</a
           >
           ·
@@ -307,31 +198,127 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             href="https://docs.api.jikan.moe/"
             target="_blank"
             rel="noopener noreferrer"
-            class="text-accent-primary hover:underline"
+            class="text-accent-text hover:underline"
             >Jikan docs</a
           >
-          (3 req/s)
+          (3 req/s). Not endorsed by AniList or MyAnimeList / Jikan.
         </p>
-        <p class="mt-2 text-xs text-light-font-secondary dark:text-dark-font-secondary">
-          Not endorsed by AniList or MyAnimeList / Jikan.
-        </p>
-      </div>
+      </section>
 
-      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
-        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-          Data Management
-        </h2>
+      <section class="card p-4 sm:p-6 mb-4">
+        <h2 class="section-title mb-3">Adult content</h2>
+        <label class="choice-row">
+          <input
+            id="includeAdultToggle"
+            type="checkbox"
+            [checked]="includeAdult()"
+            (change)="toggleAdult($event)"
+          />
+          <span>Include adult / NSFW results (TMDB, Jikan, AniList)</span>
+        </label>
+
+        <fieldset class="mt-4">
+          <legend class="text-sm font-medium text-light-font dark:text-dark-font mb-2">
+            Display adult titles in your collection
+          </legend>
+          <div class="flex flex-col md:gap-2">
+            <label class="choice-row">
+              <input
+                type="radio"
+                name="adultDisplayMode"
+                value="show"
+                [checked]="adultDisplayMode() === 'show'"
+                (change)="setAdultDisplayMode('show')"
+              />
+              <span>Show — no filtering or blur</span>
+            </label>
+            <label class="choice-row">
+              <input
+                type="radio"
+                name="adultDisplayMode"
+                value="blur"
+                [checked]="adultDisplayMode() === 'blur'"
+                (change)="setAdultDisplayMode('blur')"
+              />
+              <span>Blur posters — click to reveal</span>
+            </label>
+            <label class="choice-row">
+              <input
+                type="radio"
+                name="adultDisplayMode"
+                value="hide"
+                [checked]="adultDisplayMode() === 'hide'"
+                (change)="setAdultDisplayMode('hide')"
+              />
+              <span>Hide — remove adult titles from lists</span>
+            </label>
+          </div>
+        </fieldset>
+      </section>
+
+      <section class="card p-4 sm:p-6 mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="section-title">Anime title language order</h2>
+          <button
+            type="button"
+            (click)="resetTitlePreference()"
+            class="btn btn-quiet"
+            aria-label="Reset title language order to default"
+          >
+            Reset
+          </button>
+        </div>
+        <p class="text-sm mt-0 mb-3 text-light-font-secondary dark:text-dark-font-secondary">
+          Top is tried first. Reorder with up/down. Applies to AniList &amp; Jikan suggestions.
+        </p>
+        <ol class="flex flex-col gap-2" aria-label="Title language preference order">
+          @for (lang of titleOrder(); track lang; let i = $index) {
+            <li class="flex items-center justify-between py-1">
+              <div class="flex items-center gap-3">
+                <span
+                  class="text-sm font-medium text-light-font-secondary dark:text-dark-font-secondary w-6"
+                  >{{ i + 1 }}.</span
+                >
+                <span class="text-sm text-light-font dark:text-dark-font">{{
+                  titleLanguageLabel(lang)
+                }}</span>
+                <span class="text-xs text-light-font-secondary dark:text-dark-font-secondary"
+                  >({{ lang }})</span
+                >
+              </div>
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  (click)="moveTitleUp(i)"
+                  [disabled]="i === 0"
+                  class="btn btn-secondary !px-3"
+                  [attr.aria-label]="'Move ' + titleLanguageLabel(lang) + ' up'"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  (click)="moveTitleDown(i)"
+                  [disabled]="i === titleOrder().length - 1"
+                  class="btn btn-secondary !px-3"
+                  [attr.aria-label]="'Move ' + titleLanguageLabel(lang) + ' down'"
+                >
+                  ↓
+                </button>
+              </div>
+            </li>
+          }
+        </ol>
+      </section>
+
+      <section class="card p-4 sm:p-6 mb-4">
+        <h2 class="section-title mb-3">Backup &amp; restore</h2>
         <app-conflict-recovery
           [disabled]="importInProgress()"
           (recovered)="errorMessage.set(null)"
         />
         <div class="mb-4 last:mb-0">
-          <button
-            (click)="exportData()"
-            class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-success text-white hover:bg-accent-success-hover"
-          >
-            Export Data
-          </button>
+          <button (click)="exportData()" class="btn btn-secondary">Export data</button>
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
             Download your current watch list and available poster images as a JSON file. Unavailable
             posters are listed in the export; metadata can be recovered even without images.
@@ -343,9 +330,9 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
               type="button"
               (click)="fileInput.click()"
               [disabled]="importInProgress()"
-              class="px-6 py-3 border-none rounded cursor-pointer text-base font-medium mr-4 bg-accent-info text-white hover:bg-accent-info-hover disabled:opacity-40 disabled:cursor-not-allowed"
+              class="btn btn-secondary"
             >
-              Import Data
+              Import data
             </button>
             <input
               type="file"
@@ -358,13 +345,11 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             />
           </div>
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
-            Replace all data with imported JSON file
+            Replaces your current collection with an imported JSON file. You confirm before anything
+            changes.
           </p>
           @if (pendingImportFile()) {
-            <div
-              role="alert"
-              class="mt-4 p-4 rounded border border-error-border-light dark:border-error-border-dark bg-light-bg-secondary dark:bg-dark-bg-secondary"
-            >
+            <div role="alert" class="mt-4 p-4 rounded border border-accent-danger-text">
               <p class="mt-0 mb-3 text-sm text-light-font dark:text-dark-font">
                 Import "{{ pendingImportFile()?.name }}"? This will replace all existing data.
               </p>
@@ -372,14 +357,14 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
                 <button
                   (click)="confirmImport()"
                   [disabled]="importInProgress() || refreshing()"
-                  class="px-6 py-2 border-none rounded cursor-pointer text-sm font-medium bg-accent-danger text-white hover:bg-accent-danger-hover disabled:opacity-40 disabled:cursor-not-allowed"
+                  class="btn btn-danger"
                 >
-                  Confirm Import
+                  Confirm import
                 </button>
                 <button
                   (click)="cancelImport()"
                   [disabled]="importInProgress()"
-                  class="px-6 py-2 border border-light-border dark:border-dark-border rounded cursor-pointer text-sm font-medium bg-light-bg-secondary dark:bg-dark-bg-secondary text-light-font dark:text-dark-font hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary disabled:opacity-40 disabled:cursor-not-allowed"
+                  class="btn btn-secondary"
                 >
                   Cancel
                 </button>
@@ -387,79 +372,65 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
             </div>
           }
         </div>
-      </div>
-
-      @if (errorMessage()) {
-        <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
+        @if (errorMessage()) {
           <div
             role="alert"
-            class="bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark p-4 rounded border border-error-border-light dark:border-error-border-dark"
+            class="mt-4 bg-error-bg-light dark:bg-error-bg-dark text-error-text-light dark:text-error-text-dark p-4 rounded border border-error-border-light dark:border-error-border-dark"
           >
             {{ errorMessage() }}
           </div>
-        </div>
-      }
+        }
 
-      @if (successMessage()) {
-        <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
+        @if (successMessage()) {
           <div
-            class="bg-success-bg-light dark:bg-success-bg-dark text-success-text-light dark:text-success-text-dark p-4 rounded border border-success-border-light dark:border-success-border-dark"
+            role="status"
+            class="mt-4 bg-success-bg-light dark:bg-success-bg-dark text-success-text-light dark:text-success-text-dark p-4 rounded border border-success-border-light dark:border-success-border-dark"
           >
             {{ successMessage() }}
           </div>
-        </div>
-      }
+        }
+      </section>
 
       @if (recoveryBackups().length > 0) {
-        <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
-          <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-            Recovery Backups
-          </h2>
+        <section class="card p-4 sm:p-6 mb-4">
+          <h2 class="section-title mb-3">Recovery backups</h2>
           @for (backup of recoveryBackups(); track backup.key) {
-            <div
-              class="flex items-center justify-between mb-3 last:mb-0 p-3 rounded bg-light-bg-secondary dark:bg-dark-bg-secondary"
-            >
+            <div class="flex items-center justify-between gap-3 mb-2 last:mb-0">
               <div>
                 <div class="text-sm text-light-font dark:text-dark-font">
                   {{ backup.timestamp | date: 'medium' }}
                 </div>
               </div>
-              <button
-                (click)="exportRecoveryBackup(backup.key)"
-                class="px-4 py-2 border-none rounded cursor-pointer text-sm font-medium bg-accent-secondary text-white hover:bg-accent-secondary-hover"
-              >
+              <button (click)="exportRecoveryBackup(backup.key)" class="btn btn-secondary">
                 Download
               </button>
             </div>
           }
-        </div>
+        </section>
       }
 
-      <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg">
-        <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">
-          About
-        </h2>
-        <p class="text-sm text-light-font-secondary dark:text-dark-font-secondary">
-          Watch List v{{ environment.appVersion }}
-          @if (isHashLinkable) {
-            (<a
-              [href]="'https://github.com/CodeWithMa/watch-list/commit/' + environment.commitHash"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="underline hover:no-underline"
-              >{{ shortHash }}</a
-            >)
+      <section class="card p-4 sm:p-6">
+        <h2 class="section-title mb-3">About</h2>
+        <p class="m-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
+          @if (environment.appVersion === 'unknown') {
+            Watch List — development build
           } @else {
-            ({{ shortHash }})
-          }
-          — Built
-          @if (environment.buildDate !== 'unknown') {
-            {{ environment.buildDate | date: 'medium' }}
-          } @else {
-            unknown
+            Watch List v{{ environment.appVersion }}
+            @if (isHashLinkable) {
+              (<a
+                [href]="'https://github.com/CodeWithMa/watch-list/commit/' + environment.commitHash"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="underline hover:no-underline"
+                >{{ shortHash }}</a
+              >)
+            }
+            @if (environment.buildDate !== 'unknown') {
+              — Built {{ environment.buildDate | date: 'medium' }}
+            }
           }
         </p>
-      </div>
+      </section>
     </div>
   `,
 })
@@ -485,6 +456,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
   tmdbToken = signal(this.tmdbSettingsService.token());
   tmdbApiKey = signal(this.tmdbSettingsService.key());
   tmdbSettingsMessage = signal<string | null>(null);
+  tmdbConnected = computed(() => !!this.tmdbSettingsService.getCredential());
+  tmdbStatus = computed(() => {
+    if (!this.tmdbEnabled()) return 'Disabled';
+    return this.tmdbConnected() ? 'Ready' : 'Needs setup';
+  });
   tmdbEnabled = signal(this.providerSettingsService.isEnabled('tmdb'));
   jikanEnabled = signal(this.providerSettingsService.isEnabled('jikan'));
   anilistEnabled = signal(this.providerSettingsService.isEnabled('anilist'));
@@ -494,6 +470,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
   recoveryBackups = signal<{ key: string; timestamp: Date }[]>([]);
   pendingImportFile = signal<File | null>(null);
   importInProgress = signal(false);
+
+  protected publicStatus(enabled: boolean) {
+    return enabled ? 'Ready' : 'Disabled';
+  }
+
+  protected providerBadge(status: string) {
+    if (status === 'Ready') return statusBadgeClass('completed');
+    return statusBadgeClass(status === 'Needs setup' ? 'paused' : 'not-started');
+  }
 
   ngOnInit(): void {
     this.loadRecoveryBackups();

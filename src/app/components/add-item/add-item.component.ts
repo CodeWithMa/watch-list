@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { of, Subject, switchMap } from 'rxjs';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
@@ -25,17 +25,23 @@ interface SelectedSuggestionRef {
 
 @Component({
   selector: 'app-add-item',
-  imports: [ItemFormComponent, SearchProviderSelectComponent, ConflictRecoveryComponent],
+  imports: [
+    ItemFormComponent,
+    RouterLink,
+    SearchProviderSelectComponent,
+    ConflictRecoveryComponent,
+  ],
   template: `
-    <div>
-      <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Add New Item</h1>
+    <div class="reading-measure">
+      <a routerLink="/items" class="back-link">Library</a>
+      <h1 class="page-title mb-4 sm:mb-6">New title</h1>
       <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
 
       <app-item-form
         [groups]="groups()"
         [initialValue]="initialValue"
         [focusTitleOnOpen]="true"
-        submitLabel="Add Item"
+        submitLabel="Add title"
         [busy]="mutation.busy()"
         [error]="mutation.error()"
         [showStartImmediately]="true"
@@ -44,6 +50,8 @@ interface SelectedSuggestionRef {
         [suggestions]="suggestions()"
         [suggestionsLoading]="suggestionsLoading()"
         [suggestionsError]="suggestionsError()"
+        [suggestionsEmpty]="suggestionsEmpty()"
+        [searchSetupRequired]="needsSetup()"
         [autofillPatch]="autofillPatch()"
         (titleChanged)="onTitleChanged($event)"
         (suggestionSelected)="onSuggestionSelected($event)"
@@ -55,6 +63,8 @@ interface SelectedSuggestionRef {
           [sources]="enabledSources()"
           [value]="selectedSource()"
           label="Title search provider"
+          [standalone]="true"
+          [sourcesNeedingSetup]="sourcesNeedingSetup()"
           (valueChange)="onSearchProviderChanged($event)"
         />
       </app-item-form>
@@ -81,6 +91,9 @@ export class AddItemComponent {
   readonly suggestions = this.search.results;
   readonly suggestionsLoading = this.search.loading;
   readonly suggestionsError = this.search.error;
+  readonly suggestionsEmpty = this.search.noResults;
+  readonly sourcesNeedingSetup = this.search.sourcesNeedingSetup;
+  readonly needsSetup = this.search.needsSetup;
   readonly autofillPatch = signal<{ id: number; value: Partial<ItemFormValue> } | null>(null);
   private autofillPatchId = 0;
   readonly duplicateTitleHint = computed(() => {
@@ -93,7 +106,7 @@ export class AddItemComponent {
       .items()
       .find((item) => this.normalizeTitle(item.title) === normalizedTitle);
 
-    return duplicate ? `An item named "${duplicate.title}" already exists.` : '';
+    return duplicate ? `A title named "${duplicate.title}" already exists.` : '';
   });
 
   constructor() {
@@ -156,7 +169,7 @@ export class AddItemComponent {
   async onSubmit(formValue: ItemFormValue): Promise<void> {
     const result = await this.mutation.run(
       () => this.watchListService.addItem(buildItemMutationInput(formValue)),
-      'Unable to add this item.',
+      'Unable to add this title.',
     );
     if (result) {
       this.router.navigate(['/items']);
