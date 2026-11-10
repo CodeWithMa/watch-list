@@ -2,10 +2,11 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { WatchListService } from '../../services/watch-list.service';
 import { groupHistoryEntries } from '../../utils/watch-history.utils';
+import { DiscussionLinkComponent } from '../discussion-link/discussion-link.component';
 
 @Component({
   selector: 'app-watch-history',
-  imports: [RouterLink],
+  imports: [RouterLink, DiscussionLinkComponent],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Watch History</h1>
@@ -50,7 +51,7 @@ import { groupHistoryEntries } from '../../utils/watch-history.utils';
 
               @for (entry of group.entries; track entry.itemId + '-' + entry.date) {
                 <div
-                  class="flex items-center gap-4 px-5 py-3 hover:bg-light-hover dark:hover:bg-dark-hover transition-colors border-b border-light-border-light dark:border-dark-border-light last:border-b-0"
+                  class="flex flex-wrap items-center gap-4 px-5 py-3 hover:bg-light-hover dark:hover:bg-dark-hover transition-colors border-b border-light-border-light dark:border-dark-border-light last:border-b-0"
                 >
                   <span
                     class="text-sm font-mono text-light-font-muted dark:text-dark-font-muted min-w-[60px]"
@@ -93,6 +94,11 @@ import { groupHistoryEntries } from '../../utils/watch-history.utils';
                       S{{ entry.season }}E{{ entry.episode }}
                     </span>
                   }
+                  <app-discussion-link
+                    [title]="entry.itemTitle"
+                    [type]="entry.itemType"
+                    [entry]="entry"
+                  />
                 </div>
               }
             </div>

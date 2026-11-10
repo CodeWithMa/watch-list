@@ -7,6 +7,8 @@ import { vi, afterEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { createDefaultStorageData } from '../domain/storage-schema';
 import { CURRENT_SCHEMA_VERSION } from '../models/storage.model';
+import { DiscussionSettingsService } from './discussion-settings.service';
+import { DEFAULT_DISCUSSION_URL_TEMPLATE } from '../utils/discussion-link.utils';
 
 describe('import version compatibility', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -127,6 +129,7 @@ describe('ImportExportService', () => {
   }
 
   beforeEach(() => {
+    localStorage.removeItem('discussionLinks');
     storageService = {
       captureImportContext: vi.fn().mockReturnValue(importContext),
       getData: vi.fn(),
@@ -164,6 +167,7 @@ describe('ImportExportService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    localStorage.removeItem('discussionLinks');
   });
 
   describe('exportData', () => {
@@ -199,6 +203,7 @@ describe('ImportExportService', () => {
         images: [{ id: 'poster-1', type: 'image/png', data: 'base64-data' }],
         posters: { included: 1, omittedIds: [], unavailable: false },
         preferences: {
+          discussionSettings: { enabled: false, urlTemplate: DEFAULT_DISCUSSION_URL_TEMPLATE },
           providerSettings: {
             tmdb: false,
             jikan: true,
@@ -329,6 +334,75 @@ describe('ImportExportService', () => {
       });
       return file;
     }
+
+    it('round-trips discussion preferences through a portable export', async () => {
+      storageService.getData.mockReturnValue(createDefaultStorageData());
+      storageService.importDataWithImages.mockResolvedValue({
+        durability: 'persistent',
+        dropped: { groups: 0, items: 0, deletedItems: 0 },
+        repairedGroupReferences: 0,
+      });
+      const settings = TestBed.inject(DiscussionSettingsService);
+      settings.setEnabled(true);
+      settings.saveTemplate('https://duckduckgo.com/?q={title}%20{episodeCode}');
+      const expected = settings.exportSettings();
+      const { createObjectURL } = mockDownload();
+      await importExportService.exportData();
+      const json = await readBlobText(createObjectURL.mock.calls[0][0] as Blob);
+      settings.setEnabled(false);
+      settings.saveTemplate(DEFAULT_DISCUSSION_URL_TEMPLATE);
+      await importExportService.importData(mockFile(json));
+      expect(settings.settings()).toEqual(expected);
+    });
+
+    it.each([
+      undefined,
+      {},
+      { providerSettings: {} },
+      { discussionSettings: { enabled: true, urlTemplate: 'javascript:alert(1)' } },
+    ])(
+      'preserves discussion settings when imported preferences are absent or invalid: %j',
+      async (preferences) => {
+        storageService.importDataWithImages.mockResolvedValue({
+          durability: 'persistent',
+          dropped: { groups: 0, items: 0, deletedItems: 0 },
+          repairedGroupReferences: 0,
+        });
+        const settings = TestBed.inject(DiscussionSettingsService);
+        settings.setEnabled(true);
+        const expected = settings.exportSettings();
+        await importExportService.importData(
+          mockFile(
+            JSON.stringify({
+              data: createDefaultStorageData(),
+              images: [],
+              preferences,
+            }),
+          ),
+        );
+        expect(settings.settings()).toEqual(expected);
+      },
+    );
+
+    it('does not apply discussion settings when collection import fails', async () => {
+      storageService.importDataWithImages.mockRejectedValue(new Error('Storage busy'));
+      const settings = TestBed.inject(DiscussionSettingsService);
+      const original = settings.exportSettings();
+      await expect(
+        importExportService.importData(
+          mockFile(
+            JSON.stringify({
+              data: createDefaultStorageData(),
+              images: [],
+              preferences: {
+                discussionSettings: { enabled: true, urlTemplate: 'https://example.com/{title}' },
+              },
+            }),
+          ),
+        ),
+      ).rejects.toThrow('Storage busy');
+      expect(settings.settings()).toEqual(original);
+    });
 
     it('parses valid JSON and imports it', async () => {
       const file = mockFile('{"a":1}');

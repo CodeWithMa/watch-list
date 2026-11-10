@@ -4,9 +4,11 @@ import { ExportedImage, ImageStorageService } from './image-storage.service';
 import { ProviderSettings, ProviderSettingsService } from './provider-settings.service';
 import { assertSupportedStorageVersion, NormalizationReport } from '../domain/storage-schema';
 import { removeUnavailablePosterReferences } from '../domain/poster-references';
+import { DiscussionSettings, DiscussionSettingsService } from './discussion-settings.service';
 
 export interface ExportPreferences {
-  providerSettings: ProviderSettings;
+  providerSettings?: ProviderSettings;
+  discussionSettings?: DiscussionSettings;
 }
 
 export interface PosterCoverage {
@@ -45,6 +47,7 @@ export class ImportExportService {
   private storageService = inject(StorageService);
   private imageStorage = inject(ImageStorageService);
   private providerSettings = inject(ProviderSettingsService);
+  private discussionSettings = inject(DiscussionSettingsService);
 
   async exportData(): Promise<PosterCoverage> {
     // Export the collection visible when the action starts, not later edits made
@@ -69,11 +72,11 @@ export class ImportExportService {
       posters,
       preferences: {
         providerSettings: this.providerSettings.exportSettings(),
+        discussionSettings: this.discussionSettings.exportSettings(),
       },
     };
-    // Only non-sensitive preferences are ever exported.
-    // providerSettings (tmdb/jikan/anilist, includeAdult, titlePreference, adultDisplayMode)
-    // is safe to share; tmdbReadAccessToken/apiKey from tmdb-settings.service.ts:3 are never read here.
+    // TMDB credentials are never read or exported here. User-configured discussion
+    // URL templates are intentionally portable, alongside the provider preferences.
     this.downloadJson(payload, 'watch-list-export');
     return posters;
   }
@@ -155,13 +158,13 @@ export class ImportExportService {
     if (!isPortableExport(payload) || !hasPreferences(payload)) {
       return;
     }
-    const raw = payload.preferences.providerSettings;
     // Never import sensitive keys; ProviderSettingsService normalizes and ignores unknown fields.
     try {
-      this.providerSettings.importSettings(raw);
+      this.providerSettings.importSettings(payload.preferences.providerSettings);
     } catch {
       // Invalid preferences must never break the data import.
     }
+    this.discussionSettings.importSettings(payload.preferences.discussionSettings);
   }
 }
 
@@ -206,10 +209,5 @@ function isPortableExport(value: unknown): value is PortableExport {
 function hasPreferences(
   value: object,
 ): value is PortableExport & { preferences: ExportPreferences } {
-  return (
-    'preferences' in value &&
-    !!value.preferences &&
-    typeof value.preferences === 'object' &&
-    'providerSettings' in (value.preferences as Record<string, unknown>)
-  );
+  return 'preferences' in value && !!value.preferences && typeof value.preferences === 'object';
 }

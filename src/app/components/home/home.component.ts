@@ -11,10 +11,18 @@ import { watchActionFailure } from '../watch-action-feedback';
 import { MutationFeedback } from '../mutation-feedback';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 import { deferralReturnDate } from '../../domain/availability-deferral';
+import { DiscussionSettingsService } from '../../services/discussion-settings.service';
+import { DiscussionLinkComponent } from '../discussion-link/discussion-link.component';
 
 @Component({
   selector: 'app-home',
-  imports: [ItemCardComponent, CommonModule, RouterLink, ConflictRecoveryComponent],
+  imports: [
+    ItemCardComponent,
+    CommonModule,
+    RouterLink,
+    ConflictRecoveryComponent,
+    DiscussionLinkComponent,
+  ],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">What should I watch now?</h1>
@@ -24,6 +32,18 @@ import { deferralReturnDate } from '../../domain/availability-deferral';
       }
       @if (actions.sessionSuccess()) {
         <p role="status" class="mb-4 text-sm">Changed for this session only; not saved to disk.</p>
+      }
+
+      @if (lastWatched(); as entry) {
+        <div class="flex flex-wrap items-center gap-3 mb-6 text-sm">
+          <span
+            >Last watched: {{ entry.itemTitle }}
+            @if (entry.season && entry.episode) {
+              — S{{ entry.season }}E{{ entry.episode }}
+            }
+          </span>
+          <app-discussion-link [title]="entry.itemTitle" [type]="entry.itemType" [entry]="entry" />
+        </div>
       }
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 justify-items-center">
@@ -283,6 +303,23 @@ export class HomeComponent {
   private roundRobinService = inject(RoundRobinService);
   private watchListService = inject(WatchListService);
   private providerSettings = inject(ProviderSettingsService);
+  private discussionSettings = inject(DiscussionSettingsService);
+  readonly lastWatched = computed(() => {
+    if (!this.discussionSettings.settings().enabled) return null;
+    const hideAdult = this.providerSettings.settings().adultDisplayMode === 'hide';
+    return (
+      this.watchListService
+        .history()
+        .find(
+          (entry) =>
+            !entry.isDeleted &&
+            (!hideAdult ||
+              this.watchListService
+                .items()
+                .some((item) => item.id === entry.itemId && !item.isAdult)),
+        ) ?? null
+    );
+  });
   readonly actions = new MutationFeedback(watchActionFailure);
 
   nextSeries = this.roundRobinService.nextSeries;

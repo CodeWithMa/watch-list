@@ -7,6 +7,7 @@ import { ImportExportService } from './import-export.service';
 import { ImageStorageService } from './image-storage.service';
 import { ProviderSettingsService } from './provider-settings.service';
 import { BrowserSettingsStorage } from './browser-settings-storage.service';
+import { DiscussionSettingsService } from './discussion-settings.service';
 import { createDefaultStorageData } from '../domain/storage-schema';
 import { controlStorageWrites } from './indexeddb-write.test-utils';
 
@@ -94,12 +95,15 @@ describe('Collection context conflicts', () => {
         ImportExportService,
         ImageStorageService,
         ProviderSettingsService,
+        DiscussionSettingsService,
         BrowserSettingsStorage,
       ],
     });
     const stale = injector.get(StorageService);
     const images = injector.get(ImageStorageService);
     const preferences = injector.get(ProviderSettingsService);
+    const discussionSettings = injector.get(DiscussionSettingsService);
+    const originalDiscussionSettings = discussionSettings.exportSettings();
     await stale.initialize();
     const originalId = await images.storeFile(new Blob(['original poster'], { type: 'image/png' }));
     await stale.importDataWithImages(stale.getData(), [
@@ -116,7 +120,10 @@ describe('Collection context conflicts', () => {
     const payload = {
       data: replacement,
       images: [{ id: 'imported-poster', type: 'image/png', data: btoa('imported poster') }],
-      preferences: { providerSettings: { ...originalPreferences, includeAdult: true } },
+      preferences: {
+        providerSettings: { ...originalPreferences, includeAdult: true },
+        discussionSettings: { enabled: true, urlTemplate: 'https://example.com/{title}' },
+      },
     };
     const file = { text: async () => JSON.stringify(payload) } as File;
     const imports = injector.get(ImportExportService);
@@ -125,6 +132,7 @@ describe('Collection context conflicts', () => {
     expect(await images.getUrl(originalId)).toBe('blob:poster');
     expect(await images.getUrl('imported-poster')).toBeNull();
     expect(preferences.exportSettings()).toEqual(originalPreferences);
+    expect(discussionSettings.exportSettings()).toEqual(originalDiscussionSettings);
     const afterConflict = createContext();
     await afterConflict.initialize();
     expect(afterConflict.getGroups()[0].name).toBe('External edit');
@@ -132,6 +140,7 @@ describe('Collection context conflicts', () => {
     await stale.refresh();
     await imports.importData(file);
     expect(preferences.isAdultIncluded()).toBe(true);
+    expect(discussionSettings.exportSettings()).toEqual(payload.preferences.discussionSettings);
     expect(await images.getUrl(originalId)).toBeNull();
     expect(await images.getUrl('imported-poster')).toBe('blob:poster');
     const afterImport = createContext();
@@ -171,6 +180,7 @@ describe('Collection context conflicts', () => {
         ImportExportService,
         ImageStorageService,
         ProviderSettingsService,
+        DiscussionSettingsService,
         BrowserSettingsStorage,
       ],
     });
@@ -205,6 +215,7 @@ describe('Collection context conflicts', () => {
         ImportExportService,
         ImageStorageService,
         ProviderSettingsService,
+        DiscussionSettingsService,
         BrowserSettingsStorage,
       ],
     });

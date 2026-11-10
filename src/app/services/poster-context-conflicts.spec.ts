@@ -7,6 +7,7 @@ import { ImageStorageService } from './image-storage.service';
 import { ImportExportService } from './import-export.service';
 import { ProviderSettingsService } from './provider-settings.service';
 import { BrowserSettingsStorage } from './browser-settings-storage.service';
+import { DiscussionSettingsService } from './discussion-settings.service';
 import { WatchListDatabase } from './watch-list-database.service';
 import { WatchListService } from './watch-list.service';
 
@@ -192,6 +193,7 @@ function createPosterContext() {
       WatchListService,
       ImportExportService,
       ProviderSettingsService,
+      DiscussionSettingsService,
       BrowserSettingsStorage,
     ],
   });
