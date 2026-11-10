@@ -17,10 +17,17 @@ import { SuggestionSource } from '../../models/suggestion.model';
 import { environment } from '../../../environments/environment';
 import { CollectionConflictError, StorageService } from '../../services/storage.service';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
+import { DiscussionSettingsComponent } from '../discussion-settings/discussion-settings.component';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, DatePipe, FilePickerFocusDirective, ConflictRecoveryComponent],
+  imports: [
+    FormsModule,
+    DatePipe,
+    FilePickerFocusDirective,
+    ConflictRecoveryComponent,
+    DiscussionSettingsComponent,
+  ],
   template: `
     <div>
       <h1 class="text-2xl mb-8 text-light-font dark:text-dark-font">Settings</h1>
@@ -316,6 +323,8 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
           Not endorsed by AniList or MyAnimeList / Jikan.
         </p>
       </div>
+
+      <app-discussion-settings />
 
       <div class="bg-light-bg-tertiary dark:bg-dark-bg-tertiary p-6 rounded-lg mb-6">
         <h2 class="text-xl mt-0 mb-4 text-light-font-secondary dark:text-dark-font-secondary">

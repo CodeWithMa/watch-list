@@ -14,6 +14,7 @@ import { isEpisodicType } from '../../domain/item.constants';
 import { watchActionFailure } from '../watch-action-feedback';
 import { MutationFeedback } from '../mutation-feedback';
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
+import { DiscussionLinkComponent } from '../discussion-link/discussion-link.component';
 import {
   canSnoozeCurrentSeason,
   getCurrentSeason,
@@ -24,7 +25,13 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
 
 @Component({
   selector: 'app-item-view',
-  imports: [DatePipe, RouterLink, TimeAgoComponent, ConflictRecoveryComponent],
+  imports: [
+    DatePipe,
+    RouterLink,
+    TimeAgoComponent,
+    ConflictRecoveryComponent,
+    DiscussionLinkComponent,
+  ],
   template: `
     <div>
       <app-conflict-recovery [disabled]="actions.busy()" (recovered)="actions.error.set(null)" />
@@ -162,7 +169,7 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
             <ol class="space-y-2 list-none p-0 m-0">
               @for (entry of watchHistory(); track $index) {
                 <li
-                  class="flex items-center gap-4 px-5 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border"
+                  class="flex flex-wrap items-center gap-4 px-5 py-3 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded-lg border border-light-border dark:border-dark-border"
                 >
                   <span>{{ entry.date | date: 'medium' }}</span>
                   @if (entry.season) {
@@ -171,6 +178,11 @@ type QuickAction = 'watched' | 'started' | 'paused' | 'dropped';
                       >S{{ entry.season }}E{{ entry.episode }}</span
                     >
                   }
+                  <app-discussion-link
+                    [title]="currentItem.title"
+                    [type]="currentItem.type"
+                    [entry]="entry"
+                  />
                 </li>
               }
             </ol>
