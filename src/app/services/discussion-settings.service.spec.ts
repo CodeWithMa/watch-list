@@ -8,6 +8,7 @@ describe('DiscussionSettingsService', () => {
   beforeEach(() => localStorage.removeItem('discussionLinks'));
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     localStorage.removeItem('discussionLinks');
   });
 
@@ -75,8 +76,10 @@ describe('DiscussionSettingsService', () => {
 
   it('keeps settings usable for the session when writes fail', () => {
     const settings = TestBed.inject(DiscussionSettingsService);
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('Unavailable');
+    vi.stubGlobal('localStorage', {
+      setItem() {
+        throw new Error('Unavailable');
+      },
     });
     expect(settings.setEnabled(true)).toBe(false);
     expect(settings.saveTemplate('https://example.com/{title}')).toBe(false);
@@ -88,8 +91,10 @@ describe('DiscussionSettingsService', () => {
   });
 
   it('defaults safely when reads fail', () => {
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new Error('Unavailable');
+    vi.stubGlobal('localStorage', {
+      getItem() {
+        throw new Error('Unavailable');
+      },
     });
     expect(reload().settings().enabled).toBe(false);
     expect(TestBed.inject(BrowserSettingsStorage).unavailable()).toBe(true);

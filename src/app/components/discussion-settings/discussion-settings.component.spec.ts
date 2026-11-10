@@ -8,6 +8,7 @@ describe('DiscussionSettingsComponent', () => {
   beforeEach(() => localStorage.removeItem('discussionLinks'));
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     localStorage.removeItem('discussionLinks');
   });
 
@@ -88,8 +89,10 @@ describe('DiscussionSettingsComponent', () => {
 
   it('explains when changes apply only to the session', () => {
     const { fixture, root, checkbox } = setup();
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('Unavailable');
+    vi.stubGlobal('localStorage', {
+      setItem() {
+        throw new Error('Unavailable');
+      },
     });
     checkbox.click();
     fixture.detectChanges();
