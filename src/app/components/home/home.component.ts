@@ -307,17 +307,18 @@ export class HomeComponent {
   readonly lastWatched = computed(() => {
     if (!this.discussionSettings.settings().enabled) return null;
     const hideAdult = this.providerSettings.settings().adultDisplayMode === 'hide';
+    const visibleIds = hideAdult
+      ? new Set(
+          this.watchListService
+            .items()
+            .filter((item) => !item.isAdult)
+            .map((item) => item.id),
+        )
+      : null;
     return (
       this.watchListService
         .history()
-        .find(
-          (entry) =>
-            !entry.isDeleted &&
-            (!hideAdult ||
-              this.watchListService
-                .items()
-                .some((item) => item.id === entry.itemId && !item.isAdult)),
-        ) ?? null
+        .find((entry) => !entry.isDeleted && (!visibleIds || visibleIds.has(entry.itemId))) ?? null
     );
   });
   readonly actions = new MutationFeedback(watchActionFailure);

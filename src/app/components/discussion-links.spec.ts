@@ -124,6 +124,46 @@ describe('Discussion links across screens', () => {
     expect(fixture.nativeElement.querySelector('app-discussion-link a')).toBeNull();
   });
 
+  it('selects the latest eligible Home entry and responds to adult visibility changes', async () => {
+    const { storage, settings } = await setup();
+    settings.setEnabled(true);
+    await storage.mutate((draft) => {
+      const series = draft.items['series'];
+      series.isAdult = true;
+      series.watchHistory = [
+        { date: '2026-11-09', season: 2, episode: 1 },
+        { date: '2026-11-10', season: 2, episode: 2 },
+      ];
+      draft.items['visible'] = {
+        ...series,
+        id: 'visible',
+        title: 'Visible series',
+        isAdult: false,
+        watchHistory: [{ date: '2026-11-08', season: 1, episode: 1 }],
+      };
+      draft.deletedItems = {
+        deleted: {
+          itemId: 'deleted',
+          itemTitle: 'Deleted series',
+          itemType: 'series',
+          deletedAt: '2026-11-11',
+          watchHistory: [{ date: '2026-11-11' }],
+        },
+      };
+    });
+    const providers = TestBed.inject(ProviderSettingsService);
+    providers.setAdultDisplayMode('hide');
+    const fixture = TestBed.createComponent(HomeComponent);
+    expect(fixture.componentInstance.lastWatched()?.itemId).toBe('visible');
+    providers.setAdultDisplayMode('show');
+    expect(fixture.componentInstance.lastWatched()).toMatchObject({
+      itemId: 'series',
+      date: '2026-11-10',
+      season: 2,
+      episode: 2,
+    });
+  });
+
   it('uses title-only searches for movies even if imported history contains episode fields', () => {
     const settings = TestBed.inject(DiscussionSettingsService);
     settings.setEnabled(true);

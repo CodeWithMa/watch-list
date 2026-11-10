@@ -164,7 +164,11 @@ export class ImportExportService {
     } catch {
       // Invalid preferences must never break the data import.
     }
-    this.discussionSettings.importSettings(payload.preferences.discussionSettings);
+    try {
+      this.discussionSettings.importSettings(payload.preferences.discussionSettings);
+    } catch {
+      // Invalid preferences must never break the data import.
+    }
   }
 }
 

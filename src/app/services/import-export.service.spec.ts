@@ -167,6 +167,7 @@ describe('ImportExportService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     localStorage.removeItem('discussionLinks');
   });
 
@@ -254,16 +255,7 @@ describe('ImportExportService', () => {
           for (const k of Object.keys(store)) delete store[k];
         },
       } as unknown as Storage;
-      Object.defineProperty(window, 'localStorage', {
-        value: mockStorage,
-        writable: true,
-        configurable: true,
-      });
-      Object.defineProperty(globalThis, 'localStorage', {
-        value: mockStorage,
-        writable: true,
-        configurable: true,
-      });
+      vi.stubGlobal('localStorage', mockStorage);
       window.localStorage.setItem('tmdbReadAccessToken', 'secret-token');
       window.localStorage.setItem('tmdbApiKey', 'secret-key');
       const { createObjectURL } = mockDownload();
@@ -528,35 +520,46 @@ describe('ImportExportService', () => {
       );
     });
 
-    it('ignores invalid preferences without failing the import', async () => {
-      const payload = {
-        data: { items: [] },
-        images: [],
-        preferences: { providerSettings: { tmdb: 'bad', titlePreference: ['bad'] } },
-      };
-      const file = mockFile(JSON.stringify(payload));
-      providerSettings.importSettings.mockImplementation(() => {
-        throw new Error('invalid');
-      });
-      storageService.importDataWithImages.mockResolvedValue({
-        durability: 'persistent',
-        dropped: { groups: 0, items: 0, deletedItems: 0 },
-        repairedGroupReferences: 0,
-      });
-      imageStorage.parseExportedImages.mockResolvedValue([]);
+    it.each(['provider', 'discussion'])(
+      'ignores a failed %s preference import without failing the data import',
+      async (source) => {
+        const payload = {
+          data: { items: [] },
+          images: [],
+          preferences: {
+            providerSettings: { tmdb: 'bad', titlePreference: ['bad'] },
+            discussionSettings: { enabled: true, urlTemplate: 'https://example.com/{title}' },
+          },
+        };
+        const file = mockFile(JSON.stringify(payload));
+        const importPreferences =
+          source === 'provider'
+            ? providerSettings.importSettings
+            : vi.spyOn(TestBed.inject(DiscussionSettingsService), 'importSettings');
+        importPreferences.mockImplementation(() => {
+          throw new Error('invalid');
+        });
+        storageService.importDataWithImages.mockResolvedValue({
+          durability: 'persistent',
+          dropped: { groups: 0, items: 0, deletedItems: 0 },
+          repairedGroupReferences: 0,
+        });
+        imageStorage.parseExportedImages.mockResolvedValue([]);
 
-      await expect(importExportService.importData(file)).resolves.toEqual({
-        durability: 'persistent',
-        dropped: { groups: 0, items: 0, deletedItems: 0 },
-        repairedGroupReferences: 0,
-      });
-      expect(storageService.importDataWithImages).toHaveBeenCalledWith(
-        { items: [] },
-        [],
-        importContext,
-      );
-      expect(providerSettings.importSettings).toHaveBeenCalled();
-    });
+        await expect(importExportService.importData(file)).resolves.toEqual({
+          durability: 'persistent',
+          dropped: { groups: 0, items: 0, deletedItems: 0 },
+          repairedGroupReferences: 0,
+        });
+        expect(storageService.importDataWithImages).toHaveBeenCalledWith(
+          { items: [] },
+          [],
+          importContext,
+        );
+        expect(providerSettings.importSettings).toHaveBeenCalled();
+        expect(importPreferences).toHaveBeenCalled();
+      },
+    );
 
     it('returns the omissions and repairs from the storage service', async () => {
       const file = mockFile(JSON.stringify({ data: { items: [] }, images: [] }));
