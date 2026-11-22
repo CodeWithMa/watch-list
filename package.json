@@ -65,7 +65,7 @@
     "concurrently": "^10.0.6",
     "electron": "^44.7.0",
     "electron-builder": "^26.18.0",
-    "wait-on": "^8.0.0",
+    "wait-on": "^9.5.1",
     "@vitest/coverage-v8": "^5.1.0",
     "angular-eslint": "^22.6.0",
     "eslint": "^10.15.0",
