@@ -9,12 +9,7 @@ test('add a series, watch an episode, and delete the series', async ({ page }) =
   const problems: string[] = [];
   page.on('pageerror', (error) => problems.push(`page error: ${error.message}`));
   page.on('console', (message) => {
-    // index.html's <meta> policy mirrors the nginx header, including a
-    // directive browsers only honour as a header and report on every load.
-    const expected = message.text().includes("'frame-ancestors' is ignored");
-    if (message.type() === 'error' && !expected) {
-      problems.push(`console error: ${message.text()}`);
-    }
+    if (message.type() === 'error') problems.push(`console error: ${message.text()}`);
   });
 
   const nav = page.getByRole('navigation');
