@@ -53,6 +53,15 @@ bunx prek install
 bunx prek install -t commit-msg
 ```
 
+One browser test drives the production build through a real headless Chromium:
+
+```shell
+bunx playwright install chromium   # once
+bun run e2e
+```
+
+Set `E2E_CHROMIUM_PATH` to use a system browser, or `E2E_BASE_URL` to test a running deployment.
+
 ## Privacy
 
 Watch-list data is stored locally in your browser using IndexedDB. Nothing is ever sent to a server. Your watch history stays on your device. Export your data before upgrading from versions that used localStorage if you want to keep it.
