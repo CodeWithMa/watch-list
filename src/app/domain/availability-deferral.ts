@@ -1,7 +1,6 @@
 import { ReadonlyItem, SeriesProgress } from '../models/item.model';
 import { isEpisodicType } from './item.constants';
 
-/** Elapsed hours, bounded by the ISO date range supported by persistence. */
 export function deferralReturnDate(hours: number, now = Date.now()) {
   if (!Number.isSafeInteger(hours) || hours <= 0) return null;
   const until = now + hours * 3_600_000;

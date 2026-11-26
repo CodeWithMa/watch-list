@@ -57,7 +57,6 @@ export function createSearchStream(
       });
   }
 
-  // Settings can remove the selected provider without a menu interaction.
   effect(() => {
     const source = selectedSource();
     if (lastRequest && lastRequest.source !== source) untracked(request);
@@ -80,7 +79,6 @@ export function createSearchStream(
       selectedSource.set(source);
       request();
     },
-    // Selection updates the displayed query without scheduling another search.
     dismiss(value = '') {
       query.set(value);
       lastRequest = undefined;

@@ -64,7 +64,7 @@ describe('calculateProgress', () => {
           progress: { season: 1, episode: 6, seasons: [{ seasonNumber: 1, totalEpisodes: 10 }] },
         }),
       ),
-    ).toBe(50); // (6-1)/10 =50%
+    ).toBe(50);
     expect(
       calculateProgress(
         item({

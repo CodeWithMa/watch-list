@@ -6,7 +6,6 @@ type EditableFields = Omit<
   'id' | 'createdAt' | 'watchHistory' | 'progress' | 'availabilityDeferral'
 >;
 
-/** Omitted properties are untouched; null progress/season entries explicitly remove them. */
 export type ItemEdit = Partial<EditableFields> & {
   progress?:
     | (Partial<Omit<SeriesProgress, 'seasons'>> & {

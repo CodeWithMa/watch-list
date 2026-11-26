@@ -227,7 +227,6 @@ describe('storage version compatibility', () => {
 
     expect(() => normalizeStorageData(newer)).toThrow(/newer version of Watch List/);
     expect(newer).toEqual(original);
-    // A future schema may replace today's required fields entirely.
     expect(() => normalizeStorageData({ schemaVersion: newer.schemaVersion })).toThrow(
       /newer version of Watch List/,
     );
