@@ -104,15 +104,10 @@ describe('RoundRobinService', () => {
         watchHistory: [{ date: '2026-04-01T00:00:00.000Z' }],
       }),
     ]);
-    // b has older last watched, should be suggested first
     expect(service.nextSeries()?.id).toBe('b');
   });
 
   it('implements round-robin when all others have been watched', async () => {
-    // Two series, 'a' oldest but 'b' has no watch history, so canSuggest for 'b' is false, for 'a' is true? Let's craft
-    // canSuggest checks if all otherSeries have watchHistory length >0
-    // If b has empty history, then for target a, other=b has empty => allOthersWatched false => canSuggest false for a
-    // For target b, other=a has history => true => canSuggest true for b => b should be returned
     await saveItems([
       createSeries({
         id: 'a',
@@ -129,15 +124,10 @@ describe('RoundRobinService', () => {
         firstEpisodeAirDate: '2020-01-01',
       }),
     ]);
-    // sorted by last watched: b (no history => uses createdAt? actually getMostRecentWatchDate falls back to createdAt)
-    // For b, lastWatched is createdAt 2026-01-02, for a it's 2026-04-01, so b is older => watchable sorted [b,a]
-    // Loop: canSuggest(b) -> other=a has history => true => return b
     expect(service.nextSeries()?.id).toBe('b');
   });
 
   it('falls back to first watchable when no series can be suggested', async () => {
-    // Both have empty history, so for each, allOthersWatched is false (other has empty)
-    // No canSuggest true, should return watchable[0] (oldest)
     await saveItems([
       createSeries({
         id: 'a',
@@ -156,7 +146,6 @@ describe('RoundRobinService', () => {
     ]);
     const result = service.nextSeries();
     expect(result).not.toBeNull();
-    // watchable sorted [a,b] because both have same fallback? a older
     expect(result?.id).toBe('a');
   });
 
@@ -255,7 +244,6 @@ describe('RoundRobinService', () => {
       episode: 2,
       firstEpisodeAirDate: '2026-05-01',
     });
-    // Change progress to season 2 but seasons only has season 1
     (missingSeason as Item).progress = {
       season: 2,
       episode: 1,
@@ -299,7 +287,6 @@ describe('RoundRobinService', () => {
       createdAt: '2026-01-01T00:00:00.000Z',
       firstEpisodeAirDate: '2026-00-01',
     });
-    // year 2026 ok, month 0 -> falsy? 0 is falsy, so returns null
     expect(service.hasAiredCurrentEpisode(badMonth)).toBe(true);
   });
 

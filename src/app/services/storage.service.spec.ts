@@ -493,8 +493,6 @@ describe('StorageService', () => {
             },
           };
       await writeRecord(database, raw);
-      // Even an unavailable corruption-backup/write path must not turn compatibility into
-      // the generic in-memory fallback. This also detects any normalization write.
       const put = vi.spyOn(FakeIDBObjectStore.prototype, 'put').mockImplementation(() => {
         throw new Error('Writes unavailable');
       });
@@ -618,7 +616,6 @@ describe('StorageService', () => {
     await service.initialize();
     const database = await openTestDatabase();
     const raw = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, futureRecords: ['keep'] };
-    // A separate preflight read would let the upgrade commit before the stale save.
     const upgrade = upgradeAfterNextRead(database, raw);
 
     await service.replaceData(withGroup(service.getData(), 'edited'));
@@ -1335,7 +1332,6 @@ describe('StorageService', () => {
     'keeps publication ordered across startup when saves settle (%s, %s)',
     async (firstSucceeds, secondSucceeds) => {
       const service = createStorageService();
-      // Replacements reserve their place before startup, publishing only once settled.
       const first = service.replaceData(withGroup(createDefaultStorageData(), 'first'));
       await service.initialize();
       abortStorageWrites([firstSucceeds, secondSucceeds]);
@@ -1646,7 +1642,6 @@ function upgradeAfterNextRead(database: IDBDatabase, raw: unknown) {
       if (this.name === 'storage' && key === 'watch-list-data') {
         request.addEventListener('success', () => {
           spy.mockRestore();
-          // Queue another tab's write before the reader can queue a replacement.
           void writeRecord(database, raw).then(resolve, reject);
         });
       }

@@ -139,7 +139,7 @@ describe('Item form navigation with pending saves', () => {
     expect(next).toBe(screen);
     expect(harness.routeNativeElement).toBe(root);
     expect(router.url).toBe('/items/other/edit');
-    expect(next.item()?.id).toBe('other');
+    expect(next.itemSnapshot()?.id).toBe('other');
     expect(root.querySelector<HTMLInputElement>('#title')?.value).toBe('Other item');
   });
 });
@@ -180,9 +180,7 @@ async function openForm(mode: 'add' | 'edit') {
 async function setup() {
   Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: new IDBFactory() });
   vi.stubGlobal('createImageBitmap', async () => ({
-    close() {
-      /* native image decoder boundary */
-    },
+    close: () => undefined,
   }));
   vi.stubGlobal(
     'URL',
@@ -191,7 +189,7 @@ async function setup() {
         return 'blob:uploaded-poster';
       }
       static override revokeObjectURL() {
-        /* native object URL boundary */
+        return undefined;
       }
     },
   );

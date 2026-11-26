@@ -1,5 +1,3 @@
-// Serves the production build for the browser tests, with the same SPA
-// fallback as containers/nginx.conf.
 import { join, normalize } from 'node:path';
 
 const root = join(import.meta.dirname, '../dist/watch-list/browser');

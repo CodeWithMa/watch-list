@@ -6,14 +6,14 @@ type EditableFields = Omit<
   'id' | 'createdAt' | 'watchHistory' | 'progress' | 'availabilityDeferral'
 >;
 
-/** Omitted properties are untouched; null progress/season entries explicitly remove them. */
-export type ItemEdit = Partial<EditableFields> & {
-  progress?:
-    | (Partial<Omit<SeriesProgress, 'seasons'>> & {
-        seasons?: Record<number, Partial<SeasonInfo> | null>;
-      })
-    | null;
+const REMOVE = null;
+type Remove = typeof REMOVE;
+type SeasonPatch = Partial<SeasonInfo> | Remove;
+type ProgressPatch = Partial<Omit<SeriesProgress, 'seasons'>> & {
+  seasons?: Record<number, SeasonPatch>;
 };
+
+export type ItemEdit = Partial<EditableFields> & { progress?: ProgressPatch | Remove };
 
 export function createItemEdit(
   before: EditableFields & Pick<Item, 'progress'>,
@@ -24,14 +24,14 @@ export function createItemEdit(
   const edit: ItemEdit = changedFields(editableFields(before), editableFields(after));
   const base = previous ?? (isEpisodicType(before.type) ? defaultProgress() : undefined);
   if (!next) {
-    if (previous) edit.progress = null;
+    if (previous) edit.progress = REMOVE;
   } else {
     const { seasons: oldSeasons, ...oldPosition } = base ?? defaultProgress();
     const { seasons: newSeasons, ...newPosition } = next;
-    const seasons: Record<number, Partial<SeasonInfo> | null> = {};
+    const seasons: Record<number, SeasonPatch> = {};
     for (const old of oldSeasons) {
       if (!newSeasons.some((season) => season.seasonNumber === old.seasonNumber)) {
-        seasons[old.seasonNumber] = null;
+        seasons[old.seasonNumber] = REMOVE;
       }
     }
     for (const season of newSeasons) {
@@ -39,7 +39,7 @@ export function createItemEdit(
       const changes = old ? changedFields(old, season) : season;
       if (Object.keys(changes).length) seasons[season.seasonNumber] = changes;
     }
-    const progress: NonNullable<ItemEdit['progress']> = changedFields(oldPosition, newPosition);
+    const progress: ProgressPatch = changedFields(oldPosition, newPosition);
     if (Object.keys(seasons).length) progress.seasons = seasons;
     if (Object.keys(progress).length || !base) edit.progress = progress;
   }
@@ -49,7 +49,7 @@ export function createItemEdit(
 export function applyItemEdit(item: Item, edit: ItemEdit): Item {
   const { progress, ...fields } = edit;
   const updated = { ...item, ...fields };
-  if (progress === null || !isEpisodicType(updated.type)) {
+  if (progress === REMOVE || !isEpisodicType(updated.type)) {
     delete updated.progress;
   } else if (progress) {
     const { seasons, ...position } = progress;
@@ -57,7 +57,7 @@ export function applyItemEdit(item: Item, edit: ItemEdit): Item {
     const records = new Map(current.seasons.map((season) => [season.seasonNumber, season]));
     for (const [key, changes] of Object.entries(seasons ?? {})) {
       const seasonNumber = Number(key);
-      if (changes === null) records.delete(seasonNumber);
+      if (changes === REMOVE) records.delete(seasonNumber);
       else records.set(seasonNumber, { ...records.get(seasonNumber), ...changes, seasonNumber });
     }
     updated.progress = {

@@ -490,8 +490,6 @@ describe('SettingsComponent', () => {
     expect(byText('Import Data')?.disabled).toBe(true);
     expect(byText('Cancel')?.disabled).toBe(true);
 
-    // The picker is disabled while importing, but a file staged meanwhile
-    // must not be discarded by the running import's cleanup.
     await fixture.componentInstance.onFileSelected({ target: pick('b.json') } as unknown as Event);
     await fixture.componentInstance.confirmImport();
     expect(exportService.importData).toHaveBeenCalledOnce();
@@ -773,7 +771,6 @@ describe('SettingsComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('— Built');
-    // DatePipe 'medium' formats ISO to locale string containing year and month
     expect(fixture.nativeElement.textContent).toContain('2026');
     expect(fixture.nativeElement.textContent).toContain('Aug');
   });
@@ -831,7 +828,6 @@ describe('SettingsComponent', () => {
     const fixture = TestBed.createComponent(SettingsComponent);
     expect(fixture.componentInstance.includeAdult()).toBe(false);
 
-    // Simulate import changing provider settings on disk
     providerMock.isAdultIncluded.mockReturnValue(true);
     providerMock.isEnabled.mockReturnValue(true);
     providerMock.getAdultDisplayMode.mockReturnValue('hide' as const);

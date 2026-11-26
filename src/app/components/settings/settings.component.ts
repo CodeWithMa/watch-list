@@ -682,13 +682,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
       retainFile = error instanceof CollectionConflictError;
       this.setError(importError, retainFile || error instanceof UnsupportedSchemaVersionError);
     } finally {
-      // A file staged while this import ran belongs to the next confirmation;
-      // only clear the pending state when it is still this call's file.
-      if (!retainFile && this.pendingImportFile() === file) {
-        this.pendingImportFile.set(null);
-      }
+      if (!retainFile) this.clearPendingImportIfStill(file);
       this.importInProgress.set(false);
     }
+  }
+
+  private clearPendingImportIfStill(file: File) {
+    if (this.pendingImportFile() === file) this.pendingImportFile.set(null);
   }
 
   private setError(message: string | null, persistent = false) {

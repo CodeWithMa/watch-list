@@ -6,8 +6,6 @@ import { Item } from '../models/item.model';
 
 const PositiveIntegerSchema = z.number().int().positive();
 const NonblankStringSchema = z.string().refine((value) => value.trim().length > 0);
-// History and creation dates must be real dates. Release metadata deliberately
-// retains its older, more permissive YYYY-MM-DD contract below.
 const DateSchema = z.union([z.iso.date(), z.iso.datetime({ offset: true, local: true })]);
 
 const SeasonInfoSchema = z.object({
@@ -78,8 +76,6 @@ const DeletedItemHistorySchema = z.object({
   deletedAt: DateSchema,
 });
 
-// Migration handles untrusted records, not domain objects. Only parsing each
-// record below grants it a domain type.
 // Keep all own keys: z.record discards __proto__ before recovery can count it.
 const UntrustedRecordsSchema = z.custom<Record<string, unknown>>(isRecord);
 const StorageEnvelopeSchema = z.object({
@@ -234,8 +230,6 @@ function migrateStorageData(data: StorageEnvelope): StorageEnvelope {
 
   if (migrated.schemaVersion < 3) {
     for (const item of Object.values(migrated.items)) {
-      // Malformed records (null, primitives) pass through to quarantine,
-      // which drops them after migration salvages the valid items.
       if (!isRecord(item)) {
         continue;
       }
@@ -279,27 +273,20 @@ function migrateStorageData(data: StorageEnvelope): StorageEnvelope {
       if (!isRecord(item)) {
         continue;
       }
-      // Remote URLs must never survive the offline-image migration. Existing
-      // posters are deliberately cleared instead of being fetched at startup.
       delete item['posterPath'];
     }
     migrated.schemaVersion = 6;
   }
 
   if (migrated.schemaVersion < 7) {
-    // Introduce 'paused' status. No auto-migration: existing 'not-started' items
-    // remain in backlog even if they were previously paused via the lie.
     migrated.schemaVersion = 7;
   }
 
   if (migrated.schemaVersion < 8) {
-    // Widen ItemType to include 'ova' and 'ona'. No data migration needed;
-    // existing 'series'|'movie' values remain valid under the expanded enum.
     migrated.schemaVersion = 8;
   }
 
   if (migrated.schemaVersion < 9) {
-    // Introduce required isAdult. Existing items lack the field; default to false (SFW).
     for (const item of Object.values(migrated.items)) {
       if (!isRecord(item)) {
         continue;
@@ -312,12 +299,10 @@ function migrateStorageData(data: StorageEnvelope): StorageEnvelope {
   }
 
   if (migrated.schemaVersion < 10) {
-    // Optional per-season release delay: absent counts mean zero, with no baseline rewrite.
     migrated.schemaVersion = 10;
   }
 
   if (migrated.schemaVersion < 11) {
-    // Optional episode-specific availability deferrals; existing records stay valid.
     migrated.schemaVersion = 11;
   }
 

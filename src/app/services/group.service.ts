@@ -43,7 +43,6 @@ export class GroupService {
         throw new Error('Cannot delete the ungrouped group');
       }
       delete data.groups[groupId];
-      // Group removal and item reassignment commit together.
       Object.values(data.items).forEach((item) => {
         if (item.groupId === groupId) item.groupId = DEFAULT_GROUP_ID;
       });
@@ -65,7 +64,6 @@ export class GroupService {
         }
       });
 
-      // Keep any groups not in the reorder list
       Object.values(data.groups).forEach((group) => {
         if (!groups.has(group.id)) {
           groups.set(group.id, group);

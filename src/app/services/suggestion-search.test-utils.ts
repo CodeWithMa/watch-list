@@ -5,7 +5,6 @@ import { AnilistSuggestionService } from './anilist-suggestion.service';
 import { JikanSuggestionService } from './jikan-suggestion.service';
 import { TmdbSuggestionService } from './tmdb-suggestion.service';
 
-// Control external provider responses while exercising the real search lifecycle.
 export function createSuggestionProviders() {
   const search = vi.fn<(query: string, source: SuggestionSource) => Observable<Suggestion[]>>(() =>
     of([]),

@@ -13,7 +13,6 @@ export function validateDiscussionTemplate(template: string): string | null {
   if (!/^https?:\/\//i.test(template)) {
     return 'Enter an absolute HTTP or HTTPS URL.';
   }
-  // Keep the destination explicit; placeholders belong in the path, query, or fragment.
   if (/[{}]/.test(template.match(/^https?:\/\/([^/?#]*)/i)?.[1] ?? '')) {
     return 'Placeholders cannot be used in the URL host.';
   }
@@ -47,7 +46,6 @@ export function buildDiscussionUrl(
       (_, name: keyof typeof values) => encodeURIComponent(values[name]),
     );
   } catch {
-    // Malformed Unicode in an imported title must not prevent rendering history.
     return null;
   }
 }

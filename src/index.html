@@ -8,7 +8,7 @@
       and update script-src here and in nginx.conf. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' 'sha256-Hq3FIAQiTPolQXnEfi9wb+iJcaXWvqDZulbwr3WX+IE='; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; connect-src 'self' https://api.themoviedb.org https://api.jikan.moe https://graphql.anilist.co https://image.tmdb.org https://cdn.myanimelist.net https://s4.anilist.co; font-src 'self' data:; manifest-src 'self'; worker-src 'self'"
+      content="default-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; script-src 'self' 'sha256-toZFmdk2CkvU3nyUgzTVJAy/6YfDgBH8RrDVwKZXNAo='; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https:; connect-src 'self' https://api.themoviedb.org https://api.jikan.moe https://graphql.anilist.co https://image.tmdb.org https://cdn.myanimelist.net https://s4.anilist.co; font-src 'self' data:; manifest-src 'self'; worker-src 'self'"
     />
     <meta name="referrer" content="no-referrer" />
     <title>WatchList</title>
@@ -21,9 +21,7 @@
         let stored = null;
         try {
           stored = localStorage.getItem('theme');
-        } catch {
-          // Browser storage is optional; keep the system theme until the app starts.
-        }
+        } catch {}
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const isDark = stored === 'dark' || (stored !== 'light' && prefersDark);
         if (isDark) {

@@ -163,8 +163,6 @@ export class ProviderSettingsService {
     return DEFAULT_ADULT_DISPLAY_MODE;
   }
 
-  // Strict reset: any invalid entry (wrong length, duplicate, unknown lang) falls back to default.
-  // Alternative lenient dedup/filter was considered but we prefer explicit reset to avoid drift.
   private normalizeTitlePreference(value: unknown): TitlePreference {
     if (!Array.isArray(value) || value.length !== 3) {
       return [...DEFAULT_TITLE_PREFERENCE];

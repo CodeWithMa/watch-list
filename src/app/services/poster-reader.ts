@@ -1,7 +1,6 @@
 import { effect, inject, signal, untracked } from '@angular/core';
 import { ImageStorageService } from './image-storage.service';
 
-/** Read a cached poster for this injection lifetime, retaining it while a replacement loads. */
 export function injectPosterUrl(posterId: () => string | undefined) {
   const images = inject(ImageStorageService);
   const url = signal<string | null>(null);

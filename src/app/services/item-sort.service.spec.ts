@@ -134,7 +134,6 @@ describe('ItemSortService', () => {
     try {
       service.setField('title');
       service.setDirection('asc');
-      // in-memory should still update
       expect(service.field()).toBe('title');
       expect(service.direction()).toBe('asc');
     } finally {

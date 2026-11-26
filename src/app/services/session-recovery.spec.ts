@@ -99,7 +99,6 @@ describe('session metadata recovery', () => {
       ).toBeNull();
       expect(storage.getInMemorySessionSignal()()).toBe(true);
 
-      // Reconnecting a poster reader must never reload older disk data over session edits.
       openFailure.mockRestore();
       expect(await TestBed.inject(ImageStorageService).exportImages()).toEqual([]);
       await storage.initialize();
@@ -109,7 +108,6 @@ describe('session metadata recovery', () => {
       const reloaded = TestBed.runInInjectionContext(() => new StorageService());
       await reloaded.initialize();
       expect(reloaded.getData().groups['ungrouped'].name).toBe('Older disk collection');
-      // Explicit recovery into a persistent context is deliberate and can then survive reload.
       await reloaded.importDataWithImages(JSON.parse(text).data, []);
       const recovered = TestBed.runInInjectionContext(() => new StorageService());
       await recovered.initialize();
@@ -229,7 +227,6 @@ describe('session metadata recovery', () => {
         vi.spyOn(IDBObjectStore.prototype, 'clear').mockImplementation(function (
           this: IDBObjectStore,
         ) {
-          // A real failing image-store request: adding the already-present key raises ConstraintError.
           return this.add({ id: 'old-poster' }) as unknown as IDBRequest<undefined>;
         });
       const file = new File([], 'metadata-only.json');

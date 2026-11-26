@@ -1,6 +1,5 @@
 import { Injectable, signal } from '@angular/core';
 
-/** Optional browser settings never gate access to the collection. */
 @Injectable({ providedIn: 'root' })
 export class BrowserSettingsStorage {
   private readonly failed = signal(false);

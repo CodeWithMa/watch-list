@@ -151,7 +151,6 @@ describe('sort.utils', () => {
         title: 'B',
         watchHistory: [{ date: '2026-05-01T00:00:00.000Z' }],
       });
-      // a lastWatched is 2026-06-01 > b 2026-05-01
       expect(compareItems(a, b, 'lastWatched', 'asc')).toBeGreaterThan(0);
       expect(compareItems(b, a, 'lastWatched', 'asc')).toBeLessThan(0);
     });
@@ -186,7 +185,6 @@ describe('sort.utils', () => {
         createdAt: '2026-01-01T00:00:00.000Z',
         watchHistory: [{ date: '2026-02-01T00:00:00.000Z' }],
       });
-      // a lastWatched = 2026-10-01, b = 2026-02-01
       expect(compareItems(a, b, 'lastWatched', 'asc')).toBeGreaterThan(0);
     });
 
@@ -202,7 +200,6 @@ describe('sort.utils', () => {
         watchHistory: [{ date: 'not-a-date' }],
         createdAt: '2026-02-01T00:00:00.000Z',
       });
-      // invalid history treated as -Infinity, so asc: invalid first, desc: valid first
       expect(compareItems(invalid, valid, 'lastWatched', 'asc')).toBeLessThan(0);
       expect(compareItems(invalid, valid, 'lastWatched', 'desc')).toBeGreaterThan(0);
       expect(compareItems(valid, invalid, 'lastWatched', 'asc')).toBeGreaterThan(0);
@@ -223,7 +220,6 @@ describe('sort.utils', () => {
         title: 'B',
         watchHistory: [{ date: '2026-03-01T00:00:00.000Z' }],
       });
-      // withInvalid most recent is 2026-04-01 > valid 2026-03-01
       expect(compareItems(withInvalid, valid, 'lastWatched', 'asc')).toBeGreaterThan(0);
     });
 
@@ -354,19 +350,16 @@ describe('sort.utils', () => {
         title: 'V2',
         watchHistory: [{ date: '2026-05-01T00:00:00.000Z' }],
       });
-      // ascending: invalid (-Infinity) first, then v1, then v2
       expect(sortItems([valid2, invalid, valid1], 'lastWatched', 'asc').map((i) => i.id)).toEqual([
         'inv',
         'v1',
         'v2',
       ]);
-      // descending: v2, v1, invalid last
       expect(sortItems([invalid, valid1, valid2], 'lastWatched', 'desc').map((i) => i.id)).toEqual([
         'v2',
         'v1',
         'inv',
       ]);
-      // does not produce NaN, stable equality for invalid-only
       const onlyInvalid = [
         item({ id: 'a', title: 'A', watchHistory: [{ date: 'bad' }] }),
         item({ id: 'b', title: 'B', watchHistory: [{ date: 'also-bad' }] }),

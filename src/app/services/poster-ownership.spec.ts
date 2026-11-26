@@ -62,7 +62,6 @@ describe('Committed poster ownership', () => {
       expect(reloaded.getData()).toEqual(previous);
       expect(storage.getData()).toEqual(previous);
       expect(await freshImages.getUrl(oldPoster)).toBe('blob:poster');
-      // Resolve through a separate storage context: a pending draft is not a persisted image.
       expect(await persistentImages().getUrl(posterId)).toBeNull();
       expect(await images.getUrl(posterId)).toBe('blob:poster');
       await save();
@@ -140,7 +139,6 @@ describe('Committed poster ownership', () => {
       const posterId = await images.storeFile(new Blob(['poster'], { type: 'image/png' }));
       const { value: first } = await watch.addItem({ ...movie, posterId });
       const { value: second } = await watch.addItem({ ...movie, title: 'Second', posterId });
-      // Portable imports may legitimately give multiple items the same poster identity.
       const data = storage.getData();
       await storage.importDataWithImages(data, [{ id: posterId, blob: image() }]);
       expect(await images.getUrl(posterId)).toBe('blob:poster');
@@ -223,7 +221,6 @@ describe('Committed poster ownership', () => {
       await peer.initialize();
       let peerRefresh = Promise.resolve();
       controlStorageWrites([], (index) => {
-        // Queue the peer's read behind the new owner's write, ahead of cleanup.
         if (index === 1) peerRefresh = peer.refresh();
       });
       const removal = watch.deleteItem(first.id);
@@ -318,7 +315,6 @@ async function setup() {
 }
 
 function persistentImages() {
-  // Independent services avoid a provisional-image map or an object-URL cache masking disk state.
   const storage = TestBed.runInInjectionContext(() => new StorageService());
   return TestBed.runInInjectionContext(() => {
     const injector = TestBed.inject(Injector);

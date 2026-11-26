@@ -76,7 +76,6 @@ function compareByStatus(a: Item, b: Item, direction: SortDirection): number {
     return direction === 'asc' ? primary : -primary;
   }
 
-  // Tie-breaker: most recently watched first, regardless of direction.
   const recent = toTimestamp(getMostRecentWatchDate(b)) - toTimestamp(getMostRecentWatchDate(a));
   if (recent !== 0 && !Number.isNaN(recent)) {
     return recent;

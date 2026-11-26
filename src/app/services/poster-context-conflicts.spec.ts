@@ -142,7 +142,6 @@ describe('Poster persistence context conflicts', () => {
       });
       expect(reloaded.storage.getGroups()[0].name).toBe('Concurrent edit');
       expect(await reloaded.images.getUrl(posterId)).toBe('blob:poster');
-      // A reload adopts the poster revision too, so its next edit must succeed.
       await reloaded.storage.mutate((draft) => {
         draft.items[reloaded.storage.getItems()[0].id].title = 'Edited after reload';
       });

@@ -527,7 +527,6 @@ describe('PosterPickerComponent', () => {
       expect(fixture.componentInstance.showPosterSearch()).toBe(true);
       expect(fixture.componentInstance.posterSearchQuery()).toBe('');
 
-      // with no seed
       const fixture2 = TestBed.createComponent(PosterPickerComponent);
       fixture2.componentRef.setInput('searchSeed', '');
       fixture2.detectChanges();
@@ -596,7 +595,6 @@ describe('PosterPickerComponent', () => {
     fixture.componentRef.setInput('posterId', 'image-1');
     fixture.detectChanges();
 
-    // Simulate that draftPosterIds contains image-1
     (fixture.componentInstance as unknown as { draftPosterIds: Set<string> }).draftPosterIds.add(
       'image-1',
     );
@@ -687,7 +685,6 @@ describe('PosterPickerComponent', () => {
     await Promise.resolve();
     await new Promise((r) => setTimeout(r, 0));
 
-    // Should not throw and not set error because destroyed
     expect(fixture.componentInstance.posterError()).toBe('');
   });
 
@@ -697,7 +694,6 @@ describe('PosterPickerComponent', () => {
     fixture.componentRef.setInput('posterId', 'old-id');
     fixture.detectChanges();
 
-    // Simulate draft contains old-id
     (fixture.componentInstance as unknown as { draftPosterIds: Set<string> }).draftPosterIds.add(
       'old-id',
     );

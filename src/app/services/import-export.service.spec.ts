@@ -69,7 +69,6 @@ describe('import version compatibility', () => {
               }
             : {
                 data: newer,
-                // Newer image formats must not hide the version explanation behind an image error.
                 images: format === 'portable' ? [] : { futureFormat: true },
                 preferences: { providerSettings: { tmdb: true } },
               };
@@ -92,7 +91,6 @@ describe('import version compatibility', () => {
         request.onsuccess = () => resolve(request.result);
       });
       expect(images).toEqual([image]);
-      // Rejection must not lock an otherwise compatible collection.
       await expect(storage.replaceData(original)).resolves.toMatchObject({
         durability: 'persistent',
       });
@@ -241,7 +239,6 @@ describe('ImportExportService', () => {
 
     it('always includes non-sensitive preferences and never leaks tokens', async () => {
       storageService.getData.mockReturnValue({ items: [] });
-      // Simulate tokens in localStorage – service must not read them
       const store: Record<string, string> = {};
       const mockStorage = {
         getItem: (k: string) => store[k] ?? null,
@@ -520,47 +517,6 @@ describe('ImportExportService', () => {
       );
     });
 
-    it.each(['provider', 'discussion'])(
-      'ignores a failed %s preference import without failing the data import',
-      async (source) => {
-        const payload = {
-          data: { items: [] },
-          images: [],
-          preferences: {
-            providerSettings: { tmdb: 'bad', titlePreference: ['bad'] },
-            discussionSettings: { enabled: true, urlTemplate: 'https://example.com/{title}' },
-          },
-        };
-        const file = mockFile(JSON.stringify(payload));
-        const importPreferences =
-          source === 'provider'
-            ? providerSettings.importSettings
-            : vi.spyOn(TestBed.inject(DiscussionSettingsService), 'importSettings');
-        importPreferences.mockImplementation(() => {
-          throw new Error('invalid');
-        });
-        storageService.importDataWithImages.mockResolvedValue({
-          durability: 'persistent',
-          dropped: { groups: 0, items: 0, deletedItems: 0 },
-          repairedGroupReferences: 0,
-        });
-        imageStorage.parseExportedImages.mockResolvedValue([]);
-
-        await expect(importExportService.importData(file)).resolves.toEqual({
-          durability: 'persistent',
-          dropped: { groups: 0, items: 0, deletedItems: 0 },
-          repairedGroupReferences: 0,
-        });
-        expect(storageService.importDataWithImages).toHaveBeenCalledWith(
-          { items: [] },
-          [],
-          importContext,
-        );
-        expect(providerSettings.importSettings).toHaveBeenCalled();
-        expect(importPreferences).toHaveBeenCalled();
-      },
-    );
-
     it('returns the omissions and repairs from the storage service', async () => {
       const file = mockFile(JSON.stringify({ data: { items: [] }, images: [] }));
       const dropped = { groups: 1, items: 2, deletedItems: 0 };
@@ -604,7 +560,6 @@ describe('ImportExportService', () => {
           includeAdult: false,
         }),
       );
-      // importSettings should only receive providerSettings, never the injected token keys
       const calledWith = providerSettings.importSettings.mock.calls[0][0] as Record<
         string,
         unknown

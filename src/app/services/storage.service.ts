@@ -9,7 +9,7 @@ import {
 } from '../domain/storage-schema';
 import type { NormalizationReport, NormalizationResult } from '../domain/storage-schema';
 import type { StoredImage } from './image-storage.service';
-import { removeUnavailablePosterReferences } from '../domain/poster-references';
+import { deleteUnavailablePosterIds } from '../domain/poster-references';
 import { imagesInvalidated } from './image-invalidation';
 import {
   WatchListDatabase,
@@ -19,7 +19,6 @@ import {
 } from './watch-list-database.service';
 
 const DATA_KEY = 'watch-list-data';
-// Local concurrency metadata stays out of portable documents and schema migration.
 const REVISION_KEY = 'watch-list-revision';
 const BACKUP_PREFIX = 'watch-list-data-backup-';
 const BACKUP_LIMIT = 10;
@@ -76,7 +75,6 @@ export class StorageService {
     if (!this.initialization) {
       this.loading.set(true);
       this.initializationError.set(null);
-      // Poster reads can recover independently, so preserve edits even after their error clears.
       const preserveSession =
         this.inMemorySession() &&
         this.data() &&
@@ -118,19 +116,12 @@ export class StorageService {
     return this.getData();
   }
 
-  /** Explicit validated collection replacement for import/recovery, retaining owned posters. */
   async replaceData(data: StorageData) {
     return this.enqueueMutation(() => undefined, {
       replacement: validateSaveData(data),
     });
   }
 
-  /**
-   * Commands and explicit replacements share invocation order in this service instance.
-   * An intent edits a detached draft of the latest successful state after earlier writes settle.
-   * Keep the callback synchronous and side-effect free. Rejection discards its entire draft;
-   * success publishes only after transaction completion (or explicitly as session-only).
-   */
   async mutate<T>(intent: (draft: StorageData) => T): Promise<MutationResult<T>> {
     return this.enqueueMutation(intent);
   }
@@ -149,10 +140,6 @@ export class StorageService {
     return this.provisionalImages.delete(id);
   }
 
-  /** Capture the blob at command invocation: form destruction can only release its draft,
-   * never the command's copy. The image and its first committed reference share a transaction.
-   * A rejected command leaves a mounted form's draft available for explicit retry.
-   */
   mutateWithPoster<T>(intent: (draft: StorageData) => T, posterId?: string) {
     return this.enqueueMutation(intent, {
       posterId,
@@ -232,8 +219,6 @@ export class StorageService {
       (error: unknown) => this.reportSaveFailure(error),
     );
     const result = await mutation;
-    // Publication and the collection queue settle at commit. Await cleanup outside that
-    // queue entry: commands already queued must be able to run before ownership is rechecked.
     if (removedPosters.length && this.persistentStorage) {
       try {
         await this.cleanupPosters(removedPosters);
@@ -244,7 +229,6 @@ export class StorageService {
     return result;
   }
 
-  /** Bind asynchronous file preparation to the context in which import was confirmed. */
   captureImportContext() {
     this.assertMutationReady();
     return this.importContext;
@@ -262,7 +246,7 @@ export class StorageService {
     }
     const normalized = normalizeStorageData(data);
     const availableIds = new Set(images.map((image) => image.id));
-    const omittedPosterIds = removeUnavailablePosterReferences(normalized.data.items, availableIds);
+    const omittedPosterIds = deleteUnavailablePosterIds(normalized.data.items, availableIds);
     const result = await this.enqueueMutation(() => undefined, {
       replacement: normalized.data,
       images: images.map((image) => ({ ...image })),
@@ -280,8 +264,6 @@ export class StorageService {
     const cleanup = this.writeQueue.then(async () => {
       if (this.conflict()) throw new CollectionConflictError();
       this.assertWritable();
-      // The local queue holds ownership stable until cleanup settles. Avoid an empty
-      // write (and revision bump) when later commands have reclaimed every candidate.
       const owned = new Set(
         Object.values(this.settledData?.items ?? {}).map((item) => item.posterId),
       );
@@ -320,7 +302,6 @@ export class StorageService {
     return this.refreshing.asReadonly();
   }
 
-  /** Refresh committed state in place: mounted forms keep ownership of their drafts. */
   refresh(): Promise<void> {
     if (this.refreshing())
       return Promise.reject(new Error('The collection is already refreshing.'));
@@ -419,8 +400,6 @@ export class StorageService {
   }
 
   private reportSaveFailure(error: unknown, message = 'Failed to save watch-list data:') {
-    // A rejected command needs refresh/retry feedback. Best-effort cleanup uses the
-    // same revision protection, but must not present its committed command as unsaved.
     if (error instanceof CollectionConflictError && this.settledData) this.conflict.set(true);
     this.saveError.set(
       this.compatibilityError() ? null : error instanceof Error ? error.message : String(error),
@@ -496,8 +475,6 @@ export class StorageService {
       this.publishLoadedData(defaults);
     } catch (error) {
       if (this.compatibilityError()) return;
-      // Another initializer may have won the first revision or normalization write.
-      // Read its committed state rather than publishing defaults or a stale snapshot.
       if (error instanceof CollectionConflictError) return this.loadData(allowSessionFallback);
       if (!allowSessionFallback) throw error;
       if (this.databaseError()) throw error;
@@ -636,8 +613,6 @@ export class StorageService {
       );
       return false;
     } catch (error) {
-      // Only a poster-store acquisition/cleanup failure permits metadata-only recovery.
-      // Metadata failures, conflicts, and image-containing imports must still reject.
       if (images.length || !(error instanceof PosterStorageError)) throw error;
       await this.writeData(data);
       return true;
@@ -690,8 +665,6 @@ export class StorageService {
       try {
         transaction = database.transaction(stores, 'readwrite');
       } catch (error) {
-        // No transaction or write has started. A metadata-only import can retry
-        // without posters, with the normal revision and compatibility checks.
         throw stores.includes(IMAGE_STORE_NAME) ? new PosterStorageError(error) : error;
       }
       const nextRevision = crypto.randomUUID();
@@ -706,8 +679,6 @@ export class StorageService {
       };
       transaction.onerror = () => reject(failure ?? transaction.error ?? new Error(message));
       transaction.onabort = () => reject(failure ?? transaction.error ?? new Error(message));
-      // Reading and writing in one transaction prevents another tab from upgrading
-      // the document between the compatibility check and any collection/poster changes.
       const request = transaction.objectStore(STORE_NAME).get(DATA_KEY) as IDBRequest<unknown>;
       const revision = transaction.objectStore(STORE_NAME).get(REVISION_KEY) as IDBRequest<unknown>;
       revision.onsuccess = () => {

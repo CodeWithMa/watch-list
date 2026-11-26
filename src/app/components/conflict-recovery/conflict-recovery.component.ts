@@ -1,7 +1,6 @@
 import { Component, inject, input, output, signal } from '@angular/core';
 import { StorageService } from '../../services/storage.service';
 
-/** Refresh shared collection state without navigating away from recoverable drafts. */
 @Component({
   selector: 'app-conflict-recovery',
   template: `

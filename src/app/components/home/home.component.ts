@@ -55,7 +55,6 @@ import { DiscussionLinkComponent } from '../discussion-link/discussion-link.comp
           </h2>
           @if (nextSeries()) {
             <div class="w-full">
-              <!-- Narrow card (280px) keeps natural 2/3 poster (~420px tall) fully visible, no cropping -->
               <app-item-card [item]="nextSeries()!" />
               <div class="flex flex-wrap justify-center gap-2 mt-3">
                 <button
@@ -337,7 +336,6 @@ export class HomeComponent {
   constructor() {
     effect((onCleanup) => {
       if (!this.deferringItem()) return;
-      // Keep the preview accurate if the duration chooser is left open.
       const timer = setInterval(() => this.previewNow.set(Date.now()), 1000);
       onCleanup(() => clearInterval(timer));
     });
