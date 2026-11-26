@@ -21,7 +21,7 @@ import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recover
   template: `
     <div>
       <app-conflict-recovery [disabled]="mutation.busy()" (recovered)="mutation.error.set(null)" />
-      @if (item()) {
+      @if (itemSnapshot()) {
         <div class="border border-light-border dark:border-dark-border rounded-lg p-6">
           <div class="flex justify-between items-center mb-6">
             <h2 class="mt-0">Edit Item</h2>
@@ -91,7 +91,7 @@ export class ItemDetailComponent {
   readonly groups = this.groupService.groups;
   readonly mutation = new MutationFeedback(itemMutationFailure);
 
-  readonly item = toSignal(
+  readonly itemSnapshot = toSignal(
     this.route.paramMap.pipe(
       map((params) => {
         const id = params.get('id');
@@ -101,16 +101,16 @@ export class ItemDetailComponent {
     { initialValue: null },
   );
   readonly itemExists = computed(() =>
-    this.watchListService.items().some((item) => item.id === this.item()?.id),
+    this.watchListService.items().some((item) => item.id === this.itemSnapshot()?.id),
   );
   readonly formValue = computed(() => {
-    const currentItem = this.item();
+    const currentItem = this.itemSnapshot();
     return currentItem ? createItemFormValue(currentItem) : createDefaultItemFormValue();
   });
   confirmDelete = signal(false);
 
   async saveChanges(formValue: ItemFormValue): Promise<void> {
-    const currentItem = this.item();
+    const currentItem = this.itemSnapshot();
     if (!currentItem) return;
 
     const result = await this.mutation.run(
@@ -132,7 +132,7 @@ export class ItemDetailComponent {
   }
 
   async deleteItem(): Promise<void> {
-    const currentItem = this.item();
+    const currentItem = this.itemSnapshot();
     if (currentItem) {
       const result = await this.mutation.run(
         () => this.watchListService.deleteItem(currentItem.id),

@@ -1,4 +1,4 @@
-import { Component, input, computed, effect, inject, signal } from '@angular/core';
+import { Component, input, computed, inject, linkedSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ReadonlyItem as Item } from '../../models/item.model';
@@ -83,10 +83,10 @@ export class ItemCardComponent {
   readonly posterUrl = injectPosterUrl(() => this.item().posterId);
   placeholderUrl = computed(() => getPlaceholderUrl());
   statusColorClass = computed(() => statusLineColor(this.item().status));
-  revealed = signal(false);
+  revealed = linkedSignal({ source: () => this.item().id, computation: () => false });
   shouldBlur = computed(() => {
-    const mode = this.providerSettings.settings().adultDisplayMode;
-    return this.item().isAdult && mode !== 'show' && !!this.posterUrl() && !this.revealed();
+    const concealsAdultPosters = this.providerSettings.settings().adultDisplayMode !== 'show';
+    return this.item().isAdult && concealsAdultPosters && !!this.posterUrl() && !this.revealed();
   });
 
   progressPercent = computed(() => {
@@ -96,11 +96,4 @@ export class ItemCardComponent {
   lastWatchedDate = computed(() => {
     return getMostRecentWatchDate(this.item());
   });
-
-  constructor() {
-    effect(() => {
-      void this.item().id;
-      this.revealed.set(false);
-    });
-  }
 }

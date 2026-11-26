@@ -139,7 +139,7 @@ describe('Item form navigation with pending saves', () => {
     expect(next).toBe(screen);
     expect(harness.routeNativeElement).toBe(root);
     expect(router.url).toBe('/items/other/edit');
-    expect(next.item()?.id).toBe('other');
+    expect(next.itemSnapshot()?.id).toBe('other');
     expect(root.querySelector<HTMLInputElement>('#title')?.value).toBe('Other item');
   });
 });
