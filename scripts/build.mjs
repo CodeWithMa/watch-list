@@ -31,7 +31,6 @@ const version = getVersion();
 const hash = getHash();
 const buildDate = getBuildDate();
 
-// All args after script name are forwarded to ng build (e.g. --configuration=..., --base-href ...)
 const extraArgs = process.argv.slice(2);
 
 const defines = [

@@ -91,7 +91,6 @@ export class ItemDetailComponent {
   readonly groups = this.groupService.groups;
   readonly mutation = new MutationFeedback(itemMutationFailure);
 
-  // Capture a baseline per routed item; live collection updates must not reset an open draft.
   readonly item = toSignal(
     this.route.paramMap.pipe(
       map((params) => {

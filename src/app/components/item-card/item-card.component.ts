@@ -86,8 +86,6 @@ export class ItemCardComponent {
   revealed = signal(false);
   shouldBlur = computed(() => {
     const mode = this.providerSettings.settings().adultDisplayMode;
-    // 'blur' blurs everywhere; 'hide' still blurs where card remains visible (next*), since next* is not filtered
-    // 'show' never blurs
     return this.item().isAdult && mode !== 'show' && !!this.posterUrl() && !this.revealed();
   });
 
@@ -101,7 +99,6 @@ export class ItemCardComponent {
 
   constructor() {
     effect(() => {
-      // Reset click-to-reveal when item identity changes
       void this.item().id;
       this.revealed.set(false);
     });

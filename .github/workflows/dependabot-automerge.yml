@@ -23,7 +23,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Auto-merge waits for the required status checks enforced by the dev branch rules.
       - name: Enable automerge for patch and minor updates
         if: >-
           steps.metadata.outputs.package-ecosystem == 'bun' &&

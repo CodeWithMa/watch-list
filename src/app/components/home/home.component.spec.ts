@@ -270,14 +270,12 @@ describe('HomeComponent', () => {
   });
 
   it('shows empty states for nextSeries/nextMovie', async () => {
-    // No series in list
     setup({ watchItems: [], inProgressSeries: [], nextSeries: null, nextMovie: null });
     let fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('No series in your watch list');
 
-    // Has series but none in progress
     const seriesNotStarted = createItem({
       id: 's1',
       title: 'S',
@@ -296,7 +294,6 @@ describe('HomeComponent', () => {
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('No series currently being watched');
 
-    // Has in-progress but not watchable (all future)
     const inProg = createItem({
       id: 's2',
       title: 'S2',
@@ -310,7 +307,6 @@ describe('HomeComponent', () => {
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('No aired series episodes available');
 
-    // Movies
     setup({ watchItems: [], inProgressSeries: [], nextSeries: null, nextMovie: null });
     fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();

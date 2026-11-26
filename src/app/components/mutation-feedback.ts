@@ -1,7 +1,6 @@
 import { signal } from '@angular/core';
 import type { MutationResult } from '../services/storage.service';
 
-/** One settled command at a time; callers own wording and post-success interaction. */
 export class MutationFeedback {
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
@@ -9,7 +8,6 @@ export class MutationFeedback {
 
   constructor(private readonly describeFailure: (error: unknown, action: string) => string) {}
 
-  /** Unlocks before returning success; rejected and duplicate attempts return undefined. */
   async run<T>(operation: () => Promise<MutationResult<T>>, action: string) {
     if (this.busy()) return;
     this.busy.set(true);

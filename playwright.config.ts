@@ -1,8 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Set E2E_BASE_URL to test an already running deployment (CI points it at the
-// nginx container, the only place the real security headers exist). Without it
-// the production build is created and served locally.
 const externalBaseUrl = process.env['E2E_BASE_URL'];
 const localPort = 4300;
 // Playwright's downloaded Chromium cannot start on every OS (NixOS, for one).

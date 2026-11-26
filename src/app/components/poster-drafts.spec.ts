@@ -53,7 +53,6 @@ describe('Provisional poster lifecycle', () => {
       const downloaded = new Response();
       vi.spyOn(downloaded, 'blob').mockResolvedValue(new Blob(['download'], { type: 'image/png' }));
       finish(downloaded);
-      // Native decoding is the final asynchronous preparation boundary before publishing a draft.
       await vi.waitFor(() =>
         expect(createImageBitmap).toHaveBeenCalledTimes(action === 'supersede' ? 2 : 1),
       );

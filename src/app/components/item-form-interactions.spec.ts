@@ -52,7 +52,6 @@ describe('Settled item form interactions', () => {
           fixture.detectChanges();
           expect(root.querySelector('img[src="blob:owned-poster"]')).not.toBeNull();
         });
-        // A draft is previewable, but must not be persisted separately from its item.
         expect(await TestBed.inject(ImageStorageService).exportImages()).toEqual([]);
         const held = holdStorageWrite(0);
         root.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));

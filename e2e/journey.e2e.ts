@@ -1,9 +1,5 @@
 import { expect, test } from '@playwright/test';
 
-// The one browser test. Component and service behaviour is covered by the
-// Vitest specs; this proves what they cannot: the production bundle boots under
-// its Content-Security-Policy, real clicks reach the controls, and the
-// collection persists in the browser's own IndexedDB.
 test('add a series, watch an episode, and delete the series', async ({ page }) => {
   const title = 'Browser Journey Series';
   const problems: string[] = [];
@@ -48,7 +44,6 @@ test('add a series, watch an episode, and delete the series', async ({ page }) =
   await expect(page).toHaveURL(/\/items$/);
   await expect(page.getByText('No items found')).toBeVisible();
   await nav.getByRole('link', { name: 'History' }).click();
-  // History outlives its item by design.
   await expect(page.getByText(`${title} (deleted)`)).toBeVisible();
 
   expect(problems).toEqual([]);

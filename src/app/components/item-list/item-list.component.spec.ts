@@ -229,7 +229,6 @@ describe('ItemListComponent', () => {
     setup({ watchItems: items, sortField: 'lastWatched', sortDirection: 'asc' });
     const fixture = TestBed.createComponent(ItemListComponent);
     fixture.detectChanges();
-    // a: 2026-01-01, c: 2026-02-01, b: 2026-03-01
     expect(fixture.componentInstance.filteredItems().map((i) => i.id)).toEqual(['a', 'c', 'b']);
   });
 
@@ -314,7 +313,6 @@ describe('ItemListComponent', () => {
     fixture.detectChanges();
 
     const selects = fixture.nativeElement.querySelectorAll('select');
-    // group + sortField = 2 selects, sort direction is now a toggle button
     expect(selects.length).toBe(2);
 
     const sortBySelect = fixture.nativeElement.querySelector('select[aria-label="Sort by"]');
@@ -341,7 +339,6 @@ describe('ItemListComponent', () => {
     window.localStorage.clear();
     window.localStorage.setItem('itemSortField', 'invalid');
     window.localStorage.setItem('itemSortDirection', 'invalid');
-    // Bypass setup helper to test invalid persistence directly
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
