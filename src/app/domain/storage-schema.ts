@@ -5,6 +5,7 @@ import { Group } from '../models/group.model';
 import { Item } from '../models/item.model';
 
 const PositiveIntegerSchema = z.number().int().positive();
+const ItemTypeSchema = z.enum(['series', 'movie', 'ova', 'ona']);
 const NonblankStringSchema = z.string().refine((value) => value.trim().length > 0);
 const DateSchema = z.union([z.iso.date(), z.iso.datetime({ offset: true, local: true })]);
 
@@ -44,7 +45,7 @@ const WatchHistoryEntrySchema = z.object({
 
 const ItemSchema = z.object({
   id: NonblankStringSchema,
-  type: z.enum(['series', 'movie', 'ova', 'ona']),
+  type: ItemTypeSchema,
   title: NonblankStringSchema,
   groupId: z.string(),
   status: z.enum(['not-started', 'in-progress', 'paused', 'completed', 'dropped']),
@@ -71,7 +72,7 @@ const GroupSchema = z.object({
 const DeletedItemHistorySchema = z.object({
   itemId: NonblankStringSchema,
   itemTitle: NonblankStringSchema,
-  itemType: z.enum(['series', 'movie', 'ova', 'ona']),
+  itemType: ItemTypeSchema,
   watchHistory: z.array(WatchHistoryEntrySchema),
   deletedAt: DateSchema,
 });
@@ -155,7 +156,7 @@ function quarantineInvalidRecords(data: StorageEnvelope): NormalizationResult {
 
   const groups = new Map<string, Group>();
   let droppedGroups = 0;
-  for (const [id, group] of Object.entries(data.groups ?? {})) {
+  for (const [id, group] of Object.entries(data.groups)) {
     const parsed = GroupSchema.safeParse(group);
     if (parsed.success && parsed.data.id === id) {
       groups.set(id, parsed.data);
@@ -166,7 +167,7 @@ function quarantineInvalidRecords(data: StorageEnvelope): NormalizationResult {
 
   const items = new Map<string, Item>();
   let droppedItems = 0;
-  for (const [id, item] of Object.entries(data.items ?? {})) {
+  for (const [id, item] of Object.entries(data.items)) {
     const parsed = ItemSchema.safeParse(item);
     if (parsed.success && parsed.data.id === id) {
       items.set(id, parsed.data);
@@ -221,18 +222,12 @@ function quarantineInvalidRecords(data: StorageEnvelope): NormalizationResult {
   };
 }
 
-function migrateStorageData(data: StorageEnvelope): StorageEnvelope {
-  if (data.schemaVersion >= CURRENT_SCHEMA_VERSION) {
-    return structuredClone(data);
-  }
-
+function migrateStorageData(data: StorageEnvelope) {
   const migrated = structuredClone(data);
+  const itemRecords = () => Object.values(migrated.items).filter(isRecord);
 
   if (migrated.schemaVersion < 3) {
-    for (const item of Object.values(migrated.items)) {
-      if (!isRecord(item)) {
-        continue;
-      }
+    for (const item of itemRecords()) {
       if (item['type'] === 'series' && isRecord(item['progress'])) {
         const progress = item['progress'];
         if (progress['totalEpisodes'] !== undefined) {
@@ -257,10 +252,7 @@ function migrateStorageData(data: StorageEnvelope): StorageEnvelope {
   }
 
   if (migrated.schemaVersion < 5) {
-    for (const item of Object.values(migrated.items)) {
-      if (!isRecord(item)) {
-        continue;
-      }
+    for (const item of itemRecords()) {
       if (!('posterPath' in item)) {
         Object.assign(item, { posterPath: undefined });
       }
@@ -269,10 +261,7 @@ function migrateStorageData(data: StorageEnvelope): StorageEnvelope {
   }
 
   if (migrated.schemaVersion < 6) {
-    for (const item of Object.values(migrated.items)) {
-      if (!isRecord(item)) {
-        continue;
-      }
+    for (const item of itemRecords()) {
       delete item['posterPath'];
     }
     migrated.schemaVersion = 6;
@@ -287,10 +276,7 @@ function migrateStorageData(data: StorageEnvelope): StorageEnvelope {
   }
 
   if (migrated.schemaVersion < 9) {
-    for (const item of Object.values(migrated.items)) {
-      if (!isRecord(item)) {
-        continue;
-      }
+    for (const item of itemRecords()) {
       if (typeof item['isAdult'] !== 'boolean') {
         item['isAdult'] = false;
       }

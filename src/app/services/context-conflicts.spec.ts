@@ -125,7 +125,7 @@ describe('Collection context conflicts', () => {
         discussionSettings: { enabled: true, urlTemplate: 'https://example.com/{title}' },
       },
     };
-    const file = { text: async () => JSON.stringify(payload) } as File;
+    const file = new File([JSON.stringify(payload)], 'import.json');
     const imports = injector.get(ImportExportService);
     await expect(imports.importData(file)).rejects.toThrow(/changed in another/);
     images.invalidateAll();

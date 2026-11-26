@@ -16,7 +16,7 @@ export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   ona: 'ONA',
 };
 
-export function isEpisodicType(type: ItemType): boolean {
+export function isEpisodicType(type: ItemType) {
   return type !== 'movie';
 }
 

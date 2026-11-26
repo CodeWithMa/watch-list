@@ -14,10 +14,7 @@ import { Component, computed, input } from '@angular/core';
 export class TimeAgoComponent {
   date = input.required<string>();
 
-  dateString = computed(() => {
-    const d = new Date(this.date());
-    return d.toLocaleString();
-  });
+  dateString = computed(() => new Date(this.date()).toLocaleString());
 
   timeAgo = computed(() => {
     const date = new Date(this.date());
@@ -31,20 +28,16 @@ export class TimeAgoComponent {
     const diffMonths = Math.floor(diffDays / 30);
     const diffYears = Math.floor(diffDays / 365);
 
-    if (diffSeconds < 60) {
-      return 'just now';
-    } else if (diffMinutes < 60) {
-      return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    } else if (diffDays < 7) {
-      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    } else if (diffWeeks < 4) {
-      return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`;
-    } else if (diffMonths < 12) {
-      return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`;
-    } else {
-      return `${diffYears} year${diffYears > 1 ? 's' : ''} ago`;
-    }
+    if (diffSeconds < 60) return 'just now';
+    if (diffMinutes < 60) return ago(diffMinutes, 'minute');
+    if (diffHours < 24) return ago(diffHours, 'hour');
+    if (diffDays < 7) return ago(diffDays, 'day');
+    if (diffWeeks < 4) return ago(diffWeeks, 'week');
+    if (diffMonths < 12) return ago(diffMonths, 'month');
+    return ago(diffYears, 'year');
   });
+}
+
+function ago(count: number, unit: string) {
+  return `${count} ${unit}${count > 1 ? 's' : ''} ago`;
 }

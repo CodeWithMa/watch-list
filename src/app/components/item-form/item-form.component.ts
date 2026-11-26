@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   ElementRef,
-  ViewChild,
   afterNextRender,
   computed,
   effect,
@@ -14,7 +13,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Group } from '../../models/group.model';
-import { ItemStatus, SeasonInfo } from '../../models/item.model';
+import { SeasonInfo } from '../../models/item.model';
 import { Suggestion } from '../../models/suggestion.model';
 import {
   createDefaultItemFormValue,
@@ -27,12 +26,12 @@ import {
   ITEM_STATUS_LABELS,
   ITEM_TYPES,
   ITEM_TYPE_LABELS,
+  isEpisodicType,
 } from '../../domain/item.constants';
 import { SeasonEditorComponent } from '../season-editor/season-editor.component';
 import { PosterPickerComponent } from '../poster-picker/poster-picker.component';
 import { statusButtonClass } from '../../utils/status.utils';
 import { toPositiveNumber } from '../../utils/form.utils';
-import { isEpisodicType } from '../../domain/item.constants';
 
 export interface ItemFormAutofillPatch {
   id: number;
@@ -291,7 +290,7 @@ export interface ItemFormAutofillPatch {
   `,
 })
 export class ItemFormComponent {
-  @ViewChild('posterPicker') private posterPicker?: PosterPickerComponent;
+  private readonly posterPicker = viewChild<PosterPickerComponent>('posterPicker');
   private readonly titleInput = viewChild.required<ElementRef<HTMLInputElement>>('titleInput');
 
   readonly groups = input.required<readonly Readonly<Group>[]>();
@@ -318,7 +317,7 @@ export class ItemFormComponent {
   readonly suggestionSelected = output<Suggestion>();
 
   readonly itemTypes = ITEM_TYPES;
-  readonly itemStatuses: readonly ItemStatus[] = ITEM_STATUSES;
+  readonly itemStatuses = ITEM_STATUSES;
   readonly itemTypeLabels = ITEM_TYPE_LABELS;
   readonly itemStatusLabels = ITEM_STATUS_LABELS;
 
@@ -386,22 +385,18 @@ export class ItemFormComponent {
   }
 
   setType(type: ItemFormValue['type']): void {
-    this.formValue.update((value) => {
-      const next = normalizeFormValueForType({
-        ...value,
-        type,
-      });
-      return next;
-    });
+    this.updateFormValue({ type });
   }
 
   submit(): void {
-    const value = this.formValue();
     if (this.isSubmitDisabled()) {
       return;
     }
 
-    const submittedValue = prepareSubmittedItemFormValue(value, this.showStartImmediately());
+    const submittedValue = prepareSubmittedItemFormValue(
+      this.formValue(),
+      this.showStartImmediately(),
+    );
 
     this.submitted.emit({
       ...submittedValue,
@@ -410,12 +405,12 @@ export class ItemFormComponent {
   }
 
   clearDrafts(): void {
-    this.posterPicker?.clearDrafts();
+    this.posterPicker()?.clearDrafts();
   }
 
   handleCancel(): void {
     if (this.busy()) return;
-    this.posterPicker?.clearDrafts();
+    this.posterPicker()?.clearDrafts();
     if (this.resetOnCancel()) {
       this.formValue.set(normalizeFormValueForType(this.initialValue()));
     }
@@ -436,7 +431,7 @@ export class ItemFormComponent {
         isAdult: suggestion.isAdult,
       }),
     );
-    this.posterPicker?.storeFromUrl(suggestion.posterUrl);
+    this.posterPicker()?.storeFromUrl(suggestion.posterUrl);
     this.suggestionSelected.emit(suggestion);
   }
 
@@ -473,12 +468,6 @@ export class ItemFormComponent {
   }
 
   private updateFormValue(patch: Partial<ItemFormValue>): void {
-    this.formValue.update((value) => {
-      const next = normalizeFormValueForType({
-        ...value,
-        ...patch,
-      });
-      return next;
-    });
+    this.formValue.update((value) => normalizeFormValueForType({ ...value, ...patch }));
   }
 }

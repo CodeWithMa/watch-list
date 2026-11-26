@@ -20,6 +20,16 @@ const CLEAN_IMPORT: ImportReport = {
   repairedGroupReferences: 0,
 };
 
+function jsonFile(name = 'export.json', content = '{"a":1}') {
+  return new File([content], name, { type: 'application/json' });
+}
+
+function selectFiles(component: SettingsComponent, files: File[] | null, value = '') {
+  const target = { files, value };
+  component.onFileSelected({ target } as unknown as Event);
+  return target;
+}
+
 describe('SettingsComponent', () => {
   let origHash: string;
   let origVersion: string;
@@ -358,13 +368,11 @@ describe('SettingsComponent', () => {
     expect(fixture.componentInstance.errorMessage()).toBe('Failed to export data');
   });
 
-  it('does nothing when no file is selected', async () => {
+  it('does nothing when no file is selected', () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
     const fixture = TestBed.createComponent(SettingsComponent);
-    const target = { files: null as FileList | null, value: '' };
-
-    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    selectFiles(fixture.componentInstance, null);
 
     expect(exportService.importData).not.toHaveBeenCalled();
   });
@@ -437,14 +445,7 @@ describe('SettingsComponent', () => {
       }),
     );
     const fixture = TestBed.createComponent(SettingsComponent);
-    const target = {
-      files: [
-        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
-      ] as unknown as FileList,
-      value: '',
-    };
-
-    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    selectFiles(fixture.componentInstance, [jsonFile()]);
     const first = fixture.componentInstance.confirmImport();
     expect(fixture.componentInstance.importInProgress()).toBe(true);
     fixture.detectChanges();
@@ -475,12 +476,7 @@ describe('SettingsComponent', () => {
       )
       .mockResolvedValue(CLEAN_IMPORT);
     const fixture = TestBed.createComponent(SettingsComponent);
-    const pick = (name: string) => ({
-      files: [new File(['{}'], name, { type: 'application/json' })] as unknown as FileList,
-      value: '',
-    });
-
-    await fixture.componentInstance.onFileSelected({ target: pick('a.json') } as unknown as Event);
+    selectFiles(fixture.componentInstance, [jsonFile('a.json', '{}')]);
     const first = fixture.componentInstance.confirmImport();
     expect(fixture.componentInstance.importInProgress()).toBe(true);
     fixture.detectChanges();
@@ -490,7 +486,7 @@ describe('SettingsComponent', () => {
     expect(byText('Import Data')?.disabled).toBe(true);
     expect(byText('Cancel')?.disabled).toBe(true);
 
-    await fixture.componentInstance.onFileSelected({ target: pick('b.json') } as unknown as Event);
+    selectFiles(fixture.componentInstance, [jsonFile('b.json', '{}')]);
     await fixture.componentInstance.confirmImport();
     expect(exportService.importData).toHaveBeenCalledOnce();
 
@@ -510,14 +506,7 @@ describe('SettingsComponent', () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
     const fixture = TestBed.createComponent(SettingsComponent);
-    const target = {
-      files: [
-        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
-      ] as unknown as FileList,
-      value: 'previous-file.json',
-    };
-
-    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    const target = selectFiles(fixture.componentInstance, [jsonFile()], 'previous-file.json');
 
     expect(exportService.importData).not.toHaveBeenCalled();
     expect(fixture.componentInstance.pendingImportFile()?.name).toBe('export.json');
@@ -534,14 +523,7 @@ describe('SettingsComponent', () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
     const fixture = TestBed.createComponent(SettingsComponent);
-    const target = {
-      files: [
-        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
-      ] as unknown as FileList,
-      value: 'previous-file.json',
-    };
-
-    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    const target = selectFiles(fixture.componentInstance, [jsonFile()], 'previous-file.json');
     fixture.componentInstance.cancelImport();
     await fixture.componentInstance.confirmImport();
 
@@ -554,14 +536,7 @@ describe('SettingsComponent', () => {
     configure({ token: '', key: '', credential: null });
     const exportService = TestBed.inject(ImportExportService);
     const fixture = TestBed.createComponent(SettingsComponent);
-    const target = {
-      files: [
-        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
-      ] as unknown as FileList,
-      value: '',
-    };
-
-    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    selectFiles(fixture.componentInstance, [jsonFile()]);
     await fixture.componentInstance.confirmImport();
 
     expect(exportService.importData).toHaveBeenCalledOnce();
@@ -578,14 +553,7 @@ describe('SettingsComponent', () => {
       repairedGroupReferences: 0,
     });
     const fixture = TestBed.createComponent(SettingsComponent);
-    const target = {
-      files: [
-        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
-      ] as unknown as FileList,
-      value: '',
-    };
-
-    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    selectFiles(fixture.componentInstance, [jsonFile()]);
     await fixture.componentInstance.confirmImport();
 
     expect(fixture.componentInstance.successMessage()).toBe(
@@ -621,9 +589,7 @@ describe('SettingsComponent', () => {
       };
       const file = new File([], 'recovery.json');
       Object.defineProperty(file, 'text', { value: async () => JSON.stringify(payload) });
-      const target = { files: [file], value: '' };
-
-      await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+      selectFiles(fixture.componentInstance, [file]);
       await fixture.componentInstance.confirmImport();
       fixture.detectChanges();
 
@@ -642,14 +608,7 @@ describe('SettingsComponent', () => {
     const exportService = TestBed.inject(ImportExportService);
     vi.spyOn(exportService, 'importData').mockRejectedValue(new Error('Invalid JSON file'));
     const fixture = TestBed.createComponent(SettingsComponent);
-    const target = {
-      files: [
-        new File(['not json'], 'export.json', { type: 'application/json' }),
-      ] as unknown as FileList,
-      value: '',
-    };
-
-    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    selectFiles(fixture.componentInstance, [jsonFile('export.json', 'not json')]);
     await fixture.componentInstance.confirmImport();
 
     expect(fixture.componentInstance.errorMessage()).toBe('Import failed: Invalid JSON file');
@@ -833,13 +792,7 @@ describe('SettingsComponent', () => {
     providerMock.getAdultDisplayMode.mockReturnValue('hide' as const);
     providerMock.getTitlePreference.mockReturnValue(['native', 'english', 'romaji'] as const);
 
-    const target = {
-      files: [
-        new File(['{"a":1}'], 'export.json', { type: 'application/json' }),
-      ] as unknown as FileList,
-      value: '',
-    };
-    await fixture.componentInstance.onFileSelected({ target } as unknown as Event);
+    selectFiles(fixture.componentInstance, [jsonFile()]);
     await fixture.componentInstance.confirmImport();
     expect(exportService.importData).toHaveBeenCalledOnce();
     expect(fixture.componentInstance.includeAdult()).toBe(true);

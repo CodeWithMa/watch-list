@@ -6,6 +6,12 @@ import { getMostRecentWatchDate } from '../utils/progress.utils';
 import { getCurrentEpisodeAirDate, startOfLocalDay } from '../domain/episode-release';
 import { activeDeferralUntil } from '../domain/availability-deferral';
 
+function byLeastRecentlyWatched(a: Item, b: Item) {
+  return (
+    new Date(getMostRecentWatchDate(a)).getTime() - new Date(getMostRecentWatchDate(b)).getTime()
+  );
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -57,11 +63,7 @@ export class RoundRobinService {
       return null;
     }
 
-    const sorted = [...series].sort((a, b) => {
-      const aDate = getMostRecentWatchDate(a);
-      const bDate = getMostRecentWatchDate(b);
-      return new Date(aDate).getTime() - new Date(bDate).getTime();
-    });
+    const sorted = [...series].sort(byLeastRecentlyWatched);
 
     const today = new Date(this.now());
     const watchable = sorted.filter(
@@ -104,30 +106,11 @@ export class RoundRobinService {
       return null;
     }
 
-    return [...movies].sort((a, b) => {
-      const aDate = getMostRecentWatchDate(a);
-      const bDate = getMostRecentWatchDate(b);
-      return new Date(aDate).getTime() - new Date(bDate).getTime();
-    })[0];
+    return [...movies].sort(byLeastRecentlyWatched)[0];
   });
 
-  private canSuggestSeries(seriesId: string, series: readonly Item[]): boolean {
-    if (series.length <= 1) {
-      return true;
-    }
-
-    const targetSeries = series.find((s) => s.id === seriesId);
-    if (!targetSeries) {
-      return false;
-    }
-
-    const otherSeries = series.filter((s) => s.id !== seriesId);
-
-    const allOthersWatched = otherSeries.every((s) => {
-      return s.watchHistory && s.watchHistory.length > 0;
-    });
-
-    return allOthersWatched;
+  private canSuggestSeries(seriesId: string, series: readonly Item[]) {
+    return series.every((s) => s.id === seriesId || s.watchHistory.length > 0);
   }
 
   hasAiredCurrentEpisode(series: Item, today = new Date()): boolean {

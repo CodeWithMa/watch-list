@@ -140,8 +140,7 @@ export class StatsHeatmapComponent {
       const firstDayOfWeek = weeks[i][0];
       if (!firstDayOfWeek) continue;
 
-      const parts = firstDayOfWeek.date.split('-');
-      const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      const date = parseDateKey(firstDayOfWeek.date);
       const month = date.getMonth();
 
       if (month !== lastMonth) {
@@ -170,13 +169,16 @@ export class StatsHeatmapComponent {
   }
 
   formatTooltipDate(dateStr: string): string {
-    const parts = dateStr.split('-');
-    const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    return date.toLocaleDateString('en-US', {
+    return parseDateKey(dateStr).toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
   }
+}
+
+function parseDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }

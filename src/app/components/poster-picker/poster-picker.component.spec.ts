@@ -12,7 +12,7 @@ function createSuggestion(
   overrides: Partial<Suggestion> & Pick<Suggestion, 'id' | 'title' | 'type'>,
 ): Suggestion {
   return {
-    source: 'tmdb' as SuggestionSource,
+    source: 'tmdb',
     isAdult: false,
     ...overrides,
   };
@@ -555,8 +555,8 @@ describe('PosterPickerComponent', () => {
     const imageStorage = TestBed.inject(ImageStorageService);
     fixture.detectChanges();
 
-    fixture.componentInstance.storeFromUrl(null as unknown as string);
-    fixture.componentInstance.storeFromUrl(undefined as unknown as string);
+    fixture.componentInstance.storeFromUrl(null);
+    fixture.componentInstance.storeFromUrl(undefined);
     fixture.componentInstance.storeFromUrl('');
     expect(imageStorage.storeUrl).not.toHaveBeenCalled();
   });
@@ -592,12 +592,10 @@ describe('PosterPickerComponent', () => {
   it('clears poster and deletes draft', async () => {
     const fixture = TestBed.createComponent(PosterPickerComponent);
     const imageStorage = TestBed.inject(ImageStorageService);
-    fixture.componentRef.setInput('posterId', 'image-1');
     fixture.detectChanges();
-
-    (fixture.componentInstance as unknown as { draftPosterIds: Set<string> }).draftPosterIds.add(
-      'image-1',
-    );
+    fixture.componentInstance.storeFromUrl('https://example.com/draft.jpg');
+    await vi.waitFor(() => expect(fixture.componentInstance.posterLoading()).toBe(false));
+    fixture.componentRef.setInput('posterId', 'image-1');
 
     const emitted: (string | undefined)[] = [];
     fixture.componentInstance.posterIdChange.subscribe((v) => emitted.push(v));
@@ -691,12 +689,11 @@ describe('PosterPickerComponent', () => {
   it('deletes previous draft when new poster stored', async () => {
     const fixture = TestBed.createComponent(PosterPickerComponent);
     const imageStorage = TestBed.inject(ImageStorageService);
-    fixture.componentRef.setInput('posterId', 'old-id');
     fixture.detectChanges();
-
-    (fixture.componentInstance as unknown as { draftPosterIds: Set<string> }).draftPosterIds.add(
-      'old-id',
-    );
+    vi.mocked(imageStorage.storeUrl).mockResolvedValueOnce('old-id');
+    fixture.componentInstance.storeFromUrl('https://example.com/old.jpg');
+    await vi.waitFor(() => expect(fixture.componentInstance.posterLoading()).toBe(false));
+    fixture.componentRef.setInput('posterId', 'old-id');
 
     fixture.componentInstance.storeFromUrl('https://example.com/new.jpg');
     await Promise.resolve();

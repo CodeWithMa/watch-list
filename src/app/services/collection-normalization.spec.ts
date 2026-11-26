@@ -58,9 +58,7 @@ function legacyRecoveryFixture() {
 }
 
 function jsonFile(payload: unknown) {
-  const file = new File([], 'collection.json');
-  Object.defineProperty(file, 'text', { value: async () => JSON.stringify(payload) });
-  return file;
+  return new File([JSON.stringify(payload)], 'collection.json');
 }
 
 describe('normalized collections at domain consumer boundaries', () => {

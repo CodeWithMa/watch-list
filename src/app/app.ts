@@ -23,7 +23,6 @@ export class App {
   private readonly importExportService = inject(ImportExportService);
   private readonly document = inject(DOCUMENT);
   private readonly updates = inject(SwUpdate, { optional: true });
-  protected readonly title = signal('watch-list');
   protected readonly saveError = this.storageService.getSaveErrorSignal();
   protected readonly inMemorySession = this.storageService.getInMemorySessionSignal();
   protected readonly settingsUnavailable = inject(BrowserSettingsStorage).unavailable;

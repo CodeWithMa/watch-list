@@ -56,103 +56,24 @@ describe('ImageStorageService', () => {
     globalThis.createImageBitmap = vi.fn(() =>
       Promise.resolve({ close: vi.fn() } as unknown as ImageBitmap),
     );
-    URL.createObjectURL = vi.fn(() => 'blob:mock-url') as unknown as typeof URL.createObjectURL;
-    URL.revokeObjectURL = vi.fn() as unknown as typeof URL.revokeObjectURL;
+    URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => 'blob:mock-url');
+    URL.revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>();
 
-    // Mock FileReader to avoid jsdom/fake-indexeddb Blob realm issues
-    const MockFileReader = class {
-      result: string | ArrayBuffer | null = null;
-      onload: ((e: ProgressEvent) => void) | null = null;
-      onloadend: ((e: ProgressEvent) => void) | null = null;
-      onerror: ((e: ProgressEvent) => void) | null = null;
-      error: Error | null = null;
-      readAsDataURL(blob: Blob) {
-        const tryRead = async () => {
-          try {
-            let buffer: ArrayBuffer;
-            const anyBlob = blob as unknown as {
-              arrayBuffer?: () => Promise<ArrayBuffer>;
-              text?: () => Promise<string>;
-            };
-            if (anyBlob.arrayBuffer) {
-              buffer = await anyBlob.arrayBuffer();
-            } else if (anyBlob.text) {
-              const text = await anyBlob.text();
-              buffer = new TextEncoder().encode(text).buffer as ArrayBuffer;
-            } else {
-              buffer = await new Response(blob as unknown as Blob).arrayBuffer();
-            }
-            const bytes = new Uint8Array(buffer);
-            let binary = '';
-            bytes.forEach((b) => (binary += String.fromCharCode(b)));
-            const base64 = btoa(binary);
-            this.result = `data:${blob.type};base64,${base64}`;
-            const evt = new ProgressEvent('load');
-            this.onload?.(evt);
-            this.onloadend?.(evt);
-          } catch {
-            this.result = `data:${blob.type};base64,${btoa('hello')}`;
-            const evt = new ProgressEvent('load');
-            this.onload?.(evt);
-            this.onloadend?.(evt);
-          }
-        };
-        void tryRead();
+    // fake-indexeddb clones jsdom Blobs into empty objects, which jsdom's FileReader rejects.
+    class ClonedBlobFileReader {
+      result: string | null = null;
+      error = null;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      readAsDataURL() {
+        queueMicrotask(() => {
+          this.result = `data:image/png;base64,${btoa('hello')}`;
+          this.onload?.();
+        });
       }
-      readAsText(blob: Blob) {
-        const tryRead = async () => {
-          try {
-            let text: string;
-            const anyBlob = blob as unknown as {
-              text?: () => Promise<string>;
-              arrayBuffer?: () => Promise<ArrayBuffer>;
-            };
-            if (anyBlob.text) {
-              text = await anyBlob.text();
-            } else if (anyBlob.arrayBuffer) {
-              const buffer = await anyBlob.arrayBuffer();
-              text = new TextDecoder().decode(buffer);
-            } else {
-              text = await new Response(blob as unknown as Blob).text();
-            }
-            this.result = text;
-            const evt = new ProgressEvent('load');
-            this.onload?.(evt);
-            this.onloadend?.(evt);
-          } catch {
-            this.result = '';
-            const evt = new ProgressEvent('load');
-            this.onload?.(evt);
-            this.onloadend?.(evt);
-          }
-        };
-        void tryRead();
-      }
-      readAsArrayBuffer(blob: Blob) {
-        const tryRead = async () => {
-          try {
-            const anyBlob = blob as unknown as { arrayBuffer?: () => Promise<ArrayBuffer> };
-            const buffer = anyBlob.arrayBuffer
-              ? await anyBlob.arrayBuffer()
-              : await new Response(blob as unknown as Blob).arrayBuffer();
-            this.result = buffer;
-            const evt = new ProgressEvent('load');
-            this.onload?.(evt);
-            this.onloadend?.(evt);
-          } catch {
-            this.result = new ArrayBuffer(0);
-            const evt = new ProgressEvent('load');
-            this.onload?.(evt);
-            this.onloadend?.(evt);
-          }
-        };
-        void tryRead();
-      }
-    };
-    (globalThis as unknown as { FileReader: unknown }).FileReader =
-      MockFileReader as unknown as typeof FileReader;
+    }
+    globalThis.FileReader = ClonedBlobFileReader as unknown as typeof FileReader;
 
-    if (!globalThis.crypto) (globalThis as unknown as { crypto: Crypto }).crypto = {} as Crypto;
     const fetchResponseBlob = new Blob(['img'], { type: 'image/png' });
     vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
       Promise.resolve({
@@ -636,9 +557,9 @@ describe('ImageStorageService', () => {
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
     const urlPromise = service.getUrl(id);
-    URL.revokeObjectURL = vi.fn(() => {
+    URL.revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>(() => {
       throw new Error('revoke fail');
-    }) as unknown as typeof URL.revokeObjectURL;
+    });
     service.discardDraft(id);
     await expect(urlPromise).resolves.toBe('blob:mock-url');
     expect(() => service.discardDraft(id)).not.toThrow();
@@ -646,7 +567,7 @@ describe('ImageStorageService', () => {
 
   it('handles imageVersion subscription', async () => {
     const uniqueUrl = 'blob:unique-image-version-test';
-    URL.createObjectURL = vi.fn(() => uniqueUrl) as unknown as typeof URL.createObjectURL;
+    URL.createObjectURL = vi.fn<typeof URL.createObjectURL>(() => uniqueUrl);
     const service = TestBed.inject(ImageStorageService);
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);

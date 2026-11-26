@@ -9,8 +9,6 @@ import { Directive } from '@angular/core';
 })
 export class FilePickerFocusDirective {
   focusWindowWhenPickerCloses(): void {
-    if (typeof window !== 'undefined' && typeof window.focus === 'function') {
-      window.focus();
-    }
+    window.focus();
   }
 }

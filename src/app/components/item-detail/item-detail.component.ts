@@ -133,12 +133,11 @@ export class ItemDetailComponent {
 
   async deleteItem(): Promise<void> {
     const currentItem = this.itemSnapshot();
-    if (currentItem) {
-      const result = await this.mutation.run(
-        () => this.watchListService.deleteItem(currentItem.id),
-        'Unable to delete this item.',
-      );
-      if (result) this.router.navigate(['/items']);
-    }
+    if (!currentItem) return;
+    const result = await this.mutation.run(
+      () => this.watchListService.deleteItem(currentItem.id),
+      'Unable to delete this item.',
+    );
+    if (result) this.router.navigate(['/items']);
   }
 }

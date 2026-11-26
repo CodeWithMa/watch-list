@@ -13,7 +13,7 @@ export function isValidSnoozeCount(count: number) {
   return Number.isSafeInteger(count) && count >= 0;
 }
 
-export function getEpisodeAirDate(season: SeasonInfo, episode: number): Date | null {
+export function getEpisodeAirDate(season: SeasonInfo, episode: number) {
   const baseline = season.firstEpisodeAirDate;
   const count = season.snoozeCount ?? 0;
   if (!baseline || !/^\d{4}-\d{2}-\d{2}$/.test(baseline) || !isValidSnoozeCount(count)) {

@@ -1,6 +1,6 @@
 import { Injectable, computed, inject } from '@angular/core';
 import { catchError, Observable, of } from 'rxjs';
-import { SeriesDetails, Suggestion, SuggestionSource } from '../models/suggestion.model';
+import { SeriesDetails, Suggestion } from '../models/suggestion.model';
 import { AnilistSuggestionService } from './anilist-suggestion.service';
 import { JikanSuggestionService } from './jikan-suggestion.service';
 import { ProviderSettingsService } from './provider-settings.service';
@@ -44,12 +44,12 @@ export class SuggestionSearchService {
       return of(null);
     }
 
-    if (!this.providers.isEnabled(ref.source as SuggestionSource)) {
+    if (!this.providers.isEnabled(ref.source)) {
       return of(null);
     }
 
     let details$: Observable<SeriesDetails | null>;
-    switch (ref.source as SuggestionSource) {
+    switch (ref.source) {
       case 'jikan':
         details$ = this.jikan.getAnimeDetails(ref.id);
         break;

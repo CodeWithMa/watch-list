@@ -58,7 +58,7 @@ export class ProviderSettingsService {
 
   getEnabledSources(): SuggestionSource[] {
     const s = this.enabled();
-    return (PROVIDER_SOURCES as readonly SuggestionSource[]).filter((src) => s[src]);
+    return PROVIDER_SOURCES.filter((src) => s[src]);
   }
 
   setEnabled(source: SuggestionSource, enabled: boolean): void {
@@ -129,27 +129,18 @@ export class ProviderSettingsService {
   }
 
   private load(): ProviderSettings {
+    const defaults = {
+      ...DEFAULT_PROVIDER_SETTINGS,
+      titlePreference: [...DEFAULT_TITLE_PREFERENCE],
+    };
     try {
       const raw = this.settingsStorage.read(PROVIDER_SETTINGS_KEY);
-      if (!raw) {
-        return {
-          ...DEFAULT_PROVIDER_SETTINGS,
-          titlePreference: [...DEFAULT_TITLE_PREFERENCE],
-        };
-      }
-      const parsed = JSON.parse(raw) as unknown;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        return {
-          ...DEFAULT_PROVIDER_SETTINGS,
-          titlePreference: [...DEFAULT_TITLE_PREFERENCE],
-        };
-      }
+      if (!raw) return defaults;
+      const parsed: unknown = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return defaults;
       return this.normalizeRawSettings(parsed as Record<string, unknown>);
     } catch {
-      return {
-        ...DEFAULT_PROVIDER_SETTINGS,
-        titlePreference: [...DEFAULT_TITLE_PREFERENCE],
-      };
+      return defaults;
     }
   }
 
@@ -180,7 +171,7 @@ export class ProviderSettingsService {
       seen.add(lang);
       normalized.push(lang);
     }
-    return normalized.length === 3 ? normalized : [...DEFAULT_TITLE_PREFERENCE];
+    return normalized;
   }
 
   private save(settings: ProviderSettings): void {

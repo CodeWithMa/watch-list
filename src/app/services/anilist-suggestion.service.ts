@@ -59,10 +59,17 @@ const ANILIST_FORMAT_MAP: Record<string, ItemType> = {
   ONA: 'ona',
 };
 
-const ANILIST_SEARCH_QUERY_SFW = `
+const ANILIST_URL = 'https://graphql.anilist.co';
+
+const ANILIST_HEADERS = {
+  'Content-Type': 'application/json',
+  Accept: 'application/json',
+};
+
+const searchQuery = (adultFilter: string) => `
 query ($search: String) {
   Page(page: 1, perPage: ${SUGGESTION_PER_SOURCE_LIMIT}) {
-    media(search: $search, type: ANIME, isAdult: false, sort: POPULARITY_DESC) {
+    media(search: $search, type: ANIME, ${adultFilter}sort: POPULARITY_DESC) {
       id
       title { romaji english native }
       isAdult
@@ -76,22 +83,8 @@ query ($search: String) {
 }
 `;
 
-const ANILIST_SEARCH_QUERY_ALL = `
-query ($search: String) {
-  Page(page: 1, perPage: ${SUGGESTION_PER_SOURCE_LIMIT}) {
-    media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
-      id
-      title { romaji english native }
-      isAdult
-      format
-      episodes
-      startDate { year month day }
-      coverImage { extraLarge large }
-      description
-    }
-  }
-}
-`;
+const ANILIST_SEARCH_QUERY_SFW = searchQuery('isAdult: false, ');
+const ANILIST_SEARCH_QUERY_ALL = searchQuery('');
 
 const ANILIST_DETAILS_QUERY = `
 query ($id: Int) {
@@ -123,17 +116,9 @@ export class AnilistSuggestionService {
 
     return this.http
       .post<AnilistSearchResponse>(
-        'https://graphql.anilist.co',
-        {
-          query: gqlQuery,
-          variables: { search: trimmedQuery },
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-        },
+        ANILIST_URL,
+        { query: gqlQuery, variables: { search: trimmedQuery } },
+        { headers: ANILIST_HEADERS },
       )
       .pipe(map((response) => this.mapResults(response.data?.Page?.media ?? [])));
   }
@@ -145,17 +130,9 @@ export class AnilistSuggestionService {
 
     return this.http
       .post<AnilistDetailsResponse>(
-        'https://graphql.anilist.co',
-        {
-          query: ANILIST_DETAILS_QUERY,
-          variables: { id: anilistId },
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-        },
+        ANILIST_URL,
+        { query: ANILIST_DETAILS_QUERY, variables: { id: anilistId } },
+        { headers: ANILIST_HEADERS },
       )
       .pipe(map((response) => this.mapDetails(response.data?.Media)));
   }
@@ -163,7 +140,7 @@ export class AnilistSuggestionService {
   private mapResults(results: unknown[]): Suggestion[] {
     return results
       .map((result) => this.mapResult(result))
-      .filter((s): s is Suggestion => s !== null)
+      .filter((s) => s !== null)
       .slice(0, SUGGESTION_PER_SOURCE_LIMIT);
   }
 
@@ -240,16 +217,10 @@ export class AnilistSuggestionService {
       return null;
     }
     const candidate = title as AnilistTitle;
-    const pref = this.providerSettings.getTitlePreference();
-    for (const lang of pref) {
-      if (lang === 'romaji' && typeof candidate.romaji === 'string' && candidate.romaji.trim()) {
-        return candidate.romaji.trim();
-      }
-      if (lang === 'english' && typeof candidate.english === 'string' && candidate.english.trim()) {
-        return candidate.english.trim();
-      }
-      if (lang === 'native' && typeof candidate.native === 'string' && candidate.native.trim()) {
-        return candidate.native.trim();
+    for (const lang of this.providerSettings.getTitlePreference()) {
+      const value = candidate[lang];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
       }
     }
     return null;

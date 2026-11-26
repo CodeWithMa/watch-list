@@ -17,7 +17,7 @@ export function daysBetween(
   m2: number,
   d2: number,
 ): number {
-  const toOrdinal = (y: number, m: number, d: number): number => {
+  const toOrdinal = (y: number, m: number, d: number) => {
     const a = Math.floor((14 - m) / 12);
     const y2 = y + 4800 - a;
     const m2 = m + 12 * a - 3;

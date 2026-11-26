@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SeasonInfo } from '../../models/item.model';
@@ -10,7 +9,7 @@ import {
 
 @Component({
   selector: 'app-season-editor',
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   template: `
     <div class="border-t border-light-border dark:border-dark-border pt-6 mt-6">
       <div class="mb-6">
@@ -79,50 +78,37 @@ export class SeasonEditorComponent {
   readonly seasonsChange = output<SeasonInfo[]>();
 
   addSeason(): void {
-    const nextSeasonNumber = this.getNextSeasonNumber(this.seasons());
-    const newSeasons = [
+    this.seasonsChange.emit([
       ...this.seasons(),
-      { seasonNumber: nextSeasonNumber, totalEpisodes: undefined as number | undefined },
-    ];
-    this.seasonsChange.emit(newSeasons);
+      { seasonNumber: this.getNextSeasonNumber(this.seasons()), totalEpisodes: undefined },
+    ]);
   }
 
   updateSeasonNumber(index: number, seasonNumber: string | number | null | undefined): void {
     const parsed = toPositiveNumber(seasonNumber, 1);
-    const newSeasons = [...this.seasons()];
-    if (newSeasons[index]) {
-      const hasDuplicate = newSeasons.some((s, i) => i !== index && s.seasonNumber === parsed);
-      if (!hasDuplicate) {
-        newSeasons[index] = { ...newSeasons[index], seasonNumber: parsed };
-        this.seasonsChange.emit(newSeasons);
-      }
-    }
+    const hasDuplicate = this.seasons().some((s, i) => i !== index && s.seasonNumber === parsed);
+    if (hasDuplicate) return;
+    this.patchSeason(index, { seasonNumber: parsed });
   }
 
   updateSeasonEpisodes(index: number, totalEpisodes: string | number | null | undefined): void {
-    const parsed = toOptionalPositiveNumber(totalEpisodes);
-    const newSeasons = [...this.seasons()];
-    if (newSeasons[index]) {
-      newSeasons[index] = { ...newSeasons[index], totalEpisodes: parsed };
-      this.seasonsChange.emit(newSeasons);
-    }
+    this.patchSeason(index, { totalEpisodes: toOptionalPositiveNumber(totalEpisodes) });
   }
 
   updateSeasonFirstAirDate(index: number, firstEpisodeAirDate: string | null | undefined): void {
-    const normalized = toOptionalDateString(firstEpisodeAirDate);
-    const newSeasons = [...this.seasons()];
-    if (newSeasons[index]) {
-      newSeasons[index] = {
-        ...newSeasons[index],
-        firstEpisodeAirDate: normalized,
-      };
-      this.seasonsChange.emit(newSeasons);
-    }
+    this.patchSeason(index, { firstEpisodeAirDate: toOptionalDateString(firstEpisodeAirDate) });
   }
 
   removeSeason(index: number): void {
     const newSeasons = this.seasons().filter((_, i) => i !== index);
     this.seasonsChange.emit(newSeasons);
+  }
+
+  private patchSeason(index: number, patch: Partial<SeasonInfo>): void {
+    const seasons = [...this.seasons()];
+    if (!seasons[index]) return;
+    seasons[index] = { ...seasons[index], ...patch };
+    this.seasonsChange.emit(seasons);
   }
 
   private getNextSeasonNumber(seasons: { seasonNumber: number }[]): number {

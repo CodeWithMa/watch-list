@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { WatchListService } from './watch-list.service';
 import { StorageService } from './storage.service';
-import { Item, SeriesProgress } from '../models/item.model';
+import { Item } from '../models/item.model';
 import { CURRENT_SCHEMA_VERSION, DeletedItemHistory } from '../models/storage.model';
 import { IDBFactory } from 'fake-indexeddb';
 import { vi } from 'vitest';
@@ -333,8 +333,7 @@ describe('WatchListService', () => {
       await service.markWatched('s1');
 
       const updated = storageService.getData().items['s1'];
-      expect(updated.progress!.season).toBe(1);
-      expect(updated.progress!.episode).toBe(2);
+      expect(updated.progress).toMatchObject({ season: 1, episode: 2 });
       expect(updated.watchHistory[0]).toMatchObject({ season: 1, episode: 1 });
     });
 
@@ -350,7 +349,7 @@ describe('WatchListService', () => {
           season: 1,
           episode: 10,
           seasons: [{ seasonNumber: 1, totalEpisodes: 10 }],
-        } as SeriesProgress,
+        },
         watchHistory: [],
         createdAt: '2026-04-01T10:00:00.000Z',
       };
@@ -367,7 +366,7 @@ describe('WatchListService', () => {
 
       const updatedItem = storageService.getData().items['series-1'];
       expect(updatedItem.status).toBe('completed');
-      expect(updatedItem.progress!.episode).toBe(10);
+      expect(updatedItem.progress?.episode).toBe(10);
     });
 
     it('moves to next season episode 1 when watching last episode of current season', async () => {
@@ -385,7 +384,7 @@ describe('WatchListService', () => {
             { seasonNumber: 1, totalEpisodes: 10 },
             { seasonNumber: 2, totalEpisodes: 8 },
           ],
-        } as SeriesProgress,
+        },
         watchHistory: [],
         createdAt: '2026-04-01T10:00:00.000Z',
       };
@@ -402,8 +401,7 @@ describe('WatchListService', () => {
 
       const updatedItem = storageService.getData().items['series-2'];
       expect(updatedItem.status).toBe('in-progress');
-      expect(updatedItem.progress!.season).toBe(2);
-      expect(updatedItem.progress!.episode).toBe(1);
+      expect(updatedItem.progress).toMatchObject({ season: 2, episode: 1 });
     });
 
     it('handles non-contiguous season numbers when advancing to next season', async () => {
@@ -421,7 +419,7 @@ describe('WatchListService', () => {
             { seasonNumber: 1, totalEpisodes: 5 },
             { seasonNumber: 3, totalEpisodes: 8 },
           ],
-        } as SeriesProgress,
+        },
         watchHistory: [],
         createdAt: '2026-04-01T10:00:00.000Z',
       };
@@ -438,8 +436,7 @@ describe('WatchListService', () => {
 
       const updatedItem = storageService.getData().items['series-3'];
       expect(updatedItem.status).toBe('in-progress');
-      expect(updatedItem.progress!.season).toBe(3);
-      expect(updatedItem.progress!.episode).toBe(1);
+      expect(updatedItem.progress).toMatchObject({ season: 3, episode: 1 });
     });
   });
 

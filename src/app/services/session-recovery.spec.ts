@@ -73,13 +73,9 @@ describe('session metadata recovery', () => {
 
       const beforeRejectedImport = storage.getData();
       vi.stubGlobal('createImageBitmap', async () => ({ close: () => undefined }));
-      const withImages = new File([], 'images.json');
-      Object.defineProperty(withImages, 'text', {
-        value: async () =>
-          JSON.stringify({
-            data: { ...beforeRejectedImport, items: {} },
-            images: [{ id: 'new-poster', type: 'image/png', data: btoa('poster') }],
-          }),
+      const withImages = jsonFile('images.json', {
+        data: { ...beforeRejectedImport, items: {} },
+        images: [{ id: 'new-poster', type: 'image/png', data: btoa('poster') }],
       });
       await expect(exports.importData(withImages)).rejects.toThrow(/Cannot import posters/);
       expect(storage.getData()).toEqual(beforeRejectedImport);
@@ -87,8 +83,7 @@ describe('session metadata recovery', () => {
       await storage.mutate((draft) => {
         draft.groups['ungrouped'].name = 'Temporary';
       });
-      const file = new File([], 'session-recovery.json');
-      Object.defineProperty(file, 'text', { value: async () => text });
+      const file = new File([text], 'session-recovery.json');
       const imported = await exports.importData(file);
       expect(imported).toMatchObject({ durability: 'session-only', posters: report });
       expect(storage.getData().groups['ungrouped'].name).toBe('Session edits');
@@ -156,14 +151,10 @@ describe('session metadata recovery', () => {
       watchHistory: [],
       posterId: 'missing-poster',
     };
-    const file = new File([], 'older-export.json');
-    Object.defineProperty(file, 'text', {
-      value: async () =>
-        JSON.stringify({
-          data,
-          images: [],
-          posters: { included: 99, omittedIds: [], unavailable: false },
-        }),
+    const file = jsonFile('older-export.json', {
+      data,
+      images: [],
+      posters: { included: 99, omittedIds: [], unavailable: false },
     });
 
     const report = await TestBed.inject(ImportExportService).importData(file);
@@ -184,14 +175,10 @@ describe('session metadata recovery', () => {
     vi.spyOn(IDBObjectStore.prototype, 'clear').mockImplementation(() => {
       throw new Error('Poster store is unwritable');
     });
-    const file = new File([], 'metadata-recovery.json');
-    Object.defineProperty(file, 'text', {
-      value: async () =>
-        JSON.stringify({
-          data,
-          images: [],
-          posters: { included: 0, omittedIds: ['lost'], unavailable: true },
-        }),
+    const file = jsonFile('metadata-recovery.json', {
+      data,
+      images: [],
+      posters: { included: 0, omittedIds: ['lost'], unavailable: true },
     });
 
     await expect(TestBed.inject(ImportExportService).importData(file)).resolves.toMatchObject({
@@ -229,10 +216,7 @@ describe('session metadata recovery', () => {
         ) {
           return this.add({ id: 'old-poster' }) as unknown as IDBRequest<undefined>;
         });
-      const file = new File([], 'metadata-only.json');
-      Object.defineProperty(file, 'text', {
-        value: async () => JSON.stringify({ data, images: [] }),
-      });
+      const file = jsonFile('metadata-only.json', { data, images: [] });
       const transfers = TestBed.inject(ImportExportService);
 
       const imported = await transfers.importData(file);
@@ -292,17 +276,11 @@ describe('session metadata recovery', () => {
       const before = storage.getData();
       const data = storage.getData();
       data.groups['ungrouped'].name = 'Recovered metadata';
-      const file = new File([], 'metadata-only.json');
       vi.stubGlobal('createImageBitmap', async () => ({ close: () => undefined }));
       vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      Object.defineProperty(file, 'text', {
-        value: async () =>
-          JSON.stringify({
-            data,
-            images: containsImages
-              ? [{ id: 'poster', type: 'image/png', data: btoa('image') }]
-              : [],
-          }),
+      const file = jsonFile('metadata-only.json', {
+        data,
+        images: containsImages ? [{ id: 'poster', type: 'image/png', data: btoa('image') }] : [],
       });
 
       const importing = TestBed.inject(ImportExportService).importData(file);
@@ -323,3 +301,7 @@ describe('session metadata recovery', () => {
     },
   );
 });
+
+function jsonFile(name: string, payload: unknown) {
+  return new File([JSON.stringify(payload)], name);
+}

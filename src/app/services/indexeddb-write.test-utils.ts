@@ -58,8 +58,10 @@ export function holdStorageWrite(index: number, onRequestSuccess?: (index: numbe
 
 export function holdPosterCleanup() {
   let released = false;
-  let signalStarted = () => undefined as void;
-  const started = new Promise<void>((resolve) => (signalStarted = resolve));
+  let signalStarted: () => void = () => undefined;
+  const started = new Promise<void>((resolve) => {
+    signalStarted = resolve;
+  });
   const remove = IDBObjectStore.prototype.delete;
   vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(function (
     this: IDBObjectStore,

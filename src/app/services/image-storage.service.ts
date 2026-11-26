@@ -16,13 +16,11 @@ export interface ExportedImage {
   data: string;
 }
 
-type PosterUrlCache = Map<string, Promise<string | null>>;
-
 @Injectable({ providedIn: 'root' })
 export class ImageStorageService {
   private readonly storageService = inject(StorageService);
   private readonly databaseOwner = inject(WatchListDatabase);
-  private readonly posterUrls: PosterUrlCache = new Map();
+  private readonly posterUrls = new Map<string, Promise<string | null>>();
   readonly version = imageVersion.asReadonly();
   private readonly missingPosters = signal(new Set<string>());
   readonly unavailablePosters = computed(() => {
@@ -43,24 +41,20 @@ export class ImageStorageService {
     await this.ensureWritable();
     await this.validateImage(file);
     const id = `image-${crypto.randomUUID()}`;
-    const image = { id, blob: file };
-    this.storageService.stageImage(image);
+    this.storageService.stageImage({ id, blob: file });
     return id;
   }
 
   async storeUrl(url: string): Promise<string> {
     await this.ensureWritable();
-    let response: Response;
-    try {
-      response = await fetch(url);
-    } catch {
+    const response = await fetch(url).catch(() => {
       throw new Error('Could not download the poster. Check the URL and your connection.');
-    }
+    });
     if (!response.ok) throw new Error('Could not download the poster.');
     return this.storeFile(await response.blob());
   }
 
-  discardDraft(id: string): void {
+  discardDraft(id: string) {
     if (this.storageService.discardProvisionalImage(id)) {
       this.setPosterMissing(id, false);
       void this.revokeUrl(id);
@@ -105,7 +99,7 @@ export class ImageStorageService {
     );
   }
 
-  invalidateAll(): void {
+  invalidateAll() {
     imagesInvalidated.next();
   }
 
@@ -115,7 +109,7 @@ export class ImageStorageService {
     this.storageService.assertWritable();
   }
 
-  private refreshCache(id: string | void): void {
+  private refreshCache(id: string | void) {
     if (id) {
       this.setPosterMissing(id, false);
       void this.revokeUrl(id);
@@ -156,7 +150,7 @@ export class ImageStorageService {
     return { id: candidate.id, blob };
   }
 
-  private async validateImage(blob: Blob): Promise<void> {
+  private async validateImage(blob: Blob) {
     if (blob.size === 0 || blob.size > MAX_IMAGE_SIZE)
       throw new Error('Poster images must be 5 MB or smaller.');
     if (!blob.type.startsWith('image/'))
@@ -176,7 +170,7 @@ export class ImageStorageService {
     return this.request(transaction, transaction.objectStore(STORE_NAME).get(id));
   }
 
-  private async revokeUrl(id: string): Promise<void> {
+  private async revokeUrl(id: string) {
     const urlPromise = this.posterUrls.get(id);
     if (!urlPromise) return;
 

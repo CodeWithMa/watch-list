@@ -6,15 +6,13 @@ export function calculateProgress(item: Item): number | null {
     return item.status === 'completed' ? 100 : 0;
   }
 
-  if (isEpisodicType(item.type) && item.progress) {
+  const { progress } = item;
+  if (isEpisodicType(item.type) && progress) {
     if (item.status === 'completed') return 100;
-    const currentSeason = item.progress.seasons.find(
-      (s) => s.seasonNumber === item.progress!.season,
-    );
+    const currentSeason = progress.seasons.find((s) => s.seasonNumber === progress.season);
     const currentTotal = currentSeason?.totalEpisodes;
     if (currentTotal !== undefined && currentTotal > 0) {
-      const { episode } = item.progress;
-      return Math.max(0, Math.round(((episode - 1) / currentTotal) * 100));
+      return Math.max(0, Math.round(((progress.episode - 1) / currentTotal) * 100));
     }
   }
 
@@ -22,7 +20,7 @@ export function calculateProgress(item: Item): number | null {
 }
 
 export function getMostRecentWatchDate(item: Item): string {
-  if (item.watchHistory && item.watchHistory.length > 0) {
+  if (item.watchHistory.length > 0) {
     const sorted = [...item.watchHistory].sort((a, b) => {
       const aTime = new Date(a.date).getTime();
       const bTime = new Date(b.date).getTime();
