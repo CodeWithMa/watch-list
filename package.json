@@ -13,6 +13,7 @@
     "container:down": "podman-compose -f containers/compose.prod.yml down",
     "container:logs": "podman-compose -f containers/compose.prod.yml logs -f",
     "test": "ng test",
+    "e2e": "playwright test",
     "electron": "electron .",
     "electron:dev": "tsc -p electron/tsconfig.json && concurrently -k \"bun start:electron\" \"wait-on http://localhost:4200 && electron ./dist-electron/main.js\"",
     "electron:build": "bun run build:electron && tsc -p electron/tsconfig.json && electron-builder",
@@ -60,14 +61,14 @@
     "@commitlint/config-conventional": "^21.2.3",
     "@eslint/js": "^10.0.1",
     "@j178/prek": "^0.5.5",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^5.1.0",
+    "angular-eslint": "^22.6.0",
     "concurrently": "^10.0.7",
     "electron": "^44.7.0",
     "electron-builder": "^26.18.0",
-    "wait-on": "^9.5.1",
-    "@vitest/coverage-v8": "^5.1.0",
-    "angular-eslint": "^22.6.0",
     "eslint": "^10.15.0",
     "fake-indexeddb": "^6.2.4",
     "jsdom": "^30.1.2",
@@ -77,6 +78,7 @@
     "tailwindcss": "^4.3.5",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.2",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wait-on": "^9.5.1"
   }
 }

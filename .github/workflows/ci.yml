@@ -78,6 +78,13 @@ jobs:
         run: bun run container:preview
       - name: Smoke-test production preview
         run: bun containers/smoke-test.mjs
+      - run: bun install --frozen-lockfile
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium
+      - name: Browser journey against the production preview
+        run: bun run e2e
+        env:
+          E2E_BASE_URL: http://localhost:4200
       - name: Show container logs
         if: always()
         run: podman-compose -f containers/compose.prod.yml logs

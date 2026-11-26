@@ -54,6 +54,15 @@ hooks = [
     stages = ["pre-commit"],
   },
   {
+    id = "tsc-e2e",
+    name = "TypeScript (e2e)",
+    language = "system",
+    entry = "bunx tsc -p e2e/tsconfig.json",
+    files = "\\.ts$",
+    pass_filenames = false,
+    stages = ["pre-commit"],
+  },
+  {
     id = "knip",
     name = "Knip (dead code)",
     language = "system",
