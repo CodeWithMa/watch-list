@@ -305,7 +305,6 @@ describe('ImageStorageService', () => {
     const storage = TestBed.inject(StorageService);
     await storage.importDataWithImages(storage.getData(), [
       { id, blob: createImageBlob() },
-      // A damaged unrelated blob must never be read by a selected export.
       { id: 'unrelated', blob: null as unknown as Blob },
     ]);
 
@@ -537,7 +536,6 @@ describe('ImageStorageService', () => {
     const [v1, v2] = await Promise.all([p1, p2]);
     expect(v1).toBe('blob:mock-url');
     expect(v2).toBe('blob:mock-url');
-    // second call still cached returns same resolved value
     await expect(service.getUrl(id)).resolves.toBe('blob:mock-url');
   });
 
@@ -628,7 +626,6 @@ describe('ImageStorageService', () => {
     await service.getUrl(id);
     const before = imageVersion();
     service.invalidateAll();
-    // revoke is async (void), wait a tick
     await new Promise((r) => setTimeout(r, 0));
     expect(imageVersion()).toBeGreaterThan(before);
     expect(URL.revokeObjectURL).toHaveBeenCalled();
@@ -639,7 +636,6 @@ describe('ImageStorageService', () => {
     const blob = createImageBlob('abc', 'image/png');
     const id = await service.storeFile(blob);
     const urlPromise = service.getUrl(id);
-    // Make URL.createObjectURL throw? Actually revoke path catches errors
     URL.revokeObjectURL = vi.fn(() => {
       throw new Error('revoke fail');
     }) as unknown as typeof URL.revokeObjectURL;

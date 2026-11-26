@@ -1,7 +1,6 @@
 import { IDBObjectStore } from 'fake-indexeddb';
 import { vi } from 'vitest';
 
-/** Observe request success or abort selected collection writes before transaction completion. */
 export function controlStorageWrites(
   outcomes: boolean[] = [],
   onRequestSuccess?: (index: number, store: IDBObjectStore) => void,
@@ -25,7 +24,6 @@ export function controlStorageWrites(
   });
 }
 
-/** Keep a real transaction pending until release, without mocking application persistence. */
 export function holdStorageWrite(index: number, onRequestSuccess?: (index: number) => void) {
   let released = false;
   let transaction: IDBTransaction | undefined;
@@ -58,7 +56,6 @@ export function holdStorageWrite(index: number, onRequestSuccess?: (index: numbe
   };
 }
 
-/** Hold ownership cleanup after its delete request succeeds but before it commits. */
 export function holdPosterCleanup() {
   let released = false;
   let signalStarted = () => undefined as void;

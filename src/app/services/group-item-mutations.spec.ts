@@ -17,8 +17,6 @@ describe('Group and item mutation coexistence', () => {
         async (groupAction) => {
           const { storage, groups, items, target } = await setup();
 
-          // Start the real item command after the group put succeeds but before its
-          // transaction completes. No application methods or queue internals are mocked.
           let itemWrite: ReturnType<typeof runItemCommand> | undefined;
           const saveItem = () => runItemCommand(items, itemAction, target);
           const put = IDBObjectStore.prototype.put;

@@ -40,7 +40,7 @@ export class ItemSortService {
         return raw;
       }
     } catch {
-      // ignore read errors, fallback to default
+      // ignore read errors
     }
     return DEFAULT_SORT_FIELD;
   }

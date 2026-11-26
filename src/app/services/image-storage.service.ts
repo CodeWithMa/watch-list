@@ -39,7 +39,6 @@ export class ImageStorageService {
     imagesInvalidated.subscribe((id) => this.refreshCache(id));
   }
 
-  /** Prepare a UI draft; only a collection command can persist it with an item reference. */
   async storeFile(file: Blob): Promise<string> {
     await this.ensureWritable();
     await this.validateImage(file);
@@ -61,7 +60,6 @@ export class ImageStorageService {
     return this.storeFile(await response.blob());
   }
 
-  /** Releasing a UI draft never deletes persistent images or committed ownership. */
   discardDraft(id: string): void {
     if (this.storageService.discardProvisionalImage(id)) {
       this.setPosterMissing(id, false);

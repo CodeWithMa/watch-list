@@ -40,7 +40,6 @@ export class RoundRobinService {
       if (this.document.visibilityState === 'visible') refresh();
     };
     refresh();
-    // Re-arm the timer when a deferral is saved, cleared, or loaded.
     effect(refresh);
     window.addEventListener('focus', refresh);
     this.document.addEventListener('visibilitychange', onVisibilityChange);

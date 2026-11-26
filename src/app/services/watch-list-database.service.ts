@@ -1,7 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
 const DATABASE_NAME = 'watch-list';
-// Version 2 could be created by poster reads with only the images store.
 const DATABASE_VERSION = 3;
 const OPEN_TIMEOUT_MS = 5_000;
 export const STORAGE_STORE_NAME = 'storage';

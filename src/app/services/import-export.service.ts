@@ -50,8 +50,6 @@ export class ImportExportService {
   private discussionSettings = inject(DiscussionSettingsService);
 
   async exportData(): Promise<PosterCoverage> {
-    // Export the collection visible when the action starts, not later edits made
-    // while poster reads/encoding are pending. Only its referenced posters belong here.
     const data = this.storageService.getData();
     const posterIds = new Set(
       Object.values(data.items).flatMap((item) => (item.posterId ? [item.posterId] : [])),
@@ -75,8 +73,6 @@ export class ImportExportService {
         discussionSettings: this.discussionSettings.exportSettings(),
       },
     };
-    // TMDB credentials are never read or exported here. User-configured discussion
-    // URL templates are intentionally portable, alongside the provider preferences.
     this.downloadJson(payload, 'watch-list-export');
     return posters;
   }
@@ -110,12 +106,10 @@ export class ImportExportService {
   }
 
   async importData(file: File): Promise<ImportReport> {
-    // Confirmation belongs to the currently reviewed context, before async file preparation.
     const context = this.storageService.captureImportContext();
     try {
       const text = await file.text();
       const payload: unknown = JSON.parse(text);
-      // Unknown fields on a newer raw document may resemble today's export wrapper.
       assertSupportedStorageVersion(payload);
       const data = isPortableExport(payload) ? payload.data : payload;
       assertSupportedStorageVersion(data);
@@ -158,7 +152,6 @@ export class ImportExportService {
     if (!isPortableExport(payload) || !hasPreferences(payload)) {
       return;
     }
-    // Never import sensitive keys; ProviderSettingsService normalizes and ignores unknown fields.
     try {
       this.providerSettings.importSettings(payload.preferences.providerSettings);
     } catch {
@@ -189,14 +182,12 @@ function readPosterCoverage(payload: unknown): PosterCoverage | undefined {
 function assertLosslessJson(value: unknown, seen = new WeakSet<object>()): void {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
   if (typeof value === 'number' && Number.isFinite(value) && !Object.is(value, -0)) return;
-  // Repeated references also lose their identity in JSON, even without a cycle.
   if (typeof value !== 'object' || seen.has(value)) {
     throw new UnsupportedRecoveryFormatError();
   }
   seen.add(value);
   const keys = Object.keys(value);
   if (Array.isArray(value)) {
-    // JSON drops extra array properties and turns holes into null.
     if (keys.length !== value.length || keys.some((key, index) => key !== String(index))) {
       throw new UnsupportedRecoveryFormatError();
     }

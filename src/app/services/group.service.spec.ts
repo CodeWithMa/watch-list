@@ -233,7 +233,6 @@ describe('GroupService', () => {
                 return service.reorderGroups(['films', DEFAULT_GROUP_ID]);
             }
           })();
-          // These commands are invoked before the first transaction settles.
           const second =
             firstKind === 'create'
               ? service.createGroup('Second')

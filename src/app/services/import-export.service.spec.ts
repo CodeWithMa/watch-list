@@ -69,7 +69,6 @@ describe('import version compatibility', () => {
               }
             : {
                 data: newer,
-                // Newer image formats must not hide the version explanation behind an image error.
                 images: format === 'portable' ? [] : { futureFormat: true },
                 preferences: { providerSettings: { tmdb: true } },
               };
@@ -92,7 +91,6 @@ describe('import version compatibility', () => {
         request.onsuccess = () => resolve(request.result);
       });
       expect(images).toEqual([image]);
-      // Rejection must not lock an otherwise compatible collection.
       await expect(storage.replaceData(original)).resolves.toMatchObject({
         durability: 'persistent',
       });
@@ -241,7 +239,6 @@ describe('ImportExportService', () => {
 
     it('always includes non-sensitive preferences and never leaks tokens', async () => {
       storageService.getData.mockReturnValue({ items: [] });
-      // Simulate tokens in localStorage – service must not read them
       const store: Record<string, string> = {};
       const mockStorage = {
         getItem: (k: string) => store[k] ?? null,
@@ -604,7 +601,6 @@ describe('ImportExportService', () => {
           includeAdult: false,
         }),
       );
-      // importSettings should only receive providerSettings, never the injected token keys
       const calledWith = providerSettings.importSettings.mock.calls[0][0] as Record<
         string,
         unknown

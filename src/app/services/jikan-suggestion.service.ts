@@ -142,7 +142,6 @@ export class JikanSuggestionService {
 
     const firstEpisodeAirDate = this.extractDate(candidate.aired);
 
-    // Only return a season entry if we have at least episode count or air date
     if (totalEpisodes === undefined && !firstEpisodeAirDate) {
       return null;
     }
