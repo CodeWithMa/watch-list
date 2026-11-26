@@ -9,7 +9,7 @@ import {
 } from '../domain/storage-schema';
 import type { NormalizationReport, NormalizationResult } from '../domain/storage-schema';
 import type { StoredImage } from './image-storage.service';
-import { removeUnavailablePosterReferences } from '../domain/poster-references';
+import { deleteUnavailablePosterIds } from '../domain/poster-references';
 import { imagesInvalidated } from './image-invalidation';
 import {
   WatchListDatabase,
@@ -246,7 +246,7 @@ export class StorageService {
     }
     const normalized = normalizeStorageData(data);
     const availableIds = new Set(images.map((image) => image.id));
-    const omittedPosterIds = removeUnavailablePosterReferences(normalized.data.items, availableIds);
+    const omittedPosterIds = deleteUnavailablePosterIds(normalized.data.items, availableIds);
     const result = await this.enqueueMutation(() => undefined, {
       replacement: normalized.data,
       images: images.map((image) => ({ ...image })),

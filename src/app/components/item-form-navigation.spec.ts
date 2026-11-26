@@ -180,9 +180,7 @@ async function openForm(mode: 'add' | 'edit') {
 async function setup() {
   Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: new IDBFactory() });
   vi.stubGlobal('createImageBitmap', async () => ({
-    close() {
-      /* native image decoder boundary */
-    },
+    close: () => undefined,
   }));
   vi.stubGlobal(
     'URL',
@@ -191,7 +189,7 @@ async function setup() {
         return 'blob:uploaded-poster';
       }
       static override revokeObjectURL() {
-        /* native object URL boundary */
+        return undefined;
       }
     },
   );

@@ -3,12 +3,12 @@ import { Directive } from '@angular/core';
 @Directive({
   selector: 'input[type="file"][appFilePickerFocus]',
   host: {
-    '(change)': 'restoreFocus()',
-    '(cancel)': 'restoreFocus()',
+    '(change)': 'focusWindowWhenPickerCloses()',
+    '(cancel)': 'focusWindowWhenPickerCloses()',
   },
 })
 export class FilePickerFocusDirective {
-  restoreFocus(): void {
+  focusWindowWhenPickerCloses(): void {
     if (typeof window !== 'undefined' && typeof window.focus === 'function') {
       window.focus();
     }

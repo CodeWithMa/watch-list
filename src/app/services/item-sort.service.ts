@@ -34,27 +34,13 @@ export class ItemSortService {
   }
 
   private loadField(): SortField {
-    try {
-      const raw = this.settingsStorage.read(SORT_FIELD_KEY);
-      if (raw && isSortField(raw)) {
-        return raw;
-      }
-    } catch {
-      // ignore read errors
-    }
-    return DEFAULT_SORT_FIELD;
+    const raw = this.settingsStorage.read(SORT_FIELD_KEY);
+    return raw && isSortField(raw) ? raw : DEFAULT_SORT_FIELD;
   }
 
   private loadDirection(): SortDirection {
-    try {
-      const raw = this.settingsStorage.read(SORT_DIRECTION_KEY);
-      if (raw && isSortDirection(raw)) {
-        return raw;
-      }
-    } catch {
-      // ignore read errors
-    }
-    return DEFAULT_SORT_DIRECTION;
+    const raw = this.settingsStorage.read(SORT_DIRECTION_KEY);
+    return raw && isSortDirection(raw) ? raw : DEFAULT_SORT_DIRECTION;
   }
 
   private saveField(field: SortField): void {

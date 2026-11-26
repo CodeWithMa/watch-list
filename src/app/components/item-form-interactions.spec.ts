@@ -279,9 +279,7 @@ describe('Settled item form interactions', () => {
     'retains an uploaded draft poster after failed %s and retries with it',
     async (command) => {
       vi.stubGlobal('createImageBitmap', async () => ({
-        close() {
-          /* native image decoder boundary */
-        },
+        close: () => undefined,
       }));
       vi.stubGlobal(
         'URL',
@@ -290,7 +288,7 @@ describe('Settled item form interactions', () => {
             return 'blob:draft-poster';
           }
           static override revokeObjectURL() {
-            /* native object URL boundary */
+            return undefined;
           }
         },
       );

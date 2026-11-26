@@ -3,7 +3,7 @@ import { MutationResult, StorageService } from './storage.service';
 import { ExportedImage, ImageStorageService } from './image-storage.service';
 import { ProviderSettings, ProviderSettingsService } from './provider-settings.service';
 import { assertSupportedStorageVersion, NormalizationReport } from '../domain/storage-schema';
-import { removeUnavailablePosterReferences } from '../domain/poster-references';
+import { deleteUnavailablePosterIds } from '../domain/poster-references';
 import { DiscussionSettings, DiscussionSettingsService } from './discussion-settings.service';
 
 export interface ExportPreferences {
@@ -62,7 +62,7 @@ export class ImportExportService {
       unavailable = true;
     }
     const availableIds = new Set(images.map((image) => image.id));
-    const omittedIds = removeUnavailablePosterReferences(data.items, availableIds);
+    const omittedIds = deleteUnavailablePosterIds(data.items, availableIds);
     const posters = { included: images.length, omittedIds, unavailable };
     const payload: PortableExport = {
       data,
@@ -152,16 +152,8 @@ export class ImportExportService {
     if (!isPortableExport(payload) || !hasPreferences(payload)) {
       return;
     }
-    try {
-      this.providerSettings.importSettings(payload.preferences.providerSettings);
-    } catch {
-      // Invalid preferences must never break the data import.
-    }
-    try {
-      this.discussionSettings.importSettings(payload.preferences.discussionSettings);
-    } catch {
-      // Invalid preferences must never break the data import.
-    }
+    this.providerSettings.importSettings(payload.preferences.providerSettings);
+    this.discussionSettings.importSettings(payload.preferences.discussionSettings);
   }
 }
 
