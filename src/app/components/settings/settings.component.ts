@@ -19,6 +19,12 @@ import { CollectionConflictError, StorageService } from '../../services/storage.
 import { ConflictRecoveryComponent } from '../conflict-recovery/conflict-recovery.component';
 import { DiscussionSettingsComponent } from '../discussion-settings/discussion-settings.component';
 
+const TITLE_LANGUAGE_LABELS: Record<TitleLanguage, string> = {
+  romaji: 'Romaji',
+  english: 'English',
+  native: 'Native',
+};
+
 @Component({
   selector: 'app-settings',
   imports: [
@@ -369,13 +375,13 @@ import { DiscussionSettingsComponent } from '../discussion-settings/discussion-s
           <p class="mt-2 mb-0 text-sm text-light-font-secondary dark:text-dark-font-secondary">
             Replace all data with imported JSON file
           </p>
-          @if (pendingImportFile()) {
+          @if (pendingImportFile(); as pendingFile) {
             <div
               role="alert"
               class="mt-4 p-4 rounded border border-error-border-light dark:border-error-border-dark bg-light-bg-secondary dark:bg-dark-bg-secondary"
             >
               <p class="mt-0 mb-3 text-sm text-light-font dark:text-dark-font">
-                Import "{{ pendingImportFile()?.name }}"? This will replace all existing data.
+                Import "{{ pendingFile.name }}"? This will replace all existing data.
               </p>
               <div class="flex flex-wrap gap-3">
                 <button
@@ -537,9 +543,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   toggleProvider(source: SuggestionSource, event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.providerSettingsService.setEnabled(source, checked);
-    this.tmdbEnabled.set(this.providerSettingsService.isEnabled('tmdb'));
-    this.jikanEnabled.set(this.providerSettingsService.isEnabled('jikan'));
-    this.anilistEnabled.set(this.providerSettingsService.isEnabled('anilist'));
+    this.syncEnabledProviders();
   }
 
   toggleAdult(event: Event): void {
@@ -553,17 +557,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.adultDisplayMode.set(this.providerSettingsService.getAdultDisplayMode());
   }
 
-  titleLanguageLabel(lang: TitleLanguage): string {
-    switch (lang) {
-      case 'romaji':
-        return 'Romaji';
-      case 'english':
-        return 'English';
-      case 'native':
-        return 'Native';
-      default:
-        return lang;
-    }
+  titleLanguageLabel(lang: TitleLanguage) {
+    return TITLE_LANGUAGE_LABELS[lang];
   }
 
   moveTitleUp(index: number): void {
@@ -583,9 +578,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   private swapTitleOrder(i: number, j: number): void {
     const next: TitlePreference = [...this.titleOrder()];
-    const tmp = next[i];
-    next[i] = next[j];
-    next[j] = tmp;
+    [next[i], next[j]] = [next[j], next[i]];
     this.providerSettingsService.setTitlePreference(next);
     this.titleOrder.set(this.providerSettingsService.getTitlePreference());
   }
@@ -642,7 +635,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  async onFileSelected(event: Event): Promise<void> {
+  onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
 
@@ -678,9 +671,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
       setTimeout(() => this.successMessage.set(null), 3000);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to import data';
-      const importError = `Import failed: ${message}`;
       retainFile = error instanceof CollectionConflictError;
-      this.setError(importError, retainFile || error instanceof UnsupportedSchemaVersionError);
+      this.setError(
+        `Import failed: ${message}`,
+        retainFile || error instanceof UnsupportedSchemaVersionError,
+      );
     } finally {
       if (!retainFile) this.clearPendingImportIfStill(file);
       this.importInProgress.set(false);
@@ -700,10 +695,14 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  private syncProviderSignals(): void {
+  private syncEnabledProviders(): void {
     this.tmdbEnabled.set(this.providerSettingsService.isEnabled('tmdb'));
     this.jikanEnabled.set(this.providerSettingsService.isEnabled('jikan'));
     this.anilistEnabled.set(this.providerSettingsService.isEnabled('anilist'));
+  }
+
+  private syncProviderSignals(): void {
+    this.syncEnabledProviders();
     this.includeAdult.set(this.providerSettingsService.isAdultIncluded());
     this.adultDisplayMode.set(this.providerSettingsService.getAdultDisplayMode());
     this.titleOrder.set(this.providerSettingsService.getTitlePreference());

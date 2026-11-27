@@ -77,11 +77,11 @@ export class ImportExportService {
     return posters;
   }
 
-  async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
+  getRecoveryBackups() {
     return this.storageService.getRecoveryBackups();
   }
 
-  async exportRecoveryBackup(key: string): Promise<void> {
+  async exportRecoveryBackup(key: string) {
     const backup = await this.storageService.getRecoveryBackupByKey(key);
     this.downloadJson(backup, 'watch-list-recovery-backup');
   }
@@ -92,7 +92,7 @@ export class ImportExportService {
     this.downloadJson(raw, 'watch-list-original');
   }
 
-  private downloadJson(data: unknown, filenamePrefix: string): void {
+  private downloadJson(data: unknown, filenamePrefix: string) {
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -107,53 +107,53 @@ export class ImportExportService {
 
   async importData(file: File): Promise<ImportReport> {
     const context = this.storageService.captureImportContext();
-    try {
-      const text = await file.text();
-      const payload: unknown = JSON.parse(text);
-      assertSupportedStorageVersion(payload);
-      const data = isPortableExport(payload) ? payload.data : payload;
-      assertSupportedStorageVersion(data);
-      const images = await this.imageStorage.parseExportedImages(
-        isPortableExport(payload) ? payload.images : [],
-      );
-      const {
-        dropped,
-        repairedGroupReferences,
-        durability,
-        omittedPosterIds = [],
-        posterCleanupSkipped,
-      } = await this.storageService.importDataWithImages(data, images, context);
-      this.applyPreferencesIfPresent(payload);
-      const coverage = readPosterCoverage(payload);
-      const posters =
-        coverage || omittedPosterIds.length
-          ? {
-              included: images.length,
-              omittedIds: [...new Set([...(coverage?.omittedIds ?? []), ...omittedPosterIds])],
-              unavailable: coverage?.unavailable ?? false,
-            }
-          : undefined;
-      return {
-        dropped,
-        repairedGroupReferences,
-        durability,
-        ...(posters ? { posters } : {}),
-        ...(posterCleanupSkipped ? { posterCleanupSkipped: true } : {}),
-      };
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error('Invalid JSON file', { cause: error });
-      }
-      throw error;
-    }
+    const payload = parseJson(await file.text());
+    assertSupportedStorageVersion(payload);
+    const data = isPortableExport(payload) ? payload.data : payload;
+    assertSupportedStorageVersion(data);
+    const images = await this.imageStorage.parseExportedImages(
+      isPortableExport(payload) ? payload.images : [],
+    );
+    const {
+      dropped,
+      repairedGroupReferences,
+      durability,
+      omittedPosterIds = [],
+      posterCleanupSkipped,
+    } = await this.storageService.importDataWithImages(data, images, context);
+    this.applyPreferencesIfPresent(payload);
+    const coverage = readPosterCoverage(payload);
+    const posters =
+      coverage || omittedPosterIds.length
+        ? {
+            included: images.length,
+            omittedIds: [...new Set([...(coverage?.omittedIds ?? []), ...omittedPosterIds])],
+            unavailable: coverage?.unavailable ?? false,
+          }
+        : undefined;
+    return {
+      dropped,
+      repairedGroupReferences,
+      durability,
+      ...(posters ? { posters } : {}),
+      ...(posterCleanupSkipped ? { posterCleanupSkipped: true } : {}),
+    };
   }
 
-  private applyPreferencesIfPresent(payload: unknown): void {
+  private applyPreferencesIfPresent(payload: unknown) {
     if (!isPortableExport(payload) || !hasPreferences(payload)) {
       return;
     }
     this.providerSettings.importSettings(payload.preferences.providerSettings);
     this.discussionSettings.importSettings(payload.preferences.discussionSettings);
+  }
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error('Invalid JSON file', { cause: error });
   }
 }
 

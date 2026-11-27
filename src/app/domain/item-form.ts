@@ -49,12 +49,11 @@ export function createItemFormValue(item: ReadonlyItem): ItemFormValue {
 
 export function buildItemMutationInput(formValue: ItemFormValue): ItemMutationInput {
   const sortedSeasons = [...formValue.seasons].sort((a, b) => a.seasonNumber - b.seasonNumber);
-  const rawStatus: ItemStatus = formValue.startImmediately ? 'in-progress' : formValue.status;
   return {
     title: formValue.title.trim(),
     type: formValue.type,
     groupId: formValue.groupId,
-    status: rawStatus,
+    status: formValue.startImmediately ? 'in-progress' : formValue.status,
     progress: isEpisodicType(formValue.type)
       ? {
           season: formValue.season,
@@ -93,11 +92,5 @@ export function normalizeFormValueForType(formValue: ItemFormValue): ItemFormVal
     return formValue;
   }
 
-  const normalized: ItemFormValue = {
-    ...formValue,
-    season: 1,
-    episode: 1,
-    seasons: [],
-  };
-  return normalized;
+  return { ...formValue, season: 1, episode: 1, seasons: [] };
 }

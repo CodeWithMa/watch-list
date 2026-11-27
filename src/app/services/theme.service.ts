@@ -4,6 +4,8 @@ import { BrowserSettingsStorage } from './browser-settings-storage.service';
 
 export type Theme = 'system' | 'light' | 'dark';
 
+const THEMES: Theme[] = ['system', 'light', 'dark'];
+
 @Injectable({
   providedIn: 'root',
 })
@@ -16,23 +18,21 @@ export class ThemeService implements OnDestroy {
   theme = signal<Theme>('system');
 
   private mediaQuery: MediaQueryList | null = null;
-  private mediaQueryListener!: (e: MediaQueryListEvent) => void;
+  private readonly mediaQueryListener = () => {
+    if (this.theme() === 'system') {
+      this.applyTheme();
+    }
+  };
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
-      const stored = this.settingsStorage.read(this.STORAGE_KEY) as Theme | null;
-      if (stored && ['system', 'light', 'dark'].includes(stored)) {
+      const raw = this.settingsStorage.read(this.STORAGE_KEY);
+      const stored = THEMES.find((theme) => theme === raw);
+      if (stored) {
         this.theme.set(stored);
       }
 
       this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-      this.mediaQueryListener = () => {
-        if (this.theme() === 'system') {
-          this.applyTheme();
-        }
-      };
-
       this.mediaQuery.addEventListener('change', this.mediaQueryListener);
     }
 
@@ -49,11 +49,8 @@ export class ThemeService implements OnDestroy {
   }
 
   cycleTheme(): void {
-    const current = this.theme();
-    const order: Theme[] = ['system', 'light', 'dark'];
-    const currentIndex = order.indexOf(current);
-    const nextIndex = (currentIndex + 1) % order.length;
-    this.setTheme(order[nextIndex]);
+    const nextIndex = (THEMES.indexOf(this.theme()) + 1) % THEMES.length;
+    this.setTheme(THEMES[nextIndex]);
   }
 
   private applyTheme(): void {
@@ -69,8 +66,6 @@ export class ThemeService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.mediaQuery) {
-      this.mediaQuery.removeEventListener('change', this.mediaQueryListener);
-    }
+    this.mediaQuery?.removeEventListener('change', this.mediaQueryListener);
   }
 }

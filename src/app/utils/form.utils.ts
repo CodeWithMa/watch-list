@@ -2,14 +2,7 @@ export function toPositiveNumber(
   value: string | number | null | undefined,
   fallback: number,
 ): number {
-  if (value === null || value === undefined || value === '') {
-    return fallback;
-  }
-  const parsed = Number(value);
-  if (Number.isNaN(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return parsed;
+  return toOptionalPositiveNumber(value) ?? fallback;
 }
 
 export function toOptionalPositiveNumber(

@@ -1359,10 +1359,7 @@ describe('StorageService', () => {
     const service = createStorageService();
     await service.initialize();
     const persistedData = service.getData();
-    const storage = service as unknown as {
-      writeData: (data: unknown) => Promise<void>;
-    };
-    vi.spyOn(storage, 'writeData').mockRejectedValueOnce(new Error('Disk full'));
+    failNextDataWrite(service);
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     await expect(
@@ -1382,10 +1379,7 @@ describe('StorageService', () => {
   it('restores an unmodified nested snapshot when a mutated update cannot be written', async () => {
     const service = createStorageService();
     await service.initialize();
-    const storage = service as unknown as {
-      writeData: (data: unknown) => Promise<void>;
-    };
-    vi.spyOn(storage, 'writeData').mockRejectedValueOnce(new Error('Disk full'));
+    failNextDataWrite(service);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const changed = service.getData();
     changed.groups['ungrouped'].name = 'Renamed';
@@ -1399,10 +1393,7 @@ describe('StorageService', () => {
     const service = createStorageService();
     await service.initialize();
     const persistedData = service.getData();
-    const storage = service as unknown as {
-      writeData: (data: unknown) => Promise<void>;
-    };
-    vi.spyOn(storage, 'writeData').mockRejectedValueOnce(new Error('Disk full'));
+    failNextDataWrite(service);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const failedImport = service.importData(withGroup(persistedData, 'failed'));
@@ -1691,6 +1682,11 @@ function dataWithMovie() {
     watchHistory: [],
   };
   return { ...createDefaultStorageData(), items: { movie } };
+}
+
+function failNextDataWrite(service: StorageService) {
+  const internals = service as unknown as { writeData: (data: unknown) => Promise<void> };
+  vi.spyOn(internals, 'writeData').mockRejectedValueOnce(new Error('Disk full'));
 }
 
 function openTestDatabase(): Promise<IDBDatabase> {

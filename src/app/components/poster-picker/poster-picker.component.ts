@@ -187,9 +187,7 @@ export class PosterPickerComponent {
   }
 
   selectPosterSuggestion(suggestion: Suggestion): void {
-    if (suggestion.posterUrl) {
-      void this.storePoster(this.imageStorage.storeUrl(suggestion.posterUrl));
-    }
+    this.storeFromUrl(suggestion.posterUrl);
     this.search.dismiss();
     this.showPosterSearch.set(false);
   }

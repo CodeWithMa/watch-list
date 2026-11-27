@@ -4,13 +4,8 @@ import { getMostRecentWatchDate } from './progress.utils';
 export type SortField = 'title' | 'createdAt' | 'lastWatched' | 'status';
 export type SortDirection = 'asc' | 'desc';
 
-export const SORT_FIELDS: readonly SortField[] = [
-  'title',
-  'createdAt',
-  'lastWatched',
-  'status',
-] as const;
-export const SORT_DIRECTIONS: readonly SortDirection[] = ['asc', 'desc'] as const;
+export const SORT_FIELDS: readonly SortField[] = ['title', 'createdAt', 'lastWatched', 'status'];
+export const SORT_DIRECTIONS: readonly SortDirection[] = ['asc', 'desc'];
 
 export const SORT_FIELD_LABELS: Record<SortField, string> = {
   title: 'Title',

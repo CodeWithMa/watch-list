@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import { spawnSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 
 function getVersion() {
   try {
@@ -17,19 +16,18 @@ function getHash() {
   if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA;
   if (process.env.COMMIT_HASH) return process.env.COMMIT_HASH;
   try {
-    return execSync('git rev-parse HEAD', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    return execSync('git rev-parse HEAD', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
   } catch {
     return 'unknown';
   }
 }
 
-function getBuildDate() {
-  return new Date().toISOString();
-}
-
 const version = getVersion();
 const hash = getHash();
-const buildDate = getBuildDate();
+const buildDate = new Date().toISOString();
 
 const extraArgs = process.argv.slice(2);
 

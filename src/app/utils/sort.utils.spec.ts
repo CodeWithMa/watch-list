@@ -17,7 +17,7 @@ function item(overrides: Partial<Item> & Pick<Item, 'id' | 'title'>): Item {
     watchHistory: [],
     createdAt: '2026-04-01T10:00:00.000Z',
     ...overrides,
-  } as Item;
+  };
 }
 
 describe('sort.utils', () => {

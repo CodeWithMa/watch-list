@@ -1,6 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { ThemeService, Theme } from '../../services/theme.service';
 
+const NEXT_THEME_LABELS: Record<Theme, string> = {
+  system: 'Switch to Light mode',
+  light: 'Switch to Dark mode',
+  dark: 'Switch to System mode',
+};
+
 @Component({
   selector: 'app-theme-switcher',
   template: `
@@ -77,13 +83,7 @@ export class ThemeSwitcherComponent {
   protected themeService = inject(ThemeService);
 
   getAriaLabel(): string {
-    const current = this.themeService.theme();
-    const next: Record<Theme, string> = {
-      system: 'Switch to Light mode',
-      light: 'Switch to Dark mode',
-      dark: 'Switch to System mode',
-    };
-    return next[current];
+    return NEXT_THEME_LABELS[this.themeService.theme()];
   }
 
   getTitle(): string {

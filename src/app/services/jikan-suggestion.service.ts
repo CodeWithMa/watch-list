@@ -88,7 +88,7 @@ export class JikanSuggestionService {
   private mapResults(results: unknown[]): Suggestion[] {
     return results
       .map((result) => this.mapResult(result))
-      .filter((s): s is Suggestion => s !== null)
+      .filter((s) => s !== null)
       .slice(0, SUGGESTION_PER_SOURCE_LIMIT);
   }
 
@@ -161,24 +161,15 @@ export class JikanSuggestionService {
   }
 
   private resolveTitle(candidate: JikanAnime): string | null {
-    const pref = this.providerSettings.getTitlePreference();
-    for (const lang of pref) {
-      if (lang === 'romaji' && typeof candidate.title === 'string' && candidate.title.trim()) {
-        return candidate.title.trim();
-      }
-      if (
-        lang === 'english' &&
-        typeof candidate.title_english === 'string' &&
-        candidate.title_english.trim()
-      ) {
-        return candidate.title_english.trim();
-      }
-      if (
-        lang === 'native' &&
-        typeof candidate.title_japanese === 'string' &&
-        candidate.title_japanese.trim()
-      ) {
-        return candidate.title_japanese.trim();
+    const titles = {
+      romaji: candidate.title,
+      english: candidate.title_english,
+      native: candidate.title_japanese,
+    };
+    for (const lang of this.providerSettings.getTitlePreference()) {
+      const value = titles[lang];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
       }
     }
     return null;

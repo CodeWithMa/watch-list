@@ -12,10 +12,7 @@ import {
   isValidSnoozeCount,
 } from '../domain/episode-release';
 
-function advanceSeriesProgress(progress: SeriesProgress): {
-  progress: SeriesProgress;
-  completed: boolean;
-} {
+function advanceSeriesProgress(progress: SeriesProgress) {
   const currentSeasonInfo = progress.seasons.find((s) => s.seasonNumber === progress.season);
   const currentTotal = currentSeasonInfo?.totalEpisodes;
 
@@ -86,7 +83,7 @@ export class WatchListService {
         itemId,
         itemTitle: removed.title,
         itemType: removed.type,
-        watchHistory: removed.watchHistory || [],
+        watchHistory: removed.watchHistory,
         deletedAt: new Date().toISOString(),
       };
       delete draft.items[itemId];

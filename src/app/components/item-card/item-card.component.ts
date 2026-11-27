@@ -1,5 +1,4 @@
 import { Component, input, computed, inject, linkedSignal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ReadonlyItem as Item } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
@@ -11,7 +10,7 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
 
 @Component({
   selector: 'app-item-card',
-  imports: [CommonModule, RouterLink, TimeAgoComponent],
+  imports: [RouterLink, TimeAgoComponent],
   template: `
     <div
       class="border border-light-border dark:border-dark-border rounded-lg bg-light-bg-secondary dark:bg-dark-bg-secondary shadow-light dark:shadow-dark overflow-hidden"
@@ -44,11 +43,11 @@ import { ProviderSettingsService } from '../../services/provider-settings.servic
             Adult — click to reveal
           </button>
         }
-        @if (item().progress) {
+        @if (item().progress; as progress) {
           <span
             class="absolute top-0 right-0 px-2 py-1 text-xs font-medium bg-black/60 text-white backdrop-blur-sm"
           >
-            S{{ item().progress!.season }}E{{ item().progress!.episode }}
+            S{{ progress.season }}E{{ progress.episode }}
           </span>
         }
       </div>
@@ -89,11 +88,7 @@ export class ItemCardComponent {
     return this.item().isAdult && concealsAdultPosters && !!this.posterUrl() && !this.revealed();
   });
 
-  progressPercent = computed(() => {
-    return calculateProgress(this.item());
-  });
+  progressPercent = computed(() => calculateProgress(this.item()));
 
-  lastWatchedDate = computed(() => {
-    return getMostRecentWatchDate(this.item());
-  });
+  lastWatchedDate = computed(() => getMostRecentWatchDate(this.item()));
 }

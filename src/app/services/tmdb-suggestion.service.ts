@@ -118,7 +118,7 @@ export class TmdbSuggestionService {
   private mapResults(results: unknown[]): Suggestion[] {
     return results
       .map((result) => this.mapResult(result))
-      .filter((suggestion): suggestion is Suggestion => suggestion !== null)
+      .filter((suggestion) => suggestion !== null)
       .slice(0, SUGGESTION_PER_SOURCE_LIMIT);
   }
 
@@ -128,22 +128,30 @@ export class TmdbSuggestionService {
     }
 
     const candidate = result as TmdbSearchResult;
-    if (typeof candidate.id !== 'number') {
+    const { id } = candidate;
+    if (typeof id !== 'number') {
       return null;
     }
 
     if (candidate.media_type === 'movie') {
-      return this.createSuggestion(candidate, 'movie', candidate.title, candidate.release_date);
+      return this.createSuggestion(id, candidate, 'movie', candidate.title, candidate.release_date);
     }
 
     if (candidate.media_type === 'tv') {
-      return this.createSuggestion(candidate, 'series', candidate.name, candidate.first_air_date);
+      return this.createSuggestion(
+        id,
+        candidate,
+        'series',
+        candidate.name,
+        candidate.first_air_date,
+      );
     }
 
     return null;
   }
 
   private createSuggestion(
+    id: number,
     result: TmdbSearchResult,
     type: Suggestion['type'],
     title: unknown,
@@ -154,7 +162,7 @@ export class TmdbSuggestionService {
     }
 
     return {
-      id: result.id as number,
+      id,
       source: 'tmdb',
       title: title.trim(),
       type,
@@ -170,7 +178,7 @@ export class TmdbSuggestionService {
   private mapSeasons(seasons: unknown[]) {
     return seasons
       .map((season) => this.mapSeason(season))
-      .filter((season): season is NonNullable<ReturnType<typeof this.mapSeason>> => season !== null)
+      .filter((season) => season !== null)
       .sort((a, b) => a.seasonNumber - b.seasonNumber);
   }
 

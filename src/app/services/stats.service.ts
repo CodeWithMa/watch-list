@@ -2,6 +2,11 @@ import { Injectable, inject, computed } from '@angular/core';
 import { WatchListService } from './watch-list.service';
 import { daysBetween, toLocalDateKey, toLocalDateKeyFromISO } from '../utils/date.utils';
 import { isEpisodicType } from '../domain/item.constants';
+import { ItemStatus } from '../models/item.model';
+
+function emptyStatusCounts(): Record<ItemStatus, number> {
+  return { 'not-started': 0, 'in-progress': 0, paused: 0, completed: 0, dropped: 0 };
+}
 
 @Injectable({ providedIn: 'root' })
 export class StatsService {
@@ -27,13 +32,7 @@ export class StatsService {
   });
 
   seriesCountByStatus = computed(() => {
-    const counts: Record<string, number> = {
-      'not-started': 0,
-      'in-progress': 0,
-      paused: 0,
-      completed: 0,
-      dropped: 0,
-    };
+    const counts = emptyStatusCounts();
     for (const item of this.items()) {
       if (isEpisodicType(item.type)) {
         counts[item.status]++;
@@ -43,13 +42,7 @@ export class StatsService {
   });
 
   moviesCountByStatus = computed(() => {
-    const counts: Record<string, number> = {
-      'not-started': 0,
-      'in-progress': 0,
-      paused: 0,
-      completed: 0,
-      dropped: 0,
-    };
+    const counts = emptyStatusCounts();
     for (const item of this.items()) {
       if (item.type === 'movie') {
         counts[item.status]++;
@@ -120,14 +113,9 @@ export class StatsService {
     }
 
     let streak = 0;
-    while (true) {
-      const key = toLocalDateKey(current);
-      if (dates.has(key)) {
-        streak++;
-        current.setDate(current.getDate() - 1);
-      } else {
-        break;
-      }
+    while (dates.has(toLocalDateKey(current))) {
+      streak++;
+      current.setDate(current.getDate() - 1);
     }
 
     return streak;
@@ -181,10 +169,10 @@ export class StatsService {
     const periods = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
     for (const entry of this.history()) {
       const hour = new Date(entry.date).getHours();
-      if (hour >= 6 && hour < 12) periods['Morning']++;
-      else if (hour >= 12 && hour < 18) periods['Afternoon']++;
-      else if (hour >= 18 && hour < 22) periods['Evening']++;
-      else periods['Night']++;
+      if (hour >= 6 && hour < 12) periods.Morning++;
+      else if (hour >= 12 && hour < 18) periods.Afternoon++;
+      else if (hour >= 18 && hour < 22) periods.Evening++;
+      else periods.Night++;
     }
     return periods;
   });

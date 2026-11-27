@@ -4,9 +4,8 @@ import { afterEach, vi } from 'vitest';
 import { StorageService } from './storage.service';
 import { WatchListService } from './watch-list.service';
 import { controlStorageWrites, holdStorageWrite } from './indexeddb-write.test-utils';
-import { buildItemEditInput, createItemFormValue } from '../domain/item-form';
+import { buildItemEditInput, createItemFormValue, ItemMutationInput } from '../domain/item-form';
 import { GroupService } from './group.service';
-import { ItemMutationInput } from '../domain/item-form';
 import { ImageStorageService } from './image-storage.service';
 
 describe('Settled item mutations', () => {
@@ -69,8 +68,7 @@ describe('Settled item mutations', () => {
       seasons: [{ seasonNumber: 1, totalEpisodes: 12 }],
     };
     await watch.markWatched(added.id);
-    const edit = watch.updateItem(added.id, buildItemEditInput(initial, submitted));
-    await edit;
+    await watch.updateItem(added.id, buildItemEditInput(initial, submitted));
     expect(watch.getItemById(added.id)).toMatchObject({
       title: 'Edited',
       status: 'in-progress',

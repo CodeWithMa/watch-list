@@ -5,7 +5,7 @@ import { of, Subject, switchMap } from 'rxjs';
 import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { SuggestionSearchService } from '../../services/suggestion-search.service';
-import { ItemFormComponent } from '../item-form/item-form.component';
+import { ItemFormAutofillPatch, ItemFormComponent } from '../item-form/item-form.component';
 import {
   buildItemMutationInput,
   createDefaultItemFormValue,
@@ -81,7 +81,7 @@ export class AddItemComponent {
   readonly suggestions = this.search.results;
   readonly suggestionsLoading = this.search.loading;
   readonly suggestionsError = this.search.error;
-  readonly autofillPatch = signal<{ id: number; value: Partial<ItemFormValue> } | null>(null);
+  readonly autofillPatch = signal<ItemFormAutofillPatch | null>(null);
   private autofillPatchId = 0;
   readonly duplicateTitleHint = computed(() => {
     const normalizedTitle = this.normalizeTitle(this.title());
@@ -99,13 +99,7 @@ export class AddItemComponent {
   constructor() {
     this.selectedEpisodicRef
       .pipe(
-        switchMap((ref) => {
-          if (ref === null) {
-            return of(null);
-          }
-
-          return this.suggestionSearchService.getDetails(ref);
-        }),
+        switchMap((ref) => (ref ? this.suggestionSearchService.getDetails(ref) : of(null))),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((details) => {
@@ -113,12 +107,7 @@ export class AddItemComponent {
           return;
         }
 
-        this.autofillPatch.set({
-          id: ++this.autofillPatchId,
-          value: {
-            seasons: details.seasons,
-          },
-        });
+        this.autofillPatch.set({ id: ++this.autofillPatchId, value: { seasons: details.seasons } });
       });
   }
 
@@ -136,21 +125,13 @@ export class AddItemComponent {
   onSuggestionSelected(suggestion: Suggestion): void {
     this.title.set(suggestion.title);
     this.search.dismiss(suggestion.title);
-
-    if (!isEpisodicType(suggestion.type)) {
-      this.autofillPatch.set({
-        id: ++this.autofillPatchId,
-        value: { season: 1, episode: 1, seasons: [] },
-      });
-      this.selectedEpisodicRef.next(null);
-      return;
-    }
-
     this.autofillPatch.set({
       id: ++this.autofillPatchId,
       value: { season: 1, episode: 1, seasons: [] },
     });
-    this.selectedEpisodicRef.next({ source: suggestion.source, id: suggestion.id });
+    this.selectedEpisodicRef.next(
+      isEpisodicType(suggestion.type) ? { source: suggestion.source, id: suggestion.id } : null,
+    );
   }
 
   async onSubmit(formValue: ItemFormValue): Promise<void> {

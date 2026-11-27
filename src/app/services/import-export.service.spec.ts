@@ -72,8 +72,7 @@ describe('import version compatibility', () => {
                 images: format === 'portable' ? [] : { futureFormat: true },
                 preferences: { providerSettings: { tmdb: true } },
               };
-      const file = new File([], 'newer-export.json');
-      Object.defineProperty(file, 'text', { value: async () => JSON.stringify(payload) });
+      const file = new File([JSON.stringify(payload)], 'newer-export.json');
 
       await expect(TestBed.inject(ImportExportService).importData(file)).rejects.toThrow(
         /newer version of Watch List/,
@@ -314,14 +313,7 @@ describe('ImportExportService', () => {
 
   describe('importData', () => {
     function mockFile(content: string): File {
-      const file = new File([content], 'export.json', { type: 'application/json' });
-      // jsdom File doesn't have .text(), add it
-      Object.defineProperty(file, 'text', {
-        value: vi.fn().mockResolvedValue(content),
-        writable: true,
-        configurable: true,
-      });
-      return file;
+      return new File([content], 'export.json', { type: 'application/json' });
     }
 
     it('round-trips discussion preferences through a portable export', async () => {
@@ -569,13 +561,7 @@ describe('ImportExportService', () => {
     });
   });
 
-  function mockDownload(): {
-    anchor: { click: ReturnType<typeof vi.fn>; href: string; download: string };
-    createObjectURL: ReturnType<typeof vi.spyOn>;
-    appendChild: ReturnType<typeof vi.spyOn>;
-    removeChild: ReturnType<typeof vi.spyOn>;
-    revokeObjectURL: ReturnType<typeof vi.spyOn>;
-  } {
+  function mockDownload() {
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     const anchor = { href: '', download: '', click: vi.fn() };

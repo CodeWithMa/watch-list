@@ -357,7 +357,7 @@ export class StorageService {
     if (error) throw error;
   }
 
-  async getRecoveryBackups(): Promise<{ key: string; timestamp: Date }[]> {
+  async getRecoveryBackups() {
     if (!this.persistentStorage) {
       return [];
     }
@@ -370,7 +370,7 @@ export class StorageService {
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   }
 
-  async getRecoveryBackupByKey(key: string): Promise<unknown> {
+  async getRecoveryBackupByKey(key: string) {
     if (!key.startsWith(BACKUP_PREFIX)) {
       throw new Error('Invalid backup key');
     }
@@ -484,7 +484,7 @@ export class StorageService {
     }
   }
 
-  private useInMemorySession(): void {
+  private useInMemorySession() {
     this.databaseOwner.close();
     this.persistentStorage = false;
     this.inMemorySession.set(true);
@@ -512,7 +512,7 @@ export class StorageService {
     this.data.set(null);
   }
 
-  private async backupRawData(raw: unknown): Promise<void> {
+  private async backupRawData(raw: unknown) {
     if (!this.persistentStorage) {
       return;
     }
@@ -524,7 +524,7 @@ export class StorageService {
     await this.pruneOldBackups();
   }
 
-  private async pruneOldBackups(): Promise<void> {
+  private async pruneOldBackups() {
     if (!this.persistentStorage) {
       return;
     }
@@ -542,18 +542,11 @@ export class StorageService {
     await this.completeTransaction(transaction, 'Failed to prune old backups');
   }
 
-  private async listBackupKeys(): Promise<string[]> {
-    if (!this.persistentStorage) {
-      return [];
-    }
+  private async listBackupKeys() {
     const database = await this.databaseOwner.open();
     const transaction = database.transaction(STORE_NAME, 'readonly');
     const request = transaction.objectStore(STORE_NAME).getAllKeys();
-    const allKeys = await this.promisifyRequest(
-      request as IDBRequest<IDBValidKey[]>,
-      transaction,
-      'Failed to list backup keys',
-    );
+    const allKeys = await this.promisifyRequest(request, transaction, 'Failed to list backup keys');
     return allKeys
       .filter((k): k is string => typeof k === 'string' && k.startsWith(BACKUP_PREFIX))
       .sort(
@@ -561,7 +554,7 @@ export class StorageService {
       );
   }
 
-  private async readData(): Promise<unknown | undefined> {
+  private async readData() {
     const database = await this.databaseOwner.open();
     const transaction = database.transaction(STORE_NAME, 'readonly');
     const store = transaction.objectStore(STORE_NAME);
@@ -572,17 +565,14 @@ export class StorageService {
     return result;
   }
 
-  private async readRecord(key: string): Promise<unknown | undefined> {
-    if (!this.persistentStorage) {
-      return undefined;
-    }
+  private async readRecord(key: string) {
     const database = await this.databaseOwner.open();
     const transaction = database.transaction(STORE_NAME, 'readonly');
-    const request = transaction.objectStore(STORE_NAME).get(key) as IDBRequest<unknown | undefined>;
+    const request = transaction.objectStore(STORE_NAME).get(key) as IDBRequest<unknown>;
     return this.promisifyRequest(request, transaction, 'IndexedDB read transaction aborted');
   }
 
-  private writeData(data: StorageData): Promise<void> {
+  private writeData(data: StorageData) {
     return this.writeTransaction(
       [STORE_NAME],
       (transaction) => transaction.objectStore(STORE_NAME).put(data, DATA_KEY),
@@ -619,11 +609,7 @@ export class StorageService {
     }
   }
 
-  private writeDataWithPoster(
-    data: StorageData,
-    posterId: string,
-    image?: StoredImage,
-  ): Promise<void> {
+  private writeDataWithPoster(data: StorageData, posterId: string, image?: StoredImage) {
     return this.writeTransaction(
       [STORE_NAME, IMAGE_STORE_NAME],
       (transaction, abort) => {

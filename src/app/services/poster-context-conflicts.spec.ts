@@ -47,16 +47,12 @@ describe('Poster persistence context conflicts', () => {
       const committed = writer.storage.getData();
       const replacement = createDefaultStorageData();
       replacement.groups['ungrouped'].name = 'Imported group';
-      const file = {
-        text: async () =>
-          JSON.stringify({
-            data: replacement,
-            images: originalId
-              ? [{ id: originalId, type: 'image/png', data: btoa('original') }]
-              : [],
-            preferences: { providerSettings: { ...preferences, includeAdult: true } },
-          }),
-      } as File;
+      const payload = {
+        data: replacement,
+        images: originalId ? [{ id: originalId, type: 'image/png', data: btoa('original') }] : [],
+        preferences: { providerSettings: { ...preferences, includeAdult: true } },
+      };
+      const file = new File([JSON.stringify(payload)], 'import.json');
 
       await expect(stale.imports.importData(file)).rejects.toBeInstanceOf(CollectionConflictError);
 

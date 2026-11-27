@@ -244,7 +244,7 @@ describe('RoundRobinService', () => {
       episode: 2,
       firstEpisodeAirDate: '2026-05-01',
     });
-    (missingSeason as Item).progress = {
+    missingSeason.progress = {
       season: 2,
       episode: 1,
       seasons: [{ seasonNumber: 1, totalEpisodes: 10, firstEpisodeAirDate: '2026-05-01' }],

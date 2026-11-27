@@ -1,13 +1,13 @@
 import { ItemStatus, ItemType } from '../models/item.model';
 
 export const ITEM_TYPES: ItemType[] = ['series', 'movie', 'ova', 'ona'];
-export const ITEM_STATUSES: ItemStatus[] = [
+export const ITEM_STATUSES = [
   'not-started',
   'in-progress',
   'paused',
   'completed',
   'dropped',
-];
+] as const satisfies readonly ItemStatus[];
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   series: 'Series',
@@ -16,7 +16,7 @@ export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   ona: 'ONA',
 };
 
-export function isEpisodicType(type: ItemType): boolean {
+export function isEpisodicType(type: ItemType) {
   return type !== 'movie';
 }
 

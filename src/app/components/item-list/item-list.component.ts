@@ -182,8 +182,8 @@ export class ItemListComponent {
 
   statusFilter = signal<FilterStatus>('all');
   typeFilter = signal<FilterType>('all');
-  searchFilter = signal<string>('');
-  groupFilter = signal<string>('');
+  searchFilter = signal('');
+  groupFilter = signal('');
 
   sortField = this.itemSortService.field;
   sortDirection = this.itemSortService.direction;

@@ -20,11 +20,13 @@ export function groupHistoryEntries(
     const entryDay = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate());
     const dayKey = entryDay.toISOString();
 
-    if (!groupMap.has(dayKey)) {
-      groupMap.set(dayKey, []);
+    let dayEntries = groupMap.get(dayKey);
+    if (!dayEntries) {
+      dayEntries = [];
+      groupMap.set(dayKey, dayEntries);
     }
 
-    groupMap.get(dayKey)!.push({
+    dayEntries.push({
       ...entry,
       relativeTime: formatClockTime(entryDate),
     });

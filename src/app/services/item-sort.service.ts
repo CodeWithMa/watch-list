@@ -13,8 +13,8 @@ const DEFAULT_SORT_DIRECTION: SortDirection = 'desc';
 })
 export class ItemSortService {
   private readonly settingsStorage = inject(BrowserSettingsStorage);
-  private readonly fieldSignal = signal<SortField>(this.loadField());
-  private readonly directionSignal = signal<SortDirection>(this.loadDirection());
+  private readonly fieldSignal = signal(this.loadField());
+  private readonly directionSignal = signal(this.loadDirection());
 
   readonly field = this.fieldSignal.asReadonly();
   readonly direction = this.directionSignal.asReadonly();
@@ -35,12 +35,12 @@ export class ItemSortService {
 
   private loadField(): SortField {
     const raw = this.settingsStorage.read(SORT_FIELD_KEY);
-    return raw && isSortField(raw) ? raw : DEFAULT_SORT_FIELD;
+    return isSortField(raw) ? raw : DEFAULT_SORT_FIELD;
   }
 
   private loadDirection(): SortDirection {
     const raw = this.settingsStorage.read(SORT_DIRECTION_KEY);
-    return raw && isSortDirection(raw) ? raw : DEFAULT_SORT_DIRECTION;
+    return isSortDirection(raw) ? raw : DEFAULT_SORT_DIRECTION;
   }
 
   private saveField(field: SortField): void {

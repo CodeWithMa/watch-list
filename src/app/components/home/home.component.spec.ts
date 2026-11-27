@@ -208,12 +208,7 @@ describe('HomeComponent', () => {
   it('markItem delegates to correct service methods', async () => {
     setup();
     const fixture = TestBed.createComponent(HomeComponent);
-    const svc = TestBed.inject(WatchListService) as unknown as {
-      markWatched: ReturnType<typeof vi.fn>;
-      markCompleted: ReturnType<typeof vi.fn>;
-      markDropped: ReturnType<typeof vi.fn>;
-      markPaused: ReturnType<typeof vi.fn>;
-    };
+    const svc = TestBed.inject(WatchListService);
     const item = createItem({ id: 'x', title: 'X', status: 'in-progress', isAdult: false });
 
     await fixture.componentInstance.markItem(() => item, 'watched');
@@ -332,26 +327,17 @@ describe('HomeComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No movies currently being watched');
   });
 
-  it('computes hasSeries and hasMovies correctly', () => {
+  it('distinguishes an empty watch list from one with nothing in progress', () => {
     setup({ watchItems: [createItem({ id: '1', title: 'S', type: 'series' })] });
     let fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
-    expect((fixture.componentInstance as unknown as { hasSeries: () => boolean }).hasSeries()).toBe(
-      true,
-    );
+    expect(fixture.nativeElement.textContent).toContain('No series currently being watched');
+    expect(fixture.nativeElement.textContent).toContain('No movies in your watch list');
 
     setup({ watchItems: [createItem({ id: '2', title: 'M', type: 'movie' })] });
     fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
-    expect((fixture.componentInstance as unknown as { hasMovies: () => boolean }).hasMovies()).toBe(
-      true,
-    );
-
-    setup({ watchItems: [] });
-    fixture = TestBed.createComponent(HomeComponent);
-    fixture.detectChanges();
-    expect((fixture.componentInstance as unknown as { hasSeries: () => boolean }).hasSeries()).toBe(
-      false,
-    );
+    expect(fixture.nativeElement.textContent).toContain('No movies currently being watched');
+    expect(fixture.nativeElement.textContent).toContain('No series in your watch list');
   });
 });

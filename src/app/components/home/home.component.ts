@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { WatchListService } from '../../services/watch-list.service';
 import { ItemCardComponent } from '../item-card/item-card.component';
-import { ReadonlyItem as Item, ItemType } from '../../models/item.model';
+import { ReadonlyItem as Item, ItemStatus } from '../../models/item.model';
 import { isEpisodicType } from '../../domain/item.constants';
 import { ProviderSettingsService } from '../../services/provider-settings.service';
 import { watchActionFailure } from '../watch-action-feedback';
@@ -53,9 +53,9 @@ import { DiscussionLinkComponent } from '../discussion-link/discussion-link.comp
           >
             Next Series
           </h2>
-          @if (nextSeries()) {
+          @if (nextSeries(); as series) {
             <div class="w-full">
-              <app-item-card [item]="nextSeries()!" />
+              <app-item-card [item]="series" />
               <div class="flex flex-wrap justify-center gap-2 mt-3">
                 <button
                   (click)="markItem(nextSeries, 'watched')"
@@ -155,9 +155,9 @@ import { DiscussionLinkComponent } from '../discussion-link/discussion-link.comp
           >
             Next Movie
           </h2>
-          @if (nextMovie()) {
+          @if (nextMovie(); as movie) {
             <div class="w-full">
-              <app-item-card [item]="nextMovie()!" />
+              <app-item-card [item]="movie" />
               <div class="flex flex-wrap justify-center gap-2 mt-3">
                 <button
                   (click)="markItem(nextMovie, 'watched')"
@@ -364,28 +364,17 @@ export class HomeComponent {
     );
     if (result) this.deferringItem.set(null);
   }
-  backlogItems = computed(() => {
-    const adultMode = this.providerSettings.settings().adultDisplayMode;
-    let items = this.watchListService.items().filter((item) => item.status === 'not-started');
-    if (adultMode === 'hide') {
-      items = items.filter((item) => !item.isAdult);
-    }
-    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  });
 
-  pausedItems = computed(() => {
-    const adultMode = this.providerSettings.settings().adultDisplayMode;
-    let items = this.watchListService.items().filter((item) => item.status === 'paused');
-    if (adultMode === 'hide') {
-      items = items.filter((item) => !item.isAdult);
-    }
-    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  });
+  backlogItems = computed(() => this.visibleNewestFirst('not-started'));
+
+  pausedItems = computed(() => this.visibleNewestFirst('paused'));
 
   protected hasSeries = computed(() =>
     this.watchListService.items().some((item) => isEpisodicType(item.type)),
   );
-  protected hasMovies = computed(() => this.hasItemType('movie'));
+  protected hasMovies = computed(() =>
+    this.watchListService.items().some((item) => item.type === 'movie'),
+  );
   protected hasInProgressSeries = computed(
     () => this.watchListService.inProgressSeries().length > 0,
   );
@@ -426,7 +415,11 @@ export class HomeComponent {
     return this.dropBacklogItem(itemId);
   }
 
-  private hasItemType(type: ItemType): boolean {
-    return this.watchListService.items().some((item) => item.type === type);
+  private visibleNewestFirst(status: ItemStatus) {
+    const hideAdult = this.providerSettings.settings().adultDisplayMode === 'hide';
+    return this.watchListService
+      .items()
+      .filter((item) => item.status === status && !(hideAdult && item.isAdult))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 }

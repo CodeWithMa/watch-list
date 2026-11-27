@@ -20,7 +20,7 @@ function sug(overrides: Partial<Suggestion> & Pick<Suggestion, 'id' | 'title'>):
     type: 'series',
     isAdult: false,
     ...overrides,
-  } as Suggestion;
+  };
 }
 
 describe('SuggestionSearchService', () => {

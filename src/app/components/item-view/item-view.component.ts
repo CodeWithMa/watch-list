@@ -6,7 +6,7 @@ import { WatchListService } from '../../services/watch-list.service';
 import { GroupService } from '../../services/group.service';
 import { RoundRobinService } from '../../services/round-robin.service';
 import { injectPosterUrl } from '../../services/poster-reader';
-import { ReadonlyItem as Item, ItemStatus } from '../../models/item.model';
+import { ItemStatus } from '../../models/item.model';
 import { TimeAgoComponent } from '../time-ago/time-ago.component';
 import { getMostRecentWatchDate } from '../../utils/progress.utils';
 import { getPlaceholderUrl } from '../../utils/tmdb-image.utils';
@@ -227,7 +227,7 @@ export class ItemViewComponent {
 
   readonly paramMap = toSignal(this.route.paramMap);
 
-  readonly item = computed<Item | null>(() => {
+  readonly item = computed(() => {
     const id = this.paramMap()?.get('id');
     return id ? (this.watchListService.items().find((item) => item.id === id) ?? null) : null;
   });
